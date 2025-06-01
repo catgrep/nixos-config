@@ -6,7 +6,14 @@
   home.stateVersion = "24.11"; # Update with appropriate version
 
   # Packages to install
-  home.packages = with pkgs; [ ripgrep fd bat nixfmt nixd nil ];
+  home.packages = with pkgs; [
+    ripgrep
+    fd
+    bat
+    nixfmt
+    nixd
+    nil
+  ];
 
   # Enable home-manager
   programs.home-manager.enable = true;

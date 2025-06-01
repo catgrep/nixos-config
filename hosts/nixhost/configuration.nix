@@ -8,7 +8,7 @@
   imports = [ # Include the results of the hardware scan.
     ./hardware-configuration.nix
     # Include the system-banner module
-    ./modules/system-banner.nix
+    ./modules/nixos/banner.nix
   ];
 
   # Enable the system banner

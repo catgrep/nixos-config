@@ -2,7 +2,7 @@
 
 {
   services.jellyfin = {
-    enable = true;
+    enable = lib.mkDefault true;
     user = "bobby";
     group = "users";
   };
@@ -18,4 +18,7 @@
     "d /mnt/media/music 0755 bobby users -"
     "d /mnt/media/books 0755 bobby users -"
   ];
+
+  # Open Jellyfin ports
+  networking.firewall.allowedTCPPorts = [ 8096 ];
 }

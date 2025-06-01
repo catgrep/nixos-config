@@ -14,7 +14,7 @@
       "network"
       "diskstats"
       "loadavg"
-    ];
+    ] ++ lib.optional (builtins.elem "zfs" config.boot.supportedFilesystems) "zfs";
   };
 
   # Log rotation
@@ -38,4 +38,15 @@
     SystemMaxFileSize=100M
     SystemMaxFiles=10
   '';
+
+  # Common monitoring packages
+  environment.systemPackages = with pkgs; [
+    htop
+    iotop
+    nethogs
+    sysstat
+  ];
+
+  # Open firewall for node exporter
+  networking.firewall.allowedTCPPorts = [ 9100 ];
 }

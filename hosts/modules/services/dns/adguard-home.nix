@@ -2,7 +2,7 @@
 
 {
   services.adguardhome = {
-    enable = true;
+    enable = lib.mkDefault true;
     mutableSettings = false;
     settings = {
       # Bind to all interfaces
@@ -54,9 +54,9 @@
         safesearch_enabled = false;
       };
 
-      # DHCP (if you want AdGuard to handle DHCP)
+      # DHCP (disabled by default)
       dhcp = {
-        enabled = false; # Set to true if you want AdGuard to handle DHCP
+        enabled = false;
         interface_name = "eth0";
         local_domain_name = "homelab.local";
         dhcpv4 = {
@@ -123,8 +123,28 @@
           answer = "192.168.1.21"; # Firebat IP
         }
         {
+          domain = "grafana.homelab.local";
+          answer = "192.168.1.21"; # Firebat IP
+        }
+        {
+          domain = "prometheus.homelab.local";
+          answer = "192.168.1.21"; # Firebat IP
+        }
+        {
           domain = "pihole.homelab.local";
           answer = "192.168.1.10"; # Pi4 IP
+        }
+        {
+          domain = "beelink.homelab.local";
+          answer = "192.168.1.20";
+        }
+        {
+          domain = "firebat.homelab.local";
+          answer = "192.168.1.21";
+        }
+        {
+          domain = "pi4.homelab.local";
+          answer = "192.168.1.10";
         }
       ];
     };
@@ -134,4 +154,45 @@
   systemd.tmpfiles.rules = [
     "d /var/lib/AdGuardHome 0755 adguardhome adguardhome -"
   ];
+
+  # Open firewall ports for DNS and web interface
+  networking.firewall = {
+    allowedTCPPorts = [ 53 80 3000 ];
+    allowedUDPPorts = [ 53 ];
+  };
+
+  # AdGuard Home exporter for Prometheus monitoring
+  services.prometheus.exporters.adguardhome = {
+    enable = lib.mkDefault true;
+    port = 9617;
+    adguardHomeAddress = "http://localhost:80";
+    adguardHomeUsername = "admin";
+    # Password file should be created with sops-nix or manually
+    adguardHomePasswordFile = "/run/secrets/adguard-password";
+  };
+
+  # Pi-specific temperature monitoring service
+  systemd.services.pi-temp-monitor = lib.mkIf (config.networking.hostName == "pi4") {
+    description = "Raspberry Pi Temperature Monitor";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.writeShellScript "pi-temp-check" ''
+        temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+        temp_c=$((temp / 1000))
+
+        if [ $temp_c -gt 70 ]; then
+          echo "Warning: Pi temperature is $temp_c°C" | ${pkgs.systemd}/bin/systemd-cat -t pi-temp
+        fi
+      ''}";
+    };
+  };
+
+  systemd.timers.pi-temp-monitor = lib.mkIf (config.networking.hostName == "pi4") {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "5min";
+    };
+  };
 }

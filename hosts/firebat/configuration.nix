@@ -3,7 +3,10 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./services
+    # Import the gateway services module
+    ../modules/services/gateway
+    # Import server-specific configurations
+    ../modules/servers
   ];
 
   # Host identification
@@ -31,23 +34,22 @@
     "net.ipv6.conf.all.forwarding" = 1;
   };
 
-  # Open ports for gateway services
-  networking.firewall = {
-    allowedTCPPorts = [
-      80    # HTTP
-      443   # HTTPS
-      8080  # Traefik admin
-      9090  # Prometheus
-      3000  # Grafana
-    ];
+  # Gateway services are enabled by default from the module
+  # Override or configure additional settings here if needed
+  services = {
+    # Traefik, Prometheus, and Grafana are enabled by default
+    # Configure specific overrides here
+  };
 
+  # Additional firewall rules for gateway
+  networking.firewall = {
     # Allow traffic forwarding
     extraCommands = ''
       iptables -A FORWARD -j ACCEPT
     '';
   };
 
-  # Gateway and monitoring packages
+  # Gateway-specific packages
   environment.systemPackages = with pkgs; [
     # Network tools
     iptables
@@ -55,12 +57,8 @@
     tcpdump
     wireshark
 
-    # Monitoring tools
-    prometheus
-    grafana
-
-    # Load balancer
-    traefik
+    # Additional monitoring tools
+    bandwhich
   ];
 
   # System state version

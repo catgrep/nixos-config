@@ -2,7 +2,7 @@
 
 {
   services.traefik = {
-    enable = true;
+    enable = lib.mkDefault true;
 
     staticConfigOptions = {
       # Entry points
@@ -63,6 +63,14 @@
           entryPoints = [ "websecure" ];
           tls.certResolver = "letsencrypt";
         };
+
+        # Route to Grafana
+        grafana = {
+          rule = "Host(`grafana.homelab.local`)";
+          service = "grafana";
+          entryPoints = [ "websecure" ];
+          tls.certResolver = "letsencrypt";
+        };
       };
 
       services = {
@@ -77,6 +85,12 @@
             { url = "http://pi4.local:80"; }
           ];
         };
+
+        grafana = {
+          loadBalancer.servers = [
+            { url = "http://localhost:3000"; }
+          ];
+        };
       };
     };
   };
@@ -85,4 +99,7 @@
   systemd.tmpfiles.rules = [
     "d /var/lib/traefik 0755 traefik traefik -"
   ];
+
+  # Open firewall ports for Traefik
+  networking.firewall.allowedTCPPorts = [ 80 443 8080 ];
 }

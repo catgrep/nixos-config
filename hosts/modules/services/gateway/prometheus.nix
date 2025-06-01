@@ -2,7 +2,7 @@
 
 {
   services.prometheus = {
-    enable = true;
+    enable = lib.mkDefault true;
     port = 9090;
 
     # Scrape configs for monitoring homelab hosts
@@ -88,28 +88,26 @@
                   severity: warning
                 annotations:
                   summary: "Memory usage is above 90% on {{ $labels.instance }}"
+
+              - alert: ZFSPoolUnhealthy
+                expr: node_zfs_zpool_health_state{state!="online"} > 0
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "ZFS pool {{ $labels.pool }} is not healthy on {{ $labels.instance }}"
+
+              - alert: HighCPUTemperature
+                expr: node_hwmon_temp_celsius > 80
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "CPU temperature is above 80°C on {{ $labels.instance }}"
       '')
     ];
   };
 
-  # Node exporter for this host
-  services.prometheus.exporters = {
-    node = {
-      enable = true;
-      port = 9100;
-      enabledCollectors = [
-        "systemd"
-        "processes"
-        "cpu"
-        "memory"
-        "filesystem"
-        "network"
-        "diskstats"
-        "loadavg"
-      ];
-    };
-  };
-
-  # Open firewall for metrics scraping
-  networking.firewall.allowedTCPPorts = [ 9100 ];
+  # Open firewall port for Prometheus
+  networking.firewall.allowedTCPPorts = [ 9090 ];
 }

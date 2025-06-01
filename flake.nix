@@ -62,28 +62,16 @@
         # Main media server (Beelink SER8)
         beelink = mkSystem {
           hostname = "beelink";
-          modules = [
-            ./hosts/modules/servers
-            ./hosts/modules/services/media
-          ];
         };
 
         # Gateway/Load Balancer (Firebat)
         firebat = mkSystem {
           hostname = "firebat";
-          modules = [
-            ./hosts/modules/servers
-            ./hosts/modules/services/gateway
-          ];
         };
 
         # DNS Server (Raspberry Pi 4B)
         pi4 = mkArmSystem {
           hostname = "pi4";
-          modules = [
-            ./hosts/modules/servers
-            ./hosts/modules/services/dns
-          ];
         };
 
         # Keep existing nixhost for compatibility during transition

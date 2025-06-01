@@ -4,7 +4,10 @@
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
-    ./services
+    # Import the media services module
+    ../modules/services/media
+    # Import server-specific configurations
+    ../modules/servers
   ];
 
   # Host identification
@@ -32,24 +35,19 @@
     };
   };
 
-  # Prometheus exporters for monitoring
-  services.prometheus.exporters = {
-    node = {
-      enable = true;
-      port = 9100;
-      enabledCollectors = [
-        "systemd"
-        "processes"
-        "cpu"
-        "memory"
-        "filesystem"
-        "network"
-        "diskstats"
-        "loadavg"
-        "zfs"
-      ];
-    };
+  # Enable specific media services
+  services = {
+    # Jellyfin is enabled by default in the media module
+    # Enable additional services as needed
+    # sonarr.enable = true;
+    # radarr.enable = true;
+    # transmission.enable = true;
+  };
 
+  # Host-specific monitoring - extends the server monitoring module
+  services.prometheus.exporters = {
+    # Node exporter is already enabled by servers module
+    # Add ZFS-specific monitoring
     zfs = {
       enable = true;
       port = 9134;
@@ -69,15 +67,11 @@
     };
   };
 
-  # Open ports for media services and monitoring
+  # Open additional ports for media services (base ports from modules)
   networking.firewall = {
     allowedTCPPorts = [
-      8096  # Jellyfin
+      # Additional ports not in modules
       8080  # General web services
-      8989  # Sonarr
-      7878  # Radarr
-      9117  # Jackett
-      9100  # Node exporter
       9134  # ZFS exporter
     ];
     allowedUDPPorts = [

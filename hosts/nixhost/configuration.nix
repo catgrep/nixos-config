@@ -195,6 +195,7 @@
     lolcat
     file
     lsof
+    gitingest
   ];
 
   # Tmux config
@@ -210,10 +211,9 @@
   # Enable nix-command and flakes by default
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  ## Save space by enabling hard links in the nix store (not a default); 
+  ## Save space by enabling hard links in the nix store (not a default);
   ## Run the optimization once after enabling this setting by doing:
   ## nix-store --optimise (can take a while).
   ## See: https://nixos.wiki/wiki/Storage_optimization
   nix.settings.auto-optimise-store = true;
 }
-

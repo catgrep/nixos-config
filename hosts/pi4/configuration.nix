@@ -3,7 +3,10 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./services
+    # Import the DNS services module
+    ../modules/services/dns
+    # Import server-specific configurations (adapted for ARM)
+    ../modules/servers
   ];
 
   # Host identification
@@ -39,21 +42,18 @@
     };
   };
 
-  # Open DNS ports and monitoring
-  networking.firewall = {
-    allowedTCPPorts = [
-      53    # DNS
-      80    # AdGuard Home web interface
-      3000  # AdGuard Home initial setup
-      9100  # Node exporter
-      9617  # AdGuard Home exporter
-    ];
-    allowedUDPPorts = [
-      53    # DNS
-    ];
+  # DNS service is enabled by default from the module
+  # Override AdGuard settings if needed
+  services.adguardhome.settings = {
+    # Override specific settings here if needed
   };
 
-  # DNS and monitoring packages
+  # Pi-specific monitoring
+  services.pi-temp-monitor = {
+    enable = true;
+  };
+
+  # DNS-specific packages
   environment.systemPackages = with pkgs; [
     # DNS tools
     dig

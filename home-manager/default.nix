@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   home.username = "bobby";
@@ -10,7 +10,7 @@
     ripgrep
     fd
     bat
-    nixfmt
+    nixfmt-rfc-style
     nixd
     nil
   ];

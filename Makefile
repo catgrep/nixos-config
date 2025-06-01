@@ -1,5 +1,12 @@
 SHELL = /bin/zsh
 
-.PHONY:
+.PHONY: switch update
+
+upgrade-nix:
+	determinate-nixd upgrade
+
 switch:
-	pushd home-manager && nix run home-manager -- switch --flake . && popd
+	nix run home-manager -- switch --flake ./home-manager
+
+update:
+	nix flake update --flake ./home-manager

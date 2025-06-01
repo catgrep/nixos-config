@@ -14,6 +14,7 @@
     nixd
     nil
     charasay
+    gitingest
   ];
 
   # Enable home-manager

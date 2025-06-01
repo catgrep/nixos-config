@@ -13,6 +13,7 @@
     nixfmt-rfc-style
     nixd
     nil
+    charasay
   ];
 
   # Enable home-manager

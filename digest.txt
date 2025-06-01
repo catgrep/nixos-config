@@ -1,0 +1,901 @@
+Directory structure:
+└── nixos-config/
+    ├── README.md
+    ├── Makefile
+    ├── deploy.sh
+    ├── .envrc
+    ├── home-manager/
+    │   ├── default.nix
+    │   ├── flake.lock
+    │   └── flake.nix
+    └── hosts/
+        ├── core.nix
+        ├── flake.lock
+        ├── flake.nix
+        ├── modules/
+        │   └── nixos/
+        │       ├── banner.nix
+        │       ├── default.nix
+        │       ├── neovim.nix
+        │       └── tmux.nix
+        └── nixhost/
+            ├── configuration.nix
+            └── hardware-configuration.nix
+
+================================================
+File: README.md
+================================================
+# nixos-config
+
+## Home-Manager
+
+Run
+``` sh
+nix run home-manager -- switch --flake ./home-manager
+```
+
+## Development
+
+This repo uses Determinate System and the flake was bootstrapped with:
+``` sh
+nix run "https://flakehub.com/f/DeterminateSystems/fh/*" -- init
+```
+
+### Prerequisites
+
+You will need:
+1) `nix` package manager for installing `nix` packages.
+2) `nixfmt` for formatting `nix` files.
+
+Install nix:
+``` sh
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+Test with:
+``` sh
+echo "Hello Nix" | nix run "https://flakehub.com/f/NixOS/nixpkgs/*#charasay" say
+```
+
+Install `nixfmt`:
+
+``` sh
+nix-env -i -f https://github.com/NixOS/nixfmt/archive/master.tar.gz
+```
+
+
+## ZFS RAID 10
+
+
+================================================
+File: Makefile
+================================================
+SHELL = /bin/zsh
+
+.PHONY: switch update
+
+upgrade-nix:
+	determinate-nixd upgrade
+
+switch:
+	nix run home-manager -- switch --flake ./home-manager
+
+update:
+	nix flake update --flake ./home-manager
+
+
+
+================================================
+File: deploy.sh
+================================================
+#!/usr/bin/env bash
+export NIX_SSHOPTS="-A"
+
+build_remote=false
+
+hosts="$1"
+shift
+
+if [ -z "$hosts" ]; then
+    echo "No hosts to deploy"
+    exit 2
+fi
+
+for host in ${hosts//,/ }; do
+    nixos-rebuild --flake .\#$host switch --target-host $host --use-remote-sudo --use-substitutes $@
+done
+
+
+
+================================================
+File: .envrc
+================================================
+use flake
+
+
+================================================
+File: home-manager/default.nix
+================================================
+{ pkgs, ... }:
+
+{
+  home.username = "bobby";
+  home.homeDirectory = "/Users/bobby";
+  home.stateVersion = "24.11"; # Update with appropriate version
+
+  # Packages to install
+  home.packages = with pkgs; [
+    ripgrep
+    fd
+    bat
+    nixfmt-rfc-style
+    nixd
+    nil
+    charasay
+    gitingest
+  ];
+
+  # Enable home-manager
+  programs.home-manager.enable = true;
+}
+
+
+
+================================================
+File: home-manager/flake.lock
+================================================
+{
+  "nodes": {
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1748737919,
+        "narHash": "sha256-5kvBbLYdp+n7Ftanjcs6Nv+UO6sBhelp6MIGJ9nWmjQ=",
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "5675a9686851d9626560052a032c4e14e533c1fa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1748662220,
+        "narHash": "sha256-7gGa49iB9nCnFk4h/g9zwjlQAyjtpgcFkODjcOQS0Es=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "59138c7667b7970d205d6a05a8bfa2d78caa3643",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "home-manager": "home-manager",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
+
+
+
+================================================
+File: home-manager/flake.nix
+================================================
+{
+  description = "Home Manager configuration";
+
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { nixpkgs, home-manager, ... }:
+    let
+      system = "aarch64-darwin";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          (builtins.path {
+            path = ./default.nix;
+            name = "home-config";
+          })
+        ];
+      };
+    };
+}
+
+
+
+================================================
+File: hosts/core.nix
+================================================
+
+
+
+================================================
+File: hosts/flake.lock
+================================================
+{
+  "nodes": {
+    "flake-schemas": {
+      "locked": {
+        "lastModified": 1721999734,
+        "narHash": "sha256-G5CxYeJVm4lcEtaO87LKzOsVnWeTcHGKbKxNamNWgOw=",
+        "rev": "0a5c42297d870156d9c57d8f99e476b738dcd982",
+        "revCount": 75,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/flake-schemas/0.1.5/0190ef2f-61e0-794b-ba14-e82f225e55e6/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A"
+      }
+    },
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "path": "./home-manager",
+        "type": "path"
+      },
+      "original": {
+        "path": "./home-manager",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1746557022,
+        "narHash": "sha256-QkNoyEf6TbaTW5UZYX0OkwIJ/ZMeKSSoOMnSDPQuol0=",
+        "rev": "1d3aeb5a193b9ff13f63f4d9cc169fb88129f860",
+        "revCount": 717738,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2411.717738%2Brev-1d3aeb5a193b9ff13f63f4d9cc169fb88129f860/0196a994-b117-7203-b225-ee2c1be7af8d/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/%2A"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-schemas": "flake-schemas",
+        "home-manager": "home-manager",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
+
+
+
+================================================
+File: hosts/flake.nix
+================================================
+# This flake was initially generated by fh, the CLI for FlakeHub (version 0.1.24)
+{
+  # A helpful description of your flake
+  description = "System configurations";
+
+  # Flake inputs
+  inputs = {
+    flake-schemas.url =
+      "https://flakehub.com/f/DeterminateSystems/flake-schemas/*";
+
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*";
+    home-manager = {
+      url = "path:./home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  # Flake outputs that other flakes can use
+  outputs = { self, flake-schemas, home-manager, nixpkgs }:
+    let
+      # Helpers for producing system-specific outputs
+      supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
+      forEachSupportedSystem = f:
+        nixpkgs.lib.genAttrs supportedSystems
+        (system: f { pkgs = import nixpkgs { inherit system; }; });
+    in {
+      # Schemas tell Nix about the structure of your flake's outputs
+      schemas = flake-schemas.schemas;
+
+      # Development environments
+      devShells = forEachSupportedSystem ({ pkgs }: {
+        default = pkgs.mkShell {
+          # Pinned packages available in the environment
+          packages = with pkgs; [ curl git jq wget nixpkgs-fmt ];
+
+          # A hook run every time you enter the environment
+          shellHook = ''
+            echo "Entering nix shell!"
+          '';
+        };
+      });
+      homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+        modules = [ ./home-manager/default.nix ];
+      };
+    };
+}
+
+
+
+================================================
+File: hosts/modules/nixos/banner.nix
+================================================
+# system-banner.nix
+{ config, lib, pkgs, ... }:
+
+with lib;
+
+let
+  cfg = config.programs.system-banner;
+in {
+  options.programs.system-banner = {
+    enable = mkEnableOption "system banner on shell login";
+
+    shellHook = mkOption {
+      type = types.str;
+      default = "";
+      description = "Additional shell commands to run after displaying the system banner";
+    };
+
+    showOnLogin = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Whether to show the banner on interactive shell login";
+    };
+  };
+
+  config = mkIf cfg.enable {
+    environment.systemPackages = with pkgs; [
+      bc  # Required for some calculations in the script
+    ];
+
+    # Create the script at /etc/system-banner.sh
+    environment.etc."system-banner.sh" = {
+      mode = "0755";
+      text = ''
+        #!/bin/sh
+
+        # System Status Banner Script
+        # Generated by NixOS configuration
+
+        # ANSI color codes
+        RED='\033[0;31m'
+        GREEN='\033[0;32m'
+        YELLOW='\033[0;33m'
+        BLUE='\033[0;34m'
+        MAGENTA='\033[0;35m'
+        CYAN='\033[0;36m'
+        WHITE='\033[1;37m'
+        BOLD='\033[1m'
+        RESET='\033[0m'
+
+        # Clear screen and move to top
+        clear
+
+        # System hostname
+        echo -e "''${BOLD}''${BLUE}╔════════════════════════════════════════════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${BLUE}║                     ''${WHITE}SYSTEM INFORMATION''${BLUE}                     ║''${RESET}"
+        echo -e "''${BOLD}''${BLUE}╚════════════════════════════════════════════════════════════╝''${RESET}"
+
+        # Hostname and date
+        echo -e "''${CYAN}Hostname:    ''${GREEN}$(hostname)''${RESET}"
+        echo -e "''${CYAN}Date & Time: ''${GREEN}$(date)''${RESET}"
+        echo
+
+        # OS Information
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ OS INFO ══════════════════════════╗''${RESET}"
+        echo -e "''${CYAN}OS:         ''${GREEN}$(uname -o 2>/dev/null || echo "$(uname -s)")''${RESET}"
+        echo -e "''${CYAN}Kernel:     ''${GREEN}$(uname -r)''${RESET}"
+        echo -e "''${CYAN}Arch:       ''${GREEN}$(uname -m)''${RESET}"
+        echo -e "''${CYAN}Shell:      ''${GREEN}$SHELL''${RESET}"
+        echo -e "''${CYAN}Distro:     ''${GREEN}NixOS''${RESET}"
+
+        # Get NixOS version if available
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            echo -e "''${CYAN}Release:    ''${GREEN}$VERSION_ID''${RESET}"
+        fi
+        echo
+
+        # Uptime & Load Average
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ UPTIME & LOAD ════════════════════╗''${RESET}"
+        echo -e "''${CYAN}Uptime:     ''${GREEN}$(uptime | awk '{print $3}' | tr -d ',')''${RESET}"
+        echo -e "''${CYAN}Users:      ''${GREEN}$(uptime | awk '{print $4}')''${RESET}"
+        echo -e "''${CYAN}Load Avg:   ''${GREEN}$(uptime | awk -F'load average: ' '{print $2}')''${RESET}"
+        echo
+
+        # CPU Information
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ CPU INFO ═════════════════════════╗''${RESET}"
+        if [ -f /proc/cpuinfo ]; then
+            CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d ":" -f2 | sed 's/^[ \t]*//')
+            CPU_CORES=$(grep -c "processor" /proc/cpuinfo)
+            echo -e "''${CYAN}CPU Model:  ''${GREEN}$CPU_MODEL''${RESET}"
+            echo -e "''${CYAN}CPU Cores:  ''${GREEN}$CPU_CORES''${RESET}"
+        else
+            echo -e "''${CYAN}CPU Info:   ''${YELLOW}Could not determine''${RESET}"
+        fi
+        echo
+
+        # Memory Information
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ MEMORY INFO ══════════════════════╗''${RESET}"
+        if [ -f /proc/meminfo ]; then
+            # Linux
+            MEM_TOTAL=$(grep "MemTotal" /proc/meminfo | awk '{print $2/1024/1024 " GB"}')
+            MEM_FREE=$(grep "MemAvailable" /proc/meminfo | awk '{print $2/1024/1024 " GB"}' 2>/dev/null ||
+                      grep "MemFree" /proc/meminfo | awk '{print $2/1024/1024 " GB"}')
+
+            echo -e "''${CYAN}Total RAM:  ''${GREEN}$MEM_TOTAL''${RESET}"
+            echo -e "''${CYAN}Free RAM:   ''${GREEN}$MEM_FREE''${RESET}"
+        else
+            echo -e "''${CYAN}Memory:     ''${YELLOW}Could not determine''${RESET}"
+        fi
+        echo
+
+        # Disk Usage
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ DISK USAGE ═══════════════════════╗''${RESET}"
+        if command -v df >/dev/null 2>&1; then
+            # Get disk usage for main partitions, skip temporary and special filesystems
+            printf "''${CYAN}%-25s %-8s %-8s %-8s %-5s''${RESET}\n" "Filesystem" "Size" "Used" "Avail" "Use%"
+            printf "''${CYAN}%-25s %-8s %-8s %-8s %-5s''${RESET}\n" "-------------------------" "--------" "--------" "--------" "-----"
+
+            df -h 2>/dev/null | grep -v "tmp\|none\|udev\|shm\|Filesystem" | grep -v '^Filesystem' |
+            while read line; do
+                # Parse each line of df output
+                MOUNT=$(echo "$line" | awk '{print $NF}')
+                SIZE=$(echo "$line" | awk '{print $2}')
+                USED=$(echo "$line" | awk '{print $3}')
+                AVAIL=$(echo "$line" | awk '{print $4}')
+                PERCENT=$(echo "$line" | awk '{print $5}')
+
+                # Color the percentage based on severity
+                if [[ "$PERCENT" == *"100%"* ]]; then
+                    PCT_COLOR=$RED
+                elif [[ $(echo "$PERCENT" | tr -d '%') -gt 90 ]]; then
+                    PCT_COLOR=$RED
+                elif [[ $(echo "$PERCENT" | tr -d '%') -gt 75 ]]; then
+                    PCT_COLOR=$YELLOW
+                else
+                    PCT_COLOR=$GREEN
+                fi
+
+                # Format and print the line with truncation for long filesystem names
+                MOUNT_SHORT="$MOUNT"
+                # Add truncation logic
+                if [ $(echo "$MOUNT" | wc -c) -gt 24 ]; then
+                    MOUNT_SHORT=$(echo "$MOUNT" | cut -c 1-23)"+"
+                fi
+
+                printf "''${CYAN}%-25s ''${GREEN}%-8s ''${YELLOW}%-8s ''${GREEN}%-8s ''${PCT_COLOR}%-5s''${RESET}\n" \
+                       "$MOUNT_SHORT" "$SIZE" "$USED" "$AVAIL" "$PERCENT"
+            done
+        else
+            echo -e "''${YELLOW}Disk usage information not available''${RESET}"
+        fi
+        echo
+
+        # Network Information
+        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ NETWORK INFO ═════════════════════╗''${RESET}"
+
+        # Display IP addresses
+        if command -v ip >/dev/null 2>&1; then
+            # Modern Linux systems with 'ip' command
+            ip -4 addr show | grep -v 127.0.0.1 | grep "inet " | while read line; do
+                IFACE=$(echo "$line" | awk '{print $NF}')
+                IP=$(echo "$line" | awk '{print $2}' | cut -d/ -f1)
+                echo -e "''${CYAN}$IFACE: ''${GREEN}$IP''${RESET}"
+            done
+        elif command -v ifconfig >/dev/null 2>&1; then
+            # For macOS and older Linux systems
+            ifconfig | grep -E "inet " | grep -v 127.0.0.1 | while read line; do
+                IFACE=$(echo "$line" | awk -F: '{print $1}')
+                IP=$(echo "$line" | awk '{print $2}')
+                echo -e "''${CYAN}$IFACE: ''${GREEN}$IP''${RESET}"
+            done
+        else
+            echo -e "''${YELLOW}IP information not available''${RESET}"
+        fi
+
+        # Run any additional scriptlets specified in the shellHook option
+        ${cfg.shellHook}
+      '';
+    };
+
+    # Add to all user shells if showOnLogin is enabled
+    programs.bash.interactiveShellInit = mkIf cfg.showOnLogin ''
+      # Display system banner on login for interactive shells
+      if [[ $- == *i* ]]; then
+        /etc/system-banner.sh
+      fi
+    '';
+
+    programs.zsh.interactiveShellInit = mkIf cfg.showOnLogin ''
+      # Display system banner on login for interactive shells
+      if [[ $- == *i* ]]; then
+        /etc/system-banner.sh
+      fi
+    '';
+   };
+}
+
+
+
+================================================
+File: hosts/modules/nixos/default.nix
+================================================
+{
+  imports = [
+    # ./fail2ban.nix
+    # ./msmtp.nix
+    ./neovim.nix
+    # ./prometheus-exporters.nix
+    ./tmux.nix
+    # ./wireguard.nix
+  ];
+}
+
+
+
+================================================
+File: hosts/modules/nixos/neovim.nix
+================================================
+{
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+  };
+}
+
+
+
+================================================
+File: hosts/modules/nixos/tmux.nix
+================================================
+# TODO - host variable for status-bg color
+{
+  ### Tmux
+  programs.tmux = {
+    enable = true;
+    baseIndex = 1;
+    clock24 = true;
+    escapeTime = 10;
+    historyLimit = 5000;
+    keyMode = "vi";
+    newSession = true;
+    shortcut = "a";
+    terminal = "tmux-256color";
+    extraConfig = ''
+      set -s copy-command 'wl-copy'
+        
+      set -g mouse on
+      bind -T copy-mode-vi WheelUpPane send-keys -X scroll-up
+      bind -T copy-mode-vi WheelDownPane send-keys -X scroll-down
+
+      # Last active window
+      unbind l
+      bind C-a last-window
+      bind C-d detach-client
+      unbind " "
+      bind " " next-window
+      bind C-" " next-window
+      bind C-c new-window
+      bind C-n next-window
+      bind C-p previous-window
+      bind v run "tmux show-buffer | wl-paste > /dev/null"
+
+      # Highlighting the active window in status bar
+      setw -g window-status-current-style bg=red
+      set -g status-bg magenta
+      set -g status-fg black
+
+      # Add uptime to status bar
+      set -g status-interval 5
+      set -g status-right-length 100
+      set -g status-right "#(uptime | awk -F 'up |,' '{print \"up\",$2}' | sed 's/  / /g') #(awk -F ' ' '{print $1,$2,$3}' /proc/loadavg) \"#H\" #(date '+%H:%M %a %m-%d')"
+    '';
+  };
+}
+
+
+
+================================================
+File: hosts/nixhost/configuration.nix
+================================================
+# Edit this configuration file to define what should be installed on
+# your system. Help is available in the configuration.nix(5) man page, on
+# https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
+
+{ config, lib, pkgs, ... }:
+
+{
+  imports = [ # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+    # Include the system-banner module
+    ./modules/system-banner.nix
+  ];
+
+  # Enable the system banner
+  programs.system-banner = {
+    enable = true;
+
+    # Optional: Add custom commands to run after the banner is displayed
+    shellHook = ''
+      # You could add additional commands here, like:
+      # echo "Welcome back, $(whoami)!"
+      echo
+      echo "Welcome back, $(whoami)!" | cowsay | lolcat
+    '';
+
+    # Optional: Set to false if you don't want the banner to show on every interactive shell
+    showOnLogin = true;
+  };
+
+  # Use the systemd-boot EFI boot loader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  networking.hostName = "nixhost"; # Define your hostname.
+  # Pick only one of the below networking options.
+  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
+
+  # Enable service discovery to connect to nixhost.local
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      domain = true;
+      hinfo = true;
+      userServices = true;
+      workstation = true;
+    };
+  };
+
+  # Set your time zone.
+  time.timeZone = "America/Los_Angeles";
+
+  # Configure network proxy if necessary
+  # networking.proxy.default = "http://user:password@proxy:port/";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+
+  # Select internationalisation properties.
+  # i18n.defaultLocale = "en_US.UTF-8";
+  # console = {
+  #   font = "Lat2-Terminus16";
+  #   keyMap = "us";
+  #   useXkbConfig = true; # use xkb.options in tty.
+  # };
+
+  # Enable the X11 windowing system.
+  # services.xserver.enable = true;
+
+  # Configure keymap in X11
+  # services.xserver.xkb.layout = "us";
+  # services.xserver.xkb.options = "eurosign:e,caps:escape";
+
+  # Enable CUPS to print documents.
+  # services.printing.enable = true;
+
+  # Enable sound.
+  hardware.pulseaudio.enable = true;
+  # OR
+  # services.pipewire = {
+  #   enable = true;
+  #   pulse.enable = true;
+  # };
+
+  # Enable touchpad support (enabled default in most desktopManager).
+  # services.libinput.enable = true;
+
+  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # users.users.alice = {
+  #   isNormalUser = true;
+  #   extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+  #   packages = with pkgs; [
+  #     tree
+  #   ];
+  # };
+
+  # programs.firefox.enable = true;
+
+  # List packages installed in system profile. To search, run:
+  # $ nix search wget
+  # environment.systemPackages = with pkgs; [
+  #   vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+  #   wget
+  # ];
+
+  # Some programs need SUID wrappers, can be configured further or are
+  # started in user sessions.
+  programs.mtr.enable = true;
+  programs.gnupg.agent = {
+    enable = true;
+    enableSSHSupport = true;
+  };
+
+  # List services that you want to enable:
+
+  # Enable the OpenSSH daemon.
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+  };
+
+  # Open ports in the firewall.
+  networking.firewall.allowedTCPPorts = [ 22 80 443 ];
+
+  networking.firewall.allowedUDPPortRanges = [{
+    from = 60000;
+    to = 61000;
+  } # Mosh default port range
+    ];
+
+  # Or disable the firewall altogether.
+  # networking.firewall.enable = false;
+
+  # Copy the NixOS configuration file and link it from the resulting system
+  # (/run/current-system/configuration.nix). This is useful in case you
+  # accidentally delete configuration.nix.
+  system.copySystemConfiguration = true;
+
+  # This option defines the first version of NixOS you have installed on this particular machine,
+  # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
+  #
+  # Most users should NEVER change this value after the initial install, for any reason,
+  # even if you've upgraded your system to a new NixOS release.
+  #
+  # This value does NOT affect the Nixpkgs version your packages and OS are pulled from,
+  # so changing it will NOT upgrade your system - see https://nixos.org/manual/nixos/stable/#sec-upgrading for how
+  # to actually do that.
+  #
+  # This value being lower than the current NixOS release does NOT mean your system is
+  # out of date, out of support, or vulnerable.
+  #
+  # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
+  # and migrated your data accordingly.
+  #
+  # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
+  system.stateVersion = "24.11"; # Did you read the comment?
+
+  # Keyboard layout
+  services.xserver.xkb.layout = "us";
+
+  # Normal user
+  users.users.bdhill = {
+    isNormalUser = true;
+    description = "Bobby";
+    extraGroups = [ "wheel" ]; # Sudo access
+    shell = pkgs.bash;
+    home = "/home/bdhill";
+  };
+
+  # Networking config
+  # NOTE: See https://nixos.wiki/wiki/Wpa_supplicant
+  networking.networkmanager.enable = false;
+  networking.useNetworkd = true;
+  networking.useDHCP = false;
+  networking.interfaces.enp1s0.useDHCP = true;
+
+  # Bootloader
+  boot.loader.grub.device = "/dev/nvme0n1";
+
+  # Editors
+  environment.systemPackages = with pkgs; [
+    htop
+    nano
+    vim
+    speedtest-cli
+    mosh
+    tmux
+    cowsay
+    charasay
+    dysk
+    lolcat
+    file
+    lsof
+    gitingest
+  ];
+
+  # Tmux config
+  programs.tmux = {
+    enable = true;
+    extraConfig = ''
+      set -g mouse on
+      bind -T copy-mode-vi WheelUpPane send-keys -X scroll-up
+      bind -T copy-mode-vi WheelDownPane send-keys -X scroll-down
+    '';
+  };
+
+  # Enable nix-command and flakes by default
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  ## Save space by enabling hard links in the nix store (not a default);
+  ## Run the optimization once after enabling this setting by doing:
+  ## nix-store --optimise (can take a while).
+  ## See: https://nixos.wiki/wiki/Storage_optimization
+  nix.settings.auto-optimise-store = true;
+}
+
+
+
+================================================
+File: hosts/nixhost/hardware-configuration.nix
+================================================
+# Do not modify this file!  It was generated by ‘nixos-generate-config’
+# and may be overwritten by future invocations.  Please make changes
+# to /etc/nixos/configuration.nix instead.
+{ config, lib, pkgs, modulesPath, ... }:
+
+{
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+
+  boot.initrd.availableKernelModules =
+    [ "nvme" "xhci_pci" "thunderbolt" "usbhid" "usb_storage" "sd_mod" ];
+  boot.initrd.kernelModules = [ ];
+  boot.kernelModules = [ "kvm-amd" ];
+  boot.extraModulePackages = [ ];
+
+  fileSystems."/" = {
+    device = "/dev/disk/by-label/NIXROOT";
+    fsType = "ext4";
+  };
+
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/NIXBOOT";
+    fsType = "vfat";
+    options = [ "fmask=0077" "dmask=0077" ];
+  };
+
+  swapDevices = [ ];
+
+  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
+  # (the default) this is the recommended approach. When using systemd-networkd it's
+  # still possible to use this option, but it's recommended to use it in conjunction
+  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
+  networking.useDHCP = lib.mkDefault true;
+  # networking.interfaces.enp1s0.useDHCP = lib.mkDefault true;
+  # networking.interfaces.wlp2s0.useDHCP = lib.mkDefault true;
+
+  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  hardware.cpu.amd.updateMicrocode =
+    lib.mkDefault config.hardware.enableRedistributableFirmware;
+}
+
+

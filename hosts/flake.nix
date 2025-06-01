@@ -9,10 +9,6 @@
       "https://flakehub.com/f/DeterminateSystems/flake-schemas/*";
 
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*";
-    home-manager = {
-      url = "path:./home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   # Flake outputs that other flakes can use
@@ -39,9 +35,5 @@
           '';
         };
       });
-      homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.aarch64-darwin;
-        modules = [ ./home-manager/default.nix ];
-      };
     };
 }

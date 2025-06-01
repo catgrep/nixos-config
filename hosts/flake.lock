@@ -14,22 +14,6 @@
         "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A"
       }
     },
-    "home-manager": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "path": "./home-manager",
-        "type": "path"
-      },
-      "original": {
-        "path": "./home-manager",
-        "type": "path"
-      },
-      "parent": []
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1746557022,
@@ -47,7 +31,6 @@
     "root": {
       "inputs": {
         "flake-schemas": "flake-schemas",
-        "home-manager": "home-manager",
         "nixpkgs": "nixpkgs"
       }
     }

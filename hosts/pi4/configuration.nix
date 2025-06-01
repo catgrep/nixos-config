@@ -39,12 +39,14 @@
     };
   };
 
-  # Open DNS ports
+  # Open DNS ports and monitoring
   networking.firewall = {
     allowedTCPPorts = [
       53    # DNS
       80    # AdGuard Home web interface
       3000  # AdGuard Home initial setup
+      9100  # Node exporter
+      9617  # AdGuard Home exporter
     ];
     allowedUDPPorts = [
       53    # DNS

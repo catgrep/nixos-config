@@ -32,6 +32,30 @@
     };
   };
 
+  # Prometheus exporters for monitoring
+  services.prometheus.exporters = {
+    node = {
+      enable = true;
+      port = 9100;
+      enabledCollectors = [
+        "systemd"
+        "processes"
+        "cpu"
+        "memory"
+        "filesystem"
+        "network"
+        "diskstats"
+        "loadavg"
+        "zfs"
+      ];
+    };
+
+    zfs = {
+      enable = true;
+      port = 9134;
+    };
+  };
+
   # Network configuration for media server
   systemd.network = {
     enable = true;
@@ -45,7 +69,7 @@
     };
   };
 
-  # Open ports for media services
+  # Open ports for media services and monitoring
   networking.firewall = {
     allowedTCPPorts = [
       8096  # Jellyfin
@@ -53,6 +77,8 @@
       8989  # Sonarr
       7878  # Radarr
       9117  # Jackett
+      9100  # Node exporter
+      9134  # ZFS exporter
     ];
     allowedUDPPorts = [
       1900  # DLNA/UPnP
@@ -71,6 +97,22 @@
     ];
   };
 
+  # MergerFS for unified media view
+  fileSystems."/mnt/media" = {
+    device = "/mnt/media1:/mnt/media2";
+    fsType = "fuse.mergerfs";
+    options = [
+      "defaults"
+      "allow_other"
+      "use_ino"
+      "cache.files=partial"
+      "dropcacheonclose=true"
+      "category.create=mfs"  # Most free space for new files
+      "moveonenospc=true"    # Move files if no space
+      "minfreespace=50G"     # Keep 50GB free on each drive
+    ];
+  };
+
   # Media-specific packages
   environment.systemPackages = with pkgs; [
     # ZFS tools
@@ -78,6 +120,9 @@
     zfstools
     sanoid
     syncoid
+
+    # MergerFS
+    mergerfs
 
     # Media tools
     ffmpeg

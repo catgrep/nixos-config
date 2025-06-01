@@ -107,7 +107,7 @@
         };
       };
 
-      # Media storage disks (2 x 12TB)
+      # Media storage disks (2 x 12TB) - Individual pools for MergerFS
       media-disk1 = {
         type = "disk";
         device = "/dev/disk/by-id/ata-WDC_YOUR_12TB_DISK_1"; # Update with actual disk ID
@@ -118,7 +118,7 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "mediapool";
+                pool = "media1";
               };
             };
           };
@@ -135,7 +135,7 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "mediapool";
+                pool = "media2";
               };
             };
           };
@@ -219,10 +219,10 @@
         };
       };
 
-      # Media pool (mirrored 12TB drives)
-      mediapool = {
+      # Media pools (separate 12TB drives for MergerFS)
+      media1 = {
         type = "zpool";
-        mode = "mirror";
+        mode = "";
         options = {
           ashift = "12";
           autotrim = "on";
@@ -237,25 +237,33 @@
           xattr = "sa";
         };
         datasets = {
-          "media" = {
+          "media1" = {
             type = "zfs_fs";
-            options.mountpoint = "/mnt/media";
+            options.mountpoint = "/mnt/media1";
           };
-          "media/movies" = {
+        };
+      };
+
+      media2 = {
+        type = "zpool";
+        mode = "";
+        options = {
+          ashift = "12";
+          autotrim = "on";
+        };
+        rootFsOptions = {
+          acltype = "posixacl";
+          compression = "lz4";
+          dnodesize = "auto";
+          mountpoint = "none";
+          normalization = "formD";
+          relatime = "on";
+          xattr = "sa";
+        };
+        datasets = {
+          "media2" = {
             type = "zfs_fs";
-            options.mountpoint = "/mnt/media/movies";
-          };
-          "media/tv" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/media/tv";
-          };
-          "media/music" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/media/music";
-          };
-          "media/books" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/media/books";
+            options.mountpoint = "/mnt/media2";
           };
         };
       };

@@ -12,23 +12,22 @@
   # Host identification
   networking = {
     hostName = "firebat";
-    hostId = "39304e086daf8f14"; # Generate with: head -c 8 /dev/urandom | od -A none -t x8
+    hostId = "89e571c4"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 
   # Gateway networking configuration
-  systemd.network = {
-    enable = true;
-    networks."10-lan" = {
-      matchConfig.Name = "enp1s0"; # Update with your interface name
-      networkConfig = {
-        DHCP = "yes";
-        IPForward = true;
-      };
-      linkConfig.RequiredForOnline = "routable";
+  networking = {
+    interfaces.eno1.useDHCP = true;  # or wlp2s0, Update interface name as needed
+    # Enable IP forwarding for gateway functionality
+    firewall.enable = true;
+    nat = {
+      enable = true;
+      externalInterface = "eno1";  # or wlp2s0, Update as needed
+      internalInterfaces = [ ];  # Add internal interfaces if needed
     };
   };
 
-  # Enable IP forwarding for gateway functionality
+  # Enable IP forwarding
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;

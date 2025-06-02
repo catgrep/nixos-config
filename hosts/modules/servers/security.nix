@@ -31,12 +31,15 @@
     # Lock down kernel
     lockKernelModules = false; # Set to true for maximum security
 
-    # Protect kernel logs
-    dmesg.restrict = true;
+    # Protect kernel logs - use boot.kernel.sysctl instead
+    # dmesg.restrict = true;  # This option doesn't exist
   };
 
-  # Network security
+  # Network security and kernel hardening
   boot.kernel.sysctl = {
+    # Restrict dmesg access to root
+    "kernel.dmesg_restrict" = 1;
+
     # Disable IPv6 if not needed
     "net.ipv6.conf.all.disable_ipv6" = 0; # Set to 1 to disable IPv6
 
@@ -50,5 +53,17 @@
     "net.ipv4.conf.default.accept_source_route" = 0;
     "net.ipv4.conf.all.accept_source_route" = 0;
     "net.ipv4.icmp_ignore_bogus_error_responses" = 1;
+
+    # Additional security hardening
+    "kernel.unprivileged_bpf_disabled" = 1;
+    "net.core.bpf_jit_harden" = 2;
+    "kernel.yama.ptrace_scope" = 1;
+    "kernel.kptr_restrict" = 2;
   };
+
+  # Additional security packages
+  environment.systemPackages = with pkgs; [
+    aide      # Advanced Intrusion Detection Environment
+    # rkhunter  # Rootkit Hunter
+  ];
 }

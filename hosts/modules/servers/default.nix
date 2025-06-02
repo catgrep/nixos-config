@@ -44,11 +44,4 @@
     sysstat
     perf-tools
   ];
-
-  # Automatic security updates
-  system.autoUpgrade = {
-    enable = true;
-    dates = "02:00";
-    allowReboot = false; # Set to true if you want automatic reboots
-  };
 }

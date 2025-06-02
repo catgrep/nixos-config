@@ -7,12 +7,13 @@
     ../modules/dns
     # Import server-specific configurations (adapted for ARM)
     ../modules/servers
+     inputs.nixos-hardware.nixosModules.raspberry-pi-4
   ];
 
   # Host identification
   networking = {
     hostName = "pi4";
-    hostId = "4f51b97037da22b5"; # Generate with: head -c 8 /dev/urandom | od -A none -t x8
+    hostId = "4f51b970"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 
   # Raspberry Pi specific configuration
@@ -27,19 +28,18 @@
   };
 
   # Network configuration for DNS server
-  systemd.network = {
-    enable = true;
-    networks."10-lan" = {
-      matchConfig.Name = "eth0";
-      networkConfig = {
-        DHCP = "yes";
-        IPForward = false;
-      };
-      linkConfig.RequiredForOnline = "routable";
-      # Set static IP for DNS server reliability
-      address = [ "192.168.1.10/24" ]; # Adjust to your network
-      gateway = [ "192.168.1.1" ];     # Adjust to your gateway
-    };
+  networking = {
+    interfaces.eth0.useDHCP = true;  # Use DHCP for simplicity
+    # Or use static IP:
+    # interfaces.eth0 = {
+    #   useDHCP = false;
+    #   ipv4.addresses = [{
+    #     address = "192.168.1.10";
+    #     prefixLength = 24;
+    #   }];
+    # };
+    # defaultGateway = "192.168.1.1";
+    # nameservers = [ "127.0.0.1" ];
   };
 
   # DNS service is enabled by default from the module
@@ -49,15 +49,14 @@
   };
 
   # Pi-specific monitoring
-  services.pi-temp-monitor = {
-    enable = true;
-  };
+  # services.pi-temp-monitor = {
+  #   enable = true;
+  # };
 
   # DNS-specific packages
   environment.systemPackages = with pkgs; [
     # DNS tools
     dig
-    nslookup
     host
 
     # Network monitoring
@@ -66,14 +65,21 @@
   ];
 
   # Enable hardware-specific features
+  # Remove the non-existent raspberry-pi hardware module
   hardware = {
     raspberry-pi."4" = {
       fkms-3d.enable = true;
       audio.enable = true;
     };
+  };
 
-    # Enable I2C and SPI for potential sensor connectivity
-    i2c.enable = true;
+  # Enable I2C and SPI for potential sensor connectivity
+  hardware.i2c.enable = true;
+
+  # Enable GPIO support (if needed)
+  hardware.deviceTree = {
+    enable = true;
+    overlays = [ ];
   };
 
   # Power management for Pi

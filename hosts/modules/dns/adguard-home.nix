@@ -6,8 +6,8 @@
     mutableSettings = false;
     settings = {
       # Bind to all interfaces
-      bind_host = "0.0.0.0";
-      bind_port = 3000;
+      host = "0.0.0.0";
+      port = 3000;
 
       # DNS settings
       dns = {
@@ -161,15 +161,9 @@
     allowedUDPPorts = [ 53 ];
   };
 
-  # AdGuard Home exporter for Prometheus monitoring
-  services.prometheus.exporters.adguardhome = {
-    enable = lib.mkDefault true;
-    port = 9617;
-    adguardHomeAddress = "http://localhost:80";
-    adguardHomeUsername = "admin";
-    # Password file should be created with sops-nix or manually
-    adguardHomePasswordFile = "/run/secrets/adguard-password";
-  };
+  # Note: AdGuard Home has built-in Prometheus metrics at /control/stats
+  # You can scrape these directly in Prometheus configuration
+  # The metrics are available at http://pi4.local/control/stats when AdGuard is running
 
   # Pi-specific temperature monitoring service
   systemd.services.pi-temp-monitor = lib.mkIf (config.networking.hostName == "pi4") {

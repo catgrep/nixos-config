@@ -17,10 +17,6 @@ help:
 	@echo "  setup-host HOST    - Initial setup for a new host"
 	@echo "  diff HOST          - Show configuration diff for host"
 
-# Build configuration
-build:
-	nix build .#nixosConfigurations.nixhost.config.system.build.toplevel
-
 # Switch local configuration (for the machine you're running on)
 switch:
 	sudo nixos-rebuild switch --flake .

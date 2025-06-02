@@ -14,7 +14,8 @@
     nixd
     nil
     charasay
-    gitingest
+    # Not available in nixpkgs 24.11
+    # gitingest
   ];
 
   # Enable home-manager

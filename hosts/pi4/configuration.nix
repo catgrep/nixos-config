@@ -16,9 +16,14 @@
     hostId = "4f51b970"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 
-  # Raspberry Pi specific configuration
+  # Raspberry Pi specific configuration - override common boot settings
   boot = {
     loader = {
+      # Disable systemd-boot for Pi4
+      systemd-boot.enable = lib.mkForce false;
+      efi.canTouchEfiVariables = lib.mkForce false;
+
+      # Use Pi-specific bootloader
       grub.enable = false;
       generic-extlinux-compatible.enable = true;
     };
@@ -48,6 +53,20 @@
     # Override specific settings here if needed
   };
 
+  # Open DNS ports and monitoring
+  networking.firewall = {
+    allowedTCPPorts = [
+      53    # DNS
+      80    # AdGuard Home web interface
+      3000  # AdGuard Home initial setup
+      9100  # Node exporter
+      9617  # AdGuard Home exporter
+    ];
+    allowedUDPPorts = [
+      53    # DNS
+    ];
+  };
+
   # Pi-specific monitoring
   # services.pi-temp-monitor = {
   #   enable = true;
@@ -65,7 +84,6 @@
   ];
 
   # Enable hardware-specific features
-  # Remove the non-existent raspberry-pi hardware module
   hardware = {
     raspberry-pi."4" = {
       fkms-3d.enable = true;

@@ -44,7 +44,8 @@
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
-                users.bobby = import ./home-manager/nixos.nix;  # Use Linux-specific config
+                users.bobby = import ./home-manager/nixos.nix;
+                extraSpecialArgs = { inherit nixpkgs-unstable; };  # Pass unstable to home-manager
               };
             }
           ] ++ modules;

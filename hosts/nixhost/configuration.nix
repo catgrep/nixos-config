@@ -195,7 +195,6 @@
     lolcat
     file
     lsof
-    gitingest
   ];
 
   # Tmux config

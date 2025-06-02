@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, nixpkgs-unstable, ... }:
 
 {
   home.username = "bobby";
@@ -14,8 +14,9 @@
     nixd
     nil
     charasay
-    gitingest
-  ];
+  ] ++ (with nixpkgs-unstable; [
+    gitingest  # From unstable channel
+  ]);
 
   # Enable home-manager
   programs.home-manager.enable = true;

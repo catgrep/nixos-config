@@ -6,7 +6,7 @@
       # Main system disk (NVMe)
       main = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme-YOUR_NVME_DISK"; # Update with actual disk ID
+        device = "/dev/disk/by-id/nvme0n1"; # Update with actual disk ID
         content = {
           type = "gpt";
           partitions = {

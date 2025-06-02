@@ -3,8 +3,9 @@
 {
   boot = {
     loader = {
-      systemd-boot.enable = lib.mkDefault true;
-      efi.canTouchEfiVariables = lib.mkDefault true;
+      # Only enable systemd-boot on x86_64 systems by default
+      systemd-boot.enable = lib.mkDefault (pkgs.stdenv.hostPlatform.system == "x86_64-linux");
+      efi.canTouchEfiVariables = lib.mkDefault (pkgs.stdenv.hostPlatform.system == "x86_64-linux");
       timeout = lib.mkDefault 3;
     };
 
@@ -15,7 +16,7 @@
     ];
 
     # Enable support for additional filesystems
-    # supportedFilesystems = [ "ntfs" "btrfs" ];
+    supportedFilesystems = [ "ntfs" "btrfs" ];
 
     # Temporary file system
     tmp = {

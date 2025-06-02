@@ -44,7 +44,7 @@
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
-                users.bobby = import ./home-manager/default.nix;
+                users.bobby = import ./home-manager/nixos.nix;  # Use Linux-specific config
               };
             }
           ] ++ modules;

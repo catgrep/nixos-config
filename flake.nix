@@ -6,11 +6,6 @@
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
-    home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -22,7 +17,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, disko, sops-nix, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, sops-nix, ... }@inputs:
     let
       # Helper function to create a nixos system configuration
       mkSystem = { hostname, system ? "x86_64-linux", modules ? [] }:
@@ -38,17 +33,8 @@
           modules = [
             ./hosts/${hostname}/configuration.nix
             ./hosts/modules/common
-            home-manager.nixosModules.home-manager
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.bobby = import ./home-manager/nixos.nix;
-                extraSpecialArgs = { inherit nixpkgs-unstable; };  # Pass unstable to home-manager
-              };
-            }
           ] ++ modules;
         };
 

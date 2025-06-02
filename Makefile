@@ -4,7 +4,9 @@ SHELL := /bin/zsh
 # Default target
 help:
 	@echo "Available targets:"
+	@echo "  info               - Show host info"
 	@echo "  build              - Build the NixOS configuration"
+	@echo "  home-switch        - Switch to the new home-manager config locally"
 	@echo "  switch             - Switch to the new configuration locally"
 	@echo "  deploy-beelink     - Deploy to Beelink media server"
 	@echo "  deploy-firebat     - Deploy to Firebat gateway"
@@ -20,6 +22,10 @@ help:
 # Switch local configuration (for the machine you're running on)
 switch:
 	sudo nixos-rebuild switch --flake .
+
+# Home manager switch
+home-switch:
+	nix run home-manager -- switch --flake ./home-manager
 
 # Deploy to specific hosts
 deploy-beelink:
@@ -104,10 +110,6 @@ test-deploy:
 		exit 1; \
 	fi
 	nixos-rebuild dry-run --flake .#$(HOST) --target-host $(HOST).local
-
-# Home manager switch
-home-switch:
-	nix run home-manager -- switch --flake ./home-manager
 
 # Install prerequisites on a fresh NixOS system
 install-prereqs:

@@ -14,7 +14,7 @@
       "network"
       "diskstats"
       "loadavg"
-    ] ++ lib.optional (builtins.elem "zfs" config.boot.supportedFilesystems) "zfs";
+    ] ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
   };
 
   # Log rotation

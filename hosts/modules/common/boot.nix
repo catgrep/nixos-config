@@ -15,7 +15,7 @@
     ];
 
     # Enable support for additional filesystems
-    supportedFilesystems = [ "ntfs" "btrfs" ];
+    # supportedFilesystems = [ "ntfs" "btrfs" ];
 
     # Temporary file system
     tmp = {

@@ -13,7 +13,7 @@
   # Host identification
   networking = {
     hostName = "beelink";
-    hostId = "3febce3a8d94215"; # Generate with: head -c 8 /dev/urandom | od -A none -t x8
+    hostId = "2d833f3e"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 
   # ZFS support
@@ -55,17 +55,11 @@
   };
 
   # Network configuration for media server
-  systemd.network = {
-    enable = true;
-    networks."10-lan" = {
-      matchConfig.Name = "enp1s0"; # Update with your interface name
-      networkConfig = {
-        DHCP = "yes";
-        IPForward = true;
-      };
-      linkConfig.RequiredForOnline = "routable";
+    networking = {
+      interfaces.enp1s0.useDHCP = true;  # Update interface name as needed
+      # Enable IP forwarding if needed
+      firewall.enable = true;
     };
-  };
 
   # Open additional ports for media services (base ports from modules)
   networking.firewall = {
@@ -113,7 +107,6 @@
     zfs
     zfstools
     sanoid
-    syncoid
 
     # MergerFS
     mergerfs

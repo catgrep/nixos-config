@@ -35,13 +35,19 @@
         scrape_interval = "30s";
       }
       {
-        job_name = "adguard-exporter";
+        job_name = "adguard";
         static_configs = [{
           targets = [
-            "pi4.local:9617"       # AdGuard Home metrics
+            "pi4.local:80"       # AdGuard Home built-in metrics
           ];
         }];
         scrape_interval = "30s";
+        metrics_path = "/control/stats";
+        # Note: You may need to configure authentication for AdGuard API
+        # basic_auth = {
+        #   username = "admin";
+        #   password_file = "/run/secrets/adguard-prometheus-password";
+        # };
       }
       {
         job_name = "jellyfin";

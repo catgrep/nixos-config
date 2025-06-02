@@ -4,7 +4,7 @@
   imports = [
     ./hardware-configuration.nix
     # Import the gateway services module
-    ../modules/services/gateway
+    ../modules/gateway
     # Import server-specific configurations
     ../modules/servers
   ];

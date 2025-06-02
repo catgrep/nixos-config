@@ -4,7 +4,7 @@
   imports = [
     ./hardware-configuration.nix
     # Import the DNS services module
-    ../modules/services/dns
+    ../modules/dns
     # Import server-specific configurations (adapted for ARM)
     ../modules/servers
   ];

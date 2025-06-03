@@ -85,7 +85,7 @@
       };
 
       # Colmena deployment configuration
-      colmena = {
+      colmenaHive = colmena.lib.makeHive {
         meta = {
           nixpkgs = import nixpkgs {
             system = "x86_64-linux";

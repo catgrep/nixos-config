@@ -3,7 +3,7 @@
 {
   services.radarr = {
     enable = lib.mkDefault false;
-    user = "bobby";
+    user = "bdhill";
     group = "users";
   };
 
@@ -12,6 +12,6 @@
 
   # Ensure download directories exist
   systemd.tmpfiles.rules = lib.mkIf config.services.radarr.enable [
-    "d /mnt/downloads/movies 0755 bobby users -"
+    "d /mnt/downloads/movies 0755 bdhill users -"
   ];
 }

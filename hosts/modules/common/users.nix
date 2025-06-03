@@ -10,7 +10,7 @@
         hashedPassword = "!";
       };
 
-      bobby = {
+      bdhill = {
         isNormalUser = true;
         description = "Bobby Hill";
         extraGroups = [ "wheel" "networkmanager" ];

@@ -163,13 +163,13 @@
   services.xserver.xkb.layout = "us";
 
   # Normal user
-  users.users.bdhill = {
-    isNormalUser = true;
-    description = "Bobby";
-    extraGroups = [ "wheel" ]; # Sudo access
-    shell = pkgs.bash;
-    home = "/home/bdhill";
-  };
+  # users.users.bdhill = {
+  #   isNormalUser = true;
+  #   description = "Bobby";
+  #   extraGroups = [ "wheel" ]; # Sudo access
+  #   shell = pkgs.bash;
+  #   home = "/home/bdhill";
+  # };
 
   # Networking config
   # NOTE: See https://nixos.wiki/wiki/Wpa_supplicant

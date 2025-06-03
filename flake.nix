@@ -104,7 +104,7 @@
           # Use the current hostname until migrated
           deployment = {
             targetHost = "nixhost.local";
-            targetUser = "root";
+            targetUser = "bdhill";
             buildOnTarget = true; # Build on the target to avoid arch issues
             # Override hostname during deployment
             # This allows us to deploy even if hostname doesn't match yet
@@ -116,7 +116,7 @@
         firebat = {
           deployment = {
             targetHost = "nixhost0.local";
-            targetUser = "root";
+            targetUser = "bdhill";
             buildOnTarget = true;
             tags = [ "gateway" "x86_64" ];
           };
@@ -126,7 +126,7 @@
         pi4 = {
           deployment = {
             targetHost = "pi4.local"; # Assuming this one has correct hostname
-            targetUser = "root";
+            targetUser = "bdhill";
             buildOnTarget = true; # Essential for ARM
             tags = [ "dns" "arm" ];
           };

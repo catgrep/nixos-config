@@ -3,7 +3,7 @@
 {
   services.transmission = {
     enable = lib.mkDefault false;
-    user = "bobby";
+    user = "bdhill";
     group = "users";
 
     settings = {
@@ -42,8 +42,8 @@
 
   # Ensure download directories exist
   systemd.tmpfiles.rules = lib.mkIf config.services.transmission.enable [
-    "d /mnt/downloads 0755 bobby users -"
-    "d /mnt/downloads/complete 0755 bobby users -"
-    "d /mnt/downloads/incomplete 0755 bobby users -"
+    "d /mnt/downloads 0755 bdhill users -"
+    "d /mnt/downloads/complete 0755 bdhill users -"
+    "d /mnt/downloads/incomplete 0755 bdhill users -"
   ];
 }

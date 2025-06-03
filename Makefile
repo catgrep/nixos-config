@@ -1,11 +1,12 @@
 SHELL := /bin/zsh
 .PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
-COLMENA := nix run github:zhaofengli/colmena --
+COLMENA := colmena
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  info               - Show host info"
+	@echo "  devshell           - Enter devshell (aarch64-darwin)"
 	@echo "  build              - Build the NixOS configuration"
 	@echo "  home-switch        - Switch to the new home-manager config locally"
 	@echo "  switch             - Switch to the new configuration locally"
@@ -29,6 +30,10 @@ switch:
 # Home manager switch
 home-switch:
 	nix run home-manager -- switch --flake ./home-manager
+
+# Home-manager dev shell
+devshell:
+	nix develop ./home-manager
 
 # Test builds without deploying
 test-build-%:
@@ -142,13 +147,13 @@ install-prereqs:
 
 # SSH into hosts for debugging
 ssh-beelink:
-	ssh bobby@beelink.local
+	ssh bdhill@beelink.local
 
 ssh-firebat:
-	ssh bobby@firebat.local
+	ssh bdhill@firebat.local
 
 ssh-pi4:
-	ssh bobby@pi4.local
+	ssh bdhill@pi4.local
 
 # Show system information for all hosts
 info:

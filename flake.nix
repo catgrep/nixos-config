@@ -63,7 +63,7 @@
 
         # Gateway/Load Balancer (Firebat)
         firebat = mkSystem {
-          hostname = "firebat";
+          hostname = "firebat.local";
           modules = [
             ./hosts/modules/gateway
           ];
@@ -115,7 +115,7 @@
         # Firebat gateway
         firebat = {
           deployment = {
-            targetHost = "nixhost0.local";
+            targetHost = "firebat.local";
             targetUser = "bdhill";
             buildOnTarget = true;
             tags = [ "gateway" "x86_64" ];

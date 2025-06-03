@@ -5,7 +5,7 @@
       "tags": ["media", "x86_64"]
     },
     "firebat": {
-      "targetHost": "nixhost0.local",
+      "targetHost": "firebat.local",
       "tags": ["gateway", "x86_64"]
     },
     "pi4": {

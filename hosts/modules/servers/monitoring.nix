@@ -6,14 +6,14 @@
     enable = lib.mkDefault true;
     port = 9100;
     enabledCollectors = [
-      "systemd"
-      "processes"
-      "filesystem"
       "cpu"
-      "memory"
-      "network"
+      "meminfo"
+      "filesystem"
       "diskstats"
       "loadavg"
+      "netdev"
+      "systemd"
+      "processes"
     ] ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
   };
 

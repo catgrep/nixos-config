@@ -15,6 +15,7 @@
     nil
     charasay
     gitingest  # From unstable channel
+    colmena
   ];
 
   # Enable home-manager

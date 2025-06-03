@@ -15,6 +15,7 @@
       "systemd"
       "processes"
     ] ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
+    openFirewall = true;
   };
 
   # Log rotation

@@ -77,6 +77,7 @@ deploy-all: colmena-apply-all
 # Update flake inputs
 update:
 	nix flake update
+	nix flake update --flake ./home-manager
 	@echo "Flake inputs updated. Consider running 'make deploy-all' to apply updates."
 
 # Check flake and run basic tests

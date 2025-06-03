@@ -4,10 +4,6 @@
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
-    # Import the media services module
-    ../modules/media
-    # Import server-specific configurations
-    ../modules/servers
   ];
 
   # Host identification

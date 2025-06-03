@@ -33,6 +33,7 @@
           modules = [
             ./hosts/${hostname}/configuration.nix
             ./hosts/modules/common
+            ./hosts/modules/servers
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ] ++ modules;
@@ -50,16 +51,26 @@
         # Main media server (Beelink SER8)
         beelink = mkSystem {
           hostname = "beelink";
+          modules = [
+            ./hosts/modules/media
+          ];
         };
 
         # Gateway/Load Balancer (Firebat)
         firebat = mkSystem {
           hostname = "firebat";
+          modules = [
+            ./hosts/modules/gateway
+          ];
         };
 
         # DNS Server (Raspberry Pi 4B)
         pi4 = mkArmSystem {
           hostname = "pi4";
+          modules = [
+            ./hosts/modules/dns
+            inputs.nixos-hardware.nixosModules.raspberry-pi-4
+          ];
         };
 
         # Keep existing nixhost for compatibility during transition

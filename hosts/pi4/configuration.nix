@@ -3,11 +3,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # Import the DNS services module
-    ../modules/dns
-    # Import server-specific configurations (adapted for ARM)
-    ../modules/servers
-     inputs.nixos-hardware.nixosModules.raspberry-pi-4
   ];
 
   # Host identification

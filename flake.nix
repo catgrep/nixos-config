@@ -63,7 +63,7 @@
 
         # Gateway/Load Balancer (Firebat)
         firebat = mkSystem {
-          hostname = "firebat.local";
+          hostname = "firebat";
           modules = [
             ./hosts/modules/gateway
           ];

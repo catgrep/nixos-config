@@ -3,10 +3,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # Import the gateway services module
-    ../modules/gateway
-    # Import server-specific configurations
-    ../modules/servers
   ];
 
   # Host identification

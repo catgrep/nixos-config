@@ -11,13 +11,18 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    colmena = {
+      url = "github:zhaofengli/colmena";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, sops-nix, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, sops-nix, colmena,... }@inputs:
     let
       # Helper function to create a nixos system configuration
       mkSystem = { hostname, system ? "x86_64-linux", modules ? [] }:
@@ -76,6 +81,56 @@
         # Keep existing nixhost for compatibility during transition
         nixhost = mkSystem {
           hostname = "nixhost";
+        };
+      };
+
+      # Colmena deployment configuration
+      colmena = {
+        meta = {
+          nixpkgs = import nixpkgs {
+            system = "x86_64-linux";
+            overlays = [];
+          };
+          specialArgs = {
+            inherit inputs;
+            unstable = import nixpkgs-unstable {
+              system = "x86_64-linux";
+              config.allowUnfree = true;
+            };
+          };
+        };
+        # Beelink media server
+        beelink = {
+          # Use the current hostname until migrated
+          deployment = {
+            targetHost = "nixhost.local";
+            targetUser = "root";
+            buildOnTarget = true; # Build on the target to avoid arch issues
+            # Override hostname during deployment
+            # This allows us to deploy even if hostname doesn't match yet
+            tags = [ "media" "x86_64" ];
+          };
+          imports = self.nixosConfigurations.beelink._module.args.modules;
+        };
+        # Firebat gateway
+        firebat = {
+          deployment = {
+            targetHost = "nixhost0.local";
+            targetUser = "root";
+            buildOnTarget = true;
+            tags = [ "gateway" "x86_64" ];
+          };
+          imports = self.nixosConfigurations.firebat._module.args.modules;
+        };
+        # Raspberry Pi 4 DNS
+        pi4 = {
+          deployment = {
+            targetHost = "pi4.local"; # Assuming this one has correct hostname
+            targetUser = "root";
+            buildOnTarget = true; # Essential for ARM
+            tags = [ "dns" "arm" ];
+          };
+          imports = self.nixosConfigurations.pi4._module.args.modules;
         };
       };
 

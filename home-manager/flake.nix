@@ -14,14 +14,25 @@
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
     in {
-      homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
+    homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
-          (builtins.path {
-            path = ./default.nix;
-            name = "home-config";
-          })
+            (builtins.path {
+                path = ./default.nix;
+                name = "home-config";
+            })
         ];
-      };
     };
+    devShells.${system}.default = pkgs.mkShell {
+        buildInputs = with pkgs; [
+            colmena
+            nixfmt-rfc-style
+            git
+            jq
+        ];
+        shellHook = ''
+        echo "Colmena deployment environment loaded"
+        '';
+    };
+  };
 }

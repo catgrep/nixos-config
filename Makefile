@@ -1,5 +1,6 @@
 SHELL := /bin/zsh
-.PHONY: help build switch deploy-% update check format clean
+.PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
+COLMENA := nix run github:zhaofengli/colmena --
 
 # Default target
 help:
@@ -8,9 +9,11 @@ help:
 	@echo "  build              - Build the NixOS configuration"
 	@echo "  home-switch        - Switch to the new home-manager config locally"
 	@echo "  switch             - Switch to the new configuration locally"
-	@echo "  deploy-beelink     - Deploy to Beelink media server"
-	@echo "  deploy-firebat     - Deploy to Firebat gateway"
-	@echo "  deploy-pi4         - Deploy to Raspberry Pi 4 DNS server"
+	@echo "  test-build-HOST    - Test build configuration for HOST"
+	@echo "  test-build-all     - Test build all configurations"
+	@echo "  colmena-apply-HOST - Deploy to specific HOST using Colmena"
+	@echo "  colmena-apply-all  - Deploy to all hosts using Colmena"
+	@echo "  colmena-exec       - Execute command on hosts"
 	@echo "  deploy-all         - Deploy to all hosts"
 	@echo "  update             - Update flake inputs"
 	@echo "  check              - Check flake and run basic tests"
@@ -27,21 +30,43 @@ switch:
 home-switch:
 	nix run home-manager -- switch --flake ./home-manager
 
-# Deploy to specific hosts
-deploy-beelink:
-	@echo "Deploying to Beelink (Media Server)..."
-	nixos-rebuild switch --flake .#beelink --target-host beelink.local --use-remote-sudo --build-host localhost
+# Test builds without deploying
+test-build-%:
+	@echo "Test building configuration for $*..."
+	$(COLMENA) build --on $*
 
-deploy-firebat:
-	@echo "Deploying to Firebat (Gateway)..."
-	nixos-rebuild switch --flake .#firebat --target-host firebat.local --use-remote-sudo --build-host localhost
+# Colmena deployment commands
+colmena-apply-%:
+	@echo "Deploying to $* using Colmena..."
+	$(COLMENA) apply --on $* --verbose
 
-deploy-pi4:
-	@echo "Deploying to Raspberry Pi 4 (DNS)..."
-	nixos-rebuild switch --flake .#pi4 --target-host pi4.local --use-remote-sudo --build-host localhost
+colmena-apply-all:
+	@echo "Deploying to all hosts using Colmena..."
+	$(COLMENA) apply --verbose
+
+# Deploy by tag
+colmena-apply-tag-%:
+	@echo "Deploying to all hosts with tag '$*'..."
+	$(COLMENA) apply --on @$* --verbose
+
+# Execute command on hosts
+colmena-exec:
+	@if [ -z "$(CMD)" ]; then \
+		echo "Usage: make colmena-exec CMD='command to run'"; \
+		exit 1; \
+	fi
+	$(COLMENA) exec -- $(CMD)
+
+# Show deployment info
+colmena-info:
+	$(COLMENA) eval -E 'nodes: builtins.attrNames nodes'
+
+test-build-all:
+	@echo "Test building all configurations..."
+	$(COLMENA) build
 
 # Deploy to all hosts
-deploy-all: deploy-beelink deploy-firebat deploy-pi4
+deploy-all: colmena-apply-all
 	@echo "Deployment to all hosts completed!"
 
 # Update flake inputs

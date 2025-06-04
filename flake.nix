@@ -149,6 +149,8 @@
             sops
             age
             ssh-to-age
+            openssh
+            openssl
           ] ++ [ colmenaPkg ];
 
           shellHook = ''

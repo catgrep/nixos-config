@@ -33,7 +33,7 @@ home-switch:
 
 # Home-manager dev shell
 devshell:
-	nix develop ./home-manager
+	nix develop
 
 # Test builds without deploying
 test-build-%:

@@ -16,6 +16,8 @@
     charasay
     gitingest  # From unstable channel
     colmena
+    openssh
+    openssl
   ];
 
   # Enable home-manager

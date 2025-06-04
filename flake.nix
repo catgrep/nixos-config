@@ -106,6 +106,7 @@
             targetHost = "nixhost.local";
             targetUser = "bdhill";
             buildOnTarget = true; # Build on the target to avoid arch issues
+            allowLocalDeployment = true;
             # Override hostname during deployment
             # This allows us to deploy even if hostname doesn't match yet
             tags = [ "media" "x86_64" ];
@@ -129,6 +130,7 @@
             targetHost = "pi4.local"; # Assuming this one has correct hostname
             targetUser = "bdhill";
             buildOnTarget = true; # Essential for ARM
+            allowLocalDeployment = true;
             tags = [ "dns" "arm" ];
           };
           imports = self.nixosConfigurations.pi4._module.args.modules;

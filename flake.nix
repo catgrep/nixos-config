@@ -13,7 +13,7 @@
 
     colmena = {
       url = "github:zhaofengli/colmena";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
     sops-nix = {
@@ -87,7 +87,7 @@
       # Colmena deployment configuration
       colmenaHive = colmena.lib.makeHive {
         meta = {
-          nixpkgs = import nixpkgs {
+          nixpkgs = import nixpkgs-unstable {
             system = "x86_64-linux";
             overlays = [];
           };
@@ -134,14 +134,32 @@
         };
       };
 
-      # Development shells
-      devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
-        buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
-          nixfmt-rfc-style
-          sops
-          age
-          ssh-to-age
-        ];
+      # Development shells - platform agnostic
+      devShells = let
+        makeDevShell = system: let
+          pkgs = nixpkgs-unstable.legacyPackages.${system};
+          # colmena is a flake input, not an attribute of pkgs, so add it here
+          colmenaPkg = colmena.packages.${system}.colmena;
+        in pkgs.mkShell {
+          buildInputs = with pkgs; [
+            nixfmt-rfc-style
+            git
+            jq
+            sops
+            age
+            ssh-to-age
+          ] ++ [ colmenaPkg ];
+
+          shellHook = ''
+            echo "NixOS Homelab deployment environment loaded (${system})"
+            echo "Colmena ${colmenaPkg.version} is available for remote deployment"
+          '';
+        };
+      in {
+        x86_64-linux.default = makeDevShell "x86_64-linux";
+        aarch64-darwin.default = makeDevShell "aarch64-darwin";
+        x86_64-darwin.default = makeDevShell "x86_64-darwin";
+        aarch64-linux.default = makeDevShell "aarch64-linux";
       };
     };
 }

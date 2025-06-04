@@ -27,16 +27,5 @@
             })
         ];
     };
-    devShells.${system}.default = pkgs.mkShell {
-        buildInputs = with pkgs; [
-            colmena
-            nixfmt-rfc-style
-            git
-            jq
-        ];
-        shellHook = ''
-        echo "Colmena deployment environment loaded"
-        '';
-    };
   };
 }

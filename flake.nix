@@ -118,6 +118,7 @@
             targetHost = "firebat.local";
             targetUser = "bdhill";
             buildOnTarget = true;
+            allowLocalDeployment = true;
             tags = [ "gateway" "x86_64" ];
           };
           imports = self.nixosConfigurations.firebat._module.args.modules;

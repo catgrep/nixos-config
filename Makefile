@@ -6,15 +6,17 @@ COLMENA := colmena
 help:
 	@echo "Available targets:"
 	@echo "  info               - Show host info"
-	@echo "  devshell           - Enter devshell (aarch64-darwin)"
+	@echo "  devshell           - Enter devshell"
 	@echo "  build              - Build the NixOS configuration"
 	@echo "  home-switch        - Switch to the new home-manager config locally"
 	@echo "  switch             - Switch to the new configuration locally"
 	@echo "  test-build-HOST    - Test build configuration for HOST"
 	@echo "  test-build-all     - Test build all configurations"
-	@echo "  colmena-apply-HOST - Deploy to specific HOST using Colmena"
-	@echo "  colmena-apply-all  - Deploy to all hosts using Colmena"
-	@echo "  colmena-exec       - Execute command on hosts"
+	@echo "  dry-apply-HOST     - Deploy to specific HOST using Colmena (dry run)"
+	@echo "  dry-apply-all      - Deploy to all hosts using Colmena (dry run)"
+	@echo "  apply-HOST         - Deploy to specific HOST using Colmena"
+	@echo "  apply-all          - Deploy to all hosts using Colmena"
+	@echo "  exec-hosts         - Execute command on hosts"
 	@echo "  deploy-all         - Deploy to all hosts"
 	@echo "  update             - Update flake inputs"
 	@echo "  check              - Check flake and run basic tests"
@@ -40,22 +42,30 @@ test-build-%:
 	@echo "Test building configuration for $*..."
 	$(COLMENA) build --on $*
 
-# Colmena deployment commands
-colmena-apply-%:
-	@echo "Deploying to $* using Colmena..."
-	$(COLMENA) apply --on $* --verbose
+dry-apply-%:
+	@echo "[DRYRUN] Deploying to $* using Colmena..."
+	$(COLMENA) apply dry-activate --on $* --verbose
 
-colmena-apply-all:
+dry-apply-all:
 	@echo "Deploying to all hosts using Colmena..."
-	$(COLMENA) apply --verbose
+	$(COLMENA) apply dry-activate --verbose
+
+# Colmena deployment commands
+apply-%:
+	@echo "Deploying to $* using Colmena..."
+	$(COLMENA) apply --reboot --on $* --verbose
+
+apply-all:
+	@echo "Deploying to all hosts using Colmena..."
+	$(COLMENA) apply --reboot --verbose
 
 # Deploy by tag
-colmena-apply-tag-%:
+apply-tag-%:
 	@echo "Deploying to all hosts with tag '$*'..."
 	$(COLMENA) apply --on @$* --verbose
 
 # Execute command on hosts
-colmena-exec:
+exec-hosts:
 	@if [ -z "$(CMD)" ]; then \
 		echo "Usage: make colmena-exec CMD='command to run'"; \
 		exit 1; \
@@ -63,7 +73,7 @@ colmena-exec:
 	$(COLMENA) exec -- $(CMD)
 
 # Show deployment info
-colmena-info:
+deploy-info:
 	$(COLMENA) eval -E 'nodes: builtins.attrNames nodes'
 
 test-build-all:
@@ -71,7 +81,7 @@ test-build-all:
 	$(COLMENA) build
 
 # Deploy to all hosts
-deploy-all: colmena-apply-all
+deploy-all: apply-all
 	@echo "Deployment to all hosts completed!"
 
 # Update flake inputs
@@ -162,11 +172,6 @@ info:
 	@echo "Beelink (Media Server): AMD Ryzen 7 8745HS, 64GB RAM, ZFS RAID 10"
 	@echo "Firebat (Gateway): AMD Ryzen 7 6800H, 32GB RAM, Load Balancer/Monitoring"
 	@echo "Pi4 (DNS): Raspberry Pi 4B, 8GB RAM, AdGuard Home DNS"
-	@echo ""
-	@echo "Network Configuration:"
-	@echo "  Beelink: beelink.local (192.168.1.20)"
-	@echo "  Firebat: firebat.local (192.168.1.21)"
-	@echo "  Pi4: pi4.local (192.168.1.10)"
 
 # Quick status check
 status:

@@ -6,7 +6,7 @@
       # Main system disk (NVMe)
       main = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme0n1"; # Update with actual disk ID
+        device = "/dev/disk/by-id/nvme-CT1000P3PSSD8_24464C21DB62"; # Update with actual disk ID
         content = {
           type = "gpt";
           partitions = {
@@ -41,7 +41,7 @@
       # RAID 10 disks (4 x 6TB)
       raid-disk1 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_6TB_DISK_1"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500ea5da96a";
         content = {
           type = "gpt";
           partitions = {
@@ -58,7 +58,7 @@
 
       raid-disk2 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_6TB_DISK_2"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500e9ec4a9a";
         content = {
           type = "gpt";
           partitions = {
@@ -75,7 +75,7 @@
 
       raid-disk3 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_6TB_DISK_3"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500e9ec48bb"; # Update with actual disk ID
         content = {
           type = "gpt";
           partitions = {
@@ -92,7 +92,7 @@
 
       raid-disk4 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_6TB_DISK_4"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500e9ec29cf"; # Update with actual disk ID
         content = {
           type = "gpt";
           partitions = {
@@ -110,7 +110,7 @@
       # Media storage disks (2 x 12TB) - Individual pools for MergerFS
       media-disk1 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_12TB_DISK_1"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500b56ea81a";
         content = {
           type = "gpt";
           partitions = {
@@ -127,7 +127,7 @@
 
       media-disk2 = {
         type = "disk";
-        device = "/dev/disk/by-id/ata-WDC_YOUR_12TB_DISK_2"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500b3733a87"; # Update with actual disk ID
         content = {
           type = "gpt";
           partitions = {

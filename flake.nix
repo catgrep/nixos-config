@@ -103,7 +103,7 @@
         beelink = {
           # Use the current hostname until migrated
           deployment = {
-            targetHost = "nixhost.local";
+            targetHost = "beelink.local";
             targetUser = "bdhill";
             buildOnTarget = true; # Build on the target to avoid arch issues
             allowLocalDeployment = true;

@@ -3,10 +3,10 @@
 {
   disko.devices = {
     disk = {
-      # Main system disk (NVMe)
+      # Main system disk (NVMe) - Used for OS, nix store, and builds
       main = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme-CT1000P3PSSD8_24464C21DB62"; # Update with actual disk ID
+        device = "/dev/disk/by-id/nvme-CT1000P3PSSD8_24464C21DB62";
         content = {
           type = "gpt";
           partitions = {
@@ -38,8 +38,8 @@
         };
       };
 
-      # RAID 10 disks (4 x 6TB)
-      raid-disk1 = {
+      # RAID-Z2 disks (4 x 6TB) for NAS backups
+      backup-disk1 = {
         type = "disk";
         device = "/dev/disk/by-id/wwn-0x5000c500ea5da96a";
         content = {
@@ -49,14 +49,14 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "storage";
+                pool = "backup";
               };
             };
           };
         };
       };
 
-      raid-disk2 = {
+      backup-disk2 = {
         type = "disk";
         device = "/dev/disk/by-id/wwn-0x5000c500e9ec4a9a";
         content = {
@@ -66,16 +66,16 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "storage";
+                pool = "backup";
               };
             };
           };
         };
       };
 
-      raid-disk3 = {
+      backup-disk3 = {
         type = "disk";
-        device = "/dev/disk/by-id/wwn-0x5000c500e9ec48bb"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500e9ec48bb";
         content = {
           type = "gpt";
           partitions = {
@@ -83,16 +83,16 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "storage";
+                pool = "backup";
               };
             };
           };
         };
       };
 
-      raid-disk4 = {
+      backup-disk4 = {
         type = "disk";
-        device = "/dev/disk/by-id/wwn-0x5000c500e9ec29cf"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500e9ec29cf";
         content = {
           type = "gpt";
           partitions = {
@@ -100,25 +100,28 @@
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "storage";
+                pool = "backup";
               };
             };
           };
         };
       };
 
-      # Media storage disks (2 x 12TB) - Individual pools for MergerFS
+      # Media storage disks (2 x 12TB) - For MergerFS
       media-disk1 = {
         type = "disk";
         device = "/dev/disk/by-id/wwn-0x5000c500b56ea81a";
         content = {
           type = "gpt";
           partitions = {
-            zfs = {
+            # Using ext4 for MergerFS compatibility
+            media = {
               size = "100%";
               content = {
-                type = "zfs";
-                pool = "media1";
+                type = "filesystem";
+                format = "ext4";
+                mountpoint = "/mnt/disk1";
+                mountOptions = [ "defaults" "nofail" ];
               };
             };
           };
@@ -127,15 +130,18 @@
 
       media-disk2 = {
         type = "disk";
-        device = "/dev/disk/by-id/wwn-0x5000c500b3733a87"; # Update with actual disk ID
+        device = "/dev/disk/by-id/wwn-0x5000c500b3733a87";
         content = {
           type = "gpt";
           partitions = {
-            zfs = {
+            # Using ext4 for MergerFS compatibility
+            media = {
               size = "100%";
               content = {
-                type = "zfs";
-                pool = "media2";
+                type = "filesystem";
+                format = "ext4";
+                mountpoint = "/mnt/disk2";
+                mountOptions = [ "defaults" "nofail" ];
               };
             };
           };
@@ -144,7 +150,7 @@
     };
 
     zpool = {
-      # Root pool (system)
+      # Root pool (system) - Implements "Erase Your Darlings"
       rpool = {
         type = "zpool";
         mode = "";
@@ -163,37 +169,63 @@
           xattr = "sa";
         };
         datasets = {
-          "nixos" = {
+          # Blank root dataset
+          "local" = {
             type = "zfs_fs";
-            options.mountpoint = "none";
+            options = {
+              mountpoint = "none";
+            };
           };
-          "nixos/root" = {
+          # Root filesystem - this gets rolled back
+          "local/root" = {
             type = "zfs_fs";
-            options.mountpoint = "legacy";
+            options = {
+              mountpoint = "legacy";
+            };
             mountpoint = "/";
+            postCreateHook = ''
+              zfs snapshot rpool/local/root@blank
+            '';
           };
-          "nixos/nix" = {
+          # Nix store - preserved across reboots
+          "local/nix" = {
             type = "zfs_fs";
-            options.mountpoint = "legacy";
+            options = {
+              mountpoint = "legacy";
+              atime = "off";
+            };
             mountpoint = "/nix";
           };
-          "nixos/var" = {
+          # Persistent state
+          "safe" = {
             type = "zfs_fs";
-            options.mountpoint = "legacy";
-            mountpoint = "/var";
+            options = {
+              mountpoint = "none";
+            };
           };
-          "nixos/home" = {
+          # Home directories - preserved
+          "safe/home" = {
             type = "zfs_fs";
-            options.mountpoint = "legacy";
+            options = {
+              mountpoint = "legacy";
+            };
             mountpoint = "/home";
           };
+          # Persistent system state
+          "safe/persist" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "legacy";
+            };
+            mountpoint = "/persist";
+          };
         };
       };
 
-      # Storage pool (RAID 10)
-      storage = {
+      # Backup pool (RAID-Z2 for redundancy)
+      backup = {
         type = "zpool";
-        mode = "mirror";
+        mode = "raidz2";
         options = {
           ashift = "12";
           autotrim = "on";
@@ -206,64 +238,17 @@
           normalization = "formD";
           relatime = "on";
           xattr = "sa";
+          # Good for backups
+          recordsize = "1M";
         };
         datasets = {
-          "downloads" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/downloads";
-          };
           "backups" = {
             type = "zfs_fs";
-            options.mountpoint = "/mnt/backups";
-          };
-        };
-      };
-
-      # Media pools (separate 12TB drives for MergerFS)
-      media1 = {
-        type = "zpool";
-        mode = "";
-        options = {
-          ashift = "12";
-          autotrim = "on";
-        };
-        rootFsOptions = {
-          acltype = "posixacl";
-          compression = "lz4";
-          dnodesize = "auto";
-          mountpoint = "none";
-          normalization = "formD";
-          relatime = "on";
-          xattr = "sa";
-        };
-        datasets = {
-          "media1" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/media1";
-          };
-        };
-      };
-
-      media2 = {
-        type = "zpool";
-        mode = "";
-        options = {
-          ashift = "12";
-          autotrim = "on";
-        };
-        rootFsOptions = {
-          acltype = "posixacl";
-          compression = "lz4";
-          dnodesize = "auto";
-          mountpoint = "none";
-          normalization = "formD";
-          relatime = "on";
-          xattr = "sa";
-        };
-        datasets = {
-          "media2" = {
-            type = "zfs_fs";
-            options.mountpoint = "/mnt/media2";
+            options = {
+              mountpoint = "/mnt/backups";
+              # Enable deduplication for backup data
+              dedup = "on";
+            };
           };
         };
       };

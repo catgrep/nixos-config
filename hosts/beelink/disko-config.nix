@@ -6,6 +6,7 @@
       # Main system disk (NVMe) - Used for OS, nix store, and builds
       main = {
         type = "disk";
+        # Update this with actual disk ID after running 'lsblk -o NAME,SIZE,TYPE,FSTYPE,MODEL,SERIAL'
         device = "/dev/disk/by-id/nvme-CT1000P3PSSD8_24464C21DB62";
         content = {
           type = "gpt";

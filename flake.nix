@@ -44,6 +44,31 @@
           ] ++ modules;
         };
 
+      # Helper for provisioning targets - reads disko config from host directory
+      mkProvisioningTarget = { hostname, system ? "x86_64-linux" }:
+        let
+          # Check if host has a disko config
+          diskoConfigPath = ./hosts/${hostname}/disko-config.nix;
+          hasDiskoConfig = builtins.pathExists diskoConfigPath;
+        in
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs;
+            unstable = import nixpkgs-unstable {
+              inherit system;
+              config.allowUnfree = true;
+            };
+          };
+          modules = [
+            disko.nixosModules.disko
+            ./hosts/modules/provisioning/configuration.nix
+            # Use host-specific disko config if it exists, otherwise error
+          ] ++ (if hasDiskoConfig
+                then [ diskoConfigPath ]
+                else throw "No disko-config.nix found for host ${hostname}");
+        };
+
       # Helper for ARM systems (Raspberry Pi)
       mkArmSystem = { hostname, modules ? [] }:
         mkSystem {
@@ -81,6 +106,20 @@
         # Keep existing nixhost for compatibility during transition
         nixhost = mkSystem {
           hostname = "nixhost";
+        };
+
+        # Provisioning targets for nixos-anywhere
+        "provisioning-beelink" = mkProvisioningTarget {
+          hostname = "beelink";
+        };
+
+        "provisioning-firebat" = mkProvisioningTarget {
+          hostname = "firebat";
+        };
+
+        "provisioning-pi4" = mkProvisioningTarget {
+          hostname = "pi4";
+          system = "aarch64-linux";
         };
       };
 

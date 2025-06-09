@@ -185,6 +185,7 @@
         in pkgs.mkShell {
           buildInputs = with pkgs; [
             nixfmt-rfc-style
+            nixos-rebuild
             git
             jq
             sops

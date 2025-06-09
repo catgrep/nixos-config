@@ -19,6 +19,7 @@ usage() {
     echo "  target-ip   IP address of the target machine"
     echo ""
     echo "Options:"
+    echo "  --ssh-identity-file Path to ssh identity file to use, will be prompted for a password otherwise"
     echo "  --generate-hardware Generate hardware configuration"
     echo "  --help              Show this help message"
     echo ""
@@ -39,12 +40,24 @@ shift 2
 
 # Default values
 GENERATE_HARDWARE=""
+SSH_IDENTITY_OPT=""
+SSH_PASS_ENV_OPT=""
 
 # Parse options
 while [[ $# -gt 0 ]]; do
     case $1 in
         --generate-hardware)
             GENERATE_HARDWARE="--generate-hardware-config nixos-generate-config ./hosts/${HOSTNAME}/hardware-configuration.nix"
+            shift
+            ;;
+        --ssh-identity-file)
+            idpath="$2"
+            if [ -e "$idpath" ]; then
+                SSH_IDENTITY_OPT="-i $idpath"
+            else
+                echo "WARNING: $idpath does not exist. You will be asked for your ssh password."
+            fi
+            shift
             shift
             ;;
         --help)
@@ -74,7 +87,7 @@ echo ""
 
 # Check connectivity
 echo -e "${YELLOW}Checking SSH connection...${NC}"
-if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "root@${TARGET_IP}" "echo 'OK'" 2>/dev/null; then
+if ! ssh -o ConnectTimeout=5 "root@${TARGET_IP}" "echo 'OK'" 2>/dev/null; then
     echo -e "${RED}Cannot connect to root@${TARGET_IP}${NC}"
     echo ""
     echo "On the target machine, ensure you have:"
@@ -87,7 +100,7 @@ echo -e "${GREEN}✓ Connected${NC}"
 # Show disk information
 echo ""
 echo -e "${YELLOW}Target disk configuration:${NC}"
-ssh "root@${TARGET_IP}" "lsblk -o NAME,SIZE,TYPE,MODEL"
+ssh "root@${TARGET_IP}" "lsblk -o NAME,SIZE,TYPE,ID-LINK"
 
 echo ""
 echo -e "${YELLOW}Disk by-id mappings:${NC}"
@@ -110,9 +123,19 @@ fi
 echo ""
 echo -e "${GREEN}Running nixos-anywhere...${NC}"
 
-nix run github:nix-community/nixos-anywhere -- \
+ROOTPASS=""
+AUTH_OPT="$SSH_IDENTITY_OPT"
+if [ "$SSH_IDENTITY_OPT" == "" ]; then
+    echo "Please enter your root password."
+    read -s -p "Password: " ROOTPASS
+    AUTH_OPT="--env-password"
+fi
+
+SSHPASS="$ROOTPASS" nix run github:nix-community/nixos-anywhere -- \
     --flake ".#provisioning-${HOSTNAME}" \
     --target-host "root@${TARGET_IP}" \
+    --build-on remote \
+    "$AUTH_OPT" \
     ${GENERATE_HARDWARE}
 
 if [ $? -eq 0 ]; then

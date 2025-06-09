@@ -24,7 +24,7 @@
 
         # Initial password hash (change after first login)
         # Generated with: mkpasswd -m SHA-512
-        hashedPassword = "$6$rounds=1000000$salt$hash"; # Replace with actual hash
+        # hashedPassword = "$6$rounds=1000000$salt$hash"; # Replace with actual hash
       };
     };
   };

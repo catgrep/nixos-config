@@ -11,6 +11,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    impermanence = {
+      url = "github:nix-community/impermanence";
+    };
+
     colmena = {
       url = "github:zhaofengli/colmena";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -22,7 +26,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, sops-nix, colmena,... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, impermanence, sops-nix, colmena,... }@inputs:
     let
       # Helper function to create a nixos system configuration
       mkSystem = { hostname, system ? "x86_64-linux", modules ? [] }:
@@ -40,33 +44,9 @@
             ./hosts/modules/common
             ./hosts/modules/servers
             disko.nixosModules.disko
+            impermanence.nixosModules.impermanence
             sops-nix.nixosModules.sops
           ] ++ modules;
-        };
-
-      # Helper for provisioning targets - reads disko config from host directory
-      mkProvisioningTarget = { hostname, system ? "x86_64-linux" }:
-        let
-          # Check if host has a disko config
-          diskoConfigPath = ./hosts/${hostname}/disko-config.nix;
-          hasDiskoConfig = builtins.pathExists diskoConfigPath;
-        in
-        nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {
-            inherit inputs;
-            unstable = import nixpkgs-unstable {
-              inherit system;
-              config.allowUnfree = true;
-            };
-          };
-          modules = [
-            disko.nixosModules.disko
-            ./hosts/modules/provisioning/configuration.nix
-            # Use host-specific disko config if it exists, otherwise error
-          ] ++ (if hasDiskoConfig
-                then [ diskoConfigPath ]
-                else throw "No disko-config.nix found for host ${hostname}");
         };
 
       # Helper for ARM systems (Raspberry Pi)
@@ -108,19 +88,11 @@
           hostname = "nixhost";
         };
 
-        # Provisioning targets for nixos-anywhere
-        "provisioning-beelink" = mkProvisioningTarget {
-          hostname = "beelink";
-        };
-
-        "provisioning-firebat" = mkProvisioningTarget {
-          hostname = "firebat";
-        };
-
-        "provisioning-pi4" = mkProvisioningTarget {
-          hostname = "pi4";
-          system = "aarch64-linux";
-        };
+        # Provisioning targets - just use the same configs
+        # nixos-anywhere will handle the installation
+        "provisioning-beelink" = self.nixosConfigurations.beelink;
+        "provisioning-firebat" = self.nixosConfigurations.firebat;
+        "provisioning-pi4" = self.nixosConfigurations.pi4;
       };
 
       # Colmena deployment configuration
@@ -182,6 +154,34 @@
           pkgs = nixpkgs-unstable.legacyPackages.${system};
           # colmena is a flake input, not an attribute of pkgs, so add it here
           colmenaPkg = colmena.packages.${system}.colmena;
+
+          # Detect local IP based on platform
+          getLocalIp = if pkgs.stdenv.isDarwin then ''
+            ipconfig getifaddr en0 || ipconfig getifaddr en1 || echo ""
+          '' else ''
+            ip -4 addr show | grep -o 'inet 192.168.[0-9.]*' | head -1 | cut -d' ' -f2 | cut -d'/' -f1 || echo ""
+          '';
+
+          # Create wrapper that replaces ssh in PATH
+          sshWrapper = pkgs.symlinkJoin {
+            name = "ssh-wrapper";
+            paths = [ pkgs.openssh ];
+            postBuild = ''
+              rm $out/bin/ssh
+              cat > $out/bin/ssh << 'EOF'
+              #!${pkgs.bash}/bin/bash
+              LOCAL_IP=$(${getLocalIp})
+
+              if [[ "$*" =~ 192\.168\.68\. ]] && [ -n "$LOCAL_IP" ]; then
+                exec ${pkgs.openssh}/bin/ssh -b "$LOCAL_IP" "$@"
+              else
+                exec ${pkgs.openssh}/bin/ssh "$@"
+              fi
+              EOF
+              chmod +x $out/bin/ssh
+            '';
+          };
+
         in pkgs.mkShell {
           buildInputs = with pkgs; [
             nixfmt-rfc-style
@@ -190,13 +190,17 @@
             sops
             age
             ssh-to-age
-            openssh
             openssl
-          ] ++ [ colmenaPkg ];
+            sshpass
+          ] ++ [
+            sshWrapper  # This replaces openssh and provides our wrapper
+            colmenaPkg
+          ];
 
           shellHook = ''
             echo "NixOS Homelab deployment environment loaded (${system})"
-            echo "Colmena ${colmenaPkg.version} is available for remote deployment"
+            echo "SSH wrapper with automatic bind address is active"
+            echo "Using SSH from: $(which ssh)"
           '';
         };
       in {

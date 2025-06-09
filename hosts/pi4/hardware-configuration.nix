@@ -10,17 +10,17 @@
   boot.kernelModules = [ ];
   boot.extraModulePackages = [ ];
 
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/NIXOS_SD";
-    fsType = "ext4";
-    options = [ "noatime" ];
-  };
+  # fileSystems."/" = {
+  #   device = "/dev/disk/by-label/NIXOS_SD";
+  #   fsType = "ext4";
+  #   options = [ "noatime" ];
+  # };
 
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/FIRMWARE";
-    fsType = "vfat";
-    options = [ "nofail" "noauto" ];
-  };
+  # fileSystems."/boot" = {
+  #   device = "/dev/disk/by-label/FIRMWARE";
+  #   fsType = "vfat";
+  #   options = [ "nofail" "noauto" ];
+  # };
 
   swapDevices = [ ];
 

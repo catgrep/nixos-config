@@ -69,6 +69,11 @@
     ];
   };
 
+  # Ensure /persist is available early for impermanence
+  fileSystems."/persist" = {
+    neededForBoot = true;
+  };
+
   # Persistence configuration for "Erase Your Darlings"
   # Note: We don't use impermanence for SSH keys since we're handling them explicitly
   environment.persistence."/persist" = {
@@ -76,6 +81,7 @@
     directories = [
       # System
       "/etc/nixos"
+      "/var/lib/nixos"  # to persist user/group IDs
       "/var/lib/systemd/coredump"
       { directory = "/var/lib/private"; mode = "0700"; }
       "/var/log"
@@ -83,13 +89,12 @@
       # Network
       "/etc/NetworkManager/system-connections"
       { directory = "/var/lib/NetworkManager"; mode = "0700"; }
-      { directory = "/var/lib/jellyfin"; user = "jellyfin"; group = "jellyfin"; }
 
-      # Services
-      { directory = "/var/lib/jellyfin"; user = "jellyfin"; group = "jellyfin"; }
-      { directory = "/var/lib/postgresql"; user = "postgres"; group = "postgres"; mode = "0700"; }
+      # Services - Don't specify user/group for services that might not exist yet
+      "/var/lib/jellyfin"
+      "/var/lib/postgresql"
       { directory = "/var/lib/docker"; mode = "0710"; }
-      { directory = "/var/lib/samba"; mode = "0755"; }
+      "/var/lib/samba"
     ];
     files = [
       "/etc/machine-id"
@@ -99,24 +104,25 @@
   # Samba for NAS functionality
   services.samba = {
     enable = true;
-    securityType = "user";
-    extraConfig = ''
-      workgroup = WORKGROUP
-      server string = NixOS NAS
-      netbios name = nixnas
-      security = user
-      # Use persistent location for Samba's private data
-      private dir = /persist/var/lib/samba/private
 
-      # Performance optimizations for ZFS
-      use sendfile = yes
-      min protocol = SMB2
-      aio read size = 16384
-      aio write size = 16384
-      socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
-    '';
+    # New settings format
+    settings = {
+      global = {
+        workgroup = "WORKGROUP";
+        "server string" = "NixOS NAS";
+        "netbios name" = "nixnas";
+        security = "user";
+        # Use persistent location for Samba's private data
+        "private dir" = "/persist/var/lib/samba/private";
 
-    shares = {
+        # Performance optimizations for ZFS
+        "use sendfile" = "yes";
+        "min protocol" = "SMB2";
+        "aio read size" = "16384";
+        "aio write size" = "16384";
+        "socket options" = "TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072";
+      };
+
       backups = {
         path = "/mnt/backups";
         browseable = "yes";
@@ -139,7 +145,7 @@
     };
   };
 
-  # Systemd tmpfiles for creating symlinks and directories
+  # Ensure service directories have correct permissions after services are installed
   systemd.tmpfiles.rules = [
     # ACME certificates (if using Let's Encrypt)
     "L /var/lib/acme - - - - /persist/var/lib/acme"
@@ -150,6 +156,10 @@
     # Create directories that need to exist before services start
     "d /persist/etc/ssh 0755 root root -"
     "d /persist/var/lib/acme 0755 root root -"
+
+    # Fix permissions for service directories after user creation
+    "z /persist/var/lib/jellyfin 0755 jellyfin jellyfin -"
+    "z /persist/var/lib/postgresql 0700 postgres postgres -"
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0755 jellyfin jellyfin -"
@@ -198,7 +208,7 @@
     # Enable additional services as needed
     sonarr.enable = true;
     radarr.enable = true;
-    transmission.enable = true;
+    # transmission.enable = true;
   };
 
   # Host-specific monitoring - extends the server monitoring module

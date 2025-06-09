@@ -32,9 +32,9 @@
     };
 
     # Implement "Erase Your Darlings" - rollback root on boot
-    initrd.postDeviceCommands = lib.mkAfter ''
-      zfs rollback -r rpool/local/root@blank
-    '';
+    # initrd.postDeviceCommands = lib.mkAfter ''
+    #   zfs rollback -r rpool/local/root@blank
+    # '';
   };
 
   # ZFS services
@@ -95,9 +95,17 @@
       "/var/lib/postgresql"
       { directory = "/var/lib/docker"; mode = "0710"; }
       "/var/lib/samba"
+      # Add these for network persistence:
+      "/etc/ssh"  # SSH host keys
+      "/var/lib/systemd/network"  # Network state
+      { directory = "/var/lib/dhcp"; mode = "0755"; }  # DHCP leases
     ];
     files = [
       "/etc/machine-id"
+      "/etc/ssh/ssh_host_ed25519_key"
+      "/etc/ssh/ssh_host_ed25519_key.pub"
+      "/etc/ssh/ssh_host_rsa_key"
+      "/etc/ssh/ssh_host_rsa_key.pub"
     ];
   };
 

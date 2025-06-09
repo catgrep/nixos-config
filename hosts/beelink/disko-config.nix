@@ -184,9 +184,9 @@
               mountpoint = "legacy";
             };
             mountpoint = "/";
-            postCreateHook = ''
-              zfs snapshot rpool/local/root@blank
-            '';
+            # postCreateHook = ''
+            #   zfs snapshot rpool/local/root@blank
+            # '';
           };
           # Nix store - preserved across reboots
           "local/nix" = {

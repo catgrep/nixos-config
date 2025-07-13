@@ -22,9 +22,9 @@
           # Add more keys as needed
         ];
 
-        # Initial password hash (change after first login)
-        # Generated with: mkpasswd -m SHA-512
-        # hashedPassword = "$6$rounds=1000000$salt$hash"; # Replace with actual hash
+        initialPassword = "changeme";
+        # Generated with: mkpasswd -m sha-512
+        password = "$6$gtFCe7zQ1iFmSRoa$MipL67SPu8c/oyXyjqcd90QKemhRo6SLEUb0dKEJcWlL9Mwq9uFcVMjQZVZfm97.wUnxFqlm6wDTh0hBJGyk.0";
       };
     };
   };

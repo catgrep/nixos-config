@@ -193,6 +193,7 @@
             ssh-to-age
             openssl
             sshpass
+            mkpasswd
           ] ++ [
             sshWrapper  # This replaces openssh and provides our wrapper
             colmenaPkg

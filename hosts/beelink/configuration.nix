@@ -6,6 +6,22 @@
     ./disko-config.nix
   ];
 
+  # Enable the system banner
+  # programs.system-banner = {
+  #   enable = true;
+
+  #   # Optional: Add custom commands to run after the banner is displayed
+  #   shellHook = ''
+  #     # You could add additional commands here, like:
+  #     # echo "Welcome back, $(whoami)!"
+  #     echo
+  #     echo "Welcome back, $(whoami)!" | cowsay | lolcat
+  #   '';
+
+  #   # Optional: Set to false if you don't want the banner to show on every interactive shell
+  #   showOnLogin = true;
+  # };
+
   # Host identification
   networking = {
     hostName = "beelink";

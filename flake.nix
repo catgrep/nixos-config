@@ -84,9 +84,9 @@
         };
 
         # Keep existing nixhost for compatibility during transition
-        nixhost = mkSystem {
-          hostname = "nixhost";
-        };
+        # nixhost = mkSystem {
+        #   hostname = "nixhost";
+        # };
 
         # Provisioning targets - just use the same configs
         # nixos-anywhere will handle the installation

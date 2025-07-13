@@ -16,7 +16,7 @@
   # Boot configuration
   boot = {
     # Enable ZFS support
-    supportedFilesystems = [ "zfs" ];
+    supportedFilesystems = lib.mkForce [ "zfs" "ntfs" "btrfs" ];
     zfs = {
       forceImportRoot = false;
       devNodes = "/dev/disk/by-id/";
@@ -29,6 +29,10 @@
     loader = {
       systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
+    };
+
+    tmp = {
+      useTmpfs = lib.mkForce false;  # Disable the common setting
     };
 
     # Implement "Erase Your Darlings" - rollback root on boot
@@ -229,10 +233,14 @@
     };
   };
 
+  # systemd.network.networks."10-enp1s0" = {
+  #   matchConfig.Name = "enp1s0";
+  #   networkConfig.DHCP = "yes";
+  # };
+
   # Network configuration for media server
   networking = {
-    interfaces.enp1s0.useDHCP = true;  # Update interface name as needed
-    # Enable IP forwarding if needed
+    interfaces.enp1s0.useDHCP = true;  # This works fine with useNetworkd
     firewall.enable = true;
   };
 

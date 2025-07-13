@@ -2,26 +2,26 @@
 
 {
   # Fail2ban for SSH protection
-  services.fail2ban = {
-    enable = true;
-    bantime = "10m";
-    bantime-increment = {
-      enable = true;
-      multipliers = "1 2 4 8 16 32 64";
-      maxtime = "168h";
-    };
+  # services.fail2ban = {
+  #   enable = true;
+  #   bantime = "10m";
+  #   bantime-increment = {
+  #     enable = true;
+  #     multipliers = "1 2 4 8 16 32 64";
+  #     maxtime = "168h";
+  #   };
 
-    jails = {
-      ssh = ''
-        enabled = true
-        port = 22
-        filter = sshd
-        logpath = /var/log/auth.log
-        maxretry = 5
-        bantime = 600
-      '';
-    };
-  };
+  #   jails = {
+  #     ssh = ''
+  #       enabled = true
+  #       port = 22
+  #       filter = sshd
+  #       logpath = /var/log/auth.log
+  #       maxretry = 5
+  #       bantime = 600
+  #     '';
+  #   };
+  # };
 
   # Automatic security updates
   security = {
@@ -30,9 +30,6 @@
 
     # Lock down kernel
     lockKernelModules = false; # Set to true for maximum security
-
-    # Protect kernel logs - use boot.kernel.sysctl instead
-    # dmesg.restrict = true;  # This option doesn't exist
   };
 
   # Network security and kernel hardening

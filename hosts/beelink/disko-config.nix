@@ -122,7 +122,7 @@
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/mnt/disk1";
-                mountOptions = [ "defaults" "nofail" ];
+                mountOptions = [ "defaults" "nofail" "noatime" ];
               };
             };
           };
@@ -142,7 +142,7 @@
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/mnt/disk2";
-                mountOptions = [ "defaults" "nofail" ];
+                mountOptions = [ "defaults" "nofail" "noatime" ];
               };
             };
           };

@@ -194,3 +194,12 @@ backup-configs:
 	@cp -r hosts/ backups/$(shell date +%Y-%m-%d)/
 	@cp flake.nix flake.lock backups/$(shell date +%Y-%m-%d)/
 	@echo "✓ Configurations backed up to backups/$(shell date +%Y-%m-%d)/"
+
+# provision-new-host
+provision-new-host/%:
+	@echo "Provisioning new host '$^'..."
+	@./provision/nixos-anywhere-bootstrap.sh $^ --generate-hardware
+
+# clean-reboot
+clean-reboot/%:
+	@echo TODO

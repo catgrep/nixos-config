@@ -12,6 +12,7 @@
     vim
     tmux
     screen
+    mosh
 
     # Network tools
     dig

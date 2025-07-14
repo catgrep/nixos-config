@@ -14,6 +14,12 @@
         80  # HTTP
         443 # HTTPS
       ];
+      allowedUDPPortRanges = [{
+          # Mosh default port range
+          from = 60000;
+          to = 61000;
+        }
+      ];
     };
 
     # DNS fallback

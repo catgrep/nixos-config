@@ -61,7 +61,7 @@ in {
         echo
 
         # OS Information
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ OS INFO ══════════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == OS INFO ''${RESET}"
         echo -e "''${CYAN}OS:         ''${GREEN}$(uname -o 2>/dev/null || echo "$(uname -s)")''${RESET}"
         echo -e "''${CYAN}Kernel:     ''${GREEN}$(uname -r)''${RESET}"
         echo -e "''${CYAN}Arch:       ''${GREEN}$(uname -m)''${RESET}"
@@ -76,14 +76,14 @@ in {
         echo
 
         # Uptime & Load Average
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ UPTIME & LOAD ════════════════════╗''${RESET}"
-        echo -e "''${CYAN}Uptime:     ''${GREEN}$(uptime | awk '{print $3}' | tr -d ',')''${RESET}"
-        echo -e "''${CYAN}Users:      ''${GREEN}$(uptime | awk '{print $4}')''${RESET}"
-        echo -e "''${CYAN}Load Avg:   ''${GREEN}$(uptime | awk -F'load average: ' '{print $2}')''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == UPTIME & LOAD''${RESET}"
+        echo -e "''${CYAN}Uptime:     ''${GREEN}$(uptime | cut -f7 -d' ' | cut -f1 -d',')''${RESET}"
+        echo -e "''${CYAN}Users:      ''${GREEN}$(uptime | cut -f2 -d',' | cut -f3- -d' ')''${RESET}"
+        echo -e "''${CYAN}Load Avg:   ''${GREEN}$(uptime | cut -f5 -d':' | cut -f2- -d' ')''${RESET}"
         echo
 
         # CPU Information
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ CPU INFO ═════════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == CPU INFO''${RESET}"
         if [ -f /proc/cpuinfo ]; then
             CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d ":" -f2 | sed 's/^[ \t]*//')
             CPU_CORES=$(grep -c "processor" /proc/cpuinfo)
@@ -95,7 +95,7 @@ in {
         echo
 
         # Memory Information
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ MEMORY INFO ══════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == MEMORY INFO''${RESET}"
         if [ -f /proc/meminfo ]; then
             # Linux
             MEM_TOTAL=$(grep "MemTotal" /proc/meminfo | awk '{print $2/1024/1024 " GB"}')
@@ -110,7 +110,7 @@ in {
         echo
 
         # Disk Usage
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ DISK USAGE ═══════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == DISK USAGE''${RESET}"
         if command -v df >/dev/null 2>&1; then
             # Get disk usage for main partitions, skip temporary and special filesystems
             printf "''${CYAN}%-25s %-8s %-8s %-8s %-5s''${RESET}\n" "Filesystem" "Size" "Used" "Avail" "Use%"
@@ -152,7 +152,7 @@ in {
         echo
 
         # Network Information
-        echo -e "''${BOLD}''${MAGENTA}╔══════════════════════ NETWORK INFO ═════════════════════╗''${RESET}"
+        echo -e "''${BOLD}''${MAGENTA} == NETWORK INFO''${RESET}"
 
         # Display IP addresses
         if command -v ip >/dev/null 2>&1; then

@@ -14,6 +14,11 @@
     screen
     mosh
 
+    # Funsies
+    cowsay
+    charasay
+    lolcat
+
     # Network tools
     dig
     nmap

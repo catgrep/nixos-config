@@ -7,20 +7,20 @@
   ];
 
   # Enable the system banner
-  # programs.system-banner = {
-  #   enable = true;
+  programs.system-banner = {
+    enable = true;
 
-  #   # Optional: Add custom commands to run after the banner is displayed
-  #   shellHook = ''
-  #     # You could add additional commands here, like:
-  #     # echo "Welcome back, $(whoami)!"
-  #     echo
-  #     echo "Welcome back, $(whoami)!" | cowsay | lolcat
-  #   '';
+    # Optional: Add custom commands to run after the banner is displayed
+    shellHook = ''
+      # You could add additional commands here, like:
+      # echo "Welcome back, $(whoami)!"
+      echo
+      echo "Welcome back, $(whoami)!" | cowsay | lolcat
+    '';
 
-  #   # Optional: Set to false if you don't want the banner to show on every interactive shell
-  #   showOnLogin = true;
-  # };
+    # Optional: Set to false if you don't want the banner to show on every interactive shell
+    showOnLogin = true;
+  };
 
   # Host identification
   networking = {
@@ -52,9 +52,9 @@
     };
 
     # Implement "Erase Your Darlings" - rollback root on boot
-    # initrd.postDeviceCommands = lib.mkAfter ''
-    #   zfs rollback -r rpool/local/root@blank
-    # '';
+    initrd.postDeviceCommands = lib.mkAfter ''
+      zfs rollback -r rpool/local/root@blank
+    '';
   };
 
   # ZFS services
@@ -247,11 +247,6 @@
       port = 9134;
     };
   };
-
-  # systemd.network.networks."10-enp1s0" = {
-  #   matchConfig.Name = "enp1s0";
-  #   networkConfig.DHCP = "yes";
-  # };
 
   # Network configuration for media server
   networking = {

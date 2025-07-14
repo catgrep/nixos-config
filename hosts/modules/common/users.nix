@@ -6,8 +6,9 @@
 
     users = {
       root = {
-        # Disable root login
-        hashedPassword = "!";
+        password = "help";
+        # # Disable root login
+        # hashedPassword = "!";
       };
 
       bdhill = {

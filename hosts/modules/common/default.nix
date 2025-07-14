@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./banner.nix
     ./boot.nix
     ./networking.nix
     ./nix.nix

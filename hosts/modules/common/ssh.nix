@@ -5,8 +5,8 @@
     enable = true;
     settings = {
       LogLevel = "DEBUG";
-      PermitRootLogin = "yes";
-      PasswordAuthentication = true;
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       X11Forwarding = false;
     };

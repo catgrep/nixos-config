@@ -116,7 +116,6 @@
       { directory = "/var/lib/docker"; mode = "0710"; }
       "/var/lib/samba"
       # Add these for network persistence:
-      "/etc/ssh"  # SSH host keys
       "/var/lib/systemd/network"  # Network state
       { directory = "/var/lib/dhcp"; mode = "0755"; }  # DHCP leases
     ];

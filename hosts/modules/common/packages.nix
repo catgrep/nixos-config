@@ -38,6 +38,13 @@
     fd
     bat
     eza
+
+    # Analysis Tools
+    audit
+    blktrace
+    bpftrace
+    inotify-tools
+    perf-tools
   ];
 
   # Enable some useful programs

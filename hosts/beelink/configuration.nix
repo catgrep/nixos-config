@@ -167,6 +167,9 @@
         "guest ok" = "yes";
         "create mask" = "0644";
         "directory mask" = "0755";
+        "kernel change notify" = "no";
+        "change notify timeout" = "0";
+        "directory name cache size" = "0";
         comment = "Media Storage (MergerFS)";
       };
     };

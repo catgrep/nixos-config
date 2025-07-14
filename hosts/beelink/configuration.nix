@@ -52,9 +52,9 @@
     };
 
     # Implement "Erase Your Darlings" - rollback root on boot
-    initrd.postDeviceCommands = lib.mkAfter ''
-      zfs rollback -r rpool/local/root@blank
-    '';
+    # initrd.postDeviceCommands = lib.mkAfter ''
+    #   zfs rollback -r rpool/local/root@blank
+    # '';
   };
 
   # ZFS services

@@ -55,5 +55,6 @@
       enable = true;
       enableSSHSupport = true;
     };
+    mosh.enable = true;
   };
 }

@@ -238,7 +238,7 @@
     # Enable additional services as needed
     sonarr.enable = true;
     radarr.enable = true;
-    # transmission.enable = true;
+    transmission.enable = true;
   };
 
   # Host-specific monitoring - extends the server monitoring module

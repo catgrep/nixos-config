@@ -50,7 +50,7 @@
       routers = {
         # Route to Jellyfin on Beelink
         jellyfin = {
-          rule = "Host(`jellyfin.homelab.local`)";
+          rule = "Host(`jellyfin.firebat.local`)";
           service = "jellyfin";
           entryPoints = [ "websecure" ];
           tls.certResolver = "letsencrypt";
@@ -58,7 +58,7 @@
 
         # Route to Pi-hole admin
         pihole = {
-          rule = "Host(`pihole.homelab.local`)";
+          rule = "Host(`pihole.firebat.local`)";
           service = "pihole";
           entryPoints = [ "websecure" ];
           tls.certResolver = "letsencrypt";
@@ -66,7 +66,7 @@
 
         # Route to Grafana
         grafana = {
-          rule = "Host(`grafana.homelab.local`)";
+          rule = "Host(`grafana.firebat.local`)";
           service = "grafana";
           entryPoints = [ "websecure" ];
           tls.certResolver = "letsencrypt";

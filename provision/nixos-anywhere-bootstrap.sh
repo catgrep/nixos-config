@@ -19,6 +19,7 @@ usage() {
     echo "  target-ip   IP address of the target machine"
     echo ""
     echo "Options:"
+    echo "  --user              User with sudo access (defaults to 'root')"
     echo "  --ssh-identity-file Path to ssh identity file to use, will be prompted for a password otherwise"
     echo "  --generate-hardware Generate hardware configuration"
     echo "  --help              Show this help message"
@@ -42,10 +43,16 @@ shift 2
 GENERATE_HARDWARE=""
 SSH_IDENTITY_OPT=""
 SSH_PASS_ENV_OPT=""
+USER="root"
 
 # Parse options
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --user)
+            USER="$2"
+            shift
+            shift
+            ;;
         --generate-hardware)
             GENERATE_HARDWARE="--generate-hardware-config nixos-generate-config ./hosts/${HOSTNAME}/hardware-configuration.nix"
             shift
@@ -87,7 +94,7 @@ echo ""
 
 # Check connectivity
 echo -e "${YELLOW}Checking SSH connection...${NC}"
-if ! ssh -o ConnectTimeout=5 "root@${TARGET_IP}" "echo 'OK'" 2>/dev/null; then
+if ! ssh -o ConnectTimeout=5 "${USER}@${TARGET_IP}" "echo 'OK'" 2>/dev/null; then
     echo -e "${RED}Cannot connect to root@${TARGET_IP}${NC}"
     echo ""
     echo "On the target machine, ensure you have:"
@@ -100,11 +107,11 @@ echo -e "${GREEN}✓ Connected${NC}"
 # Show disk information
 echo ""
 echo -e "${YELLOW}Target disk configuration:${NC}"
-ssh "root@${TARGET_IP}" "lsblk -o NAME,SIZE,TYPE,ID-LINK"
+ssh "${USER}@${TARGET_IP}" "lsblk -o NAME,SIZE,TYPE,ID-LINK"
 
 echo ""
 echo -e "${YELLOW}Disk by-id mappings:${NC}"
-ssh "root@${TARGET_IP}" "ls -la /dev/disk/by-id/ | grep -v 'part\|total' | grep -E 'ata-|nvme-|mmc-'" || true
+ssh "${USER}@${TARGET_IP}" "ls -la /dev/disk/by-id/ | grep -v 'part\|total' | grep -E 'ata-|nvme-|mmc-'" || true
 
 echo ""
 echo -e "${RED}WARNING: This will ERASE all data on the configured disks!${NC}"
@@ -133,7 +140,7 @@ fi
 
 SSHPASS="$ROOTPASS" nix run github:nix-community/nixos-anywhere -- \
     --flake ".#provisioning-${HOSTNAME}" \
-    --target-host "root@${TARGET_IP}" \
+    --target-host "${USER}@${TARGET_IP}" \
     --build-on remote \
     "$AUTH_OPT" \
     ${GENERATE_HARDWARE}

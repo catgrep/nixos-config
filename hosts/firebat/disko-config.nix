@@ -7,7 +7,7 @@
       main = {
         type = "disk";
         # Update this with actual disk ID after running lsblk -o NAME,SIZE,TYPE,FSTYPE,MODEL,SERIAL
-        device = "/dev/sda"; # CHANGE THIS to match your actual disk
+        device = "/dev/disk/by-id/nvme-NVME_SSD_512GB_D5BIRL16301155";
         content = {
           type = "gpt";
           partitions = {

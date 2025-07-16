@@ -155,33 +155,6 @@
           # colmena is a flake input, not an attribute of pkgs, so add it here
           colmenaPkg = colmena.packages.${system}.colmena;
 
-          # Detect local IP based on platform
-          getLocalIp = if pkgs.stdenv.isDarwin then ''
-            ipconfig getifaddr en0 || ipconfig getifaddr en1 || echo ""
-          '' else ''
-            ip -4 addr show | grep -o 'inet 192.168.[0-9.]*' | head -1 | cut -d' ' -f2 | cut -d'/' -f1 || echo ""
-          '';
-
-          # Create wrapper that replaces ssh in PATH
-          sshWrapper = pkgs.symlinkJoin {
-            name = "ssh-wrapper";
-            paths = [ pkgs.openssh ];
-            postBuild = ''
-              rm $out/bin/ssh
-              cat > $out/bin/ssh << 'EOF'
-              #!${pkgs.bash}/bin/bash
-              LOCAL_IP=$(${getLocalIp})
-
-              if [[ "$*" =~ 192\.168\.68\. ]] && [ -n "$LOCAL_IP" ]; then
-                exec ${pkgs.openssh}/bin/ssh -b "$LOCAL_IP" "$@"
-              else
-                exec ${pkgs.openssh}/bin/ssh "$@"
-              fi
-              EOF
-              chmod +x $out/bin/ssh
-            '';
-          };
-
         in pkgs.mkShell {
           buildInputs = with pkgs; [
             nixfmt-rfc-style
@@ -196,15 +169,8 @@
             mkpasswd
             inetutils
           ] ++ [
-            sshWrapper  # This replaces openssh and provides our wrapper
             colmenaPkg
           ];
-
-          shellHook = ''
-            echo "NixOS Homelab deployment environment loaded (${system})"
-            echo "SSH wrapper with automatic bind address is active"
-            echo "Using SSH from: $(which ssh)"
-          '';
         };
       in {
         x86_64-linux.default = makeDevShell "x86_64-linux";

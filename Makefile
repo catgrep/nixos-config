@@ -6,6 +6,8 @@ COLMENA := colmena
 help:
 	@echo "Available targets:"
 	@echo "  info               - Show host info"
+	@echo "  dry-store-gc       - Nix store garbage collection (dry run)"
+	@echo "  store-gc           - Nix store garbage collection"
 	@echo "  devshell           - Enter devshell"
 	@echo "  build              - Build the NixOS configuration"
 	@echo "  home-switch        - Switch to the new home-manager config locally"
@@ -28,6 +30,12 @@ help:
 # Switch local configuration (for the machine you're running on)
 switch:
 	sudo nixos-rebuild switch --flake .
+
+dry-store-gc:
+	nix store gc -v --dry-run
+
+store-gc:
+	nix store gc --debug
 
 # Home manager switch
 home-switch:

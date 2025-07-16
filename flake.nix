@@ -194,6 +194,7 @@
             openssl
             sshpass
             mkpasswd
+            inetutils
           ] ++ [
             sshWrapper  # This replaces openssh and provides our wrapper
             colmenaPkg

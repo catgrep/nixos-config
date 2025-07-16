@@ -13,6 +13,8 @@
     tmux
     screen
     mosh
+    jq
+    yq
 
     # Funsies
     cowsay

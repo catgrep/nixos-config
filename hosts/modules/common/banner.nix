@@ -77,7 +77,7 @@ in {
 
         # Uptime & Load Average
         echo -e "''${BOLD}''${MAGENTA} == UPTIME & LOAD''${RESET}"
-        echo -e "''${CYAN}Uptime:     ''${GREEN}$(uptime | cut -f7 -d' ' | cut -f1 -d',')''${RESET}"
+        echo -e "''${CYAN}Uptime:     ''${GREEN}$(uptime | cut -f2 -d'p' | cut -f1 -d',' | tr -d ' ')''${RESET}"
         echo -e "''${CYAN}Users:      ''${GREEN}$(uptime | cut -f2 -d',' | cut -f3- -d' ')''${RESET}"
         echo -e "''${CYAN}Load Avg:   ''${GREEN}$(uptime | cut -f5 -d':' | cut -f2- -d' ')''${RESET}"
         echo

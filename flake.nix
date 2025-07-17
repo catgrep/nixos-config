@@ -24,9 +24,24 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nixos-raspberrypi = {
+      url = "github:nvmd/nixos-raspberrypi/main";
+      # Don't follow nixpkgs - let it use its own fork, since it extends the deprecated
+      # boot.loader.raspberryPi option in nixpkgs with one provided by nixos-raspberrypi
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, impermanence, sops-nix, colmena,... }@inputs:
+  nixConfig = {
+    extra-substituters = [
+      "https://nixos-raspberrypi.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI="
+    ];
+  };
+
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, impermanence, sops-nix, colmena, nixos-raspberrypi, ... }@inputs:
     let
       # Helper function to create a nixos system configuration
       mkSystem = { hostname, system ? "x86_64-linux", modules ? [] }:
@@ -83,16 +98,48 @@
           ];
         };
 
-        # Keep existing nixhost for compatibility during transition
-        # nixhost = mkSystem {
-        #   hostname = "nixhost";
-        # };
+        # DNS Server (Raspberry Pi 5)
+        pi5 = nixos-raspberrypi.lib.nixosSystem {
+          # Pass all inputs as specialArgs
+          specialArgs = {
+            inherit inputs;
+            inherit nixos-raspberrypi disko impermanence sops-nix;
+          };
+          modules = [
+            # Base Pi5 support
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
+
+            # Your configuration
+            ./hosts/pi5/configuration.nix
+            ./hosts/pi5/configtxt.nix
+            ./hosts/modules/common
+            ./hosts/modules/servers
+            ./hosts/modules/dns
+
+            # Disko support
+            disko.nixosModules.disko
+
+            # Sops support
+            sops-nix.nixosModules.sops
+
+            # Optional: Use specific kernel version
+            ({ config, pkgs, lib, ... }: let
+              kernelBundle = pkgs.linuxAndFirmware.v6_6_74;  # Use a newer version
+            in {
+              boot = {
+                loader.raspberryPi.firmwarePackage = kernelBundle.raspberrypifw;
+                kernelPackages = kernelBundle.linuxPackages_rpi5;
+              };
+            })
+          ];
+        };
 
         # Provisioning targets - just use the same configs
         # nixos-anywhere will handle the installation
         "provisioning-beelink" = self.nixosConfigurations.beelink;
         "provisioning-firebat" = self.nixosConfigurations.firebat;
-        "provisioning-pi4" = self.nixosConfigurations.pi4;
+        "provisioning-pi5" = self.nixosConfigurations.pi5;
       };
 
       # Colmena deployment configuration
@@ -135,17 +182,46 @@
           };
           imports = self.nixosConfigurations.firebat._module.args.modules;
         };
-        # Raspberry Pi 4 DNS
-        pi4 = {
+        # Raspberry Pi 5 DNS - needs special handling for colmena
+        pi5 = {
           deployment = {
-            targetHost = "pi4.local"; # Assuming this one has correct hostname
+            targetHost = "pi5.local";
             targetUser = "bdhill";
-            buildOnTarget = true; # Essential for ARM
+            buildOnTarget = true;
             allowLocalDeployment = true;
-            tags = [ "dns" "arm" ];
+            tags = [ "dns" "arm" "raspberrypi" ];
           };
-          imports = self.nixosConfigurations.pi4._module.args.modules;
+          imports = [
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
+            ./hosts/pi5/configuration.nix
+            ./hosts/pi5/configtxt.nix
+            ./hosts/modules/common
+            ./hosts/modules/servers
+            ./hosts/modules/dns
+            disko.nixosModules.disko
+            sops-nix.nixosModules.sops
+          ];
+          nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;
         };
+      };
+
+      # Add SD card image builder for Raspberry Pi 5
+      # Add SD card image builder
+      images = {
+        pi5-installer = (nixos-raspberrypi.lib.nixosSystemInstaller {
+          specialArgs = inputs;
+          modules = [
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
+            nixos-raspberrypi.nixosModules.sd-image
+            ({ config, pkgs, lib, ... }: {
+              users.users.nixos.openssh.authorizedKeys.keys = [
+                "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDCleOKn5PTvChYNXoKIJ0bleq3EYn9ZyT0sL7qnc3jV4Gc2JoR0gk3yGL0FG/TGn5/cQ59bh8JPSQxmAG2DDzXhyztfK7bINCL+l7ESCciSdIOrhZHS+oeEZzrKyZFBJd0kC+YgoUMvMbyK/xqdMyc5uww50cAqORFX55g7sW0p6KGjVydQEU6Vbi9Dwmt9Ldt0sBBudLO0O+DDwFcort1l5hWurXFWxQWQQhhkm3OIk+5KPuwfbMgJp/YteD8UbsO9s7dhBMasqF8ybzYH7T7hBJNERZWMiyrkzdVY0kyytlFBDCQvCjlS3Vp8SfV+6XkGnHu9sl1bj72iaFYPj4QkggjhEBF6gumMpUBr95hDvECLKtfP2SZ3S5NXjIcJGEltgmd28CItLLYbqA3ENGrkunQyyowBFjMyxvcREFiTmr+FdKwYPdu23UAFQj5WrJPRjiuDuHK9jjW4jMzymaYnYqwsXp6lFAjfe0+mdY9/UqUNyfK7RUY9M+cwJ4YZ4E= bobby@bob-mac.local"
+              ];
+              users.users.root.openssh.authorizedKeys.keys = config.users.users.nixos.openssh.authorizedKeys.keys;
+            })
+          ];
+        }).config.system.build.sdImage;
       };
 
       # Development shells - platform agnostic

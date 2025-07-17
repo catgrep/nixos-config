@@ -5,92 +5,31 @@ COLMENA := colmena
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  info               - Show host info"
-	@echo "  dry-store-gc       - Nix store garbage collection (dry run)"
-	@echo "  store-gc           - Nix store garbage collection"
-	@echo "  devshell           - Enter devshell"
-	@echo "  build              - Build the NixOS configuration"
-	@echo "  home-switch        - Switch to the new home-manager config locally"
-	@echo "  switch             - Switch to the new configuration locally"
-	@echo "  test-build-HOST    - Test build configuration for HOST"
-	@echo "  test-build-all     - Test build all configurations"
-	@echo "  dry-apply-HOST     - Deploy to specific HOST using Colmena (dry run)"
-	@echo "  dry-apply-all      - Deploy to all hosts using Colmena (dry run)"
-	@echo "  apply-HOST         - Deploy to specific HOST using Colmena"
-	@echo "  apply-all          - Deploy to all hosts using Colmena"
-	@echo "  exec-hosts         - Execute command on hosts"
-	@echo "  deploy-all         - Deploy to all hosts"
-	@echo "  update             - Update flake inputs"
-	@echo "  check              - Check flake and run basic tests"
-	@echo "  format             - Format Nix files"
-	@echo "  clean              - Clean build artifacts"
-	@echo "  setup-host HOST    - Initial setup for a new host"
-	@echo "  diff HOST          - Show configuration diff for host"
-
-# Switch local configuration (for the machine you're running on)
-switch:
-	sudo nixos-rebuild switch --flake .
-
-dry-store-gc:
-	nix store gc -v --dry-run
-
-store-gc:
-	nix store gc --debug
-
-# Home manager switch
-home-switch:
-	nix run home-manager -- switch --flake ./home-manager
+	@echo "= Nix Development"
+	@echo "  devshell          - Enter devshell"
+	@echo "  update            - Update flake inputs"
+	@echo "  check             - Check flake and run basic tests"
+	@echo "  format            - Format Nix files"
+	@echo "  home-switch       - Switch to the new home-manager config locally"
+	@echo "  flake-info        - Show flake info"
+	@echo "  dry-store-gc      - Nix store garbage collection (dry run)"
+	@echo "  store-gc          - Nix store garbage collection"
+	@echo ""
+	@echo "= Host Access"
+	@echo "  status            - Ping hosts to check if they are up"
+	@echo "  deploy-info       - Show colmena deploy info"
+	@echo "  ssh-HOST          - SSH into host"
+	@echo ""
+	@echo "= Deployment (use 'all' for all hosts)"
+	@echo "  setup-HOST        - Initial setup for a new host"
+	@echo "  diff-HOST         - Show configuration diff for host"
+	@echo "  build-HOST        - Build HOST configuration on HOST"
+	@echo "  dry-apply-HOST    - Deploy to specific HOST using Colmena (dry run)"
+	@echo "  apply-HOST        - Deploy to specific HOST using Colmena"
 
 # Home-manager dev shell
 devshell:
 	nix develop
-
-# Test builds without deploying
-test-build-%:
-	@echo "Test building configuration for $*..."
-	$(COLMENA) build --on $*
-
-dry-apply-%:
-	@echo "[DRYRUN] Deploying to $* using Colmena..."
-	$(COLMENA) apply dry-activate --on $* --verbose
-
-dry-apply-all:
-	@echo "Deploying to all hosts using Colmena..."
-	$(COLMENA) apply dry-activate --verbose
-
-# Colmena deployment commands
-apply-%:
-	@echo "Deploying to $* using Colmena..."
-	$(COLMENA) apply --reboot --on $* --verbose
-
-apply-all:
-	@echo "Deploying to all hosts using Colmena..."
-	$(COLMENA) apply --reboot --verbose
-
-# Deploy by tag
-apply-tag-%:
-	@echo "Deploying to all hosts with tag '$*'..."
-	$(COLMENA) apply --on @$* --verbose
-
-# Execute command on hosts
-exec-hosts:
-	@if [ -z "$(CMD)" ]; then \
-		echo "Usage: make colmena-exec CMD='command to run'"; \
-		exit 1; \
-	fi
-	$(COLMENA) exec -- $(CMD)
-
-# Show deployment info
-deploy-info:
-	$(COLMENA) eval -E 'nodes: builtins.attrNames nodes'
-
-test-build-all:
-	@echo "Test building all configurations..."
-	$(COLMENA) build
-
-# Deploy to all hosts
-deploy-all: apply-all
-	@echo "Deployment to all hosts completed!"
 
 # Update flake inputs
 update:
@@ -113,73 +52,21 @@ format:
 	find . -name "*.nix" -exec nixfmt {} \;
 	@echo "✓ All Nix files formatted"
 
-# Clean build artifacts
-clean:
-	nix-collect-garbage -d
+# Home manager switch
+home-switch:
+	nix run home-manager -- switch --flake ./home-manager
+
+# Show flake info
+flake-info:
+	nix flake show
+
+dry-store-gc:
+	nix store gc -v --dry-run
+	@echo "✓ Garbage collection completed (dry run)"
+
+store-gc:
+	nix store gc --debug
 	@echo "✓ Garbage collection completed"
-
-# Show configuration diff for a host
-diff:
-	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make diff HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi4"; \
-		exit 1; \
-	fi
-	nixos-rebuild dry-run --flake .#$(HOST) --target-host $(HOST).local
-
-# Initial setup for a new host
-setup-host:
-	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make setup-host HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi4"; \
-		exit 1; \
-	fi
-	@echo "Setting up $(HOST)..."
-	@echo "1. Ensure the host is accessible via SSH at $(HOST).local"
-	@echo "2. Installing Nix on the target if needed..."
-	@# ssh root@$(HOST).local "curl -L https://nixos.org/nix/install | sh -s -- --daemon" || true
-	@echo "3. Deploying NixOS configuration..."
-	nixos-rebuild switch --flake .#$(HOST) --target-host $(HOST).local --use-remote-sudo --build-host localhost
-	@echo "✓ $(HOST) setup completed!"
-
-# Build specific host configuration
-build-host:
-	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make build-host HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi4"; \
-		exit 1; \
-	fi
-	nix build .#nixosConfigurations.$(HOST).config.system.build.toplevel
-
-# Test deploy (dry run)
-test-deploy:
-	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make test-deploy HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi4"; \
-		exit 1; \
-	fi
-	nixos-rebuild dry-run --flake .#$(HOST) --target-host $(HOST).local
-
-# Install prerequisites on a fresh NixOS system
-install-prereqs:
-	nix-env -iA nixpkgs.git nixpkgs.nixfmt-rfc-style
-
-# SSH into hosts for debugging
-ssh-beelink:
-	ssh bdhill@beelink.local
-
-ssh-firebat:
-	ssh bdhill@firebat.local
-
-ssh-pi4:
-	ssh bdhill@pi4.local
-
-# Show system information for all hosts
-info:
-	@echo "=== Homelab Host Information ==="
-	@echo "Beelink (Media Server): AMD Ryzen 7 8745HS, 64GB RAM, ZFS RAID 10"
-	@echo "Firebat (Gateway): AMD Ryzen 7 6800H, 32GB RAM, Load Balancer/Monitoring"
-	@echo "Pi4 (DNS): Raspberry Pi 4B, 8GB RAM, AdGuard Home DNS"
 
 # Quick status check
 status:
@@ -188,25 +75,76 @@ status:
 	@ping -c 1 firebat.local >/dev/null 2>&1 && echo "✓ Firebat: Online" || echo "✗ Firebat: Offline"
 	@ping -c 1 pi4.local >/dev/null 2>&1 && echo "✓ Pi4: Online" || echo "✗ Pi4: Offline"
 
-# Development helpers
-dev-shell:
-	nix develop
+# Show deployment info
+deploy-info:
+	$(COLMENA) eval -E 'nodes: builtins.attrNames nodes'
 
-# Show flake info
-flake-info:
-	nix flake show
+# SSH into hosts for debugging
+ssh-%:
+	ssh bdhill@$*.local
 
-# Backup configurations
-backup-configs:
-	@mkdir -p backups/$(shell date +%Y-%m-%d)
-	@cp -r hosts/ backups/$(shell date +%Y-%m-%d)/
-	@cp flake.nix flake.lock backups/$(shell date +%Y-%m-%d)/
-	@echo "✓ Configurations backed up to backups/$(shell date +%Y-%m-%d)/"
+# Initial setup for a new host
+setup-%:
+	@echo "Setting up $*..."
+	@echo "1. Ensure the host is accessible via SSH at $*.local"
+	@echo "2. Installing Nix on the target if needed..."
+	@# ssh root@$*.local "curl -L https://nixos.org/nix/install | sh -s -- --daemon" || true
+	@echo "3. Deploying NixOS configuration..."
+	nixos-rebuild switch --flake .#$* --target-host $*.local --use-remote-sudo --build-host localhost
+	@echo "✓ $* setup completed!"
+
+# Show configuration diff for a host
+diff-%:
+	nixos-rebuild dry-run --flake .#$* --target-host $(HOST).local
+
+# Test builds without deploying
+build-%:
+	@echo "Test building configuration for $*..."
+	$(COLMENA) build --on $*
+
+build-all:
+	@echo "Test building all configurations..."
+	$(COLMENA) build
+
+# Build specific host configuration
+build-host: host-arg
+	@if [ -z "$(HOST)" ]; then \
+		echo "Usage: make build-host HOST=<hostname>"; \
+		echo "Available hosts: beelink, firebat, pi4"; \
+		exit 1; \
+	fi
+	nix build .#nixosConfigurations.$(HOST).config.system.build.toplevel
+
+dry-apply-%:
+	@echo "[DRYRUN] Deploying to $* using Colmena..."
+	$(COLMENA) apply dry-activate --on $* --verbose
+
+dry-apply-all:
+	@echo "Deploying to all hosts using Colmena..."
+	$(COLMENA) apply dry-activate --verbose
+
+# Colmena deployment commands
+apply-%:
+	@echo "Deploying to $* using Colmena..."
+	$(COLMENA) apply --reboot --on $* --verbose
+
+apply-all:
+	@echo "Deploying to all hosts using Colmena..."
+	$(COLMENA) apply --reboot --verbose
+
+# Test deploy (dry run)
+test-deploy-%:
+	nixos-rebuild dry-run --flake .#$* --target-host $*.local
 
 # provision-new-host
-provision-new-host/%:
-	@echo "Provisioning new host '$^'..."
-	@./provision/nixos-anywhere-bootstrap.sh $^ --generate-hardware
+provision-new-host:
+	@if [ -z "$(HOST)" ]; then \
+		echo "Usage: make TARGET HOST=<hostname>"; \
+		echo "Available hosts: beelink, firebat, pi5"; \
+		exit 1; \
+	fi
+	@echo "Provisioning new host '$*'..."
+	@./provision/nixos-anywhere-bootstrap.sh $* --generate-hardware
 
 # clean-reboot
 clean-reboot/%:

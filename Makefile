@@ -26,6 +26,10 @@ help:
 	@echo "  build-HOST        - Build HOST configuration on HOST"
 	@echo "  dry-apply-HOST    - Deploy to specific HOST using Colmena (dry run)"
 	@echo "  apply-HOST        - Deploy to specific HOST using Colmena"
+	@echo ""
+	@echo "= Raspberry Pi"
+	@echo "  build-image-HOST  - Build Arm64 image for Raspberry Pi"
+	@echo "  wsd-HOST DEVICE   - Write Arm64 image for Raspberry Pi to SD card"
 
 # Home-manager dev shell
 devshell:
@@ -135,6 +139,30 @@ apply-all:
 # Test deploy (dry run)
 test-deploy-%:
 	nixos-rebuild dry-run --flake .#$* --target-host $*.local
+
+# Build SD card image for Pi5
+build-image-%:
+	@echo "Building $* image..."
+	nix build .#images.$*
+	@echo "Image built at: ./result/sd-image/*.img"
+
+# Write image to SD card
+wsd-%:
+	@if [ -z "$(DEVICE)" ]; then \
+		echo "Usage: make wsd-HOST DEVICE=/dev/device"; \
+		echo "Available hosts: beelink, firebat, pi5"; \
+		exit 1; \
+	fi
+	@echo "Writing image to $(DEVICE)..."
+	@echo "WARNING: This will erase all data on $(DEVICE)!"
+	@read -p "Continue? (y/N) " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		sudo dd if=./result/sd-image/*.img of=$(DEVICE) bs=4M status=progress conv=fsync; \
+		echo "Image written successfully!"; \
+	else \
+		echo "Aborted."; \
+	fi
 
 # provision-new-host
 provision-new-host:

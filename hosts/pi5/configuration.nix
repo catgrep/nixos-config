@@ -31,11 +31,6 @@
     ];
   };
 
-
-  # Enable specific services based on your needs
-  # For example, if this will be another DNS server:
-  services.adguardhome.enable = true;
-
   # Pi5-specific packages
   environment.systemPackages = with pkgs; [
     libraspberrypi

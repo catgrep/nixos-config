@@ -1,17 +1,18 @@
-# Raspberry Pi 4 SD card configuration
 { ... }:
 
 {
   disko.devices = {
     disk = {
-      sdcard = {
+      main = {
         type = "disk";
-        # Typically mmcblk0 for SD cards on Pi
-        device = "/dev/mmcblk0"; # UPDATE if using USB drive instead
+        # For SD card use: /dev/mmcblk0
+        # For NVMe use: /dev/nvme0n1
+        # Or use by-id for more stability
+        device = "/dev/mmcblk0"; # Update based on your storage
         content = {
           type = "gpt";
           partitions = {
-            # Pi needs a specific firmware partition
+            # Firmware partition (required for Pi bootloader)
             firmware = {
               size = "512M";
               type = "EF00";
@@ -19,17 +20,25 @@
                 type = "filesystem";
                 format = "vfat";
                 mountpoint = "/boot/firmware";
-                mountOptions = [ "nofail" "noauto" ];
+                mountOptions = [ "umask=0077" ];
               };
             };
+            # Optional swap
+            swap = {
+              size = "4G";
+              content = {
+                type = "swap";
+                randomEncryption = true;
+              };
+            };
+            # Root partition
             root = {
               size = "100%";
               content = {
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/";
-                # SD card optimizations
-                mountOptions = [ "noatime" "nodiratime" ];
+                mountOptions = [ "noatime" ];
               };
             };
           };

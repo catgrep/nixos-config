@@ -63,21 +63,6 @@
             sops-nix.nixosModules.sops
           ] ++ modules;
         };
-
-      # Helper for creating headless installer images
-      mkPiInstaller = { piVersion, extraModules ? [] }:
-        (
-          nixos-raspberrypi.lib.nixosInstaller {
-          specialArgs = {
-            inherit inputs;
-            inherit nixos-raspberrypi;
-          };
-          modules = [
-            nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".base
-            nixos-raspberrypi.nixosModules.sd-image
-            ./hosts/modules/raspberrypi/installer.nix
-          ] ++ extraModules;
-        }).config.system.build.sdImage;
     in
     {
       nixosConfigurations = {
@@ -227,10 +212,24 @@
         };
       };
 
-      # Add SD card image builders
-      images = {
-        pi4-installer = mkPiInstaller { piVersion = "4"; };
-        pi5-installer = mkPiInstaller { piVersion = "5"; };
+      # Add minimally configured SD card image builders
+      # (these are pre-builts provided by nixos-raspberrypi)
+      installerConfigurations = {
+        rpi4 = (nixos-raspberrypi.lib.nixosInstaller {
+          specialArgs = inputs;
+          modules = [
+            nixos-raspberrypi.nixosModules.raspberry-pi-4.base
+            ./hosts/modules/raspberrypi/custom-user-config.nix
+          ];
+        }).config.system.build.sdImage;
+
+        rpi5 = (nixos-raspberrypi.lib.nixosInstaller {
+          specialArgs = inputs;
+          modules = [
+            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
+            ./hosts/modules/raspberrypi/custom-user-config.nix
+          ];
+        }).config.system.build.sdImage;
       };
 
       # Development shells - platform agnostic

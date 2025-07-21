@@ -1,0 +1,7 @@
+ssh://bdhill@beelink.local?ssh-key=/Users/bobby/.ssh/id_rsa x86_64-linux
+
+ssh://bdhill@firebat.local?ssh-key=/Users/bobby/.ssh/id_rsa x86_64-linux
+
+ssh://bdhill@pi4.local?ssh-key=/Users/bobby/.ssh/id_rsa aarch64-linux
+
+ssh://bdhill@pi5.local?ssh-key=/Users/bobby/.ssh/id_rsa aarch64-linux

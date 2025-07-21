@@ -36,6 +36,16 @@ Install `nixfmt`:
 nix-env -i -f https://github.com/NixOS/nixfmt/archive/master.tar.gz
 ```
 
+Add `/etc/nix/nix.custom.conf` and:
+1) add builder machines to `/etc/nix/machines`
+2) add any `extra-substituters`
+
+See `./etc/nix` for examples.
+
+After updating config files, restart the nix daemon with:
+```
+sudo launchctl kickstart -k system/org.nixos.nix-daemon
+```
 
 # macOS Local Network Connectivity Troubleshooting Guide
 

@@ -9,6 +9,7 @@ help:
 	@echo "= Nix Development"
 	@echo "  devshell          - Enter devshell"
 	@echo "  update            - Update flake inputs"
+	@echo "  update-nix-conf   - Update '/etc/nix' with './etc/nix'"
 	@echo "  check             - Check flake and run basic tests"
 	@echo "  format            - Format Nix files"
 	@echo "  home-switch       - Switch to the new home-manager config locally"
@@ -41,6 +42,17 @@ update:
 	nix flake update
 	nix flake update --flake ./home-manager
 	@echo "Flake inputs updated. Consider running 'make deploy-all' to apply updates."
+
+update-nix-conf:
+	@echo "Backing up '/etc/nix/machines'"; \
+	cp -v /etc/nix/machines /etc/nix/machines.old; \
+	echo "Updating '/etc/nix/machines'"; \
+	cp -v ./etc/nix/machines /etc/nix/machines; \
+	echo "Backing up '/etc/nix/nix.custom.conf'"; \
+	cp -v /etc/nix/nix.custom.conf /etc/nix/nix.custom.conf.old; \
+	echo "Updating '/etc/nix/nix.custom.conf'"; \
+	cp -v ./etc/nix/nix.custom.conf /etc/nix/nix.custom.conf
+	launchctl kickstart -k system/systems.determinate.nix-daemon
 
 # Check flake and run basic tests
 check:
@@ -142,33 +154,47 @@ test-deploy-%:
 	nixos-rebuild dry-run --flake .#$* --target-host $*.local
 
 # Build SD card image for Pi5
-build-image-%:
-	@if [ -z "$(BUILDER)" ]; then \
-		echo "Usage: make build-image-HOST BUILDER=linux-host"; \
-		echo "Available hosts: $(HOSTS)"; \
-		exit 1; \
-	fi
-	@echo "Building $* image..."
-	nix build .#images.$*-installer
-	@echo "Image built at: ./result/sd-image/*.img"
+NIX_DOCKER_VOLUME ?= nix-store-cache
 
-# Write image to SD card
-wsd-%:
+build-image-%:
+	@echo "Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"; \
+	if ! docker volume inspect $(NIX_DOCKER_VOLUME) >/dev/null 2>&1; then \
+		echo "Creating Docker volume $(NIX_DOCKER_VOLUME)..."; \
+		docker volume create $(NIX_DOCKER_VOLUME); \
+	else \
+		echo "Docker volume $(NIX_DOCKER_VOLUME) already exists."; \
+	fi; \
+	\
+	local pihost="$*"; \
+	local tag="nixos-pi$${PI_VERSION}-image"; \
+	\
+	echo "Building Raspberry Pi $$version image..."; \
+	DOCKER_BUILDKIT=1 docker build \
+		--build-arg PI_HOST="$$pihost" \
+		--output=result \
+		-t "$$tag" .; \
+	echo "Image build complete. Output in ./result/pi$$version-installer"
+
+# Write to SD card
+write-sd-%:
 	@if [ -z "$(DEVICE)" ]; then \
-		echo "Usage: make wsd-HOST DEVICE=/dev/device"; \
-		echo "Available hosts: $(HOSTS)"; \
+		echo "Usage: make write-sd-$* DEVICE=/dev/diskX"; \
 		exit 1; \
 	fi
-	@echo "Writing image to $(DEVICE)..."
+	@if [ ! -d "./result" ]; then \
+		echo "No image found. Run 'make build-image-$*' first"; \
+		exit 1; \
+	fi
+	@echo "Writing $* image to $(DEVICE)..."
 	@echo "WARNING: This will erase all data on $(DEVICE)!"
-	@read -p "Continue? (y/N) " -n 1 -r; \
+	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		sudo dd if=./result/sd-image/*.img of=$(DEVICE) bs=4M status=progress conv=fsync; \
-		echo "Image written successfully!"; \
-	else \
-		echo "Aborted."; \
-	fi
+		zstd -d ./result/nixos-sd-image-r$*-uboot.img.zst -c | sudo dd of=$(DEVICE) bs=4M status=progress conv=fsync; \
+		echo "Done! The Pi will boot with SSH enabled."; \
+		echo "Default user: nixos"; \
+		echo "Your SSH key is already installed"; \
+	fi'
 
 # provision-new-host
 provision-new-host:

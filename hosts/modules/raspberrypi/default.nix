@@ -2,6 +2,6 @@
 
 {
   imports = [
-    ./installer.nix
+    ./custom-user-config.nix
   ];
 }

@@ -1,6 +1,7 @@
 SHELL := /bin/zsh
 .PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
 COLMENA := colmena
+HOSTS := beelink firebat pi4 pi5
 
 # Default target
 help:
@@ -45,11 +46,11 @@ update:
 check:
 	nix flake check
 	@echo "✓ Flake check passed"
-	@echo "Testing host configurations..."
-	nix build .#nixosConfigurations.beelink.config.system.build.toplevel --dry-run
-	nix build .#nixosConfigurations.firebat.config.system.build.toplevel --dry-run
-	nix build .#nixosConfigurations.pi4.config.system.build.toplevel --dry-run
-	@echo "✓ All host configurations are valid"
+	@echo "Testing host configurations..."; \
+	for host in $(HOSTS); do \
+	    nix build .#nixosConfigurations."$$host".config.system.build.toplevel --dry-run; \
+    done; \
+	echo "✓ All host configurations are valid"
 
 # Format Nix files
 format:
@@ -74,10 +75,10 @@ store-gc:
 
 # Quick status check
 status:
-	@echo "Checking host connectivity..."
-	@ping -c 1 beelink.local >/dev/null 2>&1 && echo "✓ Beelink: Online" || echo "✗ Beelink: Offline"
-	@ping -c 1 firebat.local >/dev/null 2>&1 && echo "✓ Firebat: Online" || echo "✗ Firebat: Offline"
-	@ping -c 1 pi4.local >/dev/null 2>&1 && echo "✓ Pi4: Online" || echo "✗ Pi4: Offline"
+	@echo "Checking host connectivity..."; \
+	for host in $(HOSTS); do \
+	    ping -c 1 "$$host.local" >/dev/null 2>&1 && echo "✓ $$host: Online" || echo "✗ $$host: Offline"; \
+    done
 
 # Show deployment info
 deploy-info:
@@ -142,15 +143,20 @@ test-deploy-%:
 
 # Build SD card image for Pi5
 build-image-%:
+	@if [ -z "$(BUILDER)" ]; then \
+		echo "Usage: make build-image-HOST BUILDER=linux-host"; \
+		echo "Available hosts: $(HOSTS)"; \
+		exit 1; \
+	fi
 	@echo "Building $* image..."
-	nix build .#images.$*
+	nix build .#images.$*-installer
 	@echo "Image built at: ./result/sd-image/*.img"
 
 # Write image to SD card
 wsd-%:
 	@if [ -z "$(DEVICE)" ]; then \
 		echo "Usage: make wsd-HOST DEVICE=/dev/device"; \
-		echo "Available hosts: beelink, firebat, pi5"; \
+		echo "Available hosts: $(HOSTS)"; \
 		exit 1; \
 	fi
 	@echo "Writing image to $(DEVICE)..."

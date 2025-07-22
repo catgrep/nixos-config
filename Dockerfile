@@ -7,7 +7,7 @@ COPY hosts ./hosts/
 
 # Build specified Pi image
 ARG PI_HOST=pi5
-RUN nix build .#installerConfigurations.r${PI_HOST} \
+RUN nix build .#installerConfigurations.${PI_HOST} \
     --extra-experimental-features "nix-command flakes" \
     --accept-flake-config \
     --out-link /tmp/result

@@ -215,7 +215,7 @@
       # Add minimally configured SD card image builders
       # (these are pre-builts provided by nixos-raspberrypi)
       installerConfigurations = {
-        rpi4 = (nixos-raspberrypi.lib.nixosInstaller {
+        pi4 = (nixos-raspberrypi.lib.nixosInstaller {
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
@@ -223,7 +223,7 @@
           ];
         }).config.system.build.sdImage;
 
-        rpi5 = (nixos-raspberrypi.lib.nixosInstaller {
+        pi5 = (nixos-raspberrypi.lib.nixosInstaller {
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-5.base

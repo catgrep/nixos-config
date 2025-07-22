@@ -166,17 +166,26 @@ test-deploy-%:
 
 # Build SD card image for Pi5
 NIX_DOCKER_VOLUME ?= nix-store-cache
-
-build-image-%:
-	@local pihost="$*"; \
+linux-arm64-img-%:
+	@echo "Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"; \
+	docker volume create $(NIX_DOCKER_VOLUME) || true; \
+	\
+	local pihost="$*"; \
 	local tag="nixos-$${pihost}-image"; \
 	\
 	echo "Building Raspberry Pi $$tag image..."; \
-	DOCKER_BUILDKIT=1 docker build \
-		--build-arg PI_HOST="$$pihost" \
-		--output=result \
-		-t "$$tag" .; \
-	echo "Image build complete. Output in ./result/pi$$version-installer"
+	docker run --rm \
+		-v $(NIX_DOCKER_VOLUME):/nix \
+		-v $(PWD):/build:ro \
+		-v $(PWD)/result:/output:rw \
+		-w /build \
+		nixos/nix:2.30.1-arm64 \
+		sh -c "nix build .#installerConfigurations.$* \
+			--extra-experimental-features 'nix-command flakes' \
+			--accept-flake-config \
+			--out-link /tmp/result && \
+			cp -L /tmp/result/sd-image/*.img.zst /output/$*-installer.img.zst"
+	echo "Image build complete. Output in /result/$*-installer.img.zst"
 
 # Write image to SD card
 write-sd-%:

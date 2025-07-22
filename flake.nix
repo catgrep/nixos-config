@@ -219,7 +219,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            ./hosts/modules/raspberrypi/custom-user-config.nix
+            ./hosts/modules/raspberrypi/minimal-installer-config.nix
           ];
         }).config.system.build.sdImage;
 
@@ -227,7 +227,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            ./hosts/modules/raspberrypi/custom-user-config.nix
+            ./hosts/modules/raspberrypi/minimal-installer-config.nix
           ];
         }).config.system.build.sdImage;
       };

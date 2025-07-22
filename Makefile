@@ -157,28 +157,20 @@ test-deploy-%:
 NIX_DOCKER_VOLUME ?= nix-store-cache
 
 build-image-%:
-	@echo "Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"; \
-	if ! docker volume inspect $(NIX_DOCKER_VOLUME) >/dev/null 2>&1; then \
-		echo "Creating Docker volume $(NIX_DOCKER_VOLUME)..."; \
-		docker volume create $(NIX_DOCKER_VOLUME); \
-	else \
-		echo "Docker volume $(NIX_DOCKER_VOLUME) already exists."; \
-	fi; \
+	@local pihost="$*"; \
+	local tag="nixos-$${pihost}-image"; \
 	\
-	local pihost="$*"; \
-	local tag="nixos-pi$${PI_VERSION}-image"; \
-	\
-	echo "Building Raspberry Pi $$version image..."; \
+	echo "Building Raspberry Pi $$tag image..."; \
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg PI_HOST="$$pihost" \
 		--output=result \
 		-t "$$tag" .; \
 	echo "Image build complete. Output in ./result/pi$$version-installer"
 
-# Write to SD card
+# Write image to SD card
 write-sd-%:
 	@if [ -z "$(DEVICE)" ]; then \
-		echo "Usage: make write-sd-$* DEVICE=/dev/diskX"; \
+		echo "Usage: make write-sd-$* DEVICE=/dev/rdiskX"; \
 		exit 1; \
 	fi
 	@if [ ! -d "./result" ]; then \
@@ -186,11 +178,15 @@ write-sd-%:
 		exit 1; \
 	fi
 	@echo "Writing $* image to $(DEVICE)..."
+	@sudo fdisk $(DEVICE)
 	@echo "WARNING: This will erase all data on $(DEVICE)!"
 	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		zstd -d ./result/nixos-sd-image-r$*-uboot.img.zst -c | sudo dd of=$(DEVICE) bs=4M status=progress conv=fsync; \
+		if [ ! -f './result/$*-image.img' ]; then \
+	        zstd -d ./result/nixos-sd-image-r$*-uboot.img.zst -o ./result/$*-image.img; \
+		fi; \
+	    sudo dd if=./result/$*-image.img of=$(DEVICE) bs=1M status=progress; \
 		echo "Done! The Pi will boot with SSH enabled."; \
 		echo "Default user: nixos"; \
 		echo "Your SSH key is already installed"; \

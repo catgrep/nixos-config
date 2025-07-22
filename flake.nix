@@ -56,8 +56,8 @@
           };
           modules = [
             ./hosts/${hostname}/configuration.nix
-            ./hosts/modules/common
-            ./hosts/modules/servers
+            ./modules/common
+            ./modules/servers
             disko.nixosModules.disko
             impermanence.nixosModules.impermanence
             sops-nix.nixosModules.sops
@@ -70,7 +70,7 @@
         beelink = mkSystem {
           hostname = "beelink";
           modules = [
-            ./hosts/modules/media
+            ./modules/media
           ];
         };
 
@@ -78,7 +78,7 @@
         firebat = mkSystem {
           hostname = "firebat";
           modules = [
-            ./hosts/modules/gateway
+            ./modules/gateway
           ];
         };
 
@@ -92,9 +92,9 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
             nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
             ./hosts/pi4/configuration.nix
-            ./hosts/modules/common
-            ./hosts/modules/servers
-            ./hosts/modules/dns
+            ./modules/common
+            ./modules/servers
+            ./modules/dns
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -111,8 +111,8 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
             ./hosts/pi5/configuration.nix
             ./hosts/pi5/configtxt.nix
-            ./hosts/modules/common
-            ./hosts/modules/servers
+            ./modules/common
+            ./modules/servers
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -181,9 +181,9 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
             ./hosts/pi5/configuration.nix
             ./hosts/pi5/configtxt.nix
-            ./hosts/modules/common
-            ./hosts/modules/servers
-            ./hosts/modules/dns
+            ./modules/common
+            ./modules/servers
+            ./modules/dns
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -203,8 +203,8 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
             ./hosts/pi5/configuration.nix
             ./hosts/pi5/configtxt.nix
-            ./hosts/modules/common
-            ./hosts/modules/servers
+            ./modules/common
+            ./modules/servers
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -219,7 +219,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            ./hosts/modules/raspberrypi/minimal-installer-config.nix
+            ./modules/raspberrypi/minimal-installer-config.nix
           ];
         }).config.system.build.sdImage;
 
@@ -227,7 +227,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            ./hosts/modules/raspberrypi/minimal-installer-config.nix
+            ./modules/raspberrypi/minimal-installer-config.nix
           ];
         }).config.system.build.sdImage;
       };

@@ -197,19 +197,21 @@ write-arm64-sd-%:
 		echo "No image found. Run 'make build-image-$*' first"; \
 		exit 1; \
 	fi
-	@echo "Writing $* image to $(DEVICE)..."
 	@sudo fdisk $(DEVICE)
-	@echo "WARNING: This will erase all data on $(DEVICE)!"
+	@echo "$(BOLD)$(YELLOW)WARNING: This will erase all data on $(DEVICE)!$(RESET)"
 	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		if [ ! -f './result/$*-image.img' ]; then \
-	        zstd -d ./result/nixos-sd-image-r$*-uboot.img.zst -o ./result/$*-image.img; \
+	    pi_img="./result/$*-installer.img"; \
+		echo "Uncompressing $$pi_img.zst..."; \
+		if [ ! -f "$${pi_img}" ]; then \
+	        zstd -d "$${pi_img}.zst" -o "$${pi_img}"; \
 		fi; \
-	    sudo dd if=./result/$*-image.img of=$(DEVICE) bs=1M status=progress; \
-		echo "Done! The Pi will boot with SSH enabled."; \
-		echo "Default user: nixos"; \
-		echo "Your SSH key is already installed"; \
+		echo "Begin writing $$pi_img to $(DEVICE)..."; \
+	    sudo dd if="$${pi_img}" of=$(DEVICE) bs=1M status=progress; \
+		echo "$(BOLD)$(GREEN)Done! The Pi will boot with SSH enabled.$(RESET)"; \
+		echo "$(BOLD)$(GREEN)Default user: nixos$(RESET)"; \
+		echo "$(BOLD)$(GREEN)Your SSH key is already installed$(RESET)"; \
 	fi'
 
 # provision-new-host

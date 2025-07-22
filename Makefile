@@ -2,7 +2,7 @@ SHELL := /bin/zsh
 MAKEFLAGS += --no-print-directory
 .PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
 COLMENA := colmena
-HOSTS := beelink firebat pi4 pi5
+HOSTS := $(shell ls ./hosts)
 
 BOLD  = \033[1m
 RED = \033[0;31m
@@ -188,7 +188,7 @@ linux-arm64-img-%:
 	echo "Image build complete. Output in /result/$*-installer.img.zst"
 
 # Write image to SD card
-write-sd-%:
+write-arm64-sd-%:
 	@if [ -z "$(DEVICE)" ]; then \
 		echo "Usage: make write-sd-$* DEVICE=/dev/rdiskX"; \
 		exit 1; \

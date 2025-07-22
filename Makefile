@@ -1,37 +1,48 @@
 SHELL := /bin/zsh
+MAKEFLAGS += --no-print-directory
 .PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
 COLMENA := colmena
 HOSTS := beelink firebat pi4 pi5
 
+BOLD  = \033[1m
+RED = \033[0;31m
+GREEN = \033[0;32m
+YELLOW = \033[0;33m
+BLUE = \033[0;34m
+BOLD = \033[1m
+RESET = \033[0m
+help_width = 30
+help_option = @printf "$(BOLD)$(GREEN)%-$(help_width)s$(RESET)%s\n" $(1) $(2)
 # Default target
 help:
-	@echo "Available targets:"
-	@echo "= Nix Development"
-	@echo "  devshell          - Enter devshell"
-	@echo "  update            - Update flake inputs"
-	@echo "  update-nix-conf   - Update '/etc/nix' with './etc/nix'"
-	@echo "  check             - Check flake and run basic tests"
-	@echo "  format            - Format Nix files"
-	@echo "  home-switch       - Switch to the new home-manager config locally"
-	@echo "  flake-info        - Show flake info"
-	@echo "  dry-store-gc      - Nix store garbage collection (dry run)"
-	@echo "  store-gc          - Nix store garbage collection"
+	@echo "🖥️  $(BUILD)$(YELLOW)HOSTS = $(HOSTS)$(RESET)"
 	@echo ""
-	@echo "= Host Access"
-	@echo "  status            - Ping hosts to check if they are up"
-	@echo "  deploy-info       - Show colmena deploy info"
-	@echo "  ssh-HOST          - SSH into host"
+	@echo "🧪 $(BOLD)$(BLUE)Nix Development$(RESET)"
+	$(call help_option,"devshell","Enter devshell")
+	$(call help_option,"update","Update flake inputs")
+	$(call help_option,"update-nix-conf","Update '/etc/nix' with './etc/nix'")
+	$(call help_option,"check","Check flake and run basic tests")
+	$(call help_option,"format","Format Nix files")
+	$(call help_option,"home-switch","Switch to the new home-manager config locally")
+	$(call help_option,"flake-info","Show flake info")
+	$(call help_option,"dry-store-gc","Nix store garbage collection (dry run)")
+	$(call help_option,"store-gc","Nix store garbage collection")
 	@echo ""
-	@echo "= Deployment (use 'all' for all hosts)"
-	@echo "  setup-HOST        - Initial setup for a new host"
-	@echo "  diff-HOST         - Show configuration diff for host"
-	@echo "  build-HOST        - Build HOST configuration on HOST"
-	@echo "  dry-apply-HOST    - Deploy to specific HOST using Colmena (dry run)"
-	@echo "  apply-HOST        - Deploy to specific HOST using Colmena"
+	@echo "🖥️  $(BOLD)$(BLUE)Host Access$(RESET)"
+	$(call help_option,"status","Ping hosts to check if they are up")
+	$(call help_option,"deploy-info","Show colmena deploy info")
+	$(call help_option,"ssh-HOST","SSH into host")
 	@echo ""
-	@echo "= Raspberry Pi"
-	@echo "  build-image-HOST  - Build Arm64 image for Raspberry Pi"
-	@echo "  wsd-HOST DEVICE   - Write Arm64 image for Raspberry Pi to SD card"
+	@echo "🔄 $(BOLD)$(BLUE)Deployment (use 'all' for all hosts)$(RESET)"
+	$(call help_option,"setup-HOST","Initial setup for a new host")
+	$(call help_option,"diff-HOST","Show configuration diff for host")
+	$(call help_option,"build-HOST","Build HOST configuration on HOST")
+	$(call help_option,"dry-apply-HOST","Deploy to specific HOST using Colmena (dry run)")
+	$(call help_option,"apply-HOST","Deploy to specific HOST using Colmena")
+	@echo ""
+	@echo "🍓 $(BOLD)$(BLUE)Raspberry Pi Builds$(RESET)"
+	$(call help_option,"linux-arm64-img-HOST","Build Arm64 image for Raspberry Pi using Docker")
+	$(call help_option,"write-arm64-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to SD card")
 
 # Home-manager dev shell
 devshell:

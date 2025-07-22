@@ -219,7 +219,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            ./modules/raspberrypi/minimal-installer-config.nix
+            ./modules/raspberrypi/headless-installer.nix
           ];
         }).config.system.build.sdImage;
 
@@ -227,7 +227,7 @@
           specialArgs = inputs;
           modules = [
             nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            ./modules/raspberrypi/minimal-installer-config.nix
+            ./modules/raspberrypi/headless-installer.nix
           ];
         }).config.system.build.sdImage;
       };

@@ -300,6 +300,7 @@
                   mkpasswd
                   inetutils
                   shellcheck
+                  nixos-anywhere
                 ]
                 ++ [
                   colmenaPkg

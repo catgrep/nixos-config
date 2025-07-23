@@ -140,7 +140,7 @@ libmain() {
 	local args
 	if ! args=$(menu "$@"); then
 		echo "$args"
-		return 1
+		return 0
 	fi
 
 	set -- $args

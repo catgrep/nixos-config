@@ -3,12 +3,16 @@ source ./scripts/common.sh
 
 set -euo pipefail
 
+cleanup_hook() {
+	install_failure_msg_hook
+}
+
 install_success_msg_hook() {
 	local hostname="$1"
 	local target_ip="$2"
 
 	echo ""
-	infomsg "✓ x86_64 Installation complete!"
+	infomsg "$0: ✓ x86_64 installation complete!"
 	echo ""
 	infomsg "Next steps:"
 	echo "1. System will reboot automatically"
@@ -18,7 +22,7 @@ install_success_msg_hook() {
 }
 
 install_failure_msg_hook() {
-	errmsg "x86_64 Installation failed!"
+	errmsg "$0: x86_64 installation failed!"
 }
 
 nixos_anywhere_run_hook() {
@@ -27,7 +31,7 @@ nixos_anywhere_run_hook() {
 	local target_ip="$3"
 
 	echo ""
-	msg "Running nixos-anywhere for x86_64..."
+	msg "$0: running nixos-anywhere for x86_64..."
 
 	nixos-anywhere \
 		--flake ".#provisioning-${hostname}" \
@@ -37,5 +41,5 @@ nixos_anywhere_run_hook() {
 		--debug
 }
 
-msg "=== x86_64 Provisioning ==="
+msg "=== x86_64 provisioning ==="
 libmain "$@"

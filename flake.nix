@@ -30,6 +30,10 @@
       # Don't follow nixpkgs - let it use its own fork, since it extends the deprecated
       # boot.loader.raspberryPi option in nixpkgs with one provided by nixos-raspberrypi
     };
+
+    nixos-images = {
+      url = "github:nix-community/nixos-images";
+    };
   };
 
   nixConfig = {
@@ -51,6 +55,7 @@
       sops-nix,
       colmena,
       nixos-raspberrypi,
+      nixos-images,
       ...
     }@inputs:
     let
@@ -262,6 +267,10 @@
               ./modules/installer/raspberrypi.nix
             ];
           }).config.system.build.sdImage;
+
+        # kexec installers for nixos-anywhere
+        aarch64-kexec = nixos-images.packages.aarch64-linux.kexec-installer-nixos-unstable;
+        x86_64-kexec = nixos-images.packages.x86_64-linux.kexec-installer-nixos-unstable;
       };
 
       # Development shells - platform agnostic

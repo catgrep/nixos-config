@@ -8,7 +8,7 @@
         # For SD card use: /dev/mmcblk0
         # For NVMe use: /dev/nvme0n1
         # Or use by-id for more stability
-        device = "/dev/disk/by-id/mmc-SK32G_0xd722200b"; # Update based on your storage
+        device = "/dev/disk/by-id/mmc-FD4Q9_0x687854a5"; # Update based on your storage
         content = {
           type = "gpt";
           partitions = {

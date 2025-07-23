@@ -196,16 +196,16 @@ write-arm64-sd-%:
 		$(call error_msg,"Usage: make write-sd-$* DEVICE=/dev/rdiskX"); \
 		exit 1; \
 	fi
-	@if [ ! -d "./result" ]; then \
-		$(call error_msg,"No image found. Run 'make $*-installer' first"); \
+	@if [ ! -f "./result/nixos-sd-image-r$*-uboot.img.zst" ] || [ ! -f "./result/nixos-kexec-installer-aarch64-linux.tar.gz" ]; then \
+		$(call error_msg,"No $* installer found. Run 'make $*-installer' first"); \
 		exit 1; \
 	fi
 	@sudo fdisk $(DEVICE)
-	@$(call info_msg,"WARNING: This will erase all data on $(DEVICE)!$(RESET)")
+	@$(call info_msg,"WARNING: This will erase all data on $(DEVICE)!")
 	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-	    pi_img="./result/$*-installer.img"; \
+	    pi_img="./result/nixos-sd-image-r$*-uboot.img"; \
 		$(call info_msg,"Uncompressing $$pi_img.zst..."); \
 		if [ ! -f "$${pi_img}" ]; then \
 	        zstd -d "$${pi_img}.zst" -o "$${pi_img}"; \
@@ -215,6 +215,7 @@ write-arm64-sd-%:
 		$(call success_msg,"Done! The Pi will boot with SSH enabled."); \
 		$(call info_msg,"Default user: nixos"); \
 		$(call info_msg,"Your SSH key is already installed"); \
+		$(call success_msg,"Safely eject '$(DEVICE)' and boot the $*"); \
 	fi'
 
 provision:

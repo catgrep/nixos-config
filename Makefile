@@ -179,55 +179,13 @@ test-deploy-%:
 # Build SD card image for Pi5
 NIX_DOCKER_VOLUME ?= nix-store-cache
 NIX_DOCKER_IMAGE ?= nixos/nix:2.30.1-arm64
-linux-arm64-img-%:
-	@echo "Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"; \
-	docker volume create $(NIX_DOCKER_VOLUME) || true; \
-	\
-	local pihost="$*"; \
-	local tag="nixos-$${pihost}-image"; \
-	\
-	echo "Building Raspberry Pi $$tag image..."; \
-	docker run --rm \
-		-v $(NIX_DOCKER_VOLUME):/nix \
-		-v $(PWD):/build:ro \
-		-v $(PWD)/result:/output:rw \
-		-w /build \
-		$(NIX_DOCKER_IMAGE) \
-		sh -c "nix build .#installerConfigurations.$* \
-			--extra-experimental-features 'nix-command flakes' \
-			--accept-flake-config \
-			--out-link /tmp/result && \
-			cp -L /tmp/result/sd-image/*.img.zst /output/$*-installer.img.zst"
-	echo "Image build complete. Output in /result/$*-installer.img.zst"
-
-# Common Docker build function
-# Usage: $(call docker-nix-build,<flake-attr>,<output-pattern>,<output-name>)
-define docker-nix-build
-$(call info_msg,"Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"); \
-docker volume create $(NIX_DOCKER_VOLUME) >/dev/null 2>&1 || true; \
-\
-$(call info_msg,"Building \"$(2)\" using \"$(1)\"..."); \
-docker run --rm \
-	-v $(NIX_DOCKER_VOLUME):/nix \
-	-v $(PWD):/build:ro \
-	-v $(PWD)/result:/output:rw \
-	-w /build \
-	$(NIX_DOCKER_IMAGE) \
-	sh -c "set -x; \
-		&& cp -L <(nix build .#$(1) \
-		--extra-experimental-features 'nix-command flakes' \
-		--accept-flake-config \
-		--print-out-paths \
-		--show-trace) /output/$(2)"; \
-$(call success_msg,"✓ $(1) complete: ./result/$(2)")
-endef
 
 # Build aarch64 artifacts using Docker
 aarch64-sdimage-%:
-	$(call docker-nix-build,installerConfigurations.$*,$*-installer.img.zst)
+	@./scripts/linux-aarch64-docker-build.sh installerConfigurations.$* sd-image/nixos-sd-image-r$*-uboot.img.zst
 
 aarch64-kexec:
-	@$(call docker-nix-build,installerConfigurations.aarch64-kexec,aarch64-kexec.tar.gz)
+	@./scripts/linux-aarch64-docker-build.sh installerConfigurations.aarch64-kexec nixos-kexec-installer-aarch64-linux.tar.gz
 
 %-installer: aarch64-sdimage-% aarch64-kexec
 	@$(call success_msg,"✓ $* installers complete \(SD image + kexec\)")

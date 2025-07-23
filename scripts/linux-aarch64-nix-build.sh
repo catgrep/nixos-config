@@ -33,7 +33,11 @@ result_path=$(
 
 infomsg "$0: result path: $result_path"
 
-# We want to expand the $artifact glob (should only be one file)
-artifact_path=$(find -L "${outlink_path}" -wholename "${artifact}" -type f)
-infomsg "$0: found artifact: ${artifact_path}"
-cp -v -L -r --no-preserve=mode,ownership "${artifact_path}" /tmp/output/
+artifact_path="${outlink_path}/${artifact}"
+if [ ! -f "${artifact_path}" ]; then
+	errmsg "$0: artifact not found: ${artifact_path}"
+	exit 1
+fi
+
+infomsg "$0: copying out artifact: ${artifact_path}"
+cp -v -L -r --no-preserve=mode,ownership "${outlink_path}/${artifact}" /tmp/output/

@@ -1,6 +1,6 @@
 SHELL := /bin/zsh
 MAKEFLAGS += --no-print-directory
-.PHONY: help build switch deploy-% update check format clean colmena-% test-build-%
+.PHONY: help build switch deploy-% update check format clean colmena-% test-build-% provision
 COLMENA := colmena
 HOSTS := $(shell ls ./hosts)
 
@@ -34,6 +34,7 @@ help:
 	$(call help_option,"ssh-HOST","SSH into host")
 	@echo ""
 	@echo "🔄 $(BOLD)$(BLUE)Deployment (use 'all' for all hosts)$(RESET)"
+	$(call help_option,"provision","Provision host using nixos-anywhere")
 	$(call help_option,"setup-HOST","Initial setup for a new host")
 	$(call help_option,"diff-HOST","Show configuration diff for host")
 	$(call help_option,"build-HOST","Build HOST configuration on HOST")
@@ -166,6 +167,7 @@ test-deploy-%:
 
 # Build SD card image for Pi5
 NIX_DOCKER_VOLUME ?= nix-store-cache
+NIX_DOCKER_IMAGE ?= nixos/nix:2.30.1-arm64
 linux-arm64-img-%:
 	@echo "Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"; \
 	docker volume create $(NIX_DOCKER_VOLUME) || true; \
@@ -179,7 +181,7 @@ linux-arm64-img-%:
 		-v $(PWD):/build:ro \
 		-v $(PWD)/result:/output:rw \
 		-w /build \
-		nixos/nix:2.30.1-arm64 \
+		$(NIX_DOCKER_IMAGE) \
 		sh -c "nix build .#installerConfigurations.$* \
 			--extra-experimental-features 'nix-command flakes' \
 			--accept-flake-config \
@@ -214,15 +216,9 @@ write-arm64-sd-%:
 		echo "$(BOLD)$(GREEN)Your SSH key is already installed$(RESET)"; \
 	fi'
 
-# provision-new-host
-provision-new-host:
-	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make TARGET HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi5"; \
-		exit 1; \
-	fi
-	@echo "Provisioning new host '$*'..."
-	@./provision/nixos-anywhere-bootstrap.sh $* --generate-hardware
+provision:
+	@echo "🖥️  $(BUILD)$(YELLOW)HOSTS = $(HOSTS)$(RESET)"
+	@echo "$(BOLD)$(GREEN)Run the './scripts/linux-HOSTARCH.sh' script$(RESET)"
 
 # clean-reboot
 clean-reboot/%:

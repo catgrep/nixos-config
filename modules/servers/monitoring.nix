@@ -19,7 +19,8 @@
       "netdev"
       "systemd"
       "processes"
-    ] ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
+    ]
+    ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
     openFirewall = true;
   };
 

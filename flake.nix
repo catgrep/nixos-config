@@ -11,6 +11,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    disko-gpt-attrs = {
+      # the fork is needed for partition attributes support
+      url = "github:nvmd/disko/gpt-attrs";
+      # url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixos-raspberrypi/nixpkgs";
+    };
+
     impermanence = {
       url = "github:nix-community/impermanence";
     };
@@ -51,6 +58,7 @@
       nixpkgs,
       nixpkgs-unstable,
       disko,
+      disko-gpt-attrs,
       impermanence,
       sops-nix,
       colmena,
@@ -117,7 +125,7 @@
             ./modules/common
             ./modules/servers
             ./modules/dns
-            disko.nixosModules.disko
+            disko-gpt-attrs.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
         };
@@ -135,7 +143,7 @@
             ./hosts/pi5/configtxt.nix
             ./modules/common
             ./modules/servers
-            disko.nixosModules.disko
+            disko-gpt-attrs.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
         };

@@ -60,6 +60,28 @@
         "type": "github"
       }
     },
+    "disko-gpt-attrs": {
+      "inputs": {
+        "nixpkgs": [
+          "nixos-raspberrypi",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1742690494,
+        "narHash": "sha256-SFacEbSRMoTyWG5VXh4ieofJGge+cLq9lH8ifB+zjBg=",
+        "owner": "nvmd",
+        "repo": "disko",
+        "rev": "9dc58d4d49c9f74623a06e2fc20cdfd8bb3cbe8b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nvmd",
+        "ref": "gpt-attrs",
+        "repo": "disko",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -295,6 +317,7 @@
       "inputs": {
         "colmena": "colmena",
         "disko": "disko",
+        "disko-gpt-attrs": "disko-gpt-attrs",
         "impermanence": "impermanence",
         "nixos-hardware": "nixos-hardware",
         "nixos-images": "nixos-images",

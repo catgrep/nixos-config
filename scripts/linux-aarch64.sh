@@ -57,7 +57,7 @@ nixos_anywhere_run_hook() {
 	nixos-anywhere \
 		--flake ".#provisioning-${hostname}" \
 		--target-host "$user@$target_ip" \
-		--kexec "$KEXEC_INSTALLER/nixos-kexec-installer-aarch64-linux.tar.gz" \
+		--kexec "./result/nixos-kexec-installer-aarch64-linux.tar.gz" \
 		--build-on-remote \
 		--print-build-logs \
 		--generate-hardware-config nixos-generate-config "./hosts/${hostname}/hardware-configuration.nix" \

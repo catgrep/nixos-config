@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.prometheus = {
@@ -9,38 +14,46 @@
     scrapeConfigs = [
       {
         job_name = "prometheus";
-        static_configs = [{
-          targets = [ "localhost:9090" ];
-        }];
+        static_configs = [
+          {
+            targets = [ "localhost:9090" ];
+          }
+        ];
       }
       {
         job_name = "node-exporter";
-        static_configs = [{
-          targets = [
-            "beelink.local:9100"   # Beelink node exporter
-            "firebat.local:9100"   # Firebat node exporter
-            "pi4.local:9100"       # Pi4 node exporter
-          ];
-        }];
+        static_configs = [
+          {
+            targets = [
+              "beelink.local:9100" # Beelink node exporter
+              "firebat.local:9100" # Firebat node exporter
+              "pi4.local:9100" # Pi4 node exporter
+            ];
+          }
+        ];
         scrape_interval = "15s";
         metrics_path = "/metrics";
       }
       {
         job_name = "zfs-exporter";
-        static_configs = [{
-          targets = [
-            "beelink.local:9134"   # ZFS metrics from Beelink
-          ];
-        }];
+        static_configs = [
+          {
+            targets = [
+              "beelink.local:9134" # ZFS metrics from Beelink
+            ];
+          }
+        ];
         scrape_interval = "30s";
       }
       {
         job_name = "adguard";
-        static_configs = [{
-          targets = [
-            "pi4.local:80"       # AdGuard Home built-in metrics
-          ];
-        }];
+        static_configs = [
+          {
+            targets = [
+              "pi4.local:80" # AdGuard Home built-in metrics
+            ];
+          }
+        ];
         scrape_interval = "30s";
         metrics_path = "/control/stats";
         # Note: You may need to configure authentication for AdGuard API
@@ -51,9 +64,11 @@
       }
       {
         job_name = "jellyfin";
-        static_configs = [{
-          targets = [ "beelink.local:8096" ];
-        }];
+        static_configs = [
+          {
+            targets = [ "beelink.local:8096" ];
+          }
+        ];
         scrape_interval = "60s";
         metrics_path = "/health";
       }

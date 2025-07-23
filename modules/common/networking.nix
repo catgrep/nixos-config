@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   networking = {
@@ -10,11 +15,12 @@
     firewall = {
       enable = true;
       allowedTCPPorts = [
-        22  # SSH
-        80  # HTTP
+        22 # SSH
+        80 # HTTP
         443 # HTTPS
       ];
-      allowedUDPPortRanges = [{
+      allowedUDPPortRanges = [
+        {
           # Mosh default port range
           from = 60000;
           to = 61000;
@@ -23,7 +29,10 @@
     };
 
     # DNS fallback
-    nameservers = lib.mkDefault [ "1.1.1.1" "1.0.0.1" ];
+    nameservers = lib.mkDefault [
+      "1.1.1.1"
+      "1.0.0.1"
+    ];
   };
 
   # Enable mDNS for .local domain resolution

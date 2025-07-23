@@ -1,4 +1,10 @@
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -14,13 +20,13 @@
 
   # Gateway networking configuration
   networking = {
-    interfaces.eno1.useDHCP = true;  # or wlp2s0, Update interface name as needed
+    interfaces.eno1.useDHCP = true; # or wlp2s0, Update interface name as needed
     # Enable IP forwarding for gateway functionality
     firewall.enable = true;
     nat = {
       enable = true;
-      externalInterface = "eno1";  # or wlp2s0, Update as needed
-      internalInterfaces = [ ];  # Add internal interfaces if needed
+      externalInterface = "eno1"; # or wlp2s0, Update as needed
+      internalInterfaces = [ ]; # Add internal interfaces if needed
     };
   };
 

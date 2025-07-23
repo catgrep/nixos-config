@@ -1,4 +1,10 @@
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -20,14 +26,14 @@
 
   networking.firewall = {
     allowedTCPPorts = [
-      53    # DNS
-      80    # AdGuard Home web interface
-      3000  # AdGuard Home initial setup
-      9100  # Node exporter
-      9617  # AdGuard Home exporter
+      53 # DNS
+      80 # AdGuard Home web interface
+      3000 # AdGuard Home initial setup
+      9100 # Node exporter
+      9617 # AdGuard Home exporter
     ];
     allowedUDPPorts = [
-      53    # DNS
+      53 # DNS
     ];
   };
 

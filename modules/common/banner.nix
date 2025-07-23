@@ -1,11 +1,17 @@
 # system-banner.nix
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
 let
   cfg = config.programs.system-banner;
-in {
+in
+{
   options.programs.system-banner = {
     enable = mkEnableOption "system banner on shell login";
 
@@ -24,7 +30,7 @@ in {
 
   config = mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      bc  # Required for some calculations in the script
+      bc # Required for some calculations in the script
     ];
 
     # Create the script at /etc/system-banner.sh
@@ -192,5 +198,5 @@ in {
         /etc/system-banner.sh
       fi
     '';
-   };
+  };
 }

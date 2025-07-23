@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   users = {
@@ -13,7 +18,10 @@
       bdhill = {
         isNormalUser = true;
         description = "Bobby Hill";
-        extraGroups = [ "wheel" "networkmanager" ];
+        extraGroups = [
+          "wheel"
+          "networkmanager"
+        ];
         uid = 1000;
 
         # SSH keys - replace with your actual public keys

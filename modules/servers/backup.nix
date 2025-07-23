@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Install backup tools
@@ -17,7 +22,7 @@
     shell = pkgs.bash;
   };
 
-  users.groups.backup = {};
+  users.groups.backup = { };
 
   # Backup script template (customize per host)
   environment.etc."backup/backup-script.sh" = {

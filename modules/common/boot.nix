@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   boot = {
@@ -16,7 +21,10 @@
     ];
 
     # Enable support for additional filesystems
-    supportedFilesystems = [ "ntfs" "btrfs" ];
+    supportedFilesystems = [
+      "ntfs"
+      "btrfs"
+    ];
 
     # Temporary file system
     tmp = {

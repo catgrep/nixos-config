@@ -1,4 +1,10 @@
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -32,7 +38,11 @@
   # Boot configuration
   boot = {
     # Enable ZFS support
-    supportedFilesystems = lib.mkForce [ "zfs" "ntfs" "btrfs" ];
+    supportedFilesystems = lib.mkForce [
+      "zfs"
+      "ntfs"
+      "btrfs"
+    ];
     zfs = {
       forceImportRoot = false;
       devNodes = "/dev/disk/by-id/";
@@ -48,7 +58,7 @@
     };
 
     tmp = {
-      useTmpfs = lib.mkForce false;  # Disable the common setting
+      useTmpfs = lib.mkForce false; # Disable the common setting
     };
 
     # Implement "Erase Your Darlings" - rollback root on boot
@@ -66,9 +76,9 @@
     autoSnapshot = {
       enable = true;
       frequent = 4; # Keep 4 15-minute snapshots
-      hourly = 24;  # Keep 24 hourly snapshots
-      daily = 7;    # Keep 7 daily snapshots
-      weekly = 4;   # Keep 4 weekly snapshots
+      hourly = 24; # Keep 24 hourly snapshots
+      daily = 7; # Keep 7 daily snapshots
+      weekly = 4; # Keep 4 weekly snapshots
       monthly = 12; # Keep 12 monthly snapshots
     };
   };
@@ -80,12 +90,12 @@
     options = [
       "defaults"
       "allow_other"
-      "use_ino"               # for better inode handling
+      "use_ino" # for better inode handling
       "cache.files=partial"
       "dropcacheonclose=true" # for memory management
-      "category.create=mfs"   # Most free space for new files
-      "moveonenospc=true"     # Move files if no space
-      "minfreespace=50G"      # Keep 50GB free on each drive
+      "category.create=mfs" # Most free space for new files
+      "moveonenospc=true" # Move files if no space
+      "minfreespace=50G" # Keep 50GB free on each drive
     ];
   };
 
@@ -101,23 +111,35 @@
     directories = [
       # System
       "/etc/nixos"
-      "/var/lib/nixos"  # to persist user/group IDs
+      "/var/lib/nixos" # to persist user/group IDs
       "/var/lib/systemd/coredump"
-      { directory = "/var/lib/private"; mode = "0700"; }
+      {
+        directory = "/var/lib/private";
+        mode = "0700";
+      }
       "/var/log"
 
       # Network
       "/etc/NetworkManager/system-connections"
-      { directory = "/var/lib/NetworkManager"; mode = "0700"; }
+      {
+        directory = "/var/lib/NetworkManager";
+        mode = "0700";
+      }
 
       # Services - Don't specify user/group for services that might not exist yet
       "/var/lib/jellyfin"
       "/var/lib/postgresql"
-      { directory = "/var/lib/docker"; mode = "0710"; }
+      {
+        directory = "/var/lib/docker";
+        mode = "0710";
+      }
       "/var/lib/samba"
       # Add these for network persistence:
-      "/var/lib/systemd/network"  # Network state
-      { directory = "/var/lib/dhcp"; mode = "0755"; }  # DHCP leases
+      "/var/lib/systemd/network" # Network state
+      {
+        directory = "/var/lib/dhcp";
+        mode = "0755";
+      } # DHCP leases
     ];
     files = [
       "/etc/machine-id"
@@ -229,7 +251,10 @@
   fileSystems."/tmp" = {
     device = "tmpfs";
     fsType = "tmpfs";
-    options = [ "mode=1777" "size=32G" ];
+    options = [
+      "mode=1777"
+      "size=32G"
+    ];
   };
 
   # Enable specific media services
@@ -253,7 +278,7 @@
 
   # Network configuration for media server
   networking = {
-    interfaces.enp1s0.useDHCP = true;  # This works fine with useNetworkd
+    interfaces.enp1s0.useDHCP = true; # This works fine with useNetworkd
     firewall.enable = true;
   };
 
@@ -261,12 +286,12 @@
   networking.firewall = {
     allowedTCPPorts = [
       # Additional ports not in modules
-      8080  # General web services
-      9134  # ZFS exporter
+      8080 # General web services
+      9134 # ZFS exporter
     ];
     allowedUDPPorts = [
-      1900  # DLNA/UPnP
-      7359  # Jellyfin autodiscovery
+      1900 # DLNA/UPnP
+      7359 # Jellyfin autodiscovery
     ];
   };
 

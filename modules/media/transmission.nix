@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.transmission = {
@@ -36,7 +41,10 @@
 
   # Open Transmission ports when enabled
   networking.firewall = lib.mkIf config.services.transmission.enable {
-    allowedTCPPorts = [ 9091 51413 ];
+    allowedTCPPorts = [
+      9091
+      51413
+    ];
     allowedUDPPorts = [ 51413 ];
   };
 

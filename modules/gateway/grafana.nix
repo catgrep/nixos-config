@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.grafana = {
@@ -28,29 +33,33 @@
       enable = true;
       datasources.settings = {
         apiVersion = 1;
-        datasources = [{
-          name = "Prometheus";
-          type = "prometheus";
-          access = "proxy";
-          url = "http://localhost:9090";
-          isDefault = true;
-        }];
+        datasources = [
+          {
+            name = "Prometheus";
+            type = "prometheus";
+            access = "proxy";
+            url = "http://localhost:9090";
+            isDefault = true;
+          }
+        ];
       };
 
       dashboards.settings = {
         apiVersion = 1;
-        providers = [{
-          name = "default";
-          orgId = 1;
-          folder = "";
-          type = "file";
-          disableDeletion = false;
-          updateIntervalSeconds = 10;
-          allowUiUpdates = false;
-          options = {
-            path = "/var/lib/grafana/dashboards";
-          };
-        }];
+        providers = [
+          {
+            name = "default";
+            orgId = 1;
+            folder = "";
+            type = "file";
+            disableDeletion = false;
+            updateIntervalSeconds = 10;
+            allowUiUpdates = false;
+            options = {
+              path = "/var/lib/grafana/dashboards";
+            };
+          }
+        ];
       };
     };
   };

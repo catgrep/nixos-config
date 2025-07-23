@@ -1,11 +1,23 @@
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   nix = {
     settings = {
-      experimental-features = [ "nix-command" "flakes" ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       auto-optimise-store = true;
-      trusted-users = [ "root" "@wheel" ];
+      trusted-users = [
+        "root"
+        "@wheel"
+      ];
     };
 
     # Automatic garbage collection
@@ -26,7 +38,10 @@
     enable = true;
     dates = "04:00";
     flake = "github:your-username/nixos-config";
-    flags = [ "--update-input" "nixpkgs" ];
+    flags = [
+      "--update-input"
+      "nixpkgs"
+    ];
     allowReboot = false; # Set to true if you want automatic reboots
   };
 }

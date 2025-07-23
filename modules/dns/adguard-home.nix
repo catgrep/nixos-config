@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.adguardhome = {
@@ -157,7 +162,11 @@
 
   # Open firewall ports for DNS and web interface
   networking.firewall = {
-    allowedTCPPorts = [ 53 80 3000 ];
+    allowedTCPPorts = [
+      53
+      80
+      3000
+    ];
     allowedUDPPorts = [ 53 ];
   };
 

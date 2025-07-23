@@ -13,7 +13,7 @@
     terminal = "tmux-256color";
     extraConfig = ''
       set -s copy-command 'wl-copy'
-        
+
       set -g mouse on
       bind -T copy-mode-vi WheelUpPane send-keys -X scroll-up
       bind -T copy-mode-vi WheelDownPane send-keys -X scroll-down

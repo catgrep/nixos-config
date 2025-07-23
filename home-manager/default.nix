@@ -18,6 +18,7 @@
     colmena
     openssh
     openssl
+    shellcheck
   ];
 
   # Enable home-manager

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Fail2ban for SSH protection
@@ -60,7 +65,7 @@
 
   # Additional security packages
   environment.systemPackages = with pkgs; [
-    aide      # Advanced Intrusion Detection Environment
+    aide # Advanced Intrusion Detection Environment
     # rkhunter  # Rootkit Hunter
   ];
 }

@@ -41,10 +41,26 @@
     ];
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, impermanence, sops-nix, colmena, nixos-raspberrypi, ... }@inputs:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixpkgs-unstable,
+      disko,
+      impermanence,
+      sops-nix,
+      colmena,
+      nixos-raspberrypi,
+      ...
+    }@inputs:
     let
       # Helper function to create a nixos system configuration
-      mkSystem = { hostname, system ? "x86_64-linux", modules ? [] }:
+      mkSystem =
+        {
+          hostname,
+          system ? "x86_64-linux",
+          modules ? [ ],
+        }:
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -131,7 +147,7 @@
         meta = {
           nixpkgs = import nixpkgs-unstable {
             system = "x86_64-linux";
-            overlays = [];
+            overlays = [ ];
           };
           specialArgs = {
             inherit inputs;
@@ -151,7 +167,10 @@
             allowLocalDeployment = true;
             # Override hostname during deployment
             # This allows us to deploy even if hostname doesn't match yet
-            tags = [ "media" "x86_64" ];
+            tags = [
+              "media"
+              "x86_64"
+            ];
           };
           imports = self.nixosConfigurations.beelink._module.args.modules;
         };
@@ -162,7 +181,10 @@
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;
-            tags = [ "gateway" "x86_64" ];
+            tags = [
+              "gateway"
+              "x86_64"
+            ];
           };
           imports = self.nixosConfigurations.firebat._module.args.modules;
         };
@@ -174,13 +196,16 @@
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;
-            tags = [ "dns" "arm" "raspberrypi" ];
+            tags = [
+              "dns"
+              "arm"
+              "raspberrypi"
+            ];
           };
           imports = [
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
             nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
-            ./hosts/pi5/configuration.nix
-            ./hosts/pi5/configtxt.nix
+            ./hosts/pi4/configuration.nix
             ./modules/common
             ./modules/servers
             ./modules/dns
@@ -196,7 +221,10 @@
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;
-            tags = [ "arm" "raspberrypi" ];
+            tags = [
+              "arm"
+              "raspberrypi"
+            ];
           };
           imports = [
             nixos-raspberrypi.nixosModules.raspberry-pi-5.base
@@ -210,57 +238,69 @@
           ];
           nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;
         };
+
       };
 
       # Add minimally configured SD card image builders
       # (these are pre-builts provided by nixos-raspberrypi)
       installerConfigurations = {
-        pi4 = (nixos-raspberrypi.lib.nixosInstaller {
-          specialArgs = inputs;
-          modules = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            ./modules/raspberrypi/headless-installer.nix
-          ];
-        }).config.system.build.sdImage;
+        pi4 =
+          (nixos-raspberrypi.lib.nixosInstaller {
+            specialArgs = inputs;
+            modules = [
+              nixos-raspberrypi.nixosModules.raspberry-pi-4.base
+              ./modules/installer/raspberrypi.nix
+            ];
+          }).config.system.build.sdImage;
 
-        pi5 = (nixos-raspberrypi.lib.nixosInstaller {
-          specialArgs = inputs;
-          modules = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            ./modules/raspberrypi/headless-installer.nix
-          ];
-        }).config.system.build.sdImage;
+        pi5 =
+          (nixos-raspberrypi.lib.nixosInstaller {
+            specialArgs = inputs;
+            modules = [
+              nixos-raspberrypi.nixosModules.raspberry-pi-5.base
+              ./modules/installer/raspberrypi.nix
+            ];
+          }).config.system.build.sdImage;
       };
 
       # Development shells - platform agnostic
-      devShells = let
-        makeDevShell = system: let
-          pkgs = nixpkgs-unstable.legacyPackages.${system};
-          # colmena is a flake input, not an attribute of pkgs, so add it here
-          colmenaPkg = colmena.packages.${system}.colmena;
+      devShells =
+        let
+          makeDevShell =
+            system:
+            let
+              pkgs = nixpkgs-unstable.legacyPackages.${system};
+              # colmena is a flake input, not an attribute of pkgs, so add it here
+              colmenaPkg = colmena.packages.${system}.colmena;
 
-        in pkgs.mkShell {
-          buildInputs = with pkgs; [
-            nixfmt-rfc-style
-            nixos-rebuild
-            git
-            jq
-            sops
-            age
-            ssh-to-age
-            openssl
-            sshpass
-            mkpasswd
-            inetutils
-          ] ++ [
-            colmenaPkg
-          ];
+            in
+            pkgs.mkShell {
+              buildInputs =
+                with pkgs;
+                [
+                  nixfmt-rfc-style
+                  nixos-rebuild
+                  git
+                  jq
+                  sops
+                  age
+                  ssh-to-age
+                  openssl
+                  sshpass
+                  mkpasswd
+                  inetutils
+                  shellcheck
+                ]
+                ++ [
+                  colmenaPkg
+                ];
+            };
+        in
+        {
+          x86_64-linux.default = makeDevShell "x86_64-linux";
+          aarch64-darwin.default = makeDevShell "aarch64-darwin";
+          x86_64-darwin.default = makeDevShell "x86_64-darwin";
+          aarch64-linux.default = makeDevShell "aarch64-linux";
         };
-      in {
-        x86_64-linux.default = makeDevShell "x86_64-linux";
-        aarch64-darwin.default = makeDevShell "aarch64-darwin";
-        x86_64-darwin.default = makeDevShell "x86_64-darwin";
-        aarch64-linux.default = makeDevShell "aarch64-linux";
-      };
     };
 }

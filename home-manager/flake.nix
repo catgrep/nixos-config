@@ -14,30 +14,37 @@
     nixai.url = "github:olafkfreund/nix-ai-help";
   };
 
-  outputs = { nixpkgs, home-manager, nixai,... }:
+  outputs =
+    {
+      nixpkgs,
+      home-manager,
+      nixai,
+      ...
+    }:
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
-    in {
-    homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
+    in
+    {
+      homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
-            (builtins.path {
-                path = ./default.nix;
-                name = "home-config";
-            })
-            nixai.homeManagerModules.${system}.default
-            {
-              # Basic nixai configuration
-              services.nixai = {
+          (builtins.path {
+            path = ./default.nix;
+            name = "home-config";
+          })
+          nixai.homeManagerModules.${system}.default
+          {
+            # Basic nixai configuration
+            services.nixai = {
+              enable = true;
+              mcp = {
                 enable = true;
-                mcp = {
-                  enable = true;
-                  port = 8081;  # Different port to avoid conflicts
-                };
+                port = 8081; # Different port to avoid conflicts
               };
-            }
+            };
+          }
         ];
+      };
     };
-  };
 }

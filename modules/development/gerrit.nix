@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.services.gerrit;
@@ -47,7 +52,7 @@ in
       description = "Gerrit service user";
     };
 
-    users.groups.gerrit = {};
+    users.groups.gerrit = { };
 
     systemd.services.gerrit = {
       description = "Gerrit Code Review";
@@ -59,65 +64,67 @@ in
         User = "gerrit";
         Group = "gerrit";
         WorkingDirectory = "/var/lib/gerrit";
-        ExecStartPre = let
-          gerritInit = pkgs.writeShellScript "gerrit-init" ''
-            # Download Gerrit WAR if not present
-            if [ ! -f /var/lib/gerrit/gerrit.war ]; then
-              echo "Downloading Gerrit..."
-              ${pkgs.curl}/bin/curl -L -o /var/lib/gerrit/gerrit.war \
-                https://gerrit-releases.storage.googleapis.com/gerrit-3.9.1.war
-            fi
+        ExecStartPre =
+          let
+            gerritInit = pkgs.writeShellScript "gerrit-init" ''
+              # Download Gerrit WAR if not present
+              if [ ! -f /var/lib/gerrit/gerrit.war ]; then
+                echo "Downloading Gerrit..."
+                ${pkgs.curl}/bin/curl -L -o /var/lib/gerrit/gerrit.war \
+                  https://gerrit-releases.storage.googleapis.com/gerrit-3.9.1.war
+              fi
 
-            # Initialize Gerrit site if not already done
-            if [ ! -f /var/lib/gerrit/etc/gerrit.config ]; then
-              echo "Initializing Gerrit site..."
-              ${pkgs.jdk17}/bin/java -jar /var/lib/gerrit/gerrit.war init \
-                --batch \
-                --no-auto-start \
-                -d /var/lib/gerrit
-            fi
+              # Initialize Gerrit site if not already done
+              if [ ! -f /var/lib/gerrit/etc/gerrit.config ]; then
+                echo "Initializing Gerrit site..."
+                ${pkgs.jdk17}/bin/java -jar /var/lib/gerrit/gerrit.war init \
+                  --batch \
+                  --no-auto-start \
+                  -d /var/lib/gerrit
+              fi
 
-            # Update configuration
-            cat > /var/lib/gerrit/etc/gerrit.config <<EOF
-            [gerrit]
-              basePath = ${cfg.basePath}
-              serverId = ${cfg.serverId}
-              canonicalWebUrl = ${cfg.canonicalWebUrl}
+              # Update configuration
+              cat > /var/lib/gerrit/etc/gerrit.config <<EOF
+              [gerrit]
+                basePath = ${cfg.basePath}
+                serverId = ${cfg.serverId}
+                canonicalWebUrl = ${cfg.canonicalWebUrl}
 
-            [container]
-              javaOptions = "-Xmx${cfg.jvmHeapLimit}"
-              user = gerrit
+              [container]
+                javaOptions = "-Xmx${cfg.jvmHeapLimit}"
+                user = gerrit
 
-            [database]
-              type = h2
-              database = db/ReviewDB
+              [database]
+                type = h2
+                database = db/ReviewDB
 
-            [index]
-              type = lucene
+              [index]
+                type = lucene
 
-            [auth]
-              type = DEVELOPMENT_BECOME_ANY_ACCOUNT
+              [auth]
+                type = DEVELOPMENT_BECOME_ANY_ACCOUNT
 
-            [receive]
-              enableSignedPush = false
+              [receive]
+                enableSignedPush = false
 
-            [sendemail]
-              smtpServer = localhost
+              [sendemail]
+                smtpServer = localhost
 
-            [sshd]
-              listenAddress = *:29418
+              [sshd]
+                listenAddress = *:29418
 
-            [httpd]
-              listenUrl = proxy-http://${cfg.listenAddress}
+              [httpd]
+                listenUrl = proxy-http://${cfg.listenAddress}
 
-            [cache]
-              directory = cache
+              [cache]
+                directory = cache
 
-            [plugins]
-              allowRemoteAdmin = true
-            EOF
-          '';
-        in "${gerritInit}";
+              [plugins]
+                allowRemoteAdmin = true
+              EOF
+            '';
+          in
+          "${gerritInit}";
 
         ExecStart = "${pkgs.jdk17}/bin/java -jar /var/lib/gerrit/gerrit.war daemon -d /var/lib/gerrit";
         Restart = "on-failure";
@@ -144,7 +151,7 @@ in
 
     # Open firewall ports
     networking.firewall.allowedTCPPorts = [
-      8080  # HTTP
+      8080 # HTTP
       29418 # SSH for Git
     ];
 

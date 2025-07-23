@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.traefik = {
@@ -45,7 +50,7 @@
   };
 
   # Traefik dynamic configuration
-  environment.etc."traefik/dynamic.yml".text = lib.generators.toYAML {} {
+  environment.etc."traefik/dynamic.yml".text = lib.generators.toYAML { } {
     http = {
       routers = {
         # Route to Jellyfin on Beelink
@@ -101,5 +106,9 @@
   ];
 
   # Open firewall ports for Traefik
-  networking.firewall.allowedTCPPorts = [ 80 443 8080 ];
+  networking.firewall.allowedTCPPorts = [
+    80
+    443
+    8080
+  ];
 }

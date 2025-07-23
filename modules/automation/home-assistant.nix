@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.home-assistant = {
@@ -73,20 +78,21 @@
     ];
 
     # Extra Python packages
-    extraPackages = python3Packages: with python3Packages; [
-      # Additional packages for integrations
-      psycopg2
-      aiohomekit
-      pyatv
-      paho-mqtt
-    ];
+    extraPackages =
+      python3Packages: with python3Packages; [
+        # Additional packages for integrations
+        psycopg2
+        aiohomekit
+        pyatv
+        paho-mqtt
+      ];
 
     # Configuration
     config = {
       # Basic configuration
       homeassistant = {
         name = "Home";
-        latitude = "37.3861";  # Los Altos, CA
+        latitude = "37.3861"; # Los Altos, CA
         longitude = "-122.1140";
         elevation = 60;
         unit_system = "imperial";
@@ -116,7 +122,7 @@
       };
 
       # Enable configuration UI
-      config = {};
+      config = { };
 
       # HTTP configuration
       http = {
@@ -184,22 +190,22 @@
       };
 
       # Discovery
-      discovery = {};
+      discovery = { };
 
       # Map
-      map = {};
+      map = { };
 
       # System Health
-      system_health = {};
+      system_health = { };
 
       # Mobile app support
-      mobile_app = {};
+      mobile_app = { };
 
       # Person tracking
-      person = {};
+      person = { };
 
       # Sun tracking
-      sun = {};
+      sun = { };
 
       # Weather
       weather = [
@@ -273,8 +279,8 @@
 
   # Required system packages
   environment.systemPackages = with pkgs; [
-    ffmpeg  # For camera streaming
-    git     # For HACS and custom components
+    ffmpeg # For camera streaming
+    git # For HACS and custom components
   ];
 
   # Nginx reverse proxy configuration (optional)

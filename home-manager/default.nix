@@ -14,11 +14,13 @@
     nixd
     nil
     charasay
-    gitingest  # From unstable channel
+    gitingest # From unstable channel
     colmena
     openssh
     openssl
     shellcheck
+    shfmt
+    nmap
   ];
 
   # Enable home-manager

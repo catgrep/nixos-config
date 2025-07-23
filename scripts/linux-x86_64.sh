@@ -37,5 +37,5 @@ nixos_anywhere_run_hook() {
 		--debug
 }
 
-infomsg "=== x86_64 Provisioning ==="
+msg "=== x86_64 Provisioning ==="
 libmain "$@"

@@ -70,5 +70,5 @@ nixos_anywhere_run_hook() {
 		--debug
 }
 
-infomsg "=== aarch64 (Pi4) Provisioning ==="
+msg "=== aarch64 (Pi4) Provisioning ==="
 libmain "$@"

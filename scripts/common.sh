@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cleanup() {
+	ec=$?
+	if [ $ec -ne 0 ]; then
+		cleanup_hook || errmsg "$0: script failed with exit code: $ec"
+	fi
+}
+trap cleanup EXIT
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,20 +34,20 @@ msg() {
 
 # Show usage
 usage() {
-	echo "Usage: $0 <hostname> <target-ip> [options]"
+	infomsg "Usage: $0 <hostname> <target-ip> [options]"
 	echo ""
-	echo "Deploy NixOS to a target machine using nixos-anywhere"
+	echo "Provision NixOS to a target machine using nixos-anywhere"
 	echo ""
-	echo "Arguments:"
-	echo "  hostname    Name of the host to deploy (beelink, firebat, pi4)"
+	infomsg "Arguments:"
+	echo "  hostname    Name of the host to provision"
 	echo "  target-ip   IP address of the target machine"
 	echo ""
-	echo "Options:"
+	infomsg "Options:"
 	echo "  --user      User with sudo access (defaults to 'root')"
 	echo "  --help      Show this help message"
 	echo ""
-	echo "Examples:"
-	echo "  $0 beelink 192.168.1.20"
+	infomsg "Examples:"
+	echo "$0 beelink 192.168.1.20"
 }
 
 pre_install_checks() {

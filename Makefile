@@ -1,6 +1,8 @@
+.ONESHELL:
 SHELL := /bin/zsh
+.SHELLFLAGS := -e -c
 MAKEFLAGS += --no-print-directory
-.PHONY: help build switch deploy-% update check format clean colmena-% test-build-% provision
+.PHONY: help build clean switch deploy-% update check format clean colmena-% test-build-% provision
 COLMENA := colmena
 HOSTS := $(shell ls ./hosts)
 
@@ -11,8 +13,14 @@ YELLOW = \033[0;33m
 BLUE = \033[0;34m
 BOLD = \033[1m
 RESET = \033[0m
+success_msg = echo -e "$(BOLD)$(GREEN)$(1)$(RESET)"
+error_msg = echo -e "$(BOLD)$(RED)$(1)$(RESET)"
+info_msg = echo -e "$(BOLD)$(YELLOW)$(1)$(RESET)"
+title_msg = echo -e "$(BOLD)$(BLUE)$(1)$(RESET)"
+
 help_width = 30
 help_option = @printf "$(BOLD)$(GREEN)%-$(help_width)s$(RESET)%s\n" $(1) $(2)
+
 # Default target
 help:
 	@echo "🖥️  $(BUILD)$(YELLOW)HOSTS = $(HOSTS)$(RESET)"
@@ -53,33 +61,32 @@ devshell:
 update:
 	nix flake update
 	nix flake update --flake ./home-manager
-	@echo "Flake inputs updated. Consider running 'make deploy-all' to apply updates."
+	$(call success_msg,"Flake inputs updated. Consider running 'make deploy-all' to apply updates.")
 
 update-nix-conf:
-	@echo "Backing up '/etc/nix/machines'"; \
-	cp -v /etc/nix/machines /etc/nix/machines.old; \
-	echo "Updating '/etc/nix/machines'"; \
-	cp -v ./etc/nix/machines /etc/nix/machines; \
-	echo "Backing up '/etc/nix/nix.custom.conf'"; \
-	cp -v /etc/nix/nix.custom.conf /etc/nix/nix.custom.conf.old; \
-	echo "Updating '/etc/nix/nix.custom.conf'"; \
-	cp -v ./etc/nix/nix.custom.conf /etc/nix/nix.custom.conf
-	launchctl kickstart -k system/systems.determinate.nix-daemon
+	@$(call info_msg,"Backing up files...")
+	@cp -v /etc/nix/machines /etc/nix/machines.old
+	@cp -v ./etc/nix/machines /etc/nix/machines
+	@cp -v /etc/nix/nix.custom.conf /etc/nix/nix.custom.conf.old
+	@cp -v ./etc/nix/nix.custom.conf /etc/nix/nix.custom.conf
+	@$(call info_msg,"Restarting nix-daemon...")
+	@launchctl kickstart -k system/systems.determinate.nix-daemon
+	@$(call success_msg,"Done")
 
 # Check flake and run basic tests
 check:
 	nix flake check
-	@echo "✓ Flake check passed"
-	@echo "Testing host configurations..."; \
+	@$(call success_msg,"✓ Flake check passed")
+	@$(call info_msg,"Testing host configurations..."); \
 	for host in $(HOSTS); do \
 	    nix build .#nixosConfigurations."$$host".config.system.build.toplevel --dry-run; \
     done; \
-	echo "✓ All host configurations are valid"
+    $(call success_msg,"✓ All host configurations are valid")
 
 # Format Nix files
 format:
 	find . -name "*.nix" -exec nixfmt {} \;
-	@echo "✓ All Nix files formatted"
+	@$(call success_msg,"✓ All Nix files formatted")
 
 # Home manager switch
 home-switch:
@@ -91,17 +98,21 @@ flake-info:
 
 dry-store-gc:
 	nix store gc -v --dry-run
-	@echo "✓ Garbage collection completed (dry run)"
+	@$(call success_msg,"✓ Garbage collection completed (dry run)")
 
 store-gc:
 	nix store gc --debug
-	@echo "✓ Garbage collection completed"
+	@$(call success_msg,"✓ Garbage collection completed")
 
 # Quick status check
 status:
-	@echo "Checking host connectivity..."; \
+	@$(call info_msg,"Checking host connectivity..."); \
 	for host in $(HOSTS); do \
-	    ping -c 1 "$$host.local" >/dev/null 2>&1 && echo "✓ $$host: Online" || echo "✗ $$host: Offline"; \
+	    if ! ping -c 1 "$$host.local" >/dev/null 2>&1; then \
+			$(call success_msg,"✓ $$host: Online"); \
+			continue; \
+		fi; \
+		$(call error_msg,"✗ $$host: Offline"); \
     done
 
 # Show deployment info
@@ -128,37 +139,37 @@ diff-%:
 
 # Test builds without deploying
 build-%:
-	@echo "Test building configuration for $*..."
+	@$(call info_msg,"Test building configuration for '$*'...")
 	$(COLMENA) build --on $*
 
 build-all:
-	@echo "Test building all configurations..."
+	@$(call info_msg,"Test building all configurations...")
 	$(COLMENA) build
 
 # Build specific host configuration
 build-host: host-arg
 	@if [ -z "$(HOST)" ]; then \
-		echo "Usage: make build-host HOST=<hostname>"; \
-		echo "Available hosts: beelink, firebat, pi4"; \
+		$(call error_msg,"Usage: make build-host HOST=<hostname>"); \
+		$(call info_msg,"Available hosts: beelink, firebat, pi4"); \
 		exit 1; \
 	fi
 	nix build .#nixosConfigurations.$(HOST).config.system.build.toplevel
 
 dry-apply-%:
-	@echo "[DRYRUN] Deploying to $* using Colmena..."
+	@$(call info_msg,"[DRYRUN] Deploying to $* using Colmena...")
 	$(COLMENA) apply dry-activate --on $* --verbose
 
 dry-apply-all:
-	@echo "Deploying to all hosts using Colmena..."
+	@$(call info_msg,"Deploying to all hosts using Colmena...")
 	$(COLMENA) apply dry-activate --verbose
 
 # Colmena deployment commands
 apply-%:
-	@echo "Deploying to $* using Colmena..."
+	@$(call info_msg,"Deploying to '$*' using Colmena...")
 	$(COLMENA) apply --reboot --on $* --verbose
 
 apply-all:
-	@echo "Deploying to all hosts using Colmena..."
+	@$(call info_msg,"Deploying to all hosts using Colmena...")
 	$(COLMENA) apply --reboot --verbose
 
 # Test deploy (dry run)
@@ -189,37 +200,72 @@ linux-arm64-img-%:
 			cp -L /tmp/result/sd-image/*.img.zst /output/$*-installer.img.zst"
 	echo "Image build complete. Output in /result/$*-installer.img.zst"
 
+# Common Docker build function
+# Usage: $(call docker-nix-build,<flake-attr>,<output-pattern>,<output-name>)
+define docker-nix-build
+$(call info_msg,"Ensuring Docker volume exists: $(NIX_DOCKER_VOLUME)"); \
+docker volume create $(NIX_DOCKER_VOLUME) >/dev/null 2>&1 || true; \
+\
+$(call info_msg,"Building \"$(2)\" using \"$(1)\"..."); \
+docker run --rm \
+	-v $(NIX_DOCKER_VOLUME):/nix \
+	-v $(PWD):/build:ro \
+	-v $(PWD)/result:/output:rw \
+	-w /build \
+	$(NIX_DOCKER_IMAGE) \
+	sh -c "set -x; \
+		&& cp -L <(nix build .#$(1) \
+		--extra-experimental-features 'nix-command flakes' \
+		--accept-flake-config \
+		--print-out-paths \
+		--show-trace) /output/$(2)"; \
+$(call success_msg,"✓ $(1) complete: ./result/$(2)")
+endef
+
+# Build aarch64 artifacts using Docker
+aarch64-sdimage-%:
+	$(call docker-nix-build,installerConfigurations.$*,$*-installer.img.zst)
+
+aarch64-kexec:
+	@$(call docker-nix-build,installerConfigurations.aarch64-kexec,aarch64-kexec.tar.gz)
+
+%-installer: aarch64-sdimage-% aarch64-kexec
+	@$(call success_msg,"✓ $* installers complete \(SD image + kexec\)")
+
 # Write image to SD card
 write-arm64-sd-%:
 	@if [ -z "$(DEVICE)" ]; then \
-		echo "Usage: make write-sd-$* DEVICE=/dev/rdiskX"; \
+		$(call error_msg,"Usage: make write-sd-$* DEVICE=/dev/rdiskX"); \
 		exit 1; \
 	fi
 	@if [ ! -d "./result" ]; then \
-		echo "No image found. Run 'make build-image-$*' first"; \
+		$(call error_msg,"No image found. Run 'make $*-installer' first"); \
 		exit 1; \
 	fi
 	@sudo fdisk $(DEVICE)
-	@echo "$(BOLD)$(YELLOW)WARNING: This will erase all data on $(DEVICE)!$(RESET)"
+	@$(call info_msg,"WARNING: This will erase all data on $(DEVICE)!$(RESET)")
 	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 	    pi_img="./result/$*-installer.img"; \
-		echo "Uncompressing $$pi_img.zst..."; \
+		$(call info_msg,"Uncompressing $$pi_img.zst..."); \
 		if [ ! -f "$${pi_img}" ]; then \
 	        zstd -d "$${pi_img}.zst" -o "$${pi_img}"; \
 		fi; \
-		echo "Begin writing $$pi_img to $(DEVICE)..."; \
+		$(call info_msg,"Begin writing $$pi_img to $(DEVICE)..."); \
 	    sudo dd if="$${pi_img}" of=$(DEVICE) bs=1M status=progress; \
-		echo "$(BOLD)$(GREEN)Done! The Pi will boot with SSH enabled.$(RESET)"; \
-		echo "$(BOLD)$(GREEN)Default user: nixos$(RESET)"; \
-		echo "$(BOLD)$(GREEN)Your SSH key is already installed$(RESET)"; \
+		$(call success_msg,"Done! The Pi will boot with SSH enabled."); \
+		$(call info_msg,"Default user: nixos"); \
+		$(call info_msg,"Your SSH key is already installed"); \
 	fi'
 
 provision:
-	@echo "🖥️  $(BUILD)$(YELLOW)HOSTS = $(HOSTS)$(RESET)"
-	@echo "$(BOLD)$(GREEN)Run the './scripts/linux-HOSTARCH.sh' script$(RESET)"
+	@$(call title_msg,"HOSTS = $(HOSTS)")
+	@$(call info_msg,"Run the './scripts/linux-HOSTARCH.sh' script")
 
 # clean-reboot
 clean-reboot/%:
 	@echo TODO
+
+clean:
+	git clean -xfd

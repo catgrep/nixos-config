@@ -97,8 +97,8 @@
     {
       nixosConfigurations = {
         # Main media server (Beelink SER8)
-        beelink = mkSystem {
-          hostname = "beelink";
+        beelink-homelab = mkSystem {
+          hostname = "beelink-homelab";
           modules = [
             ./modules/media
           ];
@@ -150,7 +150,7 @@
 
         # Provisioning targets - just use the same configs
         # nixos-anywhere will handle the installation
-        "provisioning-beelink" = self.nixosConfigurations.beelink;
+        "provisioning-beelink-homelab" = self.nixosConfigurations.beelink-homelab;
         "provisioning-firebat" = self.nixosConfigurations.firebat;
         "provisioning-pi4" = self.nixosConfigurations.pi4;
         "provisioning-pi5" = self.nixosConfigurations.pi5;
@@ -172,10 +172,10 @@
           };
         };
         # Beelink media server
-        beelink = {
+        beelink-homelab = {
           # Use the current hostname until migrated
           deployment = {
-            targetHost = "beelink.local";
+            targetHost = "192.168.68.89"; # static local ip for ez hostname transitions
             targetUser = "bdhill";
             buildOnTarget = true; # Build on the target to avoid arch issues
             allowLocalDeployment = true;
@@ -186,12 +186,12 @@
               "x86_64"
             ];
           };
-          imports = self.nixosConfigurations.beelink._module.args.modules;
+          imports = self.nixosConfigurations.beelink-homelab._module.args.modules;
         };
         # Firebat gateway
         firebat = {
           deployment = {
-            targetHost = "firebat.local";
+            targetHost = "192.168.68.88"; # static local ip for ez hostname transitions
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;
@@ -206,7 +206,7 @@
         # Raspberry Pi 4 DNS - needs special handling for colmena
         pi4 = {
           deployment = {
-            targetHost = "pi4.local";
+            targetHost = "pi4.homelab";
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;
@@ -231,7 +231,7 @@
 
         pi5 = {
           deployment = {
-            targetHost = "pi5.local";
+            targetHost = "pi5.homelab";
             targetUser = "bdhill";
             buildOnTarget = true;
             allowLocalDeployment = true;

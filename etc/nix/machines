@@ -1,4 +1,4 @@
-ssh://bdhill@beelink.local?ssh-key=/Users/bobby/.ssh/id_rsa x86_64-linux
+ssh://bdhill@beelink-homelab.local?ssh-key=/Users/bobby/.ssh/id_rsa x86_64-linux
 
 ssh://bdhill@firebat.local?ssh-key=/Users/bobby/.ssh/id_rsa x86_64-linux
 

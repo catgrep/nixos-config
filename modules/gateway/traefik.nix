@@ -81,7 +81,7 @@
       services = {
         jellyfin = {
           loadBalancer.servers = [
-            { url = "http://beelink.local:8096"; }
+            { url = "http://beelink-homelab.local:8096"; }
           ];
         };
 

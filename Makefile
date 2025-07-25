@@ -150,13 +150,13 @@ build-all:
 build-host: host-arg
 	@if [ -z "$(HOST)" ]; then \
 		$(call error_msg,"Usage: make build-host HOST=<hostname>"); \
-		$(call info_msg,"Available hosts: beelink, firebat, pi4"); \
+		$(call info_msg,"Available hosts: $(HOSTS)"); \
 		exit 1; \
 	fi
 	nix build .#nixosConfigurations.$(HOST).config.system.build.toplevel
 
 dry-apply-%:
-	@$(call info_msg,"[DRYRUN] Deploying to $* using Colmena...")
+	@$(call info_msg,"\[ DRYRUN \] Deploying to $* using Colmena...")
 	$(COLMENA) apply dry-activate --on $* --verbose
 
 dry-apply-all:

@@ -30,7 +30,7 @@
 
   # Host identification
   networking = {
-    hostName = "beelink";
+    hostName = "beelink-homelab";
     hostId = "2d833f3e"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 

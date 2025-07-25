@@ -155,6 +155,7 @@
     enable = true;
 
     # New settings format
+    # See https://carlosvaz.com/posts/setting-up-samba-shares-on-nixos-with-support-for-macos-time-machine-backups/
     settings = {
       global = {
         workgroup = "WORKGROUP";
@@ -164,19 +165,39 @@
         # Use persistent location for Samba's private data
         "private dir" = "/persist/var/lib/samba/private";
 
+        # Clients should only connect using the latest SMB3 protocol (e.g., on
+        # clients running Windows 8 and later).
+        "server min protocol" = "SMB3_11";
+        # Require native SMB transport encryption by default.
+        "server smb encrypt" = "required";
+
+        # Guest access configuration
+        "guest account" = "guest";
+        "map to guest" = "bad user"; # Maps failed auth to guest
+
         # Performance optimizations for ZFS
         "use sendfile" = "yes";
         "min protocol" = "SMB2";
         "aio read size" = "16384";
         "aio write size" = "16384";
         "socket options" = "TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072";
+
+        # Load in modules (order is critical!) and enable AAPL extensions.
+        "vfs objects" = "catia fruit streams_xattr";
+        # Enable Apple's SMB2+ extension.
+        "fruit:aapl" = "yes";
+        # Clean up unused or empty files created by the OS or Samba.
+        "fruit:wipe_intentionally_left_blank_rfork" = "yes";
+        "fruit:delete_empty_adfiles" = "yes";
       };
 
       backups = {
         path = "/mnt/backups";
         browseable = "yes";
+        writable = "yes";
         "read only" = "no";
         "guest ok" = "no";
+        "valid users" = "bdhill"; # Explicitly allowed
         "create mask" = "0644";
         "directory mask" = "0755";
         comment = "Backup Storage (RAID-Z2)";
@@ -185,6 +206,8 @@
       media = {
         path = "/mnt/media";
         browseable = "yes";
+        writable = "yes";
+        public = "yes";
         "read only" = "no";
         "guest ok" = "yes";
         "create mask" = "0644";
@@ -195,6 +218,12 @@
         comment = "Media Storage (MergerFS)";
       };
     };
+  };
+
+  # For windows
+  services.samba-wsdd = {
+    enable = true;
+    discovery = true;
   };
 
   # Ensure service directories have correct permissions after services are installed
@@ -288,10 +317,14 @@
       # Additional ports not in modules
       8080 # General web services
       9134 # ZFS exporter
+      445 # SMB
+      139 # NetBIOS
     ];
     allowedUDPPorts = [
       1900 # DLNA/UPnP
       7359 # Jellyfin autodiscovery
+      137 # NetBIOS Name Service
+      138 # NetBIOS Datagram Service
     ];
   };
 

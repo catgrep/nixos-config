@@ -108,7 +108,7 @@ store-gc:
 status:
 	@$(call info_msg,"Checking host connectivity..."); \
 	for host in $(HOSTS); do \
-	    if ! ping -c 1 "$$host.local" >/dev/null 2>&1; then \
+	    if ping -c 1 "$$host.local" >/dev/null 2>&1; then \
 			$(call success_msg,"✓ $$host: Online"); \
 			continue; \
 		fi; \

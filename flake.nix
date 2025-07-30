@@ -300,6 +300,7 @@
                   nixos-rebuild
                   git
                   jq
+                  yq
                   sops
                   age
                   ssh-to-age

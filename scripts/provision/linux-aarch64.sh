@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-. ./scripts/common.sh
+
+. ./scripts/provision/common.sh
 
 set -euo pipefail
 
@@ -12,24 +13,24 @@ install_success_msg_hook() {
 	local target_ip="$2"
 
 	echo ""
-	msg "$0: ✓ pi installation complete!"
+	info "$0: pi installation complete!"
 	echo ""
-	infomsg "Next steps:"
+	info "Next steps:"
 	echo "1. System will reboot automatically"
 	echo "2. Remove old SSH key: ssh-keygen -R ${target_ip}"
 	echo "3. Connect as user: ssh bdhill@${target_ip}"
 	echo "4. Deploy full config: make apply-${hostname}"
 	echo ""
-	infomsg "Pi4 specific notes:"
+	info "Pi4 specific notes:"
 	echo "- The SD card has been repartitioned with your disko config"
 	echo "- Boot firmware is on the FIRMWARE partition"
 	echo "- Root filesystem is on the NIXOS_SD partition"
 }
 
 install_failure_msg_hook() {
-	errmsg "$0: installation failed!"
+	error "$0: installation failed!"
 	echo ""
-	warnmsg "Troubleshooting:"
+	info "Troubleshooting:"
 	echo "1. Check if the Pi is still responsive via SSH"
 	echo "2. If not, re-flash the installer image to SD card"
 	echo "3. Verify your disko-config.nix uses correct device paths"
@@ -42,13 +43,13 @@ nixos_anywhere_run_hook() {
 	local target_ip="$3"
 
 	if [ ! -f "./result/nixos-kexec-installer-aarch64-linux.tar.gz" ]; then
-		errmsg "$0: could not find kexec installer. Please run 'make aarch64-kexec'."
+		error "$0: could not find kexec installer. Please run 'make aarch64-kexec'."
 		exit 1
 	fi
 
 	echo ""
-	msg "$0: running nixos-anywhere with kexec for the Raspberry Pi..."
-	warnmsg "This will:"
+	info "$0: running nixos-anywhere with kexec for the Raspberry Pi..."
+	info "This will:"
 	echo "1. Upload and execute kexec to load minimal system into RAM"
 	echo "2. Repartition the SD card using disko"
 	echo "3. Install NixOS to the new partitions"
@@ -64,5 +65,5 @@ nixos_anywhere_run_hook() {
 		--debug
 }
 
-msg "=== aarch64 pi-visioning ==="
+title "aarch64 pi-visioning"
 libmain "$@"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-source ./scripts/common.sh
+
+. ./scripts/provision/common.sh
 
 set -euo pipefail
 
@@ -12,9 +13,9 @@ install_success_msg_hook() {
 	local target_ip="$2"
 
 	echo ""
-	infomsg "$0: ✓ x86_64 installation complete!"
+	success "$0: x86_64 installation complete!"
 	echo ""
-	infomsg "Next steps:"
+	title "Next steps:"
 	echo "1. System will reboot automatically"
 	echo "2. Remove old SSH key: ssh-keygen -R ${target_ip}"
 	echo "3. Connect as user: ssh bdhill@${target_ip}"
@@ -22,7 +23,7 @@ install_success_msg_hook() {
 }
 
 install_failure_msg_hook() {
-	errmsg "$0: x86_64 installation failed!"
+	error "$0: x86_64 installation failed!"
 }
 
 nixos_anywhere_run_hook() {
@@ -31,7 +32,7 @@ nixos_anywhere_run_hook() {
 	local target_ip="$3"
 
 	echo ""
-	msg "$0: running nixos-anywhere for x86_64..."
+	info "$0: running nixos-anywhere for x86_64..."
 
 	nixos-anywhere \
 		--flake ".#provisioning-${hostname}" \
@@ -41,5 +42,5 @@ nixos_anywhere_run_hook() {
 		--debug
 }
 
-msg "=== x86_64 provisioning ==="
+title "x86_64 provisioning"
 libmain "$@"

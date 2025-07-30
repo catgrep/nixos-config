@@ -226,5 +226,24 @@ provision:
 clean-reboot/%:
 	@echo TODO
 
+# SOPS targets
+sops-init:
+	@./scripts/sops/init.sh
+
+sops-add-host-keys:
+	@./scripts/sops/add-host-keys.sh $*
+
+sops-add-secrets-%:
+	@./scripts/sops/add-secrets.sh $*
+
+sops-add-secrets-all:
+	@./scripts/sops/add-secrets.sh all
+
+sops-status:
+	@./scripts/sops/status.sh
+
+sops-reencrypt:
+	@./scripts/sops/reencrypt.sh
+
 clean:
 	git clean -xfd

@@ -309,6 +309,7 @@
                   inetutils
                   shellcheck
                   nixos-anywhere
+                  mkcert
                 ]
                 ++ [
                   colmenaPkg

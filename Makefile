@@ -16,16 +16,14 @@ RESET = \033[0m
 success_msg = echo -e "$(BOLD)$(GREEN)$(1)$(RESET)"
 error_msg = echo -e "$(BOLD)$(RED)$(1)$(RESET)"
 info_msg = echo -e "$(BOLD)$(YELLOW)$(1)$(RESET)"
-title_msg = echo -e "$(BOLD)$(BLUE)$(1)$(RESET)"
+title_msg = @echo -e "$(BOLD)$(BLUE)$(1)$(RESET)"
 
 help_width = 30
-help_option = @printf "$(BOLD)$(GREEN)%-$(help_width)s$(RESET)%s\n" $(1) $(2)
+help_option = @printf "$(BOLD)$(3)%-$(help_width)s$(RESET)%s\n" $(1) $(2)
 
 # Default target
 help:
-	@echo "🖥️  $(BUILD)$(YELLOW)HOSTS = $(HOSTS)$(RESET)"
-	@echo ""
-	@echo "🧪 $(BOLD)$(BLUE)Nix Development$(RESET)"
+	$(call title_msg,"Nix Development 🧪")
 	$(call help_option,"devshell","Enter devshell")
 	$(call help_option,"update","Update flake inputs")
 	$(call help_option,"update-nix-conf","Update '/etc/nix' with './etc/nix'")
@@ -36,12 +34,13 @@ help:
 	$(call help_option,"dry-store-gc","Nix store garbage collection (dry run)")
 	$(call help_option,"store-gc","Nix store garbage collection")
 	@echo ""
-	@echo "🖥️  $(BOLD)$(BLUE)Host Access$(RESET)"
+	$(call title_msg,"Host Access 🏘️")
+	$(call help_option,"HOSTS","$(HOSTS)",$(YELLOW))
 	$(call help_option,"status","Ping hosts to check if they are up")
 	$(call help_option,"deploy-info","Show colmena deploy info")
 	$(call help_option,"ssh-HOST","SSH into host")
 	@echo ""
-	@echo "🔄 $(BOLD)$(BLUE)Deployment (use 'all' for all hosts)$(RESET)"
+	$(call title_msg,"Deployment \(use \"all\" for all hosts\) 🔄")
 	$(call help_option,"provision","Provision host using nixos-anywhere")
 	$(call help_option,"setup-HOST","Initial setup for a new host")
 	$(call help_option,"diff-HOST","Show configuration diff for host")
@@ -49,9 +48,17 @@ help:
 	$(call help_option,"dry-apply-HOST","Deploy to specific HOST using Colmena (dry run)")
 	$(call help_option,"apply-HOST","Deploy to specific HOST using Colmena")
 	@echo ""
-	@echo "🍓 $(BOLD)$(BLUE)Raspberry Pi Builds$(RESET)"
+	$(call title_msg,"Raspberry Pi Builds 🍓")
 	$(call help_option,"linux-arm64-img-HOST","Build Arm64 image for Raspberry Pi using Docker")
 	$(call help_option,"write-arm64-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to SD card")
+	@echo ""
+	$(call title_msg,"SOPS Secrets Management 🤫")
+	$(call help_option,"sops-init","Generate barebones '.sops.yaml'")
+	$(call help_option,"sops-add-user","Add user to '.sops.yaml'")
+	$(call help_option,"sops-add-host-keys","Add host keys to '.sops.yaml'")
+	$(call help_option,"sops-update-keys","Update '.sops.yaml' keys if new hosts were added")
+	$(call help_option,"sops-edit","Edit secrets in './secrets/secrets.yaml'")
+	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
 
 # Home-manager dev shell
 devshell:
@@ -219,7 +226,7 @@ write-arm64-sd-%:
 	fi'
 
 provision:
-	@$(call title_msg,"HOSTS = $(HOSTS)")
+	$(call title_msg,"HOSTS = $(HOSTS)")
 	@$(call info_msg,"Run the './scripts/linux-HOSTARCH.sh' script")
 
 # clean-reboot

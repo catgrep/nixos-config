@@ -15,7 +15,7 @@ usage() {
 	info "Usage: $0 <nixattr> <result>"
 	echo ""
 	echo "Build a target linux-aarch64 artifact using 'nix-build' and copy it out. This is just a thin"
-	echo "docker wrapper around './scripts/linux-aarch64-nix-build.sh' to enable local multi-arch builds."
+	echo "docker wrapper around '$(dirname "$0")/linux-aarch64-nix-build.sh' to enable local multi-arch builds."
 	echo ""
 	info "Arguments:"
 	echo "  nixattr     Name of the nix attribute to build"
@@ -49,6 +49,6 @@ docker run --rm \
 	-v "${PWD}/result:/tmp/output:rw" \
 	-w /build \
 	"${image}" \
-	bash -c "./scripts/linux-aarch64-nix-build.sh ${nixattr} ${artifact}"
+	bash -c "$(dirname "$0")/linux-aarch64-nix-build.sh ${nixattr} ${artifact}"
 
 info "$0: ✓ ${nixattr} complete: './result/$(basename "${artifact}")'"

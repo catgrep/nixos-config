@@ -49,8 +49,8 @@ help:
 	$(call help_option,"apply-HOST","Deploy to specific HOST using Colmena")
 	@echo ""
 	$(call title_msg,"Raspberry Pi Builds 🍓")
-	$(call help_option,"linux-arm64-img-HOST","Build Arm64 image for Raspberry Pi using Docker")
-	$(call help_option,"write-arm64-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to SD card")
+	$(call help_option,"HOST-installer","Build Arm64 image for Raspberry Pi using Docker")
+	$(call help_option,"write-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to '/dev/rdiskX'")
 	@echo ""
 	$(call title_msg,"SOPS Secrets Management 🤫")
 	$(call help_option,"sops-init","Generate barebones '.sops.yaml'")
@@ -190,16 +190,16 @@ NIX_DOCKER_IMAGE ?= nixos/nix:2.30.1-arm64
 
 # Build aarch64 artifacts using Docker
 aarch64-sdimage-%:
-	@./scripts/linux-aarch64-docker-build.sh installerConfigurations.$* sd-image/nixos-sd-image-r$*-uboot.img.zst
+	@./scripts/provision/linux-aarch64-docker-build.sh installerConfigurations.$* sd-image/nixos-sd-image-r$*-uboot.img.zst
 
 aarch64-kexec:
-	@./scripts/linux-aarch64-docker-build.sh installerConfigurations.aarch64-kexec nixos-kexec-installer-aarch64-linux.tar.gz
+	@./scripts/provision/linux-aarch64-docker-build.sh installerConfigurations.aarch64-kexec nixos-kexec-installer-aarch64-linux.tar.gz
 
 %-installer: aarch64-sdimage-% aarch64-kexec
 	@$(call success_msg,"✓ $* installers complete \(SD image + kexec\)")
 
 # Write image to SD card
-write-arm64-sd-%:
+write-sd-%:
 	@if [ -z "$(DEVICE)" ]; then \
 		$(call error_msg,"Usage: make write-sd-$* DEVICE=/dev/rdiskX"); \
 		exit 1; \
@@ -228,7 +228,7 @@ write-arm64-sd-%:
 
 provision:
 	$(call title_msg,"HOSTS = $(HOSTS)")
-	@$(call info_msg,"Run the './scripts/linux-HOSTARCH.sh' script")
+	@$(call info_msg,"Run the './scripts/provision/linux-HOSTARCH.sh' script")
 
 # clean-reboot
 clean-reboot/%:

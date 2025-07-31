@@ -96,6 +96,11 @@
       "category.create=mfs" # Most free space for new files
       "moveonenospc=true" # Move files if no space
       "minfreespace=50G" # Keep 50GB free on each drive
+      # mount as 'media' user
+      "func.getattr=newest"
+      "uid=media"
+      "gid=media"
+      "umask=002"
     ];
   };
 
@@ -159,6 +164,7 @@
   # Samba for NAS functionality
   services.samba = {
     enable = true;
+    openFirewall = true;
 
     # New settings format
     # See https://carlosvaz.com/posts/setting-up-samba-shares-on-nixos-with-support-for-macos-time-machine-backups/
@@ -178,8 +184,8 @@
         # "server smb encrypt" = "required";
 
         # Guest access configuration
-        "guest account" = "guest";
-        "map to guest" = "bad user"; # Maps failed auth to guest
+        "guest account" = "nobody";
+        "map to guest" = "bad user";
 
         # Performance optimizations for ZFS
         "use sendfile" = "yes";
@@ -192,13 +198,26 @@
         # "hosts allow" = "192.168.0. 127.0.0.1 localhost";
         # "hosts deny" = "0.0.0.0/0";
 
+        # Critical macOS settings
         # Load in modules (order is critical!) and enable AAPL extensions.
+        "unix extensions" = "no"; # Disable UNIX extensions that confuse macOS
+        "ea support" = "yes";
         "vfs objects" = "catia fruit streams_xattr";
         # Enable Apple's SMB2+ extension.
         "fruit:aapl" = "yes";
         # Clean up unused or empty files created by the OS or Samba.
         "fruit:wipe_intentionally_left_blank_rfork" = "yes";
         "fruit:delete_empty_adfiles" = "yes";
+        "fruit:metadata" = "stream";
+        "fruit:model" = "MacSamba";
+        "fruit:posix_rename" = "yes";
+        "fruit:veto_appledouble" = "no";
+        "fruit:zero_file_id" = "yes";
+        "fruit:nfs_aces" = "no"; # This is important for permissions
+        # macOS specific performance
+        "readdir_attr:aapl_rsize" = "yes";
+        "readdir_attr:aapl_finder_info" = "yes";
+        "readdir_attr:aapl_max_access" = "yes";
 
         "kernel change notify" = "no";
       };
@@ -222,20 +241,35 @@
         public = "yes";
         "read only" = "no";
         "guest ok" = "yes";
+        # Force all operations to happen as the media user/group
         "force user" = "media";
-        "force group" = "samba";
-        "create mask" = "0644";
-        "directory mask" = "0755";
+        "force group" = "media";
+        # macOS permission mappings
+        "create mask" = "0664";
+        "directory mask" = "0775";
+        "force create mode" = "0664";
+        "force directory mode" = "0775";
+        # Don't try to map permissions
+        "map archive" = "no";
+        "map hidden" = "no";
+        "map readonly" = "no";
+        "map system" = "no";
+        # Store DOS attributes as extended attributes
+        "store dos attributes" = "yes";
+        # Don't inherit ACLs which confuse macOS
+        "inherit acls" = "no";
+        "inherit permissions" = "no";
         comment = "Media Storage (MergerFS)";
       };
     };
   };
 
-  # For windows
-  # services.samba-wsdd = {
-  #   enable = true;
-  #   discovery = true;
-  # };
+  # For OSX and windows discovery
+  services.samba-wsdd = {
+    enable = true;
+    discovery = true;
+    workgroup = "WORKGROUP"; # Match samba workgroup
+  };
 
   # SOPS configuration
   sops = {
@@ -324,7 +358,7 @@
     "z /persist/var/lib/postgresql 0700 postgres postgres -"
 
     # Ensure media directories have correct permissions
-    "d /mnt/media 0755 jellyfin jellyfin -"
+    "d /mnt/media 0755 media media -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 
@@ -334,6 +368,9 @@
 
     # Symlink for Samba
     "L /var/lib/samba - - - - /persist/var/lib/samba"
+
+    # Make sure the media user can write to media directories
+    "Z /mnt/media - media media -"
   ];
 
   # Bind mount persistent directories

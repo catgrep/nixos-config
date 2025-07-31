@@ -9,6 +9,10 @@
   users = {
     mutableUsers = false;
 
+    # Create media and samba and groups for Samba
+    groups.media = { };
+    groups.samba = { };
+
     users = {
       root = {
         # # Disable root login
@@ -22,6 +26,7 @@
           "wheel"
           "networkmanager"
           "samba"
+          "media"
         ];
         uid = 1000;
 
@@ -32,25 +37,18 @@
         ];
       };
 
-      guest = {
+      # Media is for users uploading content to the media drives over SMB
+      media = {
         isNormalUser = true;
-        description = "Guest";
+        group = "media";
+        home = "/var/empty";
+
+        description = "Media user for Samba shares";
         extraGroups = [
           "samba"
           "guest"
         ];
         uid = 1001;
-      };
-
-      # Media is for users uploading content to the media drives over SMB
-      media = {
-        isNormalUser = true;
-        description = "Samba Media User";
-        extraGroups = [
-          "samba"
-          "guest"
-        ];
-        uid = 1002;
       };
     };
   };

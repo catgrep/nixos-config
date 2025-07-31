@@ -197,8 +197,8 @@
         # Raspberry Pi 4 DNS - needs special handling for colmena
         pi4 = {
           deployment = {
-            targetHost = "pi4.homelab";
-            targetUser = "bdhill";
+            targetHost = "192.168.68.96";
+            targetUser = "root";
             buildOnTarget = true;
             allowLocalDeployment = true;
             tags = [

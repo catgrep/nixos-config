@@ -49,11 +49,10 @@ for hostname in "${!HOST_KEYS[@]}"; do
 	age_key=$(ssh-to-age -i "${HOST_KEYS_SECRETS_DIR}/${hostname}.pub")
 	yq -i "
         .keys += [ \"${age_key}\" ] |
-        .keys[-1] anchor = \"server_${hostname}\"
-    " "$SOPS_CONFIG"
-	yq -i "
-    .creation_rules[].key_groups[].age += [ \"server_${hostname}\"] |
-    .creation_rules[].key_groups[].age[-1] alias = \"server_${hostname}\"
+        .keys[-1] anchor = \"server_${hostname}\" |
+        .keys[-1] head_comment = \"Added '$hostname' SSH age key with '$0' on $(date)\" |
+        .creation_rules[].key_groups[].age += [ \"server_${hostname}\"] |
+        .creation_rules[].key_groups[].age[-1] alias = \"server_${hostname}\"
     " "$SOPS_CONFIG"
 	((HOSTS_FOUND += 1))
 done

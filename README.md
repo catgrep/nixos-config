@@ -46,3 +46,16 @@ After updating config files, restart the nix daemon with:
 ```
 sudo launchctl kickstart -k system/org.nixos.nix-daemon
 ```
+
+# Accessing Media Drive over SMB
+
+## MacOS
+
+Go to `Finder` > `Go` > `Connect to Server` (or `Command + K`)
+
+Type in:
+```
+smb://media@beelink-homelab.local
+```
+
+And login as the `media` user.

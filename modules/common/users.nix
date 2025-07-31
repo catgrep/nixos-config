@@ -41,6 +41,17 @@
         ];
         uid = 1001;
       };
+
+      # Media is for users uploading content to the media drives over SMB
+      media = {
+        isNormalUser = true;
+        description = "Samba Media User";
+        extraGroups = [
+          "samba"
+          "guest"
+        ];
+        uid = 1002;
+      };
     };
   };
 

@@ -133,7 +133,13 @@
         directory = "/var/lib/docker";
         mode = "0710";
       }
+
       "/var/lib/samba"
+      {
+        directory = "/var/lib/samba/private"; # For storing samba user secrets
+        mode = "0700";
+      }
+
       # Add these for network persistence:
       "/var/lib/systemd/network" # Network state
       {
@@ -167,9 +173,9 @@
 
         # Clients should only connect using the latest SMB3 protocol (e.g., on
         # clients running Windows 8 and later).
-        "server min protocol" = "SMB3_11";
-        # Require native SMB transport encryption by default.
-        "server smb encrypt" = "required";
+        # "server min protocol" = "SMB3_11";
+        # # Require native SMB transport encryption by default.
+        # "server smb encrypt" = "required";
 
         # Guest access configuration
         "guest account" = "guest";
@@ -182,6 +188,10 @@
         "aio write size" = "16384";
         "socket options" = "TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072";
 
+        # NOTE: localhost is the ipv6 localhost ::1
+        # "hosts allow" = "192.168.0. 127.0.0.1 localhost";
+        # "hosts deny" = "0.0.0.0/0";
+
         # Load in modules (order is critical!) and enable AAPL extensions.
         "vfs objects" = "catia fruit streams_xattr";
         # Enable Apple's SMB2+ extension.
@@ -189,6 +199,8 @@
         # Clean up unused or empty files created by the OS or Samba.
         "fruit:wipe_intentionally_left_blank_rfork" = "yes";
         "fruit:delete_empty_adfiles" = "yes";
+
+        "kernel change notify" = "no";
       };
 
       backups = {
@@ -210,20 +222,89 @@
         public = "yes";
         "read only" = "no";
         "guest ok" = "yes";
+        "force user" = "media";
+        "force group" = "samba";
         "create mask" = "0644";
         "directory mask" = "0755";
-        "kernel change notify" = "no";
-        "change notify timeout" = "0";
-        "directory name cache size" = "0";
         comment = "Media Storage (MergerFS)";
       };
     };
   };
 
   # For windows
-  services.samba-wsdd = {
-    enable = true;
-    discovery = true;
+  # services.samba-wsdd = {
+  #   enable = true;
+  #   discovery = true;
+  # };
+
+  # SOPS configuration
+  sops = {
+    defaultSopsFile = ../../secrets/beelink-homelab.yaml;
+    defaultSopsFormat = "yaml";
+
+    # Use SSH host key for decryption
+    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
+
+    secrets = {
+      "samba_bdhill_password" = {
+        neededForUsers = true;
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+      "samba_media_password" = {
+        neededForUsers = true;
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+    };
+  };
+
+  # Systemd service to set Samba passwords
+  systemd.services.samba-password-sync = {
+    description = "Sync Samba passwords from SOPS";
+    after = [ "samba.service" ];
+    wants = [ "samba.service" ];
+    wantedBy = [ "multi-user.target" ];
+
+    # Restart if samba restarts
+    partOf = [ "samba.service" ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Run as root to access smbpasswd
+      User = "root";
+    };
+
+    script = ''
+      # Ensure Samba is ready
+      while ! ${pkgs.systemd}/bin/systemctl is-active samba-smbd.service; do
+      sleep 1
+      done
+
+      # Set passwords
+      echo "Setting Samba passwords from SOPS..."
+
+      # media
+      if ${pkgs.samba}/bin/smbpasswd -a -s media < <(
+        cat ${config.sops.secrets.samba_media_password.path}
+        echo
+        cat ${config.sops.secrets.samba_media_password.path}
+      ); then
+        echo "✓ Set password for media user"
+      fi
+
+      # bdhill
+      if ${pkgs.samba}/bin/smbpasswd -a -s bdhill < <(
+        cat ${config.sops.secrets.samba_bdhill_password.path}
+        echo
+        cat ${config.sops.secrets.samba_bdhill_password.path}
+      ); then
+        echo "✓ Set password for bdhill user"
+      fi
+    '';
   };
 
   # Ensure service directories have correct permissions after services are installed

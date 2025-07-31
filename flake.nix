@@ -114,11 +114,9 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
             nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
             ./hosts/pi4/configuration.nix
-            ./hosts/pi4/configtxt.nix
             ./modules/common
             ./modules/servers
             ./modules/dns
-            disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
         };
@@ -213,11 +211,9 @@
             nixos-raspberrypi.nixosModules.raspberry-pi-4.base
             nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
             ./hosts/pi4/configuration.nix
-            ./hosts/pi4/configtxt.nix
             ./modules/common
             ./modules/servers
             ./modules/dns
-            disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
           nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;

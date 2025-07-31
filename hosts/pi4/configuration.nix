@@ -9,7 +9,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./disko-config.nix
   ];
 
   # Host identification
@@ -54,6 +53,28 @@
     bandwhich
     nethogs
   ];
+
+  # https://github.com/nvmd/nixos-raspberrypi/issues/8#issuecomment-2804912881
+  # We're just going to boot off the SD card, not a separate installation media.
+  # We don't need nixos-anywhere for this.
+  fileSystems = {
+    "/boot/firmware" = {
+      device = "/dev/disk/by-label/FIRMWARE";
+      fsType = "vfat";
+      options = [
+        "umask=0077"
+        "noatime"
+        "noauto"
+        "x-systemd.automount"
+        "x-systemd.idle-timeout=1min"
+      ];
+    };
+    "/" = {
+      device = "/dev/disk/by-label/NIXOS_SD";
+      fsType = "ext4";
+      options = [ "noatime" ];
+    };
+  };
 
   # System state version
   system.stateVersion = "24.11";

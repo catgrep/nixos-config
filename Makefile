@@ -230,20 +230,20 @@ clean-reboot/%:
 sops-init:
 	@./scripts/sops/init.sh
 
+sops-add-user:
+	@./scripts/sops/add-user.sh
+
 sops-add-host-keys:
-	@./scripts/sops/add-host-keys.sh $*
+	@./scripts/sops/add-host-keys.sh
 
-sops-add-secrets-%:
-	@./scripts/sops/add-secrets.sh $*
+sops-update-keys:
+	@sops updatekeys secrets/secrets.yaml
 
-sops-add-secrets-all:
-	@./scripts/sops/add-secrets.sh all
+sops-edit:
+	@sops secrets/secrets.yaml
 
 sops-status:
 	@./scripts/sops/status.sh
-
-sops-reencrypt:
-	@./scripts/sops/reencrypt.sh
 
 clean:
 	git clean -xfd

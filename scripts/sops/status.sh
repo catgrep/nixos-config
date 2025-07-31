@@ -2,14 +2,15 @@
 
 . ./scripts/sops/common.sh
 
+# FIXME: commenting these out for now since its easier for me to use my gpg key
 # Check admin key
-echo -n "Admin key: "
-if [[ -f "$AGE_KEY_PATH" ]]; then
-	ADMIN_KEY=$(age-keygen -y "$AGE_KEY_PATH" 2>/dev/null)
-	successs "${ADMIN_KEY}"
-else
-	error "Not found"
-fi
+# echo -n "Admin key: "
+# if [[ -f "$AGE_KEY_PATH" ]]; then
+# 	ADMIN_KEY=$(age-keygen -y "$AGE_KEY_PATH" 2>/dev/null)
+# 	success "${ADMIN_KEY}"
+# else
+# 	error "Not found"
+# fi
 
 # Check SOPS config
 echo -n "SOPS config: "

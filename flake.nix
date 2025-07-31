@@ -164,6 +164,7 @@
             };
           };
         };
+
         # Beelink media server
         beelink-homelab = {
           # Use the current hostname until migrated
@@ -209,17 +210,13 @@
               "raspberrypi"
             ];
           };
-          imports = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
-            ./hosts/pi4/configuration.nix
-            ./modules/common
-            ./modules/servers
-            ./modules/dns
-            ./modules/raspberrypi/base.nix
-            sops-nix.nixosModules.sops
-          ];
-          nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;
+          imports = self.nixosConfigurations.pi4._module.args.modules;
+
+          # Use nixos-raspberrypi's nixpkgs
+          nixpkgs.pkgs = import nixos-raspberrypi.inputs.nixpkgs {
+            system = "aarch64-linux";
+            config.allowUnfree = true;
+          };
         };
 
         pi5 = {
@@ -233,18 +230,13 @@
               "raspberrypi"
             ];
           };
-          imports = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
-            ./hosts/pi5/configuration.nix
-            ./hosts/pi5/configtxt.nix
-            ./modules/common
-            ./modules/servers
-            ./modules/raspberrypi/base.nix
-            disko.nixosModules.disko
-            sops-nix.nixosModules.sops
-          ];
-          nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;
+          imports = self.nixosConfigurations.pi4._module.args.modules;
+
+          # Use nixos-raspberrypi's nixpkgs
+          nixpkgs.pkgs = import nixos-raspberrypi.inputs.nixpkgs {
+            system = "aarch64-linux";
+            config.allowUnfree = true;
+          };
         };
 
       };

@@ -2,9 +2,7 @@
 SHELL := /bin/zsh
 .SHELLFLAGS := -e -c
 MAKEFLAGS += --no-print-directory
-.PHONY: help build clean switch deploy-% update check format clean colmena-% test-build-% provision
-COLMENA := colmena
-HOSTS := $(shell ls ./hosts)
+.PHONY: help build clean switch deploy-% update check format clean test-build-% provision
 
 BOLD  = \033[1m
 RED = \033[0;31m
@@ -16,14 +14,25 @@ RESET = \033[0m
 success_msg = echo -e "$(BOLD)$(GREEN)$(1)$(RESET)"
 error_msg = echo -e "$(BOLD)$(RED)$(1)$(RESET)"
 info_msg = echo -e "$(BOLD)$(YELLOW)$(1)$(RESET)"
-title_msg = @echo -e "$(BOLD)$(BLUE)$(1)$(RESET)"
+title_msg = echo -e "$(BOLD)$(BLUE)$(1)$(RESET)"
 
 help_width = 30
 help_option = @printf "$(BOLD)$(3)%-$(help_width)s$(RESET)%s\n" $(1) $(2)
 
+# Get list of hosts from $(DEPLOY_YAML)
+DEPLOY_YAML := deploy.yaml
+HOSTS := $(shell yq eval '.hosts | keys | .[]' $(DEPLOY_YAML))
+
+# Helper functions to get host metadata
+get-host-ip = $(shell yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
+get-host-user = $(shell yq eval '.hosts."$(1)".targetUser' $(DEPLOY_YAML))
+get-build-on-target = $(shell yq eval '.hosts."$(1)".buildOnTarget' $(DEPLOY_YAML))
+get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
+
+
 # Default target
 help:
-	$(call title_msg,"Nix Development 🧪")
+	@$(call title_msg,"Nix Development 🧪")
 	$(call help_option,"devshell","Enter devshell")
 	$(call help_option,"update","Update flake inputs")
 	$(call help_option,"update-nix-conf","Update '/etc/nix' with './etc/nix'")
@@ -34,25 +43,22 @@ help:
 	$(call help_option,"dry-store-gc","Nix store garbage collection (dry run)")
 	$(call help_option,"store-gc","Nix store garbage collection")
 	@echo ""
-	$(call title_msg,"Host Access 🏘️")
+	@$(call title_msg,"Host Access 🏘️")
 	$(call help_option,"HOSTS","$(HOSTS)",$(YELLOW))
 	$(call help_option,"status","Ping hosts to check if they are up")
-	$(call help_option,"deploy-info","Show colmena deploy info")
 	$(call help_option,"ssh-HOST","SSH into host")
 	@echo ""
-	$(call title_msg,"Deployment \(use \"all\" for all hosts\) 🔄")
+	@$(call title_msg,"Deployment \(use \"all\" for all hosts\) 🔄")
 	$(call help_option,"provision","Provision host using nixos-anywhere")
 	$(call help_option,"setup-HOST","Initial setup for a new host")
 	$(call help_option,"diff-HOST","Show configuration diff for host")
 	$(call help_option,"build-HOST","Build HOST configuration on HOST")
-	$(call help_option,"dry-apply-HOST","Deploy to specific HOST using Colmena (dry run)")
-	$(call help_option,"apply-HOST","Deploy to specific HOST using Colmena")
 	@echo ""
-	$(call title_msg,"Raspberry Pi Builds 🍓")
+	@$(call title_msg,"Raspberry Pi Builds 🍓")
 	$(call help_option,"HOST-installer","Build Arm64 image for Raspberry Pi using Docker")
 	$(call help_option,"write-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to '/dev/rdiskX'")
 	@echo ""
-	$(call title_msg,"SOPS Secrets Management 🤫")
+	@$(call title_msg,"SOPS Secrets Management 🤫")
 	$(call help_option,"sops-init","Generate barebones '.sops.yaml'")
 	$(call help_option,"sops-add-user","Add user to '.sops.yaml'")
 	$(call help_option,"sops-add-host-keys","Add host keys to '.sops.yaml'")
@@ -123,66 +129,130 @@ status:
 		$(call error_msg,"✗ $$host: Offline"); \
     done
 
-# Show deployment info
-deploy-info:
-	$(COLMENA) eval -E 'nodes: builtins.attrNames nodes'
-
-# SSH into hosts for debugging
+# SSH using metadata
 ssh-%:
-	ssh bdhill@$*.local
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	@$(call info_msg,"Connecting to $* as $$user@$$ip...")
+	@ssh $$user@$$ip
 
-# Initial setup for a new host
-setup-%:
-	@echo "Setting up $*..."
-	@echo "1. Ensure the host is accessible via SSH at $*.local"
-	@echo "2. Installing Nix on the target if needed..."
-	@# ssh root@$*.local "curl -L https://nixos.org/nix/install | sh -s -- --daemon" || true
-	@echo "3. Deploying NixOS configuration..."
-	nixos-rebuild switch --flake .#$* --target-host $*.local --use-remote-sudo --build-host localhost
-	@echo "✓ $* setup completed!"
+# List all hosts with their metadata
+list-hosts:
+	@for host in $(HOSTS); do \
+		ip=$$(yq eval ".hosts.\"$$host\".targetHost" $(DEPLOY_YAML)); \
+		user=$$(yq eval ".hosts.\"$$host\".targetUser" $(DEPLOY_YAML)); \
+		tags=$$(yq eval ".hosts.\"$$host\".tags | join(\", \")" $(DEPLOY_YAML)); \
+		$(call title_msg,"$$host:"); \
+		echo "    IP: $$ip"; \
+		echo "    User: $$user"; \
+		echo "    Tags: $$tags"; \
+		echo ""; \
+	done
+
+# Show info for specific host
+info-%:
+	@$(call title_msg,"Host: $*")
+	@echo "IP: $(call get-host-ip,$*)"
+	@echo "BuildOnTarget: $(call get-build-on-target,$*)"
+	@echo "User: $(call get-host-user,$*)"
+	@echo "Tags: $(call get-host-tags,$*)"
+
+# Build
+#
+# Build the new configuration, but neither activate it nor add it to the
+# GRUB boot menu.
+build-%:
+	@$(call info_msg,"Building configuration for $*...")
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	nixos-rebuild build --flake .#$* \
+        --build-host "$${user}@$${ip}" \
+        --target-host "$${user}@$${ip}" \
+		--use-remote-sudo; \
+	@$(call success_msg,"✓ Build complete")
+
+# Dry Build
+#
+# Show what store paths would be built or downloaded by any of the operations
+# above, but otherwise do nothing.
+dry-build-%:
+	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	nixos-rebuild dry-build --flake .#$* \
+	    --build-host "$${user}@$${ip}" \
+		--target-host "$${user}@$${ip}" \
+		--use-remote-sudo; \
+	@$(call success_msg,"✓ Dry run complete")
+
+# Dry Activate
+#
+# Build  the  new  configuration, but instead of activating it, show what
+# changes would be performed by the activation. The list of changes is not
+# guaranteed to be complete.
+dry-activate-%:
+	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	nixos-rebuild dry-activate --flake .#$* \
+	    --build-host "$${user}@$${ip}" \
+		--target-host "$${user}@$${ip}" \
+		--use-remote-sudo; \
+	@$(call success_msg,"✓ Dry run complete")
+
+# Test
+#
+# Build and activate the new configuration, but do not add it to the GRUB
+# boot menu. Thus, if you reboot the system (or if it crashes), you will
+# automatically revert to the default configuration.
+test-%:
+	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	nixos-rebuild test --flake .#$* \
+	    --build-host "$${user}@$${ip}" \
+		--target-host "$${user}@$${ip}" \
+		--use-remote-sudo; \
+	@$(call success_msg,"✓ Dry run complete")
+
+# Switch
+#
+# Build and activate the new configuration, and make it the boot default.
+# That is, the configuration is added to the GRUB boot menu as the default menu
+# entry, so that subsequent reboots will boot the system into the new
+# configuration.
+#
+# Previous configurations activated with nixos-rebuild switch or nixos-rebuild
+# boot remain available in the GRUB menu.
+switch-%:
+	@$(call info_msg,"Deploying to $*...")
+	@ip=$(call get-host-ip,$*)
+	@user=$(call get-host-user,$*)
+	@build_on_target=$(call get-build-on-target,$*)
+	@if [ "$$build_on_target" = "true" ]; then \
+		build_flag="--build-on-remote"; \
+	else \
+		build_flag=""; \
+	fi; \
+	nixos-rebuild switch --flake .#$* \
+		--target-host $$user@$$ip \
+		--use-remote-sudo \
+		$$build_flag
+	@$(call success_msg,"✓ Deployment to $* complete")
+
+# Switch All
+#
+# Runs 'make switch-HOST' for each host.
+switch-all:
+	@$(call info_msg,"Deploying to all hosts...")
+	@for host in $(HOSTS); do \
+		$(MAKE) deploy-$$host; \
+	done
+	@$(call success_msg,"✓ All deployments complete")
 
 # Show configuration diff for a host
 diff-%:
 	nixos-rebuild dry-run --flake .#$* --target-host $(HOST).local
-
-# Test builds without deploying
-build-%:
-	@$(call info_msg,"Test building configuration for '$*'...")
-	$(COLMENA) build --on $*
-
-build-all:
-	@$(call info_msg,"Test building all configurations...")
-	$(COLMENA) build
-
-# Build specific host configuration
-build-host: host-arg
-	@if [ -z "$(HOST)" ]; then \
-		$(call error_msg,"Usage: make build-host HOST=<hostname>"); \
-		$(call info_msg,"Available hosts: $(HOSTS)"); \
-		exit 1; \
-	fi
-	nix build .#nixosConfigurations.$(HOST).config.system.build.toplevel
-
-dry-apply-%:
-	@$(call info_msg,"\[ DRYRUN \] Deploying to $* using Colmena...")
-	$(COLMENA) apply dry-activate --on $* --verbose
-
-dry-apply-all:
-	@$(call info_msg,"Deploying to all hosts using Colmena...")
-	$(COLMENA) apply dry-activate --verbose
-
-# Colmena deployment commands
-apply-%:
-	@$(call info_msg,"Deploying to '$*' using Colmena...")
-	$(COLMENA) apply --reboot --on $* --verbose
-
-apply-all:
-	@$(call info_msg,"Deploying to all hosts using Colmena...")
-	$(COLMENA) apply --reboot --verbose
-
-# Test deploy (dry run)
-test-deploy-%:
-	nixos-rebuild dry-run --flake .#$* --target-host $*.local
 
 # Build SD card image for Pi5
 NIX_DOCKER_VOLUME ?= nix-store-cache

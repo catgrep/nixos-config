@@ -15,11 +15,6 @@
       url = "github:nix-community/impermanence";
     };
 
-    colmena = {
-      url = "github:zhaofengli/colmena";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
-
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -53,7 +48,6 @@
       disko,
       impermanence,
       sops-nix,
-      colmena,
       nixos-raspberrypi,
       nixos-images,
       ...
@@ -149,98 +143,6 @@
         "provisioning-pi5" = self.nixosConfigurations.pi5;
       };
 
-      # Colmena deployment configuration
-      colmenaHive = colmena.lib.makeHive {
-        meta = {
-          nixpkgs = import nixpkgs-unstable {
-            system = "x86_64-linux";
-            overlays = [ ];
-          };
-          specialArgs = {
-            inherit inputs;
-            unstable = import nixpkgs-unstable {
-              system = "x86_64-linux";
-              config.allowUnfree = true;
-            };
-          };
-        };
-
-        # Beelink media server
-        beelink-homelab = {
-          # Use the current hostname until migrated
-          deployment = {
-            targetHost = "192.168.68.89"; # static local ip for ez hostname transitions
-            targetUser = "bdhill";
-            buildOnTarget = true; # Build on the target to avoid arch issues
-            allowLocalDeployment = true;
-            # Override hostname during deployment
-            # This allows us to deploy even if hostname doesn't match yet
-            tags = [
-              "media"
-              "x86_64"
-            ];
-          };
-          imports = self.nixosConfigurations.beelink-homelab._module.args.modules;
-        };
-        # Firebat gateway
-        firebat = {
-          deployment = {
-            targetHost = "192.168.68.88"; # static local ip for ez hostname transitions
-            targetUser = "bdhill";
-            buildOnTarget = true;
-            allowLocalDeployment = true;
-            tags = [
-              "gateway"
-              "x86_64"
-            ];
-          };
-          imports = self.nixosConfigurations.firebat._module.args.modules;
-        };
-
-        # Raspberry Pi 4 DNS - needs special handling for colmena
-        pi4 = {
-          deployment = {
-            targetHost = "192.168.68.96";
-            targetUser = "root";
-            buildOnTarget = true;
-            allowLocalDeployment = true;
-            tags = [
-              "dns"
-              "arm"
-              "raspberrypi"
-            ];
-          };
-          imports = self.nixosConfigurations.pi4._module.args.modules;
-
-          # Use nixos-raspberrypi's nixpkgs
-          nixpkgs.pkgs = import nixos-raspberrypi.inputs.nixpkgs {
-            system = "aarch64-linux";
-            config.allowUnfree = true;
-          };
-        };
-
-        pi5 = {
-          deployment = {
-            targetHost = "pi5.homelab";
-            targetUser = "bdhill";
-            buildOnTarget = true;
-            allowLocalDeployment = true;
-            tags = [
-              "arm"
-              "raspberrypi"
-            ];
-          };
-          imports = self.nixosConfigurations.pi4._module.args.modules;
-
-          # Use nixos-raspberrypi's nixpkgs
-          nixpkgs.pkgs = import nixos-raspberrypi.inputs.nixpkgs {
-            system = "aarch64-linux";
-            config.allowUnfree = true;
-          };
-        };
-
-      };
-
       # Add minimally configured SD card image builders
       # (these are pre-builts provided by nixos-raspberrypi)
       installerConfigurations = {
@@ -274,33 +176,25 @@
             system:
             let
               pkgs = nixpkgs-unstable.legacyPackages.${system};
-              # colmena is a flake input, not an attribute of pkgs, so add it here
-              colmenaPkg = colmena.packages.${system}.colmena;
-
             in
             pkgs.mkShell {
-              buildInputs =
-                with pkgs;
-                [
-                  nixfmt-rfc-style
-                  nixos-rebuild
-                  git
-                  jq
-                  yq-go
-                  sops
-                  age
-                  ssh-to-age
-                  openssl
-                  sshpass
-                  mkpasswd
-                  inetutils
-                  shellcheck
-                  nixos-anywhere
-                  mkcert
-                ]
-                ++ [
-                  colmenaPkg
-                ];
+              buildInputs = with pkgs; [
+                nixfmt-rfc-style
+                nixos-rebuild
+                git
+                jq
+                yq-go
+                sops
+                age
+                ssh-to-age
+                openssl
+                sshpass
+                mkpasswd
+                inetutils
+                shellcheck
+                nixos-anywhere
+                mkcert
+              ];
             };
         in
         {

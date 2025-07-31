@@ -335,6 +335,9 @@
 
     # Fix permissions for service directories after user creation
     "d /persist/var/lib/jellyfin 0755 jellyfin jellyfin -"
+    "Z /persist/var/lib/jellyfin 0755 jellyfin jellyfin - -"
+    "d /var/lib/jellyfin 0755 jellyfin jellyfin -"
+    "Z /var/lib/jellyfin 0755 jellyfin jellyfin -"
     # "d /persist/var/lib/postgresql 0700 postgres postgres -"
 
     # Ensure media directories have correct permissions

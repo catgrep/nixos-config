@@ -14,6 +14,11 @@
       gid = 1100;
     };
 
+    # Create jellyfin group
+    groups.jellyfin = {
+      gid = 1101;
+    };
+
     users = {
       root = {
         # # Disable root login
@@ -27,6 +32,7 @@
           "wheel"
           "networkmanager"
           "media"
+          "render"
         ];
         uid = 1000;
 

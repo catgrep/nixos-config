@@ -6,6 +6,10 @@
 }:
 
 {
+  imports = [
+    ./base.nix
+  ];
+
   # User configuration for headless installer
   users.users.nixos = {
     isNormalUser = true;
@@ -47,45 +51,8 @@
 
   # Network configuration for installer
   networking = {
-    useNetworkd = true;
     hostName = "nixos-installer";
-
-    # Enable mDNS
-    firewall.allowedUDPPorts = [ 5353 ];
   };
-
-  # mDNS configuration
-  systemd.network.networks = {
-    "99-ethernet-default-dhcp" = {
-      networkConfig.MulticastDNS = "yes";
-      matchConfig.Name = "en* eth*";
-      networkConfig.DHCP = "yes";
-    };
-    "99-wireless-client-dhcp" = {
-      networkConfig.MulticastDNS = "yes";
-      matchConfig.Name = "wlan*";
-      networkConfig.DHCP = "yes";
-    };
-  };
-
-  # Basic packages for installer
-  environment.systemPackages = with pkgs; [
-    vim
-    git
-    tree
-    htop
-  ];
-
-  # System tags for identification
-  system.nixos.tags =
-    let
-      cfg = config.boot.loader.raspberryPi;
-    in
-    [
-      "raspberry-pi-${cfg.variant}"
-      cfg.bootloader
-      config.boot.kernelPackages.kernel.version
-    ];
 
   # Stateless - use latest
   system.stateVersion = config.system.nixos.release;

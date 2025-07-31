@@ -117,6 +117,7 @@
             ./modules/common
             ./modules/servers
             ./modules/dns
+            ./modules/raspberrypi/base.nix
             sops-nix.nixosModules.sops
           ];
         };
@@ -134,6 +135,7 @@
             ./hosts/pi5/configtxt.nix
             ./modules/common
             ./modules/servers
+            ./modules/raspberrypi/base.nix
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -214,6 +216,7 @@
             ./modules/common
             ./modules/servers
             ./modules/dns
+            ./modules/raspberrypi/base.nix
             sops-nix.nixosModules.sops
           ];
           nixpkgs.pkgs = nixos-raspberrypi.inputs.nixpkgs.legacyPackages.aarch64-linux;
@@ -237,6 +240,7 @@
             ./hosts/pi5/configtxt.nix
             ./modules/common
             ./modules/servers
+            ./modules/raspberrypi/base.nix
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
           ];
@@ -253,7 +257,7 @@
             specialArgs = inputs;
             modules = [
               nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-              ./modules/installer/raspberrypi.nix
+              ./modules/raspberrypi/installer.nix
             ];
           }).config.system.build.sdImage;
 
@@ -262,7 +266,7 @@
             specialArgs = inputs;
             modules = [
               nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-              ./modules/installer/raspberrypi.nix
+              ./modules/raspberrypi/installer.nix
             ];
           }).config.system.build.sdImage;
 

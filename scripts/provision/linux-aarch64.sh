@@ -23,8 +23,8 @@ install_success_msg_hook() {
 	echo ""
 	info "Pi4 specific notes:"
 	echo "- The SD card has been repartitioned with your disko config"
-	echo "- Boot firmware is on the FIRMWARE partition"
-	echo "- Root filesystem is on the NIXOS_SD partition"
+	echo "- Boot firmware is on the firmware partition"
+	echo "- Root filesystem is on the root partition"
 }
 
 install_failure_msg_hook() {

@@ -41,7 +41,7 @@
   # For example, if this will be another DNS server:
   services.adguardhome.enable = true;
 
-  # Pi5-specific packages
+  # Raspberry Pi packages
   environment.systemPackages = with pkgs; [
     libraspberrypi
     raspberrypi-eeprom

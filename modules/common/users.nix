@@ -10,8 +10,9 @@
     mutableUsers = false;
 
     # Create media and samba and groups for Samba
-    groups.media = { };
-    groups.samba = { };
+    groups.media = {
+      gid = 1100;
+    };
 
     users = {
       root = {
@@ -25,7 +26,6 @@
         extraGroups = [
           "wheel"
           "networkmanager"
-          "samba"
           "media"
         ];
         uid = 1000;
@@ -44,11 +44,7 @@
         home = "/var/empty";
 
         description = "Media user for Samba shares";
-        extraGroups = [
-          "samba"
-          "guest"
-        ];
-        uid = 1001;
+        uid = 1100;
       };
     };
   };

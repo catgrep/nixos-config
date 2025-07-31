@@ -6,23 +6,24 @@
 }:
 
 {
-  services.jellyfin = {
-    enable = lib.mkDefault true;
-    user = "bdhill";
-    group = "users";
+
+  users.users.jellyfin = {
+    isSystemUser = true;
+    group = "media";
+    home = "/var/empty";
+
+    description = "Jellyfin";
+    extraGroups = [
+      "jellyfin"
+      "render"
+    ];
   };
 
-  # Add bdhill to render group for hardware acceleration
-  users.users.bdhill.extraGroups = [ "render" ];
-
-  # Ensure media directories exist and have proper permissions
-  systemd.tmpfiles.rules = [
-    "d /mnt/media 0755 bdhill users -"
-    "d /mnt/media/movies 0755 bdhill users -"
-    "d /mnt/media/tv 0755 bdhill users -"
-    "d /mnt/media/music 0755 bdhill users -"
-    "d /mnt/media/books 0755 bdhill users -"
-  ];
+  services.jellyfin = {
+    enable = true;
+    user = "jellyfin";
+    group = "media";
+  };
 
   # Open Jellyfin ports
   networking.firewall.allowedTCPPorts = [ 8096 ];

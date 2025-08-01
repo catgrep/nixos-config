@@ -70,7 +70,7 @@
             };
           };
           modules = [
-            ./hosts/${hostname}/configuration.nix
+            ./hosts/${hostname}
             ./modules/common
             ./modules/servers
             disko.nixosModules.disko

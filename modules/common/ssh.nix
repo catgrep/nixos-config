@@ -16,14 +16,13 @@
       X11Forwarding = false;
     };
 
-    # Persistent host keys (conditional on first boot since they may not exist)
     hostKeys = [
       {
-        path = "/persist/etc/ssh/ssh_host_ed25519_key";
+        path = "/etc/ssh/ssh_host_ed25519_key";
         type = "ed25519";
       }
       {
-        path = "/persist/etc/ssh/ssh_host_rsa_key";
+        path = "/etc/ssh/ssh_host_rsa_key";
         type = "rsa";
         bits = 4096;
       }

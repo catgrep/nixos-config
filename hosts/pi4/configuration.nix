@@ -95,7 +95,7 @@
     defaultSopsFormat = "yaml";
 
     # Use SSH host key for decryption
-    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
       "adguard_user_password_hash" = {

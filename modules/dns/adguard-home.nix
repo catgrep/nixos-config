@@ -26,10 +26,11 @@
     '';
   };
 
-  # Create a proper resolv.conf
+  # Create a proper resolv.conf with fallback
   environment.etc."resolv.conf".text = ''
     nameserver 127.0.0.1
     nameserver 1.1.1.1
+    options timeout:1 attempts:1
   '';
 
   services.adguardhome = {
@@ -53,11 +54,17 @@
           "8.8.4.4"
         ];
 
-        # Bootstrap DNS
-        bootstrap_dns = [
-          "1.1.1.1:53"
-          "1.0.0.1:53"
-        ];
+        # bootstrap_dns is intended for encrypted upstream DNS
+        # (DNS-over-HTTPS/TLS). I'm not using DoH/DoT here.
+        #
+        # If network DNS ever fails (e.g., AdGuard bootstrap lookup needs to
+        # resolve its own upstream), this can create recursion issues.
+        #
+        # bootstrap_dns = [
+        #   "1.1.1.1:53" # Cloudflare (1.1.1.1) for both bootstrap and upstream
+        #   "1.0.0.1:53"
+        # ];
+        bootstrap_dns = [ ];
 
         # Enable query logging
         querylog_enabled = true;
@@ -70,8 +77,8 @@
 
         # Cache settings
         cache_size = 4194304; # 4MB
-        cache_ttl_min = 0;
-        cache_ttl_max = 0;
+        cache_ttl_min = 0; # No forced minimum TTL
+        cache_ttl_max = 86400; # Cache up to 24h
 
         # Privacy settings
         anonymize_client_ip = false;
@@ -130,7 +137,7 @@
 
       # Enable web interface
       http = {
-        address = "0.0.0.0:80";
+        address = "0.0.0.0:3000";
         session_ttl = "720h";
       };
 
@@ -149,18 +156,36 @@
           id = 2;
         }
       ];
-
-      # Custom DNS rewrites for local services - updated with your actual IPs
-      dns_rewrites = [
-        # Point all services to Traefik
+      rewrites = [
+        # Traefik managed services
         {
           domain = "*.homelab";
           answer = "192.168.68.88";
-        } # Traefik on Firebat
-
-        # Direct host access (bypassing Traefik)
+        }
         {
-          domain = "beelink-homelab.internal";
+          domain = "jellyfin.homelab";
+          answer = "192.168.68.88";
+        }
+        {
+          domain = "adguard.homelab";
+          answer = "192.168.68.88";
+        }
+        {
+          domain = "grafana.homelab";
+          answer = "192.168.68.88";
+        }
+        {
+          domain = "prometheus.homelab";
+          answer = "192.168.68.88";
+        }
+        {
+          domain = "traefik.homelab";
+          answer = "192.168.68.88";
+        }
+
+        # Direct host access
+        {
+          domain = "beelink.internal";
           answer = "192.168.68.89";
         }
         {

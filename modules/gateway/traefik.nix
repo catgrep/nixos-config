@@ -99,7 +99,7 @@
           adguard = {
             loadBalancer = {
               servers = [
-                { url = "http://192.168.68.96:80"; }
+                { url = "http://192.168.68.96:3000"; } # Local on pi4
               ];
             };
           };

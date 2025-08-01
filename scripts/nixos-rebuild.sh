@@ -85,7 +85,7 @@ nixos_rebuild() {
 	# add extra args
 	if [ "$#" -ge 3 ]; then
 		args+=("${@:3}")
-		info "adding extra args: '${args[*]}'"
+		info "with extra args: '${args[*]}'"
 	fi
 
 	# LFG m8

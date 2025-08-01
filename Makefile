@@ -198,6 +198,15 @@ test-%:
 switch-%:
 	@./scripts/nixos-rebuild.sh switch $*
 
+# Rollback
+#
+# Instead of building a new configuration as specified by
+# /etc/nixos/configuration.nix, roll back to the previous configuration.
+# (The previous configuration is defined as the one before the “current”
+# generation of the Nix profile /nix/var/nix/profiles/system.)
+rollback-%:
+	@echo "TODO"
+
 reboot-%:
 	@./scripts/nixos-rebuild.sh reboot $*
 

@@ -28,6 +28,7 @@ get-host-ip = $(shell yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
 get-host-user = $(shell yq eval '.hosts."$(1)".targetUser' $(DEPLOY_YAML))
 get-build-on-target = $(shell yq eval '.hosts."$(1)".buildOnTarget' $(DEPLOY_YAML))
 get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
+get-host-smoketests = $(shell yq eval '.hosts."$(1)".smoketests' $(DEPLOY_YAML))
 
 # Default target
 help:
@@ -185,6 +186,7 @@ dry-activate-%:
 # automatically revert to the default configuration.
 test-%:
 	@./scripts/nixos-rebuild.sh test $*
+	@$(call get-host-smoketests,$*) $*
 
 # Switch
 #
@@ -197,6 +199,7 @@ test-%:
 # boot remain available in the GRUB menu.
 switch-%:
 	@./scripts/nixos-rebuild.sh switch $*
+	@$(call get-host-smoketests,$*) $*
 
 # Rollback
 #

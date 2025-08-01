@@ -5,21 +5,25 @@ hosts:
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["media", "x86_64"]
+    smoketests: "test"
 
   firebat:
     targetHost: "192.168.68.88"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["gateway", "x86_64"]
+    smoketests: "test"
 
   pi4:
     targetHost: "192.168.68.96"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["dns", "arm", "raspberrypi"]
+    smoketests: "./scripts/smoketests/dns.sh"
 
   pi5:
     targetHost: "192.168.68.95"
     targetUser: "nixos"
     buildOnTarget: true
     tags: ["arm", "raspberrypi"]
+    smoketests: "test"

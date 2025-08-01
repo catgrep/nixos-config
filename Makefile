@@ -24,11 +24,17 @@ DEPLOY_YAML := deploy.yaml
 HOSTS := $(shell yq eval '.hosts | keys | .[]' $(DEPLOY_YAML))
 
 # Helper functions to get host metadata
-get-host-ip = $(shell yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
 get-host-user = $(shell yq eval '.hosts."$(1)".targetUser' $(DEPLOY_YAML))
+get-host-ip = $(shell yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
 get-build-on-target = $(shell yq eval '.hosts."$(1)".buildOnTarget' $(DEPLOY_YAML))
 get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
 get-host-smoketests = $(shell yq eval '.hosts."$(1)".smoketests' $(DEPLOY_YAML))
+
+# Overrides
+export NIXBUILD_USER ?=
+ifdef NIXBUILD_USER
+get-host-user = $(NIXBUILD_USER)
+endif
 
 # Default target
 help:
@@ -140,7 +146,7 @@ ssh-%:
 list-hosts:
 	@for host in $(HOSTS); do \
 		ip=$$(yq eval ".hosts.\"$$host\".targetHost" $(DEPLOY_YAML)); \
-		user=$$(yq eval ".hosts.\"$$host\".targetUser" $(DEPLOY_YAML)); \
+		user=$(call get-host-user,$$host); \
 		tags=$$(yq eval ".hosts.\"$$host\".tags | join(\", \")" $(DEPLOY_YAML)); \
 		$(call title_msg,"$$host:"); \
 		echo "    IP: $$ip"; \

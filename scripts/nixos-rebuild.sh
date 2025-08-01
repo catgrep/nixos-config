@@ -10,6 +10,9 @@ cleanup_hook() {
 	error "nixos-rebuild failed"
 }
 
+# NIXBUILD_USER can be used to override the default user in './deploy.yaml'
+NIXBUILD_USER="${NIXBUILD_USER:-}"
+
 usage() {
 	title "Usage: $0 <action> <host>"
 	echo ""
@@ -47,6 +50,11 @@ nixos_rebuild() {
 	local ip
 	user="$(get_user "$host")"
 	ip="$(get_ip "$host")"
+
+	if [ -n "$NIXBUILD_USER" ]; then
+		info "Build user will be '$NIXBUILD_USER' instead of '$user'"
+		user="$NIXBUILD_USER"
+	fi
 
 	info "Running 'nixos-rebuild ${action}' on '${user}@${ip}'..."
 

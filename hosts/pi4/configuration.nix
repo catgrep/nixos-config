@@ -11,6 +11,16 @@
     ./hardware-configuration.nix
   ];
 
+  # Enable the system banner
+  programs.system-banner = {
+    enable = true;
+    shellHook = ''
+      echo
+      echo "Welcome back, $(whoami)!" | cowsay | lolcat
+    '';
+    showOnLogin = true;
+  };
+
   # Host identification
   networking = {
     hostName = "pi4";

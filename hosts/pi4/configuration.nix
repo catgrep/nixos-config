@@ -102,14 +102,14 @@
       # The config file should already exist at this point
       adguard_yaml=/var/lib/AdGuardHome/AdGuardHome.yaml
       sops_pass_file="${config.sops.secrets.adguard_user_password_hash.path}"
-      if [ ! -f \"$adguard_yaml\" ]; then
+      if [ ! -f "$adguard_yaml" ]; then
           echo "Warning: 'AdGuardHome.yaml' not found"
-      elif [ ! -f \"$sops_pass_file\" ]; then
+      elif [ ! -f "$sops_pass_file" ]; then
           echo "Warning: sops password file not found"
       else
         echo "Injecting AdGuard admin password hash..."
-        HASH=$(cat \"$sops_pass_file\")
-        ${pkgs.yq-go}/bin/yq eval -i ".users[0].password = \"$HASH\"" /var/lib/adguardhome/AdGuardHome.yaml
+        HASH=$(cat "$sops_pass_file")
+        ${pkgs.yq-go}/bin/yq eval -i ".users[0].password = \"$HASH\"" "$adguard_yaml"
         echo "Password hash injected successfully"
       fi
     '';

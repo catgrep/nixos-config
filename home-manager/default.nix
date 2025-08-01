@@ -21,6 +21,7 @@
     shellcheck
     shfmt
     nmap
+    yq-go
   ];
 
   # Enable home-manager

@@ -120,7 +120,7 @@
           name = "admin";
           # To generate: echo -n 'yourpassword' | htpasswd -niBC 10 admin | cut -d: -f2
           # Or leave empty and set up through web interface on first access
-          password = ""; # Empty means setup on first login
+          # password = ""; # Empty means setup on first login
         }
       ];
 

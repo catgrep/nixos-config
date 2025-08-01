@@ -79,6 +79,32 @@
     };
   };
 
+  # SOPS configuration
+  sops = {
+    defaultSopsFile = ../../secrets/pi4.yaml;
+    defaultSopsFormat = "yaml";
+
+    # Use SSH host key for decryption
+    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
+
+    secrets = {
+      "adguard_user_password_hash" = {
+        neededForUsers = true;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+    };
+  };
+
+  services.adguardhome.settings.users = [
+    {
+      name = "admin";
+      # bycrypt password hash
+      passwordFile = config.sops.secrets.adguard_user_password_hash;
+    }
+  ];
+
   # System state version
   system.stateVersion = "24.11";
 }

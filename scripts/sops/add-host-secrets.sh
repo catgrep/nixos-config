@@ -19,25 +19,25 @@ if [ -f "./secrets/$host.yaml" ]; then
 fi
 
 # Update .sops.yaml
-yq -i "
-    .creation_rules +=
-    {
-        \"path_regex\": \"^secrets/$host.yaml$\",
-        \"key_groups\": [
-            {
-                \"pgp\": [],
-                \"age\": []
-            }
-        ]
-    } |
-    .creation_rules[-1].key_groups[].pgp = [ \"admin_$USER\" ] |
-    .creation_rules[-1].key_groups[].pgp[-1] alias = \"admin_$USER\" |
-    .creation_rules[-1].key_groups[].age = [ \"server_$host\" ] |
-    .creation_rules[-1].key_groups[].age[-1] alias = \"server_$host\" |
-    .creation_rules[-1] head_comment = \"Added '$host' secrets file with '$0' on $(date)\"
+yq -e -i "
+	.creation_rules +=
+	{
+		\"path_regex\": \"^secrets/$host.yaml$\",
+		\"key_groups\": [
+			{
+				\"pgp\": [],
+				\"age\": []
+			}
+		]
+	} |
+	.creation_rules[-1].key_groups[].pgp = [ \"admin_$USER\" ] |
+	.creation_rules[-1].key_groups[].pgp[0] alias = \"admin_$USER\" |
+	.creation_rules[-1].key_groups[].age = [ \"server_$host\" ] |
+	.creation_rules[-1].key_groups[].age[0] alias = \"server_$host\" |
+	.creation_rules[-1] head_comment = \"Added '$host' secrets file with '$0' on $(date)\"
 " "$SOPS_CONFIG"
 
 success "Updated '$SOPS_CONFIG':"
-yq eval -P "$SOPS_CONFIG"
+print_yaml "$SOPS_CONFIG"
 
 info "Run 'sops edit secrets/$host.yaml' to add secrets."

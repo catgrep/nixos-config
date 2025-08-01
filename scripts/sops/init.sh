@@ -20,6 +20,8 @@ cat >"$SOPS_CONFIG" <<EOF
 
 keys:
 creation_rules:
+  # The first rule is for the global secrets file shared by all hosts. All hosts
+  # age keys are added here by default.
   - path_regex: ^${SECRETS_FILE}\$
     key_groups:
     - pgp:

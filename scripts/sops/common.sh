@@ -10,7 +10,7 @@ cleanup_hook() {
 SOPS_CONFIG=".sops.yaml"
 AGE_KEY_PATH="${HOME}/.config/sops/age/keys.txt"
 SECRETS_DIR="secrets"
-SECRETS_FILE="${SECRETS_DIR}/secrets.yaml"
+SECRETS_FILE="${SECRETS_DIR}/secrets.yaml" # this is the host global secrets file
 HOST_KEYS_SECRETS_DIR="${SECRETS_DIR}/keys/hosts"
 USER_KEYS_SECRETS_DIR="${SECRETS_DIR}/keys/users"
 ED_PUBKEY_PATH="/Users/bobby/.ssh/id_ed25519.pub"

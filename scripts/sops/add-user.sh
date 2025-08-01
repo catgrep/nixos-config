@@ -22,15 +22,13 @@ set -euo pipefail
 # GPG fingerprint (this will be used as the master key for updating secrets)
 GPG_FINGERPRINT=05BE930549C3E945BA3D8B6E72B6A6E95F049306 # gpg -K
 
-yq -i "
-    .keys += [ \"${GPG_FINGERPRINT}\" ] |
-    .keys[-1] anchor = \"admin_${USER}\" |
-    .keys[0] head_comment = \"Added 'admin_$USER' GPG master key with '$0' on $(date)\"
-" "$SOPS_CONFIG"
-yq -i "
-    .creation_rules[].key_groups[].pgp += [ \"admin_${USER}\"] |
-    .creation_rules[].key_groups[].pgp[-1] alias = \"admin_${USER}\"
+yq -e -i "
+	.keys = [ \"${GPG_FINGERPRINT}\" ] + .keys |
+	.keys[0] anchor = \"admin_${USER}\" |
+	.keys[0] head_comment = \"Added 'admin_$USER' GPG master key with '$0' on $(date)\" |
+	.creation_rules[].key_groups[].pgp = [ \"admin_${USER}\" ] + .creation_rules[].key_groups[].pgp |
+	.creation_rules[].key_groups[].pgp[0] alias = \"admin_${USER}\"
 " "$SOPS_CONFIG"
 
 success "Generated '$SOPS_CONFIG':"
-yq eval -P "$SOPS_CONFIG"
+print_yaml "$SOPS_CONFIG"

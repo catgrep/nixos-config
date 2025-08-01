@@ -62,7 +62,7 @@ pre_install_checks() {
 	ssh "${user}@${target_ip}" "free -h"
 
 	echo ""
-	error "WARNING: This will ERASE all data on the configured disks!"
+	warning "This will ERASE all data on the configured disks!"
 	error "Check that hosts/${hostname}/disko-config.nix has the correct disk devices (use /dev/disk/by-id/ID)"
 	echo ""
 

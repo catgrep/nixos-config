@@ -29,7 +29,6 @@ get-host-user = $(shell yq eval '.hosts."$(1)".targetUser' $(DEPLOY_YAML))
 get-build-on-target = $(shell yq eval '.hosts."$(1)".buildOnTarget' $(DEPLOY_YAML))
 get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
 
-
 # Default target
 help:
 	@$(call title_msg,"Nix Development 🧪")
@@ -162,43 +161,22 @@ info-%:
 # Build the new configuration, but neither activate it nor add it to the
 # GRUB boot menu.
 build-%:
-	@$(call info_msg,"Building configuration for $*...")
-	@ip=$(call get-host-ip,$*)
-	@user=$(call get-host-user,$*)
-	nixos-rebuild build --flake .#$* \
-        --build-host "$${user}@$${ip}" \
-        --target-host "$${user}@$${ip}" \
-		--use-remote-sudo; \
-	@$(call success_msg,"✓ Build complete")
+	@./scripts/nixos-rebuild.sh build $*
 
 # Dry Build
 #
 # Show what store paths would be built or downloaded by any of the operations
 # above, but otherwise do nothing.
 dry-build-%:
-	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
-	@ip=$(call get-host-ip,$*)
-	@user=$(call get-host-user,$*)
-	nixos-rebuild dry-build --flake .#$* \
-	    --build-host "$${user}@$${ip}" \
-		--target-host "$${user}@$${ip}" \
-		--use-remote-sudo; \
-	@$(call success_msg,"✓ Dry run complete")
+	@./scripts/nixos-rebuild.sh dry-build $*
 
 # Dry Activate
 #
-# Build  the  new  configuration, but instead of activating it, show what
+# Build the new configuration, but instead of activating it, show what
 # changes would be performed by the activation. The list of changes is not
 # guaranteed to be complete.
 dry-activate-%:
-	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
-	@ip=$(call get-host-ip,$*)
-	@user=$(call get-host-user,$*)
-	nixos-rebuild dry-activate --flake .#$* \
-	    --build-host "$${user}@$${ip}" \
-		--target-host "$${user}@$${ip}" \
-		--use-remote-sudo; \
-	@$(call success_msg,"✓ Dry run complete")
+	@./scripts/nixos-rebuild.sh dry-activate $*
 
 # Test
 #
@@ -206,14 +184,7 @@ dry-activate-%:
 # boot menu. Thus, if you reboot the system (or if it crashes), you will
 # automatically revert to the default configuration.
 test-%:
-	@$(call info_msg,"\[ DRY RUN \] Testing deployment to $*...")
-	@ip=$(call get-host-ip,$*)
-	@user=$(call get-host-user,$*)
-	nixos-rebuild test --flake .#$* \
-	    --build-host "$${user}@$${ip}" \
-		--target-host "$${user}@$${ip}" \
-		--use-remote-sudo; \
-	@$(call success_msg,"✓ Dry run complete")
+	@./scripts/nixos-rebuild.sh test $*
 
 # Switch
 #
@@ -225,20 +196,10 @@ test-%:
 # Previous configurations activated with nixos-rebuild switch or nixos-rebuild
 # boot remain available in the GRUB menu.
 switch-%:
-	@$(call info_msg,"Deploying to $*...")
-	@ip=$(call get-host-ip,$*)
-	@user=$(call get-host-user,$*)
-	@build_on_target=$(call get-build-on-target,$*)
-	@if [ "$$build_on_target" = "true" ]; then \
-		build_flag="--build-on-remote"; \
-	else \
-		build_flag=""; \
-	fi; \
-	nixos-rebuild switch --flake .#$* \
-		--target-host $$user@$$ip \
-		--use-remote-sudo \
-		$$build_flag
-	@$(call success_msg,"✓ Deployment to $* complete")
+	@./scripts/nixos-rebuild.sh switch $*
+
+reboot-%:
+	@./scripts/nixos-rebuild.sh reboot $*
 
 # Switch All
 #

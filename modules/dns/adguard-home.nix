@@ -112,7 +112,51 @@
         filtering_enabled = true;
         blocked_response_ttl = 10;
 
-        # Remove blocked_services from here - it goes at the top level
+        rewrites = [
+          # Traefik managed services
+          {
+            domain = "*.homelab";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "jellyfin.homelab";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "adguard.homelab";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "grafana.homelab";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "prometheus.homelab";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "traefik.homelab";
+            answer = "192.168.68.88";
+          }
+
+          # Direct host access
+          {
+            domain = "beelink.internal";
+            answer = "192.168.68.89";
+          }
+          {
+            domain = "firebat.internal";
+            answer = "192.168.68.88";
+          }
+          {
+            domain = "pi4.internal";
+            answer = "192.168.68.96";
+          }
+          {
+            domain = "pi5.internal";
+            answer = "192.168.68.95";
+          }
+        ];
       };
 
       # Blocked services - this is now at the top level, not under filtering
@@ -152,51 +196,6 @@
           url = "https://adaway.org/hosts.txt";
           name = "AdAway Default Blocklist";
           id = 2;
-        }
-      ];
-      rewrites = [
-        # Traefik managed services
-        {
-          domain = "*.homelab";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "jellyfin.homelab";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "adguard.homelab";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "grafana.homelab";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "prometheus.homelab";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "traefik.homelab";
-          answer = "192.168.68.88";
-        }
-
-        # Direct host access
-        {
-          domain = "beelink.internal";
-          answer = "192.168.68.89";
-        }
-        {
-          domain = "firebat.internal";
-          answer = "192.168.68.88";
-        }
-        {
-          domain = "pi4.internal";
-          answer = "192.168.68.96";
-        }
-        {
-          domain = "pi5.internal";
-          answer = "192.168.68.95";
         }
       ];
     };

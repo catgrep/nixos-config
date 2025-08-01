@@ -47,54 +47,78 @@
         };
       };
     };
-  };
 
-  # Traefik dynamic configuration
-  environment.etc."traefik/dynamic.yml".text = lib.generators.toYAML { } {
-    http = {
-      routers = {
-        # Route to Jellyfin on Beelink
-        jellyfin = {
-          rule = "Host(`jellyfin.firebat.local`)";
-          service = "jellyfin";
-          entryPoints = [ "websecure" ];
-          tls.certResolver = "letsencrypt";
+    dynamicConfigOptions = {
+      http = {
+        routers = {
+          # Jellyfin
+          jellyfin = {
+            rule = "Host(`jellyfin.homelab`)";
+            service = "jellyfin";
+            entryPoints = [ "web" ];
+          };
+
+          # AdGuard
+          adguard = {
+            rule = "Host(`adguard.homelab`)";
+            service = "adguard";
+            entryPoints = [ "web" ];
+          };
+
+          # Grafana
+          grafana = {
+            rule = "Host(`grafana.homelab`)";
+            service = "grafana";
+            entryPoints = [ "web" ];
+          };
+
+          # Prometheus
+          prometheus = {
+            rule = "Host(`prometheus.homelab`)";
+            service = "prometheus";
+            entryPoints = [ "web" ];
+          };
+
+          # Traefik Dashboard
+          traefik = {
+            rule = "Host(`traefik.homelab`)";
+            service = "api@internal";
+            entryPoints = [ "web" ];
+          };
         };
 
-        # Route to Pi-hole admin
-        pihole = {
-          rule = "Host(`pihole.firebat.local`)";
-          service = "pihole";
-          entryPoints = [ "websecure" ];
-          tls.certResolver = "letsencrypt";
-        };
+        services = {
+          jellyfin = {
+            loadBalancer = {
+              servers = [
+                { url = "http://192.168.68.89:8096"; }
+              ];
+            };
+          };
 
-        # Route to Grafana
-        grafana = {
-          rule = "Host(`grafana.firebat.local`)";
-          service = "grafana";
-          entryPoints = [ "websecure" ];
-          tls.certResolver = "letsencrypt";
-        };
-      };
+          adguard = {
+            loadBalancer = {
+              servers = [
+                { url = "http://192.168.68.96:80"; }
+              ];
+            };
+          };
 
-      services = {
-        jellyfin = {
-          loadBalancer.servers = [
-            { url = "http://beelink-homelab.local:8096"; }
-          ];
-        };
+          grafana = {
+            loadBalancer = {
+              servers = [
+                { url = "http://192.168.68.88:3000"; } # Local on Firebat
+              ];
+            };
+          };
 
-        pihole = {
-          loadBalancer.servers = [
-            { url = "http://pi4.local:80"; }
-          ];
-        };
-
-        grafana = {
-          loadBalancer.servers = [
-            { url = "http://localhost:3000"; }
-          ];
+          prometheus = {
+            loadBalancer = {
+              servers = [
+                { url = "http://192.168.68.88:9090"; } # Local on Firebat
+              ];
+            };
+          };
         };
       };
     };

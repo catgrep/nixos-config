@@ -25,9 +25,9 @@
         static_configs = [
           {
             targets = [
-              "beelink-homelab.local:9100" # Beelink node exporter
-              "firebat.local:9100" # Firebat node exporter
-              "pi4.local:9100" # Pi4 node exporter
+              "beelink-homelab.internal:9100" # Beelink node exporter
+              "firebat.internal:9100" # Firebat node exporter
+              "pi4.internal:9100" # Pi4 node exporter
             ];
           }
         ];
@@ -39,7 +39,7 @@
         static_configs = [
           {
             targets = [
-              "beelink-homelab.local:9134" # ZFS metrics from Beelink
+              "beelink-homelab.internal:9134" # ZFS metrics from Beelink
             ];
           }
         ];
@@ -50,7 +50,7 @@
         static_configs = [
           {
             targets = [
-              "pi4.local:80" # AdGuard Home built-in metrics
+              "pi4.internal:80" # AdGuard Home built-in metrics
             ];
           }
         ];
@@ -66,7 +66,7 @@
         job_name = "jellyfin";
         static_configs = [
           {
-            targets = [ "beelink-homelab.local:8096" ];
+            targets = [ "beelink-homelab.internal:8096" ];
           }
         ];
         scrape_interval = "60s";

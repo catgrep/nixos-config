@@ -12,7 +12,7 @@
       server = {
         http_addr = "0.0.0.0";
         http_port = 3000;
-        domain = "grafana.homelab.local";
+        domain = "grafana.homelab";
       };
 
       # Default admin credentials (change after first login)

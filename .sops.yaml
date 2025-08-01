@@ -29,3 +29,10 @@ creation_rules:
           - *admin_bobby
         age:
           - *server_beelink-homelab
+  # Added 'pi4' secrets file with './scripts/sops/add-host-secrets.sh' on Fri Aug  1 10:46:11 PDT 2025
+  - path_regex: ^secrets/pi4.yaml$
+    key_groups:
+      - pgp:
+          - *admin_bobby
+        age:
+          - *server_pi4

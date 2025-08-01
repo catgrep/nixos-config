@@ -46,6 +46,7 @@
         scrape_interval = "30s";
       }
       {
+        # FIXME: add sops-nix to firebat to access adguard api
         job_name = "adguard";
         static_configs = [
           {

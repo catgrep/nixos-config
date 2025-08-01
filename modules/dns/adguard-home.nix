@@ -35,7 +35,7 @@
 
   services.adguardhome = {
     enable = lib.mkDefault true;
-    mutableSettings = false;
+    mutableSettings = true; # Let AdGuard write its own config so we can update the password
     settings = {
       # Bind to all interfaces
       host = "0.0.0.0";
@@ -129,9 +129,7 @@
       users = [
         {
           name = "admin";
-          # To generate: echo -n 'yourpassword' | htpasswd -niBC 10 admin | cut -d: -f2
-          # Or leave empty and set up through web interface on first access
-          # password = ""; # Empty means setup on first login
+          password = ""; # Will be set by the systemd service
         }
       ];
 

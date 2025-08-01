@@ -89,21 +89,31 @@
 
     secrets = {
       "adguard_user_password_hash" = {
-        neededForUsers = true;
-        owner = "root";
-        group = "root";
-        mode = "0400";
+        owner = "adguardhome";
+        group = "adguardhome";
+        restartUnits = [ "adguardhome.service" ];
       };
     };
   };
 
-  services.adguardhome.settings.users = [
-    {
-      name = "admin";
-      # bycrypt password hash
-      passwordFile = config.sops.secrets.adguard_user_password_hash;
-    }
-  ];
+  # Override the preStart to inject the password
+  systemd.services.adguardhome = {
+    preStart = lib.mkAfter ''
+      # The config file should already exist at this point
+      adguard_yaml=/var/lib/AdGuardHome/AdGuardHome.yaml
+      sops_pass_file="${config.sops.secrets.adguard_user_password_hash.path}"
+      if [ ! -f \"$adguard_yaml\" ]; then
+          echo "Warning: 'AdGuardHome.yaml' not found"
+      elif [ ! -f \"$sops_pass_file\" ]; then
+          echo "Warning: sops password file not found"
+      else
+        echo "Injecting AdGuard admin password hash..."
+        HASH=$(cat \"$sops_pass_file\")
+        ${pkgs.yq-go}/bin/yq eval -i ".users[0].password = \"$HASH\"" /var/lib/adguardhome/AdGuardHome.yaml
+        echo "Password hash injected successfully"
+      fi
+    '';
+  };
 
   # System state version
   system.stateVersion = "24.11";

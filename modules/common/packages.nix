@@ -19,7 +19,7 @@
     screen
     mosh
     jq
-    yq
+    yq-go
 
     # Funsies
     cowsay

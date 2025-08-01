@@ -81,9 +81,10 @@ nixos_reboot() {
 	ip="$(get_ip "$host")"
 
 	info "Rebooting '${user}@${ip}'..."
-	ssh -o StrictHostKeyChecking=no "${user}@${ip}" -- sudo reboot || true
+	ssh -o StrictHostKeyChecking=no "${user}@${ip}" -- sudo reboot
 	info "Waiting for host '${ip}' to come back online..."
 
+	sleep 1
 	# Retry SSH up to 10 times with 1 second delay
 	for i in {1..10}; do
 		if ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no "${user}@${ip}" "echo 'online'" &>/dev/null; then

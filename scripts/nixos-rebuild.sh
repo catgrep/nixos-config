@@ -126,7 +126,7 @@ nixos_reboot() {
 			return 0
 		fi
 		info "Retrying..."
-		sleep 1
+		sleep 5
 	done
 
 	error "Host '${ip}' did not come back online after 10 attempts"

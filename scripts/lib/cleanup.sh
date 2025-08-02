@@ -4,7 +4,12 @@
 cleanup() {
     ec=$?
     if [ $ec -ne 0 ]; then
-        cleanup_hook || error "$0: script failed with exit code: $ec"
+        # call "cleanup_hook" if dependent script defines it
+        if command -v cleanup_hook >/dev/null 2>&1; then
+            cleanup_hook
+        else
+            fail "script '$(fmt_blue "$0")' failed with exit code: $ec"
+        fi
     fi
 }
 trap cleanup EXIT

@@ -4,10 +4,6 @@
 
 set -euo pipefail
 
-cleanup_hook() {
-    error "$0 failed"
-}
-
 title "$(basename "$0")"
 
 parent="$(dirname "$0" | cut -f2- -d'/')" # 'addlicense' doesn't like the leading './' in the '-ignore' pattern
@@ -26,6 +22,6 @@ if [ "$#" -ge 0 ]; then
     args=("${@}" "${args[@]}") # prepend since 'addlicense' wants flags declared first
 fi
 
-info "Running '$(fmt_blue "addlicense ${args[*]}")'..."
+info "running '$(fmt_blue "addlicense ${args[*]}")'..."
 addlicense "${args[@]}"
-success "Done"
+pass "$(fmt_blue "$0") completed"

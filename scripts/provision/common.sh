@@ -34,9 +34,9 @@ pre_install_checks() {
     echo ""
 
     # Check connectivity
-    info "Checking SSH connection..."
+    info "checking SSH connection..."
     if ! ssh -o ConnectTimeout=5 "${user}@${target_ip}" "echo 'OK'" 2>/dev/null; then
-        error "Cannot connect to ${user}@${target_ip}"
+        fail "Cannot connect to ${user}@${target_ip}"
         echo ""
         info "On the target machine, ensure you have:"
         info "1. Set root password: sudo passwd"
@@ -47,31 +47,29 @@ pre_install_checks() {
 
     # Show disk information
     echo ""
-    info "Target disk configuration:"
+    info "target disk configuration:"
     ssh "${user}@${target_ip}" "lsblk -o NAME,SIZE,TYPE,ID-LINK"
 
     echo ""
-    info "Disk by-id mappings:"
+    info "disk by-id mappings:"
     ssh "${user}@${target_ip}" "ls -la /dev/disk/by-id/ | grep -v 'part\|total' | grep -E 'ata-|nvme-|mmc-|usb-'" || true
 
     echo ""
-    info "Current root filesystem:"
+    info "current root filesystem:"
     ssh "${user}@${target_ip}" "df -h /"
 
     echo ""
-    info "Available memory (for kexec):"
+    info "available memory (for kexec):"
     ssh "${user}@${target_ip}" "free -h"
 
     echo ""
-    warning "This will ERASE all data on the configured disks!"
-    error "Check that hosts/${hostname}/disko-config.nix has the correct disk devices (use /dev/disk/by-id/ID)"
-    echo ""
-
-    # Confirm
+    warn "This will ERASE all data on the configured disks!"
+    warn "Check that '$(fmt_blue "hosts/${hostname}/disko-config.nix")' has the correct disk devices."
+    warn "Suggestion: use '$(fmt_bold "/dev/disk/by-id/ID-LINK")'."
     read -p "Continue with installation? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
+        echo "Aborted"
         exit 1
     fi
 }
@@ -100,7 +98,7 @@ menu() {
             return 0
             ;;
         *)
-            error "Unknown option: $1"
+            fail "unsupported option: $1"
             usage
             return 1
             ;;
@@ -122,7 +120,7 @@ libmain() {
     local target_ip="$3"
 
     if ! pre_install_checks "$user" "$hostname" "$target_ip"; then
-        error "Pre-install Checks Failed! ${user}@${target_ip}"
+        fail "pre-install checks failed for '${user}@${target_ip}'"
         return 1
     fi
     if ! nixos_anywhere_run_hook "$user" "$hostname" "$target_ip"; then

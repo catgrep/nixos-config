@@ -7,10 +7,6 @@ set -euo pipefail
 
 title "$0"
 
-cleanup_hook() {
-    error "$0: failed"
-}
-
 if [ $# -lt 1 ]; then
     info "Usage: $0 <host>"
     exit 1
@@ -25,11 +21,11 @@ resolves() {
     local domain="$1"
     local dns_ip="$2"
 
-    info "check that '$domain' resolves"
+    info "check that '$(fmt_bold "$domain")' resolves"
     if nslookup "$domain" "$dns_ip"; then
-        success "resolved '$domain'"
+        pass "resolved '$(fmt_bold "$domain")'"
     else
-        error "failed to resolve '$domain'"
+        fail "failed to resolve '$(fmt_bold "$domain")'"
     fi
 }
 
@@ -48,4 +44,4 @@ for domain in $domain_rewrites; do
 done
 
 echo
-success "all tests passed"
+pass "all tests passed"

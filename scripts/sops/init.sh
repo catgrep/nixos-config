@@ -7,13 +7,13 @@ set -euo pipefail
 
 # Backup existing config if it exists
 if [[ -f "$SOPS_CONFIG" ]]; then
-    cp "$SOPS_CONFIG" "${SOPS_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"
-    info "Backed up existing config"
+    sops_backup="${SOPS_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"
+    cp "$SOPS_CONFIG" "$sops_backup"
+    info "backed up existing config to '$sops_backup'"
 fi
 
-info "Creating SOPS configuration..."
-
 # Create barebones .sops.yaml
+info "creating SOPS configuration at '$SOPS_CONFIG'..."
 cat >"$SOPS_CONFIG" <<EOF
 # SOPS configuration for NixOS homelab
 # WARNING: any modifications will be overwritten by '$(dirname "$0")' scripts
@@ -29,5 +29,5 @@ creation_rules:
       age:
 EOF
 
-success "Generated '$SOPS_CONFIG':"
-yq eval -P "$SOPS_CONFIG"
+pass "Generated '$SOPS_CONFIG':"
+print_yaml "$SOPS_CONFIG"

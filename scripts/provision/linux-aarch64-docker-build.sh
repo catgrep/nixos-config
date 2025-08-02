@@ -7,7 +7,7 @@ set -euo pipefail
 
 cleanup_hook() {
     if [ ! -f "./result/${artifact}" ]; then
-        error "$0: '${nixattr}' failed!"
+        fail "$0: '${nixattr}' failed!"
         exit 1
     fi
 }

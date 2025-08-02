@@ -5,11 +5,7 @@
 
 set -euo pipefail
 
-title "nixos-rebuild"
-
-cleanup_hook() {
-    error "nixos-rebuild failed"
-}
+title "$0"
 
 # NIXBUILD_USER can be used to override the default user in './deploy.yaml'
 NIXBUILD_USER="${NIXBUILD_USER:-}"
@@ -31,15 +27,37 @@ usage() {
     echo "$0 test pi4"
 }
 
+raspberrypi_warning_banner() {
+    echo
+    echo -e "$(fmt_bold "📝 NOTE on Raspberry Pi's")"
+    echo -e "$(fmt_blue "||") For bootstrapping from the installer, you may need to generate"
+    echo -e "$(fmt_blue "||") the hardware config first with:"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") > $(fmt_yellow "$0 update-hardware piX")"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") This will replace the existing config with the generated one."
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") For rebuilds, if '$(fmt_blue test)' or '$(fmt_blue switch)' fails due to:"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") $(fmt_red "Error: Failed to open unit file /nix/store/.../etc/systemd/system/boot-firmware.mount")"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") You may need to mount '$(fmt_blue /boot/firmware)' first with:"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") > $(fmt_yellow "sudo mount /dev/disk/by-label/FIRMWARE /boot/firmware")"
+    echo -e "$(fmt_blue "||")"
+    echo -e "$(fmt_blue "||") See: https://gist.github.com/mti/f6572f34aefbcb1aba1d33c888a5b298"
+    echo -e "$(fmt_bold "📝 END NOTE")"
+    echo
+}
+
 # confirm to not accidentally bork your system :'D
 confirm() {
     echo ""
-    warning "This could result in a boot failure upon reboot and require console access!"
-    echo ""
+    warn "This could result in a boot failure upon reboot and require console access!"
     read -p "Continue? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
+        fail "Aborted"
         exit 1
     fi
 }
@@ -67,7 +85,9 @@ nixos_rebuild() {
         --target-host "${user}@${ip}"
         --use-remote-sudo
         --verbose
-        --fast # add '--fast' to bypass 'Exec format error'. See https://discourse.nixos.org/t/deploy-nixos-configurations-on-other-machines/22940/32
+        # add '--fast' to bypass 'Exec format error'
+        # See https://discourse.nixos.org/t/deploy-nixos-configurations-on-other-machines/22940/32
+        --fast
     )
 
     # add extra args if there are more than required
@@ -83,8 +103,6 @@ nixos_rebuild() {
     info "build logs will be at: '$build_logs'"
 
     nixos-rebuild "${args[@]}" | tee -a "$build_logs"
-
-    success "Done"
 }
 
 nixos_generate_config() {
@@ -102,8 +120,6 @@ nixos_generate_config() {
 
     info "updating './hosts/${host}/hardware-configuration.nix' using 'nixos-generate-config'..."
     ssh "${user}@${ip}" "nixos-generate-config --show-hardware-config" >"./hosts/${host}/hardware-configuration.nix"
-
-    success "Done"
 }
 
 nixos_reboot() {
@@ -123,14 +139,13 @@ nixos_reboot() {
     for i in {1..10}; do
         if ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no "${user}@${ip}" "echo 'online'" &>/dev/null; then
             info "Host '${ip}' is back online (after $i attempt(s))"
-            success "Done"
             return 0
         fi
         info "Retrying..."
         sleep 5
     done
 
-    error "Host '${ip}' did not come back online after 10 attempts"
+    fail "Host '${ip}' did not come back online after 10 attempts"
     return 1
 }
 
@@ -144,26 +159,7 @@ main() {
     local host="$2"
     shift 2
 
-    echo
-    echo -e "$(fmt_bold "📝 NOTE on Raspberry Pi's")"
-    echo -e "$(fmt_blue "||") For bootstrapping from the installer, you may need to generate"
-    echo -e "$(fmt_blue "||") the hardware config first with:"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") > $(fmt_yellow "$0 update-hardware piX")"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") This will replace the existing config with the generated one."
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") For rebuilds, if '$(fmt_blue test)' or '$(fmt_blue switch)' fails due to:"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") $(fmt_red "Error: Failed to open unit file /nix/store/.../etc/systemd/system/boot-firmware.mount")"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") You may need to mount '$(fmt_blue /boot/firmware)' first with:"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") > $(fmt_yellow "sudo mount /dev/disk/by-label/FIRMWARE /boot/firmware")"
-    echo -e "$(fmt_blue "||")"
-    echo -e "$(fmt_blue "||") See: https://gist.github.com/mti/f6572f34aefbcb1aba1d33c888a5b298"
-    echo -e "$(fmt_bold "📝 END NOTE")"
-    echo
+    raspberrypi_warning_banner
 
     case $action in
     dry-build)
@@ -210,10 +206,12 @@ main() {
         nixos_generate_config "${host}"
         ;;
     *)
-        error "invalid option '${action}'"
+        fail "invalid option '${action}'"
         exit 1
         ;;
     esac
+
+    pass "$(fmt_blue "$0") completed"
 }
 
 main "$@"

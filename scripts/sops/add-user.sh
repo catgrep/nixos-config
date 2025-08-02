@@ -23,6 +23,7 @@ set -euo pipefail
 # GPG fingerprint (this will be used as the master key for updating secrets)
 GPG_FINGERPRINT=05BE930549C3E945BA3D8B6E72B6A6E95F049306 # gpg -K
 
+info "adding user '$(fmt_blue "${USER}")' to '$SOPS_CONFIG'..."
 yq -e -i "
     .keys = [ \"${GPG_FINGERPRINT}\" ] + .keys |
     .keys[0] anchor = \"admin_${USER}\" |
@@ -31,5 +32,5 @@ yq -e -i "
     .creation_rules[].key_groups[].pgp[0] alias = \"admin_${USER}\"
 " "$SOPS_CONFIG"
 
-success "Generated '$SOPS_CONFIG':"
+pass "generated '$SOPS_CONFIG':"
 print_yaml "$SOPS_CONFIG"

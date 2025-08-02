@@ -8,17 +8,17 @@
 # echo -n "Admin key: "
 # if [[ -f "$AGE_KEY_PATH" ]]; then
 # 	ADMIN_KEY=$(age-keygen -y "$AGE_KEY_PATH" 2>/dev/null)
-# 	success "${ADMIN_KEY}"
+# 	pass "${ADMIN_KEY}"
 # else
-# 	error "Not found"
+# 	fail "Not found"
 # fi
 
 # Check SOPS config
 echo -n "SOPS config: "
 if [[ -f "$SOPS_CONFIG" ]]; then
-    success "${SOPS_CONFIG}"
+    pass "${SOPS_CONFIG}"
 else
-    error "Not found"
+    fail "Not found"
 fi
 
 echo
@@ -28,7 +28,7 @@ if [[ -d "hosts" ]]; then
     echo "Host status:"
     for host_dir in hosts/*/; do
         if [ ! -d "$host_dir" ]; then
-            error "Host not configured"
+            fail "Host not configured"
             continue
         fi
 
@@ -36,21 +36,21 @@ if [[ -d "hosts" ]]; then
         echo -n "  ${host}: "
         # Check if secrets exist
         if [ ! -f "${HOST_SECRETS_DIR}/${host}/secrets.yaml" ]; then
-            error "Host has no secrets"
+            fail "Host has no secrets"
             continue
         fi
 
         # Check if host key is in SOPS config
         if [ ! -f "$SOPS_CONFIG" ] || ! grep -q "\*host_${host}" "$SOPS_CONFIG" 2>/dev/null; then
-            error "Secrets exist but host key missing"
+            fail "Secrets exist but host key missing"
             continue
         fi
 
         # Try to decrypt
         if sops -d "${HOST_SECRETS_DIR}/${host}/secrets.yaml" >/dev/null 2>&1; then
-            success "Configured (can decrypt)"
+            pass "Configured (can decrypt)"
         else
-            error "Configured (cannot decrypt)"
+            fail "Configured (cannot decrypt)"
         fi
     done
 fi
@@ -63,9 +63,9 @@ if [[ -d "$SECRETS_DIR" ]]; then
     find "$SECRETS_DIR" -name "*.yaml" -type f | while read -r secret; do
         echo -n "  ${secret}: "
         if sops -d "$secret" >/dev/null 2>&1; then
-            success "Can decrypt"
+            pass "Can decrypt"
         else
-            error "Cannot decrypt"
+            fail "Cannot decrypt"
         fi
     done
 fi

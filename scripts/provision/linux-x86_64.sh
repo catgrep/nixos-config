@@ -14,7 +14,7 @@ install_success_msg_hook() {
     local target_ip="$2"
 
     echo ""
-    success "$0: x86_64 installation complete!"
+    pass "$0: x86_64 installation complete!"
     echo ""
     title "Next steps:"
     echo "1. System will reboot automatically"
@@ -24,7 +24,7 @@ install_success_msg_hook() {
 }
 
 install_failure_msg_hook() {
-    error "$0: x86_64 installation failed!"
+    fail "$0: x86_64 installation failed!"
 }
 
 nixos_anywhere_run_hook() {

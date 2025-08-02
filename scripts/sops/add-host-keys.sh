@@ -5,12 +5,8 @@
 
 set -euo pipefail
 
-cleanup_hook() {
-    error "$0: sops failed"
-}
-
 # Collect host keys
-info "Collecting host keys..."
+info "collecting host keys..."
 declare -A HOST_KEYS
 
 cache_host_key() {
@@ -18,7 +14,7 @@ cache_host_key() {
     local address=$2
 
     if ! ping -c 1 -W 2 "$address" >/dev/null 2>&1; then
-        error "Could not ping '$hostname' with address '$address'"
+        fail "could not ping '$(fmt_blue "$hostname")' with address '$(fmt_blue "$hostname")'"
         return 1
     fi
 
@@ -28,10 +24,10 @@ cache_host_key() {
     if host_ssh_key=$(ssh-keyscan -t ed25519 "$address" 2>/dev/null | grep -v "^#"); then
         mkdir -p "${HOST_KEYS_SECRETS_DIR}"
         echo "$host_ssh_key" >"${HOST_KEYS_SECRETS_DIR}/${hostname}.pub"
-        success "Got key for $hostname"
+        pass "got key for '$(fmt_blue "$hostname")'"
         HOST_KEYS[$hostname]=true
     else
-        error "Could not fetch host key for '$hostname' with address '$address'"
+        fail "could not fetch host key for '$(fmt_blue "$hostname")' with address '$(fmt_blue "$hostname")'"
         return 1
     fi
 }
@@ -41,13 +37,13 @@ if [[ -d "hosts" ]]; then
     for hostname in $(list_hosts); do
         # Check if its been cached already
         if [ -f "${HOST_KEYS_SECRETS_DIR}/${hostname}.pub" ]; then
-            success "Got key for $hostname"
+            pass "got key for '$(fmt_blue "$hostname")'"
             HOST_KEYS[$hostname]=true
         else
             # If we don't have it already, fetch and cache it
-            info "Checking $hostname..."
+            info "checking '$(fmt_blue "$hostname")'..."
             cache_host_key "$hostname" "$(get_ip "$hostname")" ||
-                error "Could not reach $hostname"
+                fail "could not reach '$(fmt_blue "$hostname")'"
         fi
     done
 fi
@@ -66,7 +62,7 @@ for hostname in "${!HOST_KEYS[@]}"; do
     ) >/dev/null 2>&1; then
         # 1) if the age key is unchanged, do nothing and continue
         if [ "$old_age_key" = "$new_age_key" ]; then
-            info "host '$hostname' age key unchanged, skipping..."
+            info "host '$(fmt_blue "$hostname")' age key unchanged, skipping..."
             continue
         fi
 
@@ -84,11 +80,11 @@ for hostname in "${!HOST_KEYS[@]}"; do
         " "$SOPS_CONFIG"
 
         # 3) check if we should run 'sops updatekeys' on the host secrets file
-        info "host '$hostname' age key updated"
+        info "host '$(fmt_blue "$hostname")' was age key updated"
         if [ ! -f "${SECRETS_DIR}/${hostname}.yaml" ]; then
-            info "host '$hostname' has no secrets file to update"
+            info "host '$(fmt_blue "$hostname")' has no secrets file to update"
         else
-            info "running 'sops updatekeys ${SECRETS_DIR}/${hostname}.yaml' to persist changes..."
+            info "running '$(fmt_blue "sops updatekeys ${SECRETS_DIR}/${hostname}.yaml")' to persist changes..."
             sops updatekeys "${SECRETS_DIR}/${hostname}.yaml"
         fi
     else
@@ -101,12 +97,12 @@ for hostname in "${!HOST_KEYS[@]}"; do
             .creation_rules[0].key_groups[].age[-1] alias = \"server_${hostname}\"
         " "$SOPS_CONFIG"
 
-        info "new host '$hostname' age key added"
+        info "new host '$(fmt_blue "$hostname")' age key added"
         # NOTE: we don't need to run 'sops updatekeys' since there are no
         # secrets for this host yet.
     fi
     ((HOSTS_FOUND += 1))
 done
 
-success "Updated '$SOPS_CONFIG' with '$HOSTS_FOUND' host keys:"
+pass "updated '$SOPS_CONFIG' with '$HOSTS_FOUND' host keys:"
 print_yaml "$SOPS_CONFIG"

@@ -7,34 +7,42 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-PINK='\033[38;5;164;48;5;16m'
+PINK='\033[35m'
 RESET='\033[0m'
 
-# Functions for colored output
-info() { echo -e "${BOLD}${YELLOW}[INFO]${RESET} $1"; }
-success() { echo -e "${BOLD}${GREEN}[✓]${RESET} $1"; }
-error() { echo -e "${BOLD}${RED}[ERROR]${RESET} $1" >&2; }
-title() { echo -e "${BOLD}${BLUE}=== $1 ===${RESET}"; }
-warning() { echo -e "${BOLD}${PINK}[WARNING]${RESET} $1"; }
+# Define labels
+LABEL_INFO="[info]"
+LABEL_DONE="[done]"
+LABEL_FAIL="[FAIL]"
+LABEL_WARN="[WARN]"
+
+# Prefixed logging functions
+info() { printf "${BOLD}${YELLOW}%-6s${RESET} %b\n" "${LABEL_INFO}" "$1"; }
+warn() { printf "${BOLD}${PINK}%-6s${RESET} %b\n" "${LABEL_WARN}" "$1"; }
+pass() { printf "${BOLD}${GREEN}%-6s${RESET} %b\n" "${LABEL_DONE}" "$1"; }
+fail() { printf "${BOLD}${RED}%-6s${RESET} %b\n" "${LABEL_FAIL}" "$1" >&2; }
+
+# Title formatting function
+title() { printf "${BOLD}${BLUE}=== %b ===${RESET}\n" "$1"; }
 
 # Formatters for individual strings
 # composable literals
 bold() {
-    printf %s "${BOLD}$1"
+    printf %b "${BOLD}$1"
 }
 yellow() {
-    printf %s "${YELLOW}$1"
+    printf %b "${YELLOW}$1"
 }
 blue() {
-    printf %s "${BLUE}$1"
+    printf %b "${BLUE}$1"
 }
 red() {
-    printf %s "${RED}$1"
+    printf %b "${RED}$1"
 }
 
 # fmt just prints the literal
 fmt() {
-    printf "%s" "$1${RESET}"
+    printf "%b" "$1${RESET}"
 }
 
 # fmt colors

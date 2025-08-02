@@ -29,7 +29,7 @@ install_success_msg_hook() {
 }
 
 install_failure_msg_hook() {
-    error "$0: installation failed!"
+    fail "$0: installation failed!"
     echo ""
     info "Troubleshooting:"
     echo "1. Check if the Pi is still responsive via SSH"
@@ -44,7 +44,7 @@ nixos_anywhere_run_hook() {
     local target_ip="$3"
 
     if [ ! -f "./result/nixos-kexec-installer-aarch64-linux.tar.gz" ]; then
-        error "$0: could not find kexec installer. Please run 'make aarch64-kexec'."
+        fail "$0: could not find kexec installer. Please run 'make aarch64-kexec'."
         exit 1
     fi
 

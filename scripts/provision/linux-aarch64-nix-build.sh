@@ -6,7 +6,7 @@
 set -euo pipefail
 
 cleanup_hook() {
-    error "$0: 'nix build' of '${nixattr}' for '${artifact}' failed!"
+    fail "$0: 'nix build' of '${nixattr}' for '${artifact}' failed!"
 }
 
 nixattr="$1"
@@ -37,7 +37,7 @@ info "$0: result path: $result_path"
 
 artifact_path="${outlink_path}/${artifact}"
 if [ ! -f "${artifact_path}" ]; then
-    error "$0: artifact not found: ${artifact_path}"
+    fail "$0: artifact not found: ${artifact_path}"
     exit 1
 fi
 

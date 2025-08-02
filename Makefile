@@ -199,7 +199,6 @@ dry-activate-%:
 # automatically revert to the default configuration.
 test-%:
 	@./scripts/nixos-rebuild.sh test $*
-	@$(call get-host-smoketests,$*) $*
 
 # Switch
 #
@@ -212,7 +211,8 @@ test-%:
 # boot remain available in the GRUB menu.
 switch-%:
 	@./scripts/nixos-rebuild.sh switch $*
-	@$(call get-host-smoketests,$*) $*
+switch-test-%:
+	$(MAKE) switch-$* smoketests-$*
 
 # Rollback
 #
@@ -225,6 +225,14 @@ rollback-%:
 
 reboot-%:
 	@./scripts/nixos-rebuild.sh reboot $*
+reboot-test-%:
+	$(MAKE) reboot-$* smoketests-$*
+
+smoketests-%:
+	@$(call get-host-smoketests,$*) $*
+
+apply-%:
+	$(MAKE) test-$* switch-$* reboot-$* smoketests-$*
 
 # Switch All
 #

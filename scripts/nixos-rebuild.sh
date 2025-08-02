@@ -70,9 +70,9 @@ nixos_rebuild() {
         --fast # add '--fast' to bypass 'Exec format error'. See https://discourse.nixos.org/t/deploy-nixos-configurations-on-other-machines/22940/32
     )
 
-    # add extra args
+    # add extra args if there are more than required
     if [ "$#" -ge 3 ]; then
-        args+=("${@:3}")
+        args=("${args[@]}" "${@:3}")
         info "with extra args: '${args[*]}'"
     fi
 

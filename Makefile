@@ -146,16 +146,13 @@ ssh-%:
 
 # List all hosts with their metadata
 list-hosts:
-	@for host in $(HOSTS); do \
-		ip=$$(yq eval ".hosts.\"$$host\".targetHost" $(DEPLOY_YAML)); \
-		user=$(call get-host-user,$$host); \
-		tags=$$(yq eval ".hosts.\"$$host\".tags | join(\", \")" $(DEPLOY_YAML)); \
-		$(call title_msg,"$$host:"); \
-		echo "    IP: $$ip"; \
-		echo "    User: $$user"; \
-		echo "    Tags: $$tags"; \
+	@$(foreach host,$(HOSTS), \
+		$(call title_msg,"$(host):"); \
+		echo "    IP: $(call get-host-ip,$(host))"; \
+		echo "    User: $(call get-host-user,$(host))"; \
+		echo "    Tags: $(shell yq eval '.hosts."$(host)".tags | join(", ")' $(DEPLOY_YAML))"; \
 		echo ""; \
-	done
+	)
 
 # Show info for specific host
 info-%:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # TODO - host variable for status-bg color
 {
   ### Tmux

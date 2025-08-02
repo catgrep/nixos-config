@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 . ./scripts/sops/common.sh
 
 set -euo pipefail
@@ -25,11 +24,11 @@ set -euo pipefail
 GPG_FINGERPRINT=05BE930549C3E945BA3D8B6E72B6A6E95F049306 # gpg -K
 
 yq -e -i "
-	.keys = [ \"${GPG_FINGERPRINT}\" ] + .keys |
-	.keys[0] anchor = \"admin_${USER}\" |
-	.keys[0] head_comment = \"Added 'admin_$USER' GPG master key with '$0' on $(date)\" |
-	.creation_rules[].key_groups[].pgp = [ \"admin_${USER}\" ] + .creation_rules[].key_groups[].pgp |
-	.creation_rules[].key_groups[].pgp[0] alias = \"admin_${USER}\"
+    .keys = [ \"${GPG_FINGERPRINT}\" ] + .keys |
+    .keys[0] anchor = \"admin_${USER}\" |
+    .keys[0] head_comment = \"Added 'admin_$USER' GPG master key with '$0' on $(date)\" |
+    .creation_rules[].key_groups[].pgp = [ \"admin_${USER}\" ] + .creation_rules[].key_groups[].pgp |
+    .creation_rules[].key_groups[].pgp[0] alias = \"admin_${USER}\"
 " "$SOPS_CONFIG"
 
 success "Generated '$SOPS_CONFIG':"

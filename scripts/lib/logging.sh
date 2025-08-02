@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 # Colors for output
 BOLD='\033[1m'
 RED='\033[0;31m'
@@ -21,33 +20,33 @@ warning() { echo -e "${BOLD}${PINK}[WARNING]${RESET} $1"; }
 # Formatters for individual strings
 # composable literals
 bold() {
-	printf %s "${BOLD}$1"
+    printf %s "${BOLD}$1"
 }
 yellow() {
-	printf %s "${YELLOW}$1"
+    printf %s "${YELLOW}$1"
 }
 blue() {
-	printf %s "${BLUE}$1"
+    printf %s "${BLUE}$1"
 }
 red() {
-	printf %s "${RED}$1"
+    printf %s "${RED}$1"
 }
 
 # fmt just prints the literal
 fmt() {
-	printf "%s" "$1${RESET}"
+    printf "%s" "$1${RESET}"
 }
 
 # fmt colors
 fmt_yellow() {
-	fmt "$(bold "$(yellow "$1")")"
+    fmt "$(bold "$(yellow "$1")")"
 }
 fmt_blue() {
-	fmt "$(bold "$(blue "$1")")"
+    fmt "$(bold "$(blue "$1")")"
 }
 fmt_red() {
-	fmt "$(bold "$(red "$1")")"
+    fmt "$(bold "$(red "$1")")"
 }
 fmt_bold() {
-	fmt "$(bold "$1")"
+    fmt "$(bold "$1")"
 }

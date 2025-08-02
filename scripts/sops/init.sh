@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 . ./scripts/sops/common.sh
 
 set -euo pipefail
 
 # Backup existing config if it exists
 if [[ -f "$SOPS_CONFIG" ]]; then
-	cp "$SOPS_CONFIG" "${SOPS_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"
-	info "Backed up existing config"
+    cp "$SOPS_CONFIG" "${SOPS_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"
+    info "Backed up existing config"
 fi
 
 info "Creating SOPS configuration..."

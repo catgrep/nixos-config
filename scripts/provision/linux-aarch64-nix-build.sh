@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 . ./scripts/provision/common.sh
 
 set -euo pipefail
 
 cleanup_hook() {
-	error "$0: 'nix build' of '${nixattr}' for '${artifact}' failed!"
+    error "$0: 'nix build' of '${nixattr}' for '${artifact}' failed!"
 }
 
 nixattr="$1"
@@ -26,20 +25,20 @@ info "$0: starting 'nix build' of '${nixattr}' for '${artifact}'..."
 outlink_path=/tmp/result
 info "$0: out-link path: ${outlink_path}"
 result_path=$(
-	nix build ".#${nixattr}" \
-		--extra-experimental-features 'nix-command flakes' \
-		--accept-flake-config \
-		--out-link "${outlink_path}" \
-		--print-out-paths \
-		--show-trace
+    nix build ".#${nixattr}" \
+        --extra-experimental-features 'nix-command flakes' \
+        --accept-flake-config \
+        --out-link "${outlink_path}" \
+        --print-out-paths \
+        --show-trace
 )
 
 info "$0: result path: $result_path"
 
 artifact_path="${outlink_path}/${artifact}"
 if [ ! -f "${artifact_path}" ]; then
-	error "$0: artifact not found: ${artifact_path}"
-	exit 1
+    error "$0: artifact not found: ${artifact_path}"
+    exit 1
 fi
 
 info "$0: copying out artifact: ${artifact_path}"

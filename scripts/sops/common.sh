@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 . ./scripts/lib/all.sh
 
 cleanup_hook() {
-	error "$0: sops failed"
+    error "$0: sops failed"
 }
 
 # Sops Configuration

@@ -194,6 +194,7 @@
                 shellcheck
                 nixos-anywhere
                 mkcert
+                addlicense
               ];
             };
         in

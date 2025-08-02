@@ -22,6 +22,7 @@
     shfmt
     nmap
     yq-go
+    addlicense
   ];
 
   # Enable home-manager

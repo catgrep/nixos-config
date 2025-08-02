@@ -15,3 +15,37 @@ success() { echo -e "${BOLD}${GREEN}[✓]${RESET} $1"; }
 error() { echo -e "${BOLD}${RED}[ERROR]${RESET} $1" >&2; }
 title() { echo -e "${BOLD}${BLUE}=== $1 ===${RESET}"; }
 warning() { echo -e "${BOLD}${PINK}[WARNING]${RESET} $1"; }
+
+# Formatters for individual strings
+# composable literals
+bold() {
+	printf %s "${BOLD}$1"
+}
+yellow() {
+	printf %s "${YELLOW}$1"
+}
+blue() {
+	printf %s "${BLUE}$1"
+}
+red() {
+	printf %s "${RED}$1"
+}
+
+# fmt just prints the literal
+fmt() {
+	printf "%s" "$1${RESET}"
+}
+
+# fmt colors
+fmt_yellow() {
+	fmt "$(bold "$(yellow "$1")")"
+}
+fmt_blue() {
+	fmt "$(bold "$(blue "$1")")"
+}
+fmt_red() {
+	fmt "$(bold "$(red "$1")")"
+}
+fmt_bold() {
+	fmt "$(bold "$1")"
+}

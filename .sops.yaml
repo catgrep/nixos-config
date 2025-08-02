@@ -5,8 +5,8 @@
 keys:
   # Added 'admin_bobby' GPG master key with './scripts/sops/add-user.sh' on Fri Aug  1 10:41:01 PDT 2025
   - &admin_bobby 05BE930549C3E945BA3D8B6E72B6A6E95F049306
-  # Updated 'pi4' SSH age key with './scripts/sops/add-host-keys.sh' on Fri Aug  1 14:20:05 PDT 2025
-  - &server_pi4 age17mu6lddr8raeyv2v8u4lzzrmpahlp3lzfxedhad06h6098zg8c5qvczdx7
+  # Updated 'pi4' SSH age key with './scripts/sops/add-host-keys.sh' on Fri Aug  1 15:05:56 PDT 2025
+  - &server_pi4 age14jvkzd5jkve0ayszls5766thzuhyumhjxjxqps2l44jahehtqg5q7d3mfe
   # Added 'firebat' SSH age key with './scripts/sops/add-host-keys.sh' on Fri Aug  1 10:41:14 PDT 2025
   - &server_firebat age1pj3fd5sjdlm7u05a8jhxuygdldzrc76vaz80f5mvmavssa0axu8slq8s0t
   # Added 'beelink-homelab' SSH age key with './scripts/sops/add-host-keys.sh' on Fri Aug  1 10:41:14 PDT 2025

@@ -64,31 +64,6 @@
     nethogs
   ];
 
-  # https://github.com/nvmd/nixos-raspberrypi/issues/8#issuecomment-2804912881
-  # We're just going to boot off the SD card, not a separate installation media.
-  # We don't need nixos-anywhere for this.
-  #
-  # We just need to ensure that when we deploy with nixos-rebuild that we run
-  # the installer from a fresh SD image.
-  fileSystems = lib.mkForce {
-    "/boot/firmware" = {
-      device = "/dev/disk/by-label/FIRMWARE";
-      fsType = "vfat";
-      options = [
-        "umask=0077"
-        "noatime"
-        "noauto"
-        "x-systemd.automount"
-        "x-systemd.idle-timeout=1min"
-      ];
-    };
-    "/" = {
-      device = "/dev/disk/by-label/NIXOS_SD";
-      fsType = "ext4";
-      options = [ "noatime" ];
-    };
-  };
-
   # SOPS configuration
   sops = {
     defaultSopsFile = ../../secrets/pi4.yaml;

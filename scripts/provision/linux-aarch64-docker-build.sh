@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-. ./scripts/provision/common.sh
+. ./scripts/provision/__base__
 
 set -euo pipefail
 

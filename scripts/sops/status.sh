@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-. ./scripts/sops/common.sh
+. ./scripts/sops/__base__
 
 # FIXME: commenting these out for now since its easier for me to use my gpg key
 # Check admin key

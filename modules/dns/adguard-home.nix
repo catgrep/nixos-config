@@ -101,8 +101,8 @@
         dhcpv4 = {
           gateway_ip = "192.168.68.1"; # Router's IP
           subnet_mask = "255.255.255.0";
-          range_start = "192.168.68.100";
-          range_end = "192.168.68.200";
+          range_start = "192.168.68.50"; # First IP to hand out
+          range_end = "192.168.68.250"; # Last IP to hand out
           lease_duration = 86400; # 24 hours
         };
       };

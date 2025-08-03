@@ -21,7 +21,7 @@ hosts:
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["dns", "arm", "raspberrypi"]
-    smoketests: "./scripts/smoketests/dns.sh"
+    smoketests: "./scripts/smoketests/dns/all.sh"
 
   pi5:
     targetHost: "192.168.68.95"

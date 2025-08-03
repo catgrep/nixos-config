@@ -197,6 +197,7 @@
                 nixos-anywhere
                 mkcert
                 addlicense
+                dhcping
               ];
             };
         in

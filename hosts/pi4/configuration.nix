@@ -31,7 +31,7 @@
 
   # Network configuration
   networking = {
-    interfaces.end0.useDHCP = true; # Pi5 uses 'end0' for ethernet
+    interfaces.end0.useDHCP = true; # Pi4 uses 'end0' for ethernet
     firewall.enable = true;
   };
 
@@ -48,9 +48,16 @@
     ];
   };
 
-  # Enable specific services based on your needs
-  # For example, if this will be another DNS server:
-  services.adguardhome.enable = true;
+  # Enable adguardhome DHCP
+  services.adguardhome = {
+    enable = true;
+    settings = {
+      dhcp = {
+        enabled = true;
+        interface_name = "end0";
+      };
+    };
+  };
 
   # Raspberry Pi packages
   environment.systemPackages = with pkgs; [

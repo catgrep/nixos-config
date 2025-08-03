@@ -94,13 +94,12 @@
         safesearch_enabled = false;
       };
 
-      # DHCP (disabled by default)
+      # DHCP settings
       dhcp = {
-        enabled = false;
-        interface_name = "eth0";
+        enabled = true;
         local_domain_name = "homelab";
         dhcpv4 = {
-          gateway_ip = "192.168.68.1";
+          gateway_ip = "192.168.68.1"; # Router's IP
           subnet_mask = "255.255.255.0";
           range_start = "192.168.68.100";
           range_end = "192.168.68.200";

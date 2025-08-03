@@ -99,10 +99,13 @@
         enabled = true;
         local_domain_name = "homelab";
         dhcpv4 = {
-          gateway_ip = "192.168.68.1"; # Router's IP
-          subnet_mask = "255.255.255.0";
-          range_start = "192.168.68.50"; # First IP to hand out
-          range_end = "192.168.68.250"; # Last IP to hand out
+          # These values were taken from my Tp Link deco's default DHCP server settings
+          gateway_ip = "192.168.0.1"; # Router's IP
+          subnet_mask = "255.255.252.0";
+          # Any infra-critical services should be assigned static IPs outside of
+          # this range
+          range_start = "192.168.0.50"; # First IP to hand out
+          range_end = "192.168.3.250"; # Last IP to hand out
           lease_duration = 86400; # 24 hours
         };
       };
@@ -143,15 +146,15 @@
           # Direct host access
           {
             domain = "beelink.internal";
-            answer = "192.168.68.89";
+            answer = "192.168.0.89";
           }
           {
             domain = "firebat.internal";
-            answer = "192.168.68.88";
+            answer = "192.168.0.88";
           }
           {
             domain = "pi4.internal";
-            answer = "192.168.68.96";
+            answer = "192.168.0.10";
           }
           {
             domain = "pi5.internal";

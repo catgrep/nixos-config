@@ -140,13 +140,13 @@ store-gc:
 # Quick status check
 status:
 	@$(call info_msg,"Checking host connectivity..."); \
-	for host in $(HOSTS); do \
-		if ping -c 1 -W 2 "$$host.local" >/dev/null 2>&1; then \
-			$(call success_msg,"✓ $$host: Online"); \
-			continue; \
+	$(foreach host,$(HOSTS), \
+		if ! ping -c 1 -W 2 "$(host).local"; then \
+			$(call error_msg,"✗ $(host): Offline"); \
+		else \
+			$(call success_msg,"✓ $(host): Online"); \
 		fi; \
-		$(call error_msg,"✗ $$host: Offline"); \
-	done
+	)
 
 # SSH using metadata
 ssh-%:
@@ -316,6 +316,10 @@ sops-add-user:
 	@./scripts/sops/add-user.sh
 
 sops-add-host-keys:
+	@./scripts/sops/add-host-keys.sh
+
+sops-replace-host-key-%:
+	@rm -v ./secrets/keys/hosts/$*.pub
 	@./scripts/sops/add-host-keys.sh
 
 sops-add-host-secrets-%:

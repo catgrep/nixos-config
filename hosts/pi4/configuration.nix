@@ -31,7 +31,39 @@
 
   # Network configuration
   networking = {
-    interfaces.end0.useDHCP = true; # Pi4 uses 'end0' for ethernet
+    # DISABLE DHCP client and assign static IP!
+    # This may create a circular dependency of the pi4 being a DHCP client of
+    # the original router DHCP server.
+    #
+    # Pi4 (DNS/DHCP Server) → DHCP Client → Router (DHCP Server)
+    #               |                                    |
+    #               -------- Circular Dependency ---------
+    #
+    # This caused a failure when the router rebooted and the pi4 tried to
+    # renew its lease when the DHCP server was unavailable. I originally
+    # tested a router reboot, but I might've still had the fallback DNS listed
+    # as the router which is probably why it didn't break.
+    useDHCP = false;
+    interfaces.end0 = {
+      useDHCP = false;
+      # Statically assign IP to end0 interface
+      ipv4.addresses = [
+        {
+          address = "192.168.0.10"; # outside of DHCP range
+          prefixLength = 22;
+        }
+      ];
+    };
+
+    # Set static gateway to point to router's IP since we're not automatically
+    # detecting this as a DHCP client
+    defaultGateway = {
+      interface = "end0";
+      address = "192.168.0.1";
+    };
+
+    # nameserver is configured in adguard already
+    # nameservers = [ "127.0.0.1" ];
     firewall.enable = true;
   };
 

@@ -3,28 +3,28 @@
 # deploy.yaml - Host deployment metadata
 hosts:
   beelink-homelab:
-    targetHost: "192.168.68.89"
+    targetHost: "192.168.0.89"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["media", "x86_64"]
     smoketests: "test"
 
   firebat:
-    targetHost: "192.168.68.88"
+    targetHost: "192.168.0.88"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["gateway", "x86_64"]
     smoketests: "test"
 
   pi4:
-    targetHost: "192.168.68.96"
+    targetHost: "192.168.0.10" # outside of DHCP range
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["dns", "arm", "raspberrypi"]
     smoketests: "./scripts/smoketests/dns/all.sh"
 
   pi5:
-    targetHost: "192.168.68.95"
+    targetHost: "192.168.0.110"
     targetUser: "nixos"
     buildOnTarget: true
     tags: ["arm", "raspberrypi"]

@@ -13,16 +13,16 @@ if [ $# -lt 1 ]; then
 fi
 
 host="$1"
-dns_ip=$(get_ip "$host")
+ipaddr=$(get_ip "$host")
 user=$(get_user "$host")
 
 # test basic functionality
 resolves() {
     local domain="$1"
-    local dns_ip="$2"
+    local ipaddr="$2"
 
     info "check that '$(fmt_bold "$domain")' resolves"
-    if nslookup "$domain" "$dns_ip"; then
+    if nslookup "$domain" "$ipaddr"; then
         pass "resolved '$(fmt_bold "$domain")'"
     else
         fail "failed to resolve '$(fmt_bold "$domain")'"
@@ -30,16 +30,16 @@ resolves() {
 }
 
 # should resolve
-if ! resolves google.com "$dns_ip"; then
+if ! resolves google.com "$ipaddr"; then
     exit 1
 fi
 
 # test rewrites for internal services
 # this should catch any post-installation configuration failures
 info "check that internal services resolve"
-domain_rewrites=$(ssh "$user@$dns_ip" 'sudo yq -r ".filtering.rewrites[].domain" /var/lib/AdGuardHome/AdGuardHome.yaml')
+domain_rewrites=$(ssh "$user@$ipaddr" 'sudo yq -r ".filtering.rewrites[].domain" /var/lib/AdGuardHome/AdGuardHome.yaml')
 for domain in $domain_rewrites; do
-    resolves "$domain" "$dns_ip"
+    resolves "$domain" "$ipaddr"
     sleep 0.5
 done
 

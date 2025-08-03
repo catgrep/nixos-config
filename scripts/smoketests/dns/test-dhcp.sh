@@ -7,26 +7,30 @@ set -euo pipefail
 
 title "$0"
 
-# Build and run with host networking
-docker build --platform=linux/arm64 -f ./scripts/smoketests/dns/Dockerfile -t dhcp-test .
-docker run -i --rm --entrypoint sh --network host --privileged dhcp-test <<'EOF'
-#!/usr/bin/env bash
-set -e
+if [ $# -lt 1 ]; then
+    info "Usage: $0 <host>"
+    exit 1
+fi
 
-echo "Requesting DHCP lease..."
-dhclient -v eth0
+host="$1"
+ipaddr=$(get_ip "$host")
+user=$(get_user "$host")
 
-echo "Current network config:"
-ip addr show
-cat /etc/resolv.conf
+info "check if DHCP port is open on firewall..."
+ssh "$user@$ipaddr" 'sudo iptables -L -n -v | grep -E "dpt:67|dpt:68"'
 
-echo "Testing DNS resolution..."
-nslookup google.com
-nslookup jellyfin.homelab
-nslookup pi4.internal
+info "check if AdGuard is listening on port 67..."
+ssh "$user@$ipaddr" 'sudo ss -ulnp | grep :67'
 
-echo "Testing ad blocking..."
-nslookup doubleclick.net
-EOF
+# This test is inaccurate and will always fail if both DHCP servers are running
+# on the same network at the same time.
+#
+# If I want to test this accurately, I should setup infra for creating a
+# lightweight VM that can target specific DHCP server + virtual network.
+# info "testing DHCP discover..."
+# sudo dhcping -s "$ipaddr" -c "$(ipconfig getifaddr en0)" -t 5 -V
+
+info "check that AdGuard logs DHCP requests..."
+ssh "$user@$ipaddr" 'sudo journalctl -u adguardhome -n 20 | grep -i dhcp'
 
 pass "all tests passed"

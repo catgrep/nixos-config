@@ -48,6 +48,17 @@
     ];
   };
 
+  # Consider the network ready when 'end0' is up, not ALL interfaces
+  # Sometimes this will timeout and fail during the boot process
+  systemd.services.systemd-networkd-wait-online = {
+    serviceConfig = {
+      ExecStart = lib.mkForce [
+        ""
+        "${pkgs.systemd}/lib/systemd/systemd-networkd-wait-online --interface=end0 --timeout=120"
+      ];
+    };
+  };
+
   # Enable adguardhome DHCP
   services.adguardhome = {
     enable = true;

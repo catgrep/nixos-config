@@ -205,11 +205,17 @@
   # Open firewall ports for DNS and web interface
   networking.firewall = {
     allowedTCPPorts = [
-      53
-      80
-      3000
+      53 # DNS
+      80 # HTTP (Traefik routing)
+      3000 # AdGuard Home web interface
+      9100 # Node exporter
+      9617 # AdGuard exporter
     ];
-    allowedUDPPorts = [ 53 ];
+    allowedUDPPorts = [
+      53 # DNS
+      67 # DHCP server
+      68 # DHCP client (optional, but good to have)
+    ];
   };
 
   # Note: AdGuard Home has built-in Prometheus metrics at /control/stats

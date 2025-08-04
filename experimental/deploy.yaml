@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# UNUSED - still experimenting
+# network.yaml - Host network metadata
+#
+# user configuration
+# user: # remote user with sudo access (can be overridden with NIXBUILD_USER)
+# builder: # "local" build or "remote" on host (always "remote")
+#
+# dhcp configuration (reference your router configuration)
+# dhcp:
+#   gatewayAddress: # local ip address of router
+#   rewriteName: # rewrite static host ips to this domain name
+# The below values should be consistent
+#   subnet: # subnet network boundary
+#     mask: # subnet of router (should be equivalent to prefix)
+#     prefix: # subnet size (should be equivalent to mask)
+#   address: # assignable address range
+#     start: # first assignable ip address (should be subset of subnet)
+#     end: # last assignable ip address (should be subset of subnet)
+#
+# host configurations
+# host: # name of host directory in ./hosts/
+#   network: # networking config
+#     address: # static ipv4 address (should be outside assignable range)
+#     interface: # interface to assign ip
+#   tags: # for grouping dependent / related targets (unused)
+#   smoketests: # script to run for connectivity / post-install checks
+
+user: "bdhill"
+builder: "remote"
+
+dhcp:
+  gatewayAddress: "192.168.0.1" # router ip
+  rewriteDomain: "internal"
+  subnet:
+    mask: "255.255.252.0" # Match router's /22
+    prefix: 22 # Covers 192.168.0.x - 192.168.3.x
+  # DHCP range: 192.168.0.50 - 192.168.3.250
+  # Static IPs: 192.168.0.2 - 192.168.0.49
+  addresses:
+    start: "192.168.0.50" # Safe starting point
+    end: "192.168.3.250" # Matches router's range
+
+hosts:
+  pi4:
+    network:
+      address: "192.168.0.10"
+      interface: "end0"
+
+  pi5:
+    network:
+      address: "192.168.0.11"
+      interface: "end0"
+
+  beelink-homelab:
+    network:
+      address: "192.168.0.12"
+      interface: "enp1s0"
+
+  firebat:
+    network:
+      address: "192.168.0.13"
+      interface: "enp1s0"

@@ -198,6 +198,7 @@
                 mkcert
                 addlicense
                 dhcping
+                caddy
               ];
             };
         in

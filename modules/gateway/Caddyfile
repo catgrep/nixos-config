@@ -1,0 +1,21 @@
+# use caddy's local CA until we're ready to make 'vofi.app' public
+{
+	local_certs
+}
+
+jellyfin.vofi.app {
+	reverse_proxy beelink.internal:8096
+}
+
+# adguard should be internally accessible only
+adguard.internal {
+	reverse_proxy pi4.internal:3000
+}
+
+grafana.vofi.app {
+	reverse_proxy firebat.internal:3000
+}
+
+prometheus.vofi.app {
+	reverse_proxy firebat.internal:9090
+}

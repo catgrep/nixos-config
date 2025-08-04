@@ -117,32 +117,23 @@
         blocked_response_ttl = 10;
 
         rewrites = [
-          # Traefik managed services
+          # Caddy managed services
           {
-            domain = "*.homelab";
-            answer = "192.168.68.88";
+            domain = "jellyfin.vofi.app";
+            answer = "192.168.0.88";
           }
           {
-            domain = "jellyfin.homelab";
-            answer = "192.168.68.88";
+            domain = "adguard.internal";
+            answer = "192.168.0.88";
           }
           {
-            domain = "adguard.homelab";
-            answer = "192.168.68.88";
+            domain = "grafana.vofi.app";
+            answer = "192.168.0.88";
           }
           {
-            domain = "grafana.homelab";
-            answer = "192.168.68.88";
+            domain = "prometheus.vofi.app";
+            answer = "192.168.0.88";
           }
-          {
-            domain = "prometheus.homelab";
-            answer = "192.168.68.88";
-          }
-          {
-            domain = "traefik.homelab";
-            answer = "192.168.68.88";
-          }
-
           # Direct host access
           {
             domain = "beelink.internal";
@@ -209,7 +200,7 @@
   networking.firewall = {
     allowedTCPPorts = [
       53 # DNS
-      80 # HTTP (Traefik routing)
+      80 # HTTP (caddy routing)
       3000 # AdGuard Home web interface
       9100 # Node exporter
       9617 # AdGuard exporter

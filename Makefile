@@ -48,7 +48,8 @@ help:
 	$(call help_option_highlight,"check","Check flake and run basic tests")
 	$(call help_option_highlight,"home-switch","Switch to the new home-manager config locally")
 	$(call help_option,"update-nix-conf","Update '/etc/nix' with './etc/nix'")
-	$(call help_option,"format","Format Nix files")
+	$(call help_option,"fmt","Format Nix files")
+	$(call help_option,"fmt-caddy","Format and verify Caddyfile")
 	$(call help_option,"flake-info","Show flake info")
 	$(call help_option,"dry-store-gc","Nix store garbage collection (dry run)")
 	$(call help_option,"store-gc","Nix store garbage collection")
@@ -117,9 +118,14 @@ check:
 	$(call success_msg,"✓ All host configurations are valid")
 
 # Format Nix files
-format:
+fmt:
 	find . -name "*.nix" -exec nixfmt {} \;
 	@$(call success_msg,"✓ All Nix files formatted")
+
+# Format and check Caddyfile
+fmt-caddy:
+	@caddy fmt --overwrite ./modules/gateway/Caddyfile
+	@caddy validate --config ./modules/gateway/Caddyfile
 
 # Home manager switch
 home-switch:

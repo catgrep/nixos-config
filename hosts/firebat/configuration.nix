@@ -48,13 +48,6 @@
     "net.ipv6.conf.all.forwarding" = 1;
   };
 
-  # Gateway services are enabled by default from the module
-  # Override or configure additional settings here if needed
-  services = {
-    # Traefik, Prometheus, and Grafana are enabled by default
-    # Configure specific overrides here
-  };
-
   # Additional firewall rules for gateway
   networking.firewall = {
     # Allow traffic forwarding

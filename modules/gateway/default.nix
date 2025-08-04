@@ -4,7 +4,7 @@
 
 {
   imports = [
-    ./traefik.nix
+    ./caddy.nix
     ./prometheus.nix
     ./grafana.nix
   ];

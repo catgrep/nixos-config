@@ -69,3 +69,17 @@ AdGuard → "Here's IP 192.168.68.100, use 192.168.68.96 for DNS" → Client
 Client → DNS Query → AdGuard (192.168.68.96)
 AdGuard → DNS Response → Client
 ```
+
+Verify after configuring your router:
+```
+ipconfig getpacket en0 | grep domain_name_server
+```
+
+You may need to clear out DNS entries:
+```
+# Check if you have manual DNS servers
+networksetup -getdnsservers Wi-Fi
+
+# If it shows anything other than "There aren't any DNS Servers set":
+sudo networksetup -setdnsservers Wi-Fi empty
+```

@@ -22,10 +22,37 @@
     showOnLogin = true;
   };
 
-  # Host identification
+  # Media server networking configuration
   networking = {
+    # Host identification
     hostName = "beelink-homelab";
     hostId = "2d833f3e"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
+
+    # Open additional ports for media services (base ports from modules)
+    firewall = {
+      allowedTCPPorts = [
+        # Additional ports not in modules
+        8080 # General web services
+        9134 # ZFS exporter
+        445 # SMB
+        139 # NetBIOS
+      ];
+      allowedUDPPorts = [
+        1900 # DLNA/UPnP
+        7359 # Jellyfin autodiscovery
+        137 # NetBIOS Name Service
+        138 # NetBIOS Datagram Service
+      ];
+    };
+  };
+
+  # custom internal settings
+  networking.internal = {
+    interface = "enp1s0";
+    adguard = {
+      enabled = true;
+      mode = "failover"; # default
+    };
   };
 
   # ZFS support
@@ -128,29 +155,6 @@
       enable = true;
       port = 9134;
     };
-  };
-
-  # Network configuration for media server
-  networking = {
-    interfaces.enp1s0.useDHCP = true; # This works fine with useNetworkd
-    firewall.enable = true;
-  };
-
-  # Open additional ports for media services (base ports from modules)
-  networking.firewall = {
-    allowedTCPPorts = [
-      # Additional ports not in modules
-      8080 # General web services
-      9134 # ZFS exporter
-      445 # SMB
-      139 # NetBIOS
-    ];
-    allowedUDPPorts = [
-      1900 # DLNA/UPnP
-      7359 # Jellyfin autodiscovery
-      137 # NetBIOS Name Service
-      138 # NetBIOS Datagram Service
-    ];
   };
 
   # Hardware acceleration for media transcoding

@@ -93,48 +93,50 @@ redirects() {
 info "checking caddy proxy services"
 
 # Extract services from Caddyfile on the remote host
-caddy_services=$(ssh "$user@$ipaddr" '
-    if [ -f /etc/caddy/Caddyfile ]; then
-        # Parse domains from Caddyfile (lines that end with {)
-        grep "^[a-zA-Z0-9.-]\+.*{$" /etc/caddy/Caddyfile | sed "s/[[:space:]]*{$//" | tr -d " "
-    elif [ -f /etc/caddy/caddy_config ]; then
-        # Parse from generated config file
-        grep "^[a-zA-Z0-9.-]\+.*{$" /etc/caddy/caddy_config | sed "s/[[:space:]]*{$//" | tr -d " "
-    else
-        echo ""
-    fi
-' 2>/dev/null || echo "")
-
-if [ -z "$caddy_services" ]; then
-    warn "could not find caddy configuration file or parse services"
-    info "attempting to test common services anyway"
-    caddy_services="jellyfin.vofi.app adguard.internal grafana.vofi.app prometheus.vofi.app"
+CADDYFILE_PATH=./modules/gateway/Caddyfile
+if ! diff -q <(ssh bdhill@192.168.0.88 'cat /etc/caddy/caddy_config') "${CADDYFILE_PATH}"; then
+    warn "local and remote Caddyfiles differ"
+    warn "fetching remote Caddyfile for testing"
+    mkdir -p tmp
+    ./tmp/Caddyfile <(ssh bdhill@192.168.0.88 'cat /etc/caddy/caddy_config')
+    CADDYFILE_PATH=./tmp/Caddyfile
 fi
+
+info "extracting 'servers' and 'upstreams' from '${CADDYFILE_PATH}'..."
+declare -A caddy_routes
+while IFS='=' read -r server upstream; do
+    caddy_routes["$server"]="$upstream"
+done < <(
+    caddy adapt --config "${CADDYFILE_PATH}" --adapter caddyfile | jq -r '
+      .apps.http.servers.srv0.routes[] as $route |
+      ($route.match[].host[] | tostring) + "=" +
+      ($route.handle[].routes[].handle[].upstreams[].dial | tostring)
+    '
+)
+info "extracted: ${!caddy_routes[*]}"
 
 # Test each service
 services_tested=0
 services_passed=0
 
-for domain in $caddy_services; do
-    if [ -n "$domain" ]; then
-        info "testing service: $domain"
-        if redirects "$domain" ""; then
-            ((services_passed += 1))
+for server in "${!caddy_routes[@]}"; do
+    upstream=${caddy_routes[$server]}
+    info "testing route: $server -> $upstream"
+    if redirects "$server" "$upstream"; then
+        ((services_passed += 1))
+    else
+        # If service fails, check that host can connect to upstream
+        fail "caddy failed to redirect"
+        warn "checking backend connectivity for route: '$server -> $upstream'"
+        if ssh "$user@$ipaddr" "curl -s --connect-timeout 3 --max-time 5 -o /dev/null -w '%{http_code}' http://${upstream}" >/dev/null 2>&1; then
+            fail "upstream '$upstream' is reachable, issue might be with Caddy config"
         else
-            # If service fails, check backend connectivity
-            backend=$(ssh "$user@$ipaddr" "grep -A5 '^$domain' /etc/caddy/Caddyfile | grep 'reverse_proxy' | awk '{print \$2}'" 2>/dev/null || echo "unknown")
-            if [ "$backend" != "unknown" ] && [ -n "$backend" ]; then
-                warn "checking backend connectivity for $domain -> $backend"
-                if ssh "$user@$ipaddr" "curl -s --connect-timeout 3 --max-time 5 -o /dev/null -w '%{http_code}' http://$backend" >/dev/null 2>&1; then
-                    warn "backend $backend is reachable, issue might be with Caddy config"
-                else
-                    warn "backend $backend is not reachable from $host"
-                fi
-            fi
+            fail "upstream '$upstream' is not reachable from '$host'"
+            warn "issue might be with '$host' DNS resolver"
         fi
-        ((services_tested += 1))
-        sleep 0.5
     fi
+    ((services_tested += 1))
+    sleep 0.5
 done
 
 echo

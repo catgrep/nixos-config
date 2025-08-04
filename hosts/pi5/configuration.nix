@@ -14,29 +14,20 @@
     ./disko-config.nix
   ];
 
-  # Host identification
+  # pi5 networking configuration
   networking = {
+    # Host identification
     hostName = "pi5";
     hostId = "4c0630cf"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
   };
 
-  # Network configuration
-  networking = {
-    interfaces.end0.useDHCP = true; # Pi5 uses 'end0' for ethernet
-    firewall.enable = true;
-  };
-
-  networking.firewall = {
-    allowedTCPPorts = [
-      53 # DNS
-      80 # AdGuard Home web interface
-      3000 # AdGuard Home initial setup
-      9100 # Node exporter
-      9617 # AdGuard Home exporter
-    ];
-    allowedUDPPorts = [
-      53 # DNS
-    ];
+  # custom internal settings
+  networking.internal = {
+    interface = "end0";
+    adguard = {
+      enabled = true;
+      mode = "failover"; # default
+    };
   };
 
   # Pi5-specific packages

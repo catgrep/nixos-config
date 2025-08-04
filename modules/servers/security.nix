@@ -44,16 +44,11 @@
     # Restrict dmesg access to root
     "kernel.dmesg_restrict" = 1;
 
-    # Disable IPv6 if not needed
-    "net.ipv6.conf.all.disable_ipv6" = 0; # Set to 1 to disable IPv6
-
     # Network security hardening
     "net.ipv4.conf.default.log_martians" = 1;
     "net.ipv4.conf.all.log_martians" = 1;
     "net.ipv4.conf.default.accept_redirects" = 0;
     "net.ipv4.conf.all.accept_redirects" = 0;
-    "net.ipv4.conf.default.send_redirects" = 0;
-    "net.ipv4.conf.all.send_redirects" = 0;
     "net.ipv4.conf.default.accept_source_route" = 0;
     "net.ipv4.conf.all.accept_source_route" = 0;
     "net.ipv4.icmp_ignore_bogus_error_responses" = 1;

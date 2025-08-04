@@ -23,14 +23,31 @@
     showOnLogin = true;
   };
 
-  # Host identification
+  # DNS networking configuration
   networking = {
+    # Host identification
     hostName = "pi4";
     hostId = "7406fd88"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
+
+    firewall = {
+      allowedTCPPorts = [
+        53 # DNS
+        80 # AdGuard Home web interface
+        3000 # AdGuard Home initial setup
+        9100 # Node exporter
+        9617 # AdGuard Home exporter
+      ];
+      allowedUDPPorts = [
+        53 # DNS
+      ];
+    };
   };
 
-  # Network configuration
-  networking = {
+  # custom internal settings
+  networking.internal = {
+    interface = "end0";
+    adguard.enabled = false; # Don't use AdGuard DNS (it IS the DNS server)
+
     # DISABLE DHCP client and assign static IP!
     # This may create a circular dependency of the pi4 being a DHCP client of
     # the original router DHCP server.
@@ -43,41 +60,10 @@
     # renew its lease when the DHCP server was unavailable. I originally
     # tested a router reboot, but I might've still had the fallback DNS listed
     # as the router which is probably why it didn't break.
-    useDHCP = false;
-    interfaces.end0 = {
-      useDHCP = false;
-      # Statically assign IP to end0 interface
-      ipv4.addresses = [
-        {
-          address = "192.168.0.10"; # outside of DHCP range
-          prefixLength = 22;
-        }
-      ];
+    staticIP = {
+      address = "192.168.0.10";
+      prefixLength = 22;
     };
-
-    # Set static gateway to point to router's IP since we're not automatically
-    # detecting this as a DHCP client
-    defaultGateway = {
-      interface = "end0";
-      address = "192.168.0.1";
-    };
-
-    # nameserver is configured in adguard already
-    # nameservers = [ "127.0.0.1" ];
-    firewall.enable = true;
-  };
-
-  networking.firewall = {
-    allowedTCPPorts = [
-      53 # DNS
-      80 # AdGuard Home web interface
-      3000 # AdGuard Home initial setup
-      9100 # Node exporter
-      9617 # AdGuard Home exporter
-    ];
-    allowedUDPPorts = [
-      53 # DNS
-    ];
   };
 
   # Consider the network ready when 'end0' is up, not ALL interfaces

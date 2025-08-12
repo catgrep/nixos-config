@@ -43,7 +43,7 @@ endif
 # Default target
 help:
 	@$(call title_msg,"Nix Development 🧪")
-	$(call help_option_highlight,"devshell","Enter devshell")
+	$(call help_option_highlight,"dev","Enter devshell")
 	$(call help_option_highlight,"update","Update flake inputs")
 	$(call help_option_highlight,"check","Check flake and run basic tests")
 	$(call help_option_highlight,"home-switch","Switch to the new home-manager config locally")
@@ -88,7 +88,7 @@ help:
 	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
 
 # Home-manager dev shell
-devshell:
+dev:
 	nix develop
 
 # Update flake inputs

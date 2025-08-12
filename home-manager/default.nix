@@ -1,11 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 {
   home.username = "bobby";
   home.homeDirectory = "/Users/bobby";
   home.stateVersion = "24.11"; # Update with appropriate version
+
+  nixpkgs.config.allowUnfreePredicate =
+    pkg:
+    builtins.elem (lib.getName pkg) [
+      "claude-code"
+    ];
 
   # Packages to install
   home.packages = with pkgs; [
@@ -25,6 +31,7 @@
     nmap
     yq-go
     addlicense
+    claude-code
   ];
 
   # Enable home-manager

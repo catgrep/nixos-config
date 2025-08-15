@@ -10,6 +10,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
+    ./media-auth.nix
   ];
 
   # Enable the system banner
@@ -188,6 +189,9 @@
     smartmontools
     hdparm
     lsscsi
+
+    # Access jellyfin DB
+    sqlite
   ];
 
   # System state version

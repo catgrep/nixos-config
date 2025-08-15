@@ -8,17 +8,23 @@
 }:
 
 {
+  # Create dedicated radarr system user
+  users.users.radarr = lib.mkIf config.services.radarr.enable {
+    isSystemUser = true;
+    group = "radarr";
+    home = "/var/lib/radarr/.config/Radarr";
+    description = "Radarr";
+    extraGroups = [
+      "media"
+    ];
+  };
+
   services.radarr = {
     enable = lib.mkDefault false;
-    user = "bdhill";
-    group = "users";
+    user = "radarr";
+    group = "radarr";
   };
 
   # Open Radarr port when enabled
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.radarr.enable [ 7878 ];
-
-  # Ensure download directories exist
-  systemd.tmpfiles.rules = lib.mkIf config.services.radarr.enable [
-    "d /mnt/downloads/movies 0755 bdhill users -"
-  ];
 }

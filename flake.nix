@@ -31,6 +31,11 @@
     nixos-images = {
       url = "github:nix-community/nixos-images";
     };
+
+    declarative-jellyfin = {
+      url = "github:Sveske-Juice/declarative-jellyfin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   nixConfig = {
@@ -52,6 +57,7 @@
       sops-nix,
       nixos-raspberrypi,
       nixos-images,
+      declarative-jellyfin,
       ...
     }@inputs:
     let
@@ -78,6 +84,7 @@
             disko.nixosModules.disko
             impermanence.nixosModules.impermanence
             sops-nix.nixosModules.sops
+            declarative-jellyfin.nixosModules.default
           ]
           ++ modules;
         };
@@ -199,6 +206,7 @@
                 addlicense
                 dhcping
                 caddy
+                python3
               ];
             };
         in

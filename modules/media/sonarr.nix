@@ -8,17 +8,23 @@
 }:
 
 {
+  # Create dedicated sonarr system user
+  users.users.sonarr = lib.mkIf config.services.sonarr.enable {
+    isSystemUser = true;
+    group = "sonarr";
+    home = "/var/lib/sonarr/.config/NzbDrone";
+    description = "Sonarr";
+    extraGroups = [
+      "media"
+    ];
+  };
+
   services.sonarr = {
     enable = lib.mkDefault false;
-    user = "bdhill";
-    group = "users";
+    user = "sonarr";
+    group = "sonarr";
   };
 
   # Open Sonarr port when enabled
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.sonarr.enable [ 8989 ];
-
-  # Ensure download directories exist
-  systemd.tmpfiles.rules = lib.mkIf config.services.sonarr.enable [
-    "d /mnt/downloads/tv 0755 bdhill users -"
-  ];
 }

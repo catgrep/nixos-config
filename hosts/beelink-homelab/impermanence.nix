@@ -50,6 +50,8 @@
 
       # Services - Don't specify user/group for services that might not exist yet
       "/var/lib/jellyfin"
+      "/var/lib/sonarr"
+      "/var/lib/radarr"
       "/var/lib/postgresql"
       {
         directory = "/var/lib/docker";
@@ -98,11 +100,20 @@
     # "d /persist/var/lib/postgresql 0700 postgres postgres -"
 
     # Ensure media directories have correct permissions
-    "d /mnt/media 0755 media media -"
-    "d /mnt/media/movies 0755 media media -"
-    "d /mnt/media/tv 0755 media media -"
-    "d /mnt/media/music 0755 media media -"
-    "d /mnt/media/books 0755 media media -"
+    "d /mnt/media 0775 media media -"
+    "d /mnt/media/movies 0775 media media -"
+    "d /mnt/media/tv 0775 media media -"
+    "d /mnt/media/music 0775 media media -"
+    "d /mnt/media/books 0775 media media -"
+
+    # Ensure download directories exist with proper media group permissions
+    "d /mnt/downloads 0775 media media -"
+    "d /mnt/downloads/tv 0775 sonarr media -"
+    "d /mnt/downloads/movies 0775 radarr media -"
+
+    # Service-specific directories with proper permissions
+    "d /persist/var/lib/sonarr 0755 sonarr sonarr -"
+    "d /persist/var/lib/radarr 0755 radarr radarr -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 

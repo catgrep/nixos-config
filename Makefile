@@ -83,8 +83,10 @@ help:
 	$(call help_option,"sops-add-user","Add user to '.sops.yaml'")
 	$(call help_option,"sops-add-host-keys","Add host keys to '.sops.yaml'")
 	$(call help_option,"sops-update-keys","Update '.sops.yaml' keys if new hosts were added")
+	$(call help_option,"sops-replace-host-key-HOST","Replace host public key in './secrets/keys/hosts'")
 	$(call help_option,"sops-add-host-secrets-HOST","Create new secrets file './secrets/HOST.yaml'")
 	$(call help_option,"sops-edit-HOST","Edit secrets for './secrets/HOST.yaml'")
+	$(call help_option,"sops-genhash","Generate a PBKDF2-SHA512 hashed password to use in declarative-jellyfin")
 	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
 
 # Home-manager dev shell
@@ -339,6 +341,9 @@ sops-edit-%:
 
 sops-status:
 	@./scripts/sops/status.sh
+
+sops-genhash:
+	@./scripts/sops/genhash.py
 
 clean:
 	git clean -xfd

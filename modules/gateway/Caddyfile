@@ -19,6 +19,10 @@ radarr.vofi {
 	reverse_proxy beelink.internal:7878
 }
 
+torrent.vofi {
+	reverse_proxy beelink.internal:8080
+}
+
 # adguard should be internally accessible only
 adguard.internal {
 	reverse_proxy pi4.internal:3000

@@ -23,4 +23,9 @@ def generate_jellyfin_hash(password, iterations=210000, key_length_bytes=64):
 # Usage
 password = getpass.getpass("Enter password: ")
 hash_result = generate_jellyfin_hash(password)
-print(f"\n{hash_result}")
+print("Generated PBKDF2-SHA256 Hash")
+print("=" * 50)
+print(f"password_hash: {hash_result}")
+print("=" * 50)
+print("Copy the above to your SOPS secrets file:")
+print("  make sops-edit-HOST")

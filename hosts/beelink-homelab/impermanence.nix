@@ -52,6 +52,7 @@
       "/var/lib/jellyfin"
       "/var/lib/sonarr"
       "/var/lib/radarr"
+      "/var/lib/qbittorrent"
       "/var/lib/postgresql"
       {
         directory = "/var/lib/docker";
@@ -111,9 +112,23 @@
     "d /mnt/downloads/tv 0775 sonarr media -"
     "d /mnt/downloads/movies 0775 radarr media -"
 
+    # qBittorrent download directories in media filesystem
+    "d /mnt/media/downloads 0775 qbittorrent media -"
+    "d /mnt/media/downloads/complete 0775 qbittorrent media -"
+    "d /mnt/media/downloads/incomplete 0775 qbittorrent media -"
+    "d /mnt/media/downloads/tv 0775 qbittorrent media -"
+    "d /mnt/media/downloads/movies 0775 qbittorrent media -"
+
+    # qBittorrent config directories
+    "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
+    "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent qbittorrent -"
+    "d /var/lib/qbittorrent/qBittorrent/config 0755 qbittorrent qbittorrent -"
+    "d /var/lib/qbittorrent/qBittorrent/data 0755 qbittorrent qbittorrent -"
+
     # Service-specific directories with proper permissions
     "d /persist/var/lib/sonarr 0755 sonarr sonarr -"
     "d /persist/var/lib/radarr 0755 radarr radarr -"
+    "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 

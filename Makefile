@@ -86,7 +86,9 @@ help:
 	$(call help_option,"sops-replace-host-key-HOST","Replace host public key in './secrets/keys/hosts'")
 	$(call help_option,"sops-add-host-secrets-HOST","Create new secrets file './secrets/HOST.yaml'")
 	$(call help_option,"sops-edit-HOST","Edit secrets for './secrets/HOST.yaml'")
-	$(call help_option,"sops-genhash","Generate a PBKDF2-SHA512 hashed password to use in declarative-jellyfin")
+	$(call help_option,"sops-gen-hash","Generate a PBKDF2-SHA512 hashed password to use in declarative-jellyfin")
+	$(call help_option,"sops-gen-hash-qbittorrent","Generate PBKDF2-SHA512 hash for qBittorrent WebUI password")
+	$(call help_option,"sops-gen-api-key","Generate API keys for services")
 	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
 
 # Home-manager dev shell
@@ -342,8 +344,14 @@ sops-edit-%:
 sops-status:
 	@./scripts/sops/status.sh
 
-sops-genhash:
-	@./scripts/sops/genhash.py
+sops-gen-hash:
+	@./scripts/sops/gen-hash.py
+
+sops-gen-hash-qbittorrent:
+	@./scripts/sops/gen-hash-qbittorrent.py
+
+sops-gen-api-key:
+	@./scripts/sops/gen-api-key.py
 
 clean:
 	git clean -xfd

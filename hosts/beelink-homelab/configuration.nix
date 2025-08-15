@@ -145,7 +145,11 @@
     # Enable additional services as needed
     sonarr.enable = true;
     radarr.enable = true;
-    transmission.enable = true;
+    qbittorrent-nox = {
+      enable = true;
+      openFirewall = true;
+    };
+    transmission.enable = false; # Replaced with qBittorrent
   };
 
   # Host-specific monitoring - extends the server monitoring module

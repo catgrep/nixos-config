@@ -23,8 +23,10 @@ redirects() {
 
     info "check that '$(fmt_bold "$domain")' redirects properly"
 
+    info "using host 'pi4' as the DNS server"
+    dns_ipaddr=$(get_ip "pi4")
     # First check if we can resolve the domain using the AdGuard DNS server
-    if ! nslookup "$domain" 192.168.0.10 >/dev/null 2>&1; then
+    if ! nslookup "$domain" "$dns_ipaddr" >/dev/null 2>&1; then
         warn "DNS resolution failed for $domain using AdGuard DNS, trying with Host header"
         # Fall back to using IP with Host header
         local response

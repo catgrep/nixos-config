@@ -12,6 +12,10 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
+info "DHCP is DISABLED"
+info "Skipping..."
+exit 0
+
 host="$1"
 ipaddr=$(get_ip "$host")
 user=$(get_user "$host")

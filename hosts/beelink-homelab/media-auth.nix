@@ -23,6 +23,12 @@
         mode = "0600";
       };
 
+      "jellyfin_jordan_password" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
       # Sonarr authentication
       "sonarr_admin_password" = {
         owner = "root";

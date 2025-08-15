@@ -66,6 +66,32 @@
         subtitleMode = "always";
         enableNextEpisodeAutoPlay = true;
       };
+
+      jordan = {
+        preferences = {
+          enabledLibraries = [ ];
+        };
+        permissions = {
+          isAdministrator = false;
+          enableRemoteAccess = false;
+          enableMediaPlayback = true;
+          enableAudioPlaybackTranscoding = true;
+          enableVideoPlaybackTranscoding = true;
+          enableContentDeletion = true;
+          enableContentDownloading = true;
+          enableRemoteControlOfOtherUsers = false;
+          enableSyncTranscoding = true;
+          enableMediaConversion = true;
+          enableAllFolders = true;
+          enableAllDevices = true;
+        };
+        # Hash generated before adding it to sops with './scripts/sops/genhash.py'
+        hashedPasswordFile = lib.mkIf (config ? sops) config.sops.secrets.jellyfin_jordan_password.path;
+        enableAutoLogin = true;
+        enableLocalPassword = true;
+        subtitleMode = "default";
+        enableNextEpisodeAutoPlay = true;
+      };
     };
   };
 

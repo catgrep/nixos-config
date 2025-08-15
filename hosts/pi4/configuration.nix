@@ -48,6 +48,8 @@
     interface = "end0";
     adguard.enabled = false; # Don't use AdGuard DNS (it IS the DNS server)
 
+    # Bottom is WRONG. Just assign a static IP to avoid the lease renewal. DUH!
+    #
     # DISABLE DHCP client and assign static IP!
     # This may create a circular dependency of the pi4 being a DHCP client of
     # the original router DHCP server.
@@ -60,10 +62,10 @@
     # renew its lease when the DHCP server was unavailable. I originally
     # tested a router reboot, but I might've still had the fallback DNS listed
     # as the router which is probably why it didn't break.
-    staticIP = {
-      address = "192.168.0.10";
-      prefixLength = 22;
-    };
+    # staticIP = {
+    #   address = "192.168.68.56";
+    #   prefixLength = 22;
+    # };
   };
 
   # Consider the network ready when 'end0' is up, not ALL interfaces
@@ -80,12 +82,6 @@
   # Enable adguardhome DHCP
   services.adguardhome = {
     enable = true;
-    settings = {
-      dhcp = {
-        enabled = true;
-        interface_name = "end0";
-      };
-    };
   };
 
   # Raspberry Pi packages

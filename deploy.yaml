@@ -1,23 +1,24 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # deploy.yaml - Host deployment metadata
+# All the static IPs were reserved using TP Link Deco's DHCP server
 hosts:
   beelink-homelab:
-    targetHost: "192.168.0.89"
+    targetHost: "192.168.68.65"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["media", "x86_64"]
     smoketests: "test"
 
   firebat:
-    targetHost: "192.168.0.88"
+    targetHost: "192.168.68.63"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["gateway", "x86_64"]
     smoketests: "./scripts/smoketests/gateway/all.sh"
 
   pi4:
-    targetHost: "192.168.0.10" # outside of DHCP range
+    targetHost: "192.168.68.56"
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["dns", "arm", "raspberrypi"]

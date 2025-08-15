@@ -65,7 +65,7 @@ And login as the `media` user.
 
 ```
 Client → DHCP Request → AdGuard
-AdGuard → "Here's IP 192.168.68.100, use 192.168.68.96 for DNS" → Client
+AdGuard → "Here's IP 192.168.68.56, use 192.168.68.96 for DNS" → Client
 Client → DNS Query → AdGuard (192.168.68.96)
 AdGuard → DNS Response → Client
 ```

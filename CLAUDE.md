@@ -9,9 +9,9 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 ## Key Architecture
 
 ### Host Architecture
-- **beelink-homelab** (192.168.0.89): Main media server with Jellyfin, Sonarr, Radarr, Transmission
-- **firebat** (192.168.0.88): Gateway/reverse proxy with Caddy, Grafana, Prometheus 
-- **pi4** (192.168.0.10): DNS server with AdGuard Home
+- **beelink-homelab**: Main media server with Jellyfin, Sonarr, Radarr, Transmission
+- **firebat**: Gateway/reverse proxy with Caddy, Grafana, Prometheus
+- **pi4**: DNS server with AdGuard Home
 - **pi5** (192.168.0.110): Additional Raspberry Pi for experiments
 
 ### Module System

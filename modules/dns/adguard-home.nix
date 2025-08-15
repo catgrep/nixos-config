@@ -96,18 +96,7 @@
 
       # DHCP settings
       dhcp = {
-        enabled = true;
-        local_domain_name = "homelab";
-        dhcpv4 = {
-          # These values were taken from my Tp Link deco's default DHCP server settings
-          gateway_ip = "192.168.0.1"; # Router's IP
-          subnet_mask = "255.255.252.0";
-          # Any infra-critical services should be assigned static IPs outside of
-          # this range
-          range_start = "192.168.0.50"; # First IP to hand out
-          range_end = "192.168.3.250"; # Last IP to hand out
-          lease_duration = 86400; # 24 hours
-        };
+        enabled = false;
       };
 
       # Filtering
@@ -120,32 +109,32 @@
           # Caddy managed services
           {
             domain = "jellyfin.vofi.app";
-            answer = "192.168.0.88";
+            answer = "192.168.68.63";
           }
           {
             domain = "adguard.internal";
-            answer = "192.168.0.88";
+            answer = "192.168.68.63";
           }
           {
             domain = "grafana.vofi.app";
-            answer = "192.168.0.88";
+            answer = "192.168.68.63";
           }
           {
             domain = "prometheus.vofi.app";
-            answer = "192.168.0.88";
+            answer = "192.168.68.63";
           }
           # Direct host access
           {
             domain = "beelink.internal";
-            answer = "192.168.0.89";
+            answer = "192.168.68.65";
           }
           {
             domain = "firebat.internal";
-            answer = "192.168.0.88";
+            answer = "192.168.68.63";
           }
           {
             domain = "pi4.internal";
-            answer = "192.168.0.10";
+            answer = "192.168.68.56";
           }
           {
             domain = "pi5.internal";

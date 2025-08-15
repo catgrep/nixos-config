@@ -26,7 +26,7 @@ with lib;
 
         address = mkOption {
           type = types.str;
-          default = "192.168.0.10";
+          default = "192.168.68.56";
           description = "IP address of the AdGuard DNS server";
         };
 
@@ -44,31 +44,31 @@ with lib;
         };
       };
 
-      staticIP = mkOption {
-        type = types.nullOr (
-          types.submodule {
-            options = {
-              address = mkOption {
-                type = types.str;
-                description = "Static IP address";
-              };
-              prefixLength = mkOption {
-                type = types.int;
-                default = 22; # matches router config
-                description = "Network prefix length";
-              };
-            };
-          }
-        );
-        default = null;
-        description = "Static IP configuration. If null, uses DHCP.";
-      };
+      # staticIP = mkOption {
+      #   type = types.nullOr (
+      #     types.submodule {
+      #       options = {
+      #         address = mkOption {
+      #           type = types.str;
+      #           description = "Static IP address";
+      #         };
+      #         prefixLength = mkOption {
+      #           type = types.int;
+      #           default = 22; # matches router config
+      #           description = "Network prefix length";
+      #         };
+      #       };
+      #     }
+      #   );
+      #   default = null;
+      #   description = "Static IP configuration. If null, uses DHCP.";
+      # };
 
-      gateway = mkOption {
-        type = types.str;
-        default = "192.168.0.1";
-        description = "Default gateway address";
-      };
+      # gateway = mkOption {
+      #   type = types.str;
+      #   default = "192.168.68.1";
+      #   description = "Default gateway address";
+      # };
 
       forwarding = mkOption {
         type = types.bool;
@@ -109,10 +109,10 @@ with lib;
           useDHCP = mkOptionDefault false;
 
           # Default gateway - only set if we have a static IP
-          defaultGateway = mkIf (cfg.staticIP != null) (mkDefault {
-            address = cfg.gateway;
-            interface = cfg.interface;
-          });
+          # defaultGateway = mkIf (cfg.staticIP != null) (mkDefault {
+          #   address = cfg.gateway;
+          #   interface = cfg.interface;
+          # });
 
           # Configure primary interface
           interfaces.${cfg.interface} = mkMerge [
@@ -121,15 +121,15 @@ with lib;
               useDHCP = mkDefault true;
             }
             # Static IP configuration (overrides DHCP)
-            (mkIf (cfg.staticIP != null) {
-              useDHCP = false;
-              ipv4.addresses = [
-                {
-                  address = cfg.staticIP.address;
-                  prefixLength = cfg.staticIP.prefixLength;
-                }
-              ];
-            })
+            # (mkIf (cfg.staticIP != null) {
+            #   useDHCP = false;
+            #   ipv4.addresses = [
+            #     {
+            #       address = cfg.staticIP.address;
+            #       prefixLength = cfg.staticIP.prefixLength;
+            #     }
+            #   ];
+            # })
           ];
 
           # Firewall configuration
@@ -178,13 +178,13 @@ with lib;
                   else
                     [
                       cfg.adguard.address
-                      "192.168.0.1"
+                      "192.168.68.1"
                     ] # failover mode
                 else
                   [
                     "1.1.1.1"
                     "8.8.8.8"
-                  ]; # default public DNS
+                  ]; # default public DNS # default public DNS
             in
             ''
               [Resolve]

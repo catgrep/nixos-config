@@ -94,11 +94,11 @@ info "checking caddy proxy services"
 
 # Extract services from Caddyfile on the remote host
 CADDYFILE_PATH=./modules/gateway/Caddyfile
-if ! diff -q <(ssh bdhill@192.168.0.88 'cat /etc/caddy/caddy_config') "${CADDYFILE_PATH}"; then
+if ! diff -q <(ssh "${user}@${ipaddr}" 'cat /etc/caddy/caddy_config') "${CADDYFILE_PATH}"; then
     warn "local and remote Caddyfiles differ"
     warn "fetching remote Caddyfile for testing"
     mkdir -p tmp
-    ./tmp/Caddyfile <(ssh bdhill@192.168.0.88 'cat /etc/caddy/caddy_config')
+    ./tmp/Caddyfile <(ssh "${user}@${ipaddr}" 'cat /etc/caddy/caddy_config')
     CADDYFILE_PATH=./tmp/Caddyfile
 fi
 

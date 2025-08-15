@@ -8,6 +8,5 @@
     ./sonarr.nix
     ./radarr.nix
     ./qbittorrent.nix
-    ./transmission.nix
   ];
 }

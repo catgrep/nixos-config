@@ -108,16 +108,14 @@
     "d /mnt/media/books 0775 media media -"
 
     # Ensure download directories exist with proper media group permissions
-    "d /mnt/downloads 0775 media media -"
-    "d /mnt/downloads/tv 0775 sonarr media -"
-    "d /mnt/downloads/movies 0775 radarr media -"
+    "d /mnt/media/downloads 0775 media media -"
+    "d /mnt/media/downloads/tv 0775 media media -"
+    "d /mnt/media/downloads/movies 0775 media media -"
 
     # qBittorrent download directories in media filesystem
-    "d /mnt/media/downloads 0775 qbittorrent media -"
-    "d /mnt/media/downloads/complete 0775 qbittorrent media -"
-    "d /mnt/media/downloads/incomplete 0775 qbittorrent media -"
-    "d /mnt/media/downloads/tv 0775 qbittorrent media -"
-    "d /mnt/media/downloads/movies 0775 qbittorrent media -"
+    "d /mnt/media/downloads 0775 media media -"
+    "d /mnt/media/downloads/complete 0775 media media -"
+    "d /mnt/media/downloads/incomplete 0775 media media -"
 
     # qBittorrent config directories
     "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"

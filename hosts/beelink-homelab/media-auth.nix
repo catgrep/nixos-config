@@ -264,12 +264,26 @@
       };
 
       script = ''
+        set -euo pipefail
+
         # Wait for services to be ready
+        echo "Waiting for Sonarr and qBittorrent services to be ready..."
         sleep 30
 
+        response=$(${pkgs.curl}/bin/curl -X GET \
+          -H "Content-Type: application/json" \
+          -H "X-Api-Key: $(cat ${config.sops.secrets."sonarr_api_key".path})" \
+          "http://localhost:8989/api/v3/downloadclient")
+
+        if echo "$response" | grep -q '"name": "qBittorrent"'; then
+            echo "✓ Sonarr qBittorrent download client already configured"
+            exit 0
+        fi
+
         # Configure qBittorrent download client in Sonarr via API
-        # This will add qBittorrent as a download client if it doesn't exist
-        ${pkgs.curl}/bin/curl -X POST \
+        echo "Configuring qBittorrent as download client in Sonarr..."
+
+        response=$(${pkgs.curl}/bin/curl -X POST \
           -H "Content-Type: application/json" \
           -H "X-Api-Key: $(cat ${config.sops.secrets."sonarr_api_key".path})" \
           -d '{
@@ -281,22 +295,64 @@
             "name": "qBittorrent",
             "implementation": "QBittorrent",
             "implementationName": "qBittorrent",
-            "settings": {
-              "host": "127.0.0.1",
-              "port": 8080,
-              "username": "admin",
-              "password": "$(cat ${config.sops.secrets."qbittorrent_admin_password".path})",
-              "category": "tv",
-              "postImportCategory": "",
-              "recentMoviePriority": 0,
-              "olderMoviePriority": 0,
-              "initialState": 0
-            },
-            "configContract": "QBittorrentSettings"
+            "configContract": "QBittorrentSettings",
+            "fields": [
+              {
+                "name": "host",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "port",
+                "value": 8080
+              },
+              {
+                "name": "useSsl",
+                "value": false
+              },
+              {
+                "name": "urlBase",
+                "value": ""
+              },
+              {
+                "name": "username",
+                "value": "admin"
+              },
+              {
+                "name": "password",
+                "value": "$(cat ${config.sops.secrets."qbittorrent_admin_password".path})"
+              },
+              {
+                "name": "tvCategory",
+                "value": "tv"
+              },
+              {
+                "name": "tvImportedCategory",
+                "value": ""
+              },
+              {
+                "name": "recentTvPriority",
+                "value": 0
+              },
+              {
+                "name": "olderTvPriority",
+                "value": 0
+              },
+              {
+                "name": "initialState",
+                "value": 0
+              }
+            ]
           }' \
-          "http://localhost:8989/api/v3/downloadclient" || echo "Failed to configure Sonarr download client"
+          "http://localhost:8989/api/v3/downloadclient")
 
-        echo "✓ Configured Sonarr qBittorrent download client"
+        # Check response
+        if echo "$response" | grep -q '"id":'; then
+          echo "✓ Successfully configured Sonarr qBittorrent download client"
+        else
+          echo "✗ Failed to configure Sonarr download client. Response:"
+          echo "$response"
+          exit 1
+        fi
       '';
     };
 
@@ -319,11 +375,26 @@
       };
 
       script = ''
+        set -euo pipefail
+
         # Wait for services to be ready
+        echo "Waiting for Radarr and qBittorrent services to be ready..."
         sleep 30
 
+        response=$(${pkgs.curl}/bin/curl -X GET \
+          -H "Content-Type: application/json" \
+          -H "X-Api-Key: $(cat ${config.sops.secrets."radarr_api_key".path})" \
+          "http://localhost:7878/api/v3/downloadclient")
+
+        if echo "$response" | grep -q '"name": "qBittorrent"'; then
+            echo "✓ Radarr qBittorrent download client already configured"
+            exit 0
+        fi
+
         # Configure qBittorrent download client in Radarr via API
-        ${pkgs.curl}/bin/curl -X POST \
+        echo "Configuring qBittorrent as download client in Radarr..."
+
+        response=$(${pkgs.curl}/bin/curl -X POST \
           -H "Content-Type: application/json" \
           -H "X-Api-Key: $(cat ${config.sops.secrets."radarr_api_key".path})" \
           -d '{
@@ -335,22 +406,64 @@
             "name": "qBittorrent",
             "implementation": "QBittorrent",
             "implementationName": "qBittorrent",
-            "settings": {
-              "host": "127.0.0.1",
-              "port": 8080,
-              "username": "admin",
-              "password": "$(cat ${config.sops.secrets."qbittorrent_admin_password".path})",
-              "category": "movies",
-              "postImportCategory": "",
-              "recentMoviePriority": 0,
-              "olderMoviePriority": 0,
-              "initialState": 0
-            },
-            "configContract": "QBittorrentSettings"
+            "configContract": "QBittorrentSettings",
+            "fields": [
+              {
+                "name": "host",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "port",
+                "value": 8080
+              },
+              {
+                "name": "useSsl",
+                "value": false
+              },
+              {
+                "name": "urlBase",
+                "value": ""
+              },
+              {
+                "name": "username",
+                "value": "admin"
+              },
+              {
+                "name": "password",
+                "value": "$(cat ${config.sops.secrets."qbittorrent_admin_password".path})"
+              },
+              {
+                "name": "movieCategory",
+                "value": "movies"
+              },
+              {
+                "name": "movieImportedCategory",
+                "value": ""
+              },
+              {
+                "name": "recentMoviePriority",
+                "value": 0
+              },
+              {
+                "name": "olderMoviePriority",
+                "value": 0
+              },
+              {
+                "name": "initialState",
+                "value": 0
+              }
+            ]
           }' \
-          "http://localhost:7878/api/v3/downloadclient" || echo "Failed to configure Radarr download client"
+          "http://localhost:7878/api/v3/downloadclient")
 
-        echo "✓ Configured Radarr qBittorrent download client"
+        # Check response
+        if echo "$response" | grep -q '"id":'; then
+          echo "✓ Successfully configured Radarr qBittorrent download client"
+        else
+          echo "✗ Failed to configure Radarr download client. Response:"
+          echo "$response"
+          exit 1
+        fi
       '';
     };
   };

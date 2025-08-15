@@ -13,10 +13,10 @@ cache_host_key() {
     local hostname=$1
     local address=$2
 
-    if ! ping -c 1 -W 2 "$address" >/dev/null 2>&1; then
-        fail "could not ping '$(fmt_blue "$hostname")' with address '$(fmt_blue "$hostname")'"
-        return 1
-    fi
+    # if ! ping -c 1 -W 2 "$address" >/dev/null 2>&1; then
+    #     fail "could not ping '$(fmt_blue "$hostname")' with address '$(fmt_blue "$address")'"
+    #     return 1
+    # fi
 
     # Download 'ed25519' host key if host is reachable
     # NOTE: only ed25519 is supported by 'ssh-to-age'

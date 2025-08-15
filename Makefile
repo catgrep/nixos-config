@@ -325,7 +325,7 @@ sops-add-host-keys:
 	@./scripts/sops/add-host-keys.sh
 
 sops-replace-host-key-%:
-	@rm -v ./secrets/keys/hosts/$*.pub
+	@rm -v ./secrets/keys/hosts/$*.pub || echo "no public key found, continuing..."
 	@./scripts/sops/add-host-keys.sh
 
 sops-add-host-secrets-%:

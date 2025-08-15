@@ -21,7 +21,7 @@
       echo
       echo "Welcome back, $(whoami)!" | cowsay | lolcat
     '';
-    showOnLogin = true;
+    showOnLogin = false;
   };
 
   # Gateway networking configuration

@@ -20,7 +20,7 @@
       echo
       echo "Welcome back, $(whoami)!" | cowsay | lolcat
     '';
-    showOnLogin = true;
+    showOnLogin = false;
   };
 
   # Media server networking configuration

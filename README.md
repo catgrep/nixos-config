@@ -61,13 +61,13 @@ smb://media@beelink-homelab.local
 And login as the `media` user.
 
 
-# Testing DHCP + DNS AdGuard
+# Testing TP-Link Deco DHCP + DNS AdGuard
 
 ```
-Client → DHCP Request → AdGuard
-AdGuard → "Here's IP 192.168.68.56, use 192.168.68.96 for DNS" → Client
-Client → DNS Query → AdGuard (192.168.68.96)
-AdGuard → DNS Response → Client
+Client → DHCP Request → TP-Link Deco
+TP-Link Deco -> DHCP Response with Adguard DNS address "Here's IP 192.168.68.56, use 192.168.68.96 for DNS" -> Client
+Client -> DNS Query "jellyfin.vofi.app" -> Adguard
+AdGuard → DNS Response "Redirect 192.X.X.X" → Client
 ```
 
 Verify after configuring your router:

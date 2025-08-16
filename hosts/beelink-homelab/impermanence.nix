@@ -52,6 +52,7 @@
       "/var/lib/jellyfin"
       "/var/lib/sonarr"
       "/var/lib/radarr"
+      "/var/lib/prowlarr"
       "/var/lib/qbittorrent"
       "/var/lib/postgresql"
       {
@@ -126,6 +127,7 @@
     # Service-specific directories with proper permissions
     "d /persist/var/lib/sonarr 0755 sonarr sonarr -"
     "d /persist/var/lib/radarr 0755 radarr radarr -"
+    "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
     "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"

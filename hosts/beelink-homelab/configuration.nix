@@ -10,7 +10,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
-    ./media-auth.nix
+    ./media.nix
   ];
 
   # Enable the system banner
@@ -145,6 +145,7 @@
     # Enable additional services as needed
     sonarr.enable = true;
     radarr.enable = true;
+    prowlarr.enable = true;
     qbittorrent-nox = {
       enable = true;
       openFirewall = true;

@@ -145,11 +145,11 @@
             <LaunchBrowser>False</LaunchBrowser>
             <AuthenticationMethod>Forms</AuthenticationMethod>
             <AuthenticationRequired>Enabled</AuthenticationRequired>
-            <Username>admin</Username>
-            <Password>${config.sops.placeholder."prowlarr_admin_password"}</Password>
             <ApiKey>${config.sops.placeholder."prowlarr_api_key"}</ApiKey>
             <Branch>master</Branch>
             <InstanceName>Prowlarr</InstanceName>
+            <SslCertPath></SslCertPath>
+            <SslCertPassword></SslCertPassword>
           </Config>
         '';
         owner = "prowlarr";

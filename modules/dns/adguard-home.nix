@@ -128,6 +128,10 @@
             answer = "192.168.68.63";
           }
           {
+            domain = "prowlarr.vofi";
+            answer = "192.168.68.63";
+          }
+          {
             domain = "adguard.internal";
             answer = "192.168.68.63";
           }

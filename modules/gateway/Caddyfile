@@ -23,6 +23,10 @@ torrent.vofi {
 	reverse_proxy beelink.internal:8080
 }
 
+prowlarr.vofi {
+	reverse_proxy beelink.internal:9696
+}
+
 # adguard should be internally accessible only
 adguard.internal {
 	reverse_proxy pi4.internal:3000

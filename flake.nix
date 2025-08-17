@@ -96,6 +96,7 @@
           hostname = "beelink-homelab";
           modules = [
             ./modules/media
+            ./modules/nordvpn
           ];
         };
 
@@ -207,6 +208,7 @@
                 dhcping
                 caddy
                 python3
+                wireguard-tools
               ];
             };
         in

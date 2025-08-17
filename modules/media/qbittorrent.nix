@@ -37,6 +37,12 @@ in
       default = false;
       description = "Open ports in the firewall for qBittorrent";
     };
+
+    useVpnNamespace = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Run qBittorrent in NordVPN network namespace for anonymization";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -55,61 +61,77 @@ in
     environment.systemPackages = [ pkgs.qbittorrent-nox ];
 
     # qBittorrent systemd service
-    systemd.services.qbittorrent-nox = {
-      description = "qBittorrent-nox torrent client";
-      documentation = [ "man:qbittorrent-nox(1)" ];
-      wants = [ "network-online.target" ];
-      requires = [ "qbittorrent-config.service" ];
-      after = [
-        "network-online.target"
-        "nss-lookup.target"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "exec";
-        User = cfg.user;
-        Group = cfg.group;
-        UMask = "0002";
-        ExecStart = "${pkgs.qbittorrent-nox}/bin/qbittorrent-nox --profile=/var/lib/qbittorrent";
-        Restart = "on-failure";
-        RestartSec = "5s";
-        TimeoutStopSec = "1800";
-
-        # Sandboxing
-        LockPersonality = true;
-        NoNewPrivileges = true;
-        PrivateDevices = true;
-        PrivateTmp = true;
-        ProtectClock = true;
-        ProtectControlGroups = true;
-        ProtectHome = true;
-        ProtectHostname = true;
-        ProtectKernelLogs = true;
-        ProtectKernelModules = true;
-        ProtectKernelTunables = true;
-        ProtectProc = "invisible";
-        RestrictAddressFamilies = [
-          "AF_INET"
-          "AF_INET6"
-          "AF_NETLINK"
+    systemd.services.qbittorrent-nox = lib.mkMerge [
+      {
+        description = "qBittorrent-nox torrent client";
+        documentation = [ "man:qbittorrent-nox(1)" ];
+        wants = [ "network-online.target" ];
+        requires = [ "qbittorrent-config.service" ];
+        after = [
+          "network-online.target"
+          "nss-lookup.target"
         ];
-        RestrictNamespaces = true;
-        RestrictRealtime = true;
-        RestrictSUIDSGID = true;
-        SystemCallArchitectures = "native";
-        SystemCallFilter = [
-          "@system-service"
-          "~@privileged"
-        ];
+        wantedBy = [ "multi-user.target" ];
 
-        # Filesystem access
-        ReadWritePaths = [
-          "/var/lib/qbittorrent"
-          "/mnt/media/downloads"
-        ];
-      };
-    };
+        serviceConfig = {
+          Type = "exec";
+          User = cfg.user;
+          Group = cfg.group;
+          UMask = "0002";
+          ExecStart = "${pkgs.qbittorrent-nox}/bin/qbittorrent-nox --profile=/var/lib/qbittorrent";
+          Restart = "on-failure";
+          RestartSec = "5s";
+          TimeoutStopSec = "1800";
+
+          # Sandboxing
+          LockPersonality = true;
+          NoNewPrivileges = true;
+          PrivateDevices = true;
+          PrivateTmp = true;
+          ProtectClock = true;
+          ProtectControlGroups = true;
+          ProtectHome = true;
+          ProtectHostname = true;
+          ProtectKernelLogs = true;
+          ProtectKernelModules = true;
+          ProtectKernelTunables = true;
+          ProtectProc = "invisible";
+          RestrictAddressFamilies = [
+            "AF_INET"
+            "AF_INET6"
+            "AF_NETLINK"
+          ];
+          RestrictNamespaces = true;
+          RestrictRealtime = true;
+          RestrictSUIDSGID = true;
+          SystemCallArchitectures = "native";
+          SystemCallFilter = [
+            "@system-service"
+            "~@privileged"
+          ];
+
+          # Filesystem access
+          ReadWritePaths = [
+            "/var/lib/qbittorrent"
+            "/mnt/media/downloads"
+          ];
+        };
+      }
+
+      # NordVPN namespace configuration
+      (lib.mkIf cfg.useVpnNamespace {
+        after = [ "wgnord.service" ];
+        requires = [ "wgnord.service" ];
+
+        serviceConfig = {
+          # Join NordVPN network namespace
+          JoinsNamespaceOf = "wgnord.service";
+
+          # No need to override ExecStart - runs directly in namespace
+          # No need for additional capabilities - systemd handles namespace
+        };
+      })
+    ];
 
     # Open qBittorrent ports when enabled
     networking.firewall = lib.mkIf cfg.openFirewall {

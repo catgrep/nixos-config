@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 {
+  config,
   lib,
   pkgs,
   ...
@@ -53,6 +54,12 @@
     adguard = {
       enabled = true;
       mode = "failover"; # default
+    };
+    # Network forwarding for VPN namespace
+    forwarding = true;
+    nat = {
+      externalInterface = "enp1s0";
+      internalInterfaces = [ "vpn-host" ];
     };
   };
 
@@ -139,18 +146,43 @@
     ];
   };
 
+  sops = {
+    defaultSopsFile = ../../secrets/beelink-homelab.yaml;
+    defaultSopsFormat = "yaml";
+    # Use SSH host key for decryption
+    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
+
+    secrets = {
+      # NordVPN WireGuard configuration
+      "nordvpn_access_token" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+    };
+  };
+
+  # Enable NordVPN for anonymized torrenting
+  nordvpn = {
+    enable = true;
+    accessTokenFile = config.sops.secrets.nordvpn_access_token.path;
+  };
+
   # Enable specific media services
   services = {
     # Jellyfin is enabled by default in the media module
     # Enable additional services as needed
     sonarr.enable = true;
     radarr.enable = true;
-    prowlarr.enable = true;
+    prowlarr = {
+      enable = true;
+      useVpnNamespace = false; # Keep on regular network to avoid tracker bans
+    };
     qbittorrent-nox = {
       enable = true;
       openFirewall = true;
+      useVpnNamespace = true; # Route through VPN
     };
-    transmission.enable = false; # Replaced with qBittorrent
   };
 
   # Host-specific monitoring - extends the server monitoring module

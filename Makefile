@@ -35,10 +35,15 @@ get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
 get-host-smoketests = $(shell yq eval '.hosts."$(1)".smoketests' $(DEPLOY_YAML))
 
 # Overrides
+
+# temporarily override the nixbuild user (i.e. root)
 export NIXBUILD_USER ?=
 ifdef NIXBUILD_USER
 get-host-user = $(NIXBUILD_USER)
 endif
+
+# skip confirm prompts
+export NO_CONFIRM ?= false
 
 # Default target
 help:
@@ -159,11 +164,12 @@ status:
 	)
 
 # SSH using metadata
+SSH_CMD ?=
 ssh-%:
 	@ip=$(call get-host-ip,$*)
 	@user=$(call get-host-user,$*)
 	@$(call info_msg,"Connecting to $* as $$user@$$ip...")
-	@ssh $$user@$$ip
+	@ssh $$user@$$ip $(SSH_CMD)
 
 # List all hosts with their metadata
 list-hosts:

@@ -174,6 +174,7 @@
           WebUI\Enabled=true
           WebUI\LocalHostAuth=false
           WebUI\Port=8080
+          WebUI\Address=0.0.0.0
           WebUI\Username=admin
           WebUI\Password_PBKDF2="@ByteArray(${config.sops.placeholder."qbittorrent_admin_password_hash"})"
           WebUI\CSRFProtection=false

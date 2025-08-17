@@ -50,14 +50,10 @@
         # NordVPN namespace configuration
         (lib.mkIf config.services.prowlarr.useVpnNamespace {
           after = [ "wgnord.service" ];
-          requires = [ "wgnord.service" ];
-
+          bindsTo = [ "wgnord.service" ];
           serviceConfig = {
             # Join NordVPN network namespace
-            JoinsNamespaceOf = "wgnord.service";
-
-            # No need to override ExecStart - runs directly in namespace
-            # No need for additional capabilities - systemd handles namespace
+            NetworkNamespacePath = "/var/run/netns/wgnord";
           };
         })
       ]

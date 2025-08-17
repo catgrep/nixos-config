@@ -51,15 +51,10 @@ raspberrypi_warning_banner() {
 }
 
 # confirm to not accidentally bork your system :'D
-confirm() {
+nixos_confirm() {
     echo ""
     warn "This could result in a boot failure upon reboot and require console access!"
-    read -p "Continue? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        fail "Aborted"
-        exit 1
-    fi
+    confirm
 }
 
 nixos_rebuild() {
@@ -192,12 +187,12 @@ main() {
         #
         # Previous configurations activated with nixos-rebuild switch or nixos-rebuild
         # boot remain available in the GRUB menu.
-        confirm
+        nixos_confirm
         nixos_rebuild switch "${host}"
         ;;
     reboot)
         # Reboot is a special case where we want to reboot the host after a 'switch'.
-        confirm
+        nixos_confirm
         nixos_reboot "${host}"
         ;;
     update-hardware)

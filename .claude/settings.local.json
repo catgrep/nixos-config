@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "Bash(mkdir:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(make ssh-beelink-homelab:*)"
     ],
     "deny": []
   }

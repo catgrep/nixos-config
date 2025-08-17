@@ -57,10 +57,10 @@
     };
     # Network forwarding for VPN namespace
     forwarding = true;
-    nat = {
-      externalInterface = "enp1s0";
-      internalInterfaces = [ "vpn-host" ];
-    };
+    # nat = {
+    #   externalInterface = "enp1s0";
+    #   internalInterfaces = [ "vpn-host" ];
+    # };
   };
 
   # ZFS support
@@ -166,6 +166,8 @@
   nordvpn = {
     enable = true;
     accessTokenFile = config.sops.secrets.nordvpn_access_token.path;
+    dnsServers = [ config.networking.internal.adguard.address ]; # Use local AdGuard DNS
+    localNetworkAccess = "192.168.68.0/24"; # Local network subnet
   };
 
   # Enable specific media services
@@ -180,9 +182,48 @@
     };
     qbittorrent-nox = {
       enable = true;
-      openFirewall = true;
+      openFirewall = false;
       useVpnNamespace = true; # Route through VPN
     };
+  };
+
+  # Add nginx proxy for accessing qBittorrent from host
+  services.nginx = {
+    enable = true;
+    virtualHosts."qbittorrent" =
+      let
+        uiWebPort = config.services.qbittorrent-nox.port;
+      in
+      {
+        listen = [
+          {
+            addr = "127.0.0.1";
+            port = uiWebPort;
+          }
+          {
+            addr = "0.0.0.0";
+            port = uiWebPort;
+          } # Also listen on all interfaces if needed
+        ];
+        # Forward UI port from wgnord network namespace to host
+        locations."/" = {
+          proxyPass = "http://${config.nordvpn.vethBridge.vpnIp}:${builtins.toString uiWebPort}";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # qBittorrent specific headers
+            proxy_set_header Connection "";
+
+            # Disable buffering for the web UI
+            proxy_buffering off;
+            proxy_request_buffering off;
+          '';
+        };
+      };
   };
 
   # Host-specific monitoring - extends the server monitoring module

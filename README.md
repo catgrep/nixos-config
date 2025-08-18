@@ -55,7 +55,7 @@ Go to `Finder` > `Go` > `Connect to Server` (or `Command + K`)
 
 Type in:
 ```
-smb://media@beelink-homelab.local
+smb://media@ser8.local
 ```
 
 And login as the `media` user.

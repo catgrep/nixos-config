@@ -9,7 +9,7 @@
 {
   # SOPS configuration for media services
   sops = {
-    defaultSopsFile = ../../secrets/beelink-homelab.yaml;
+    defaultSopsFile = ../../secrets/ser8.yaml;
     defaultSopsFormat = "yaml";
 
     # Use SSH host key for decryption

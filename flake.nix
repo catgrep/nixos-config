@@ -92,8 +92,8 @@
     {
       nixosConfigurations = {
         # Main media server (Beelink SER8)
-        beelink-homelab = mkSystem {
-          hostname = "beelink-homelab";
+        ser8 = mkSystem {
+          hostname = "ser8";
           modules = [
             ./modules/media
             ./modules/nordvpn
@@ -147,7 +147,7 @@
 
         # Provisioning targets - just use the same configs
         # nixos-anywhere will handle the installation
-        "provisioning-beelink-homelab" = self.nixosConfigurations.beelink-homelab;
+        "provisioning-ser8" = self.nixosConfigurations.ser8;
         "provisioning-firebat" = self.nixosConfigurations.firebat;
         "provisioning-pi4" = self.nixosConfigurations.pi4;
         "provisioning-pi5" = self.nixosConfigurations.pi5;

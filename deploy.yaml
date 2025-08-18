@@ -3,7 +3,7 @@
 # deploy.yaml - Host deployment metadata
 # All the static IPs were reserved using TP Link Deco's DHCP server
 hosts:
-  beelink-homelab:
+  ser8:
     targetHost: "192.168.68.65"
     targetUser: "bdhill"
     buildOnTarget: true

@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a NixOS homelab configuration using flakes that manages multiple hosts including x86_64 systems (beelink-homelab, firebat) and ARM Raspberry Pi devices (pi4, pi5). The configuration uses a modular architecture with shared common modules and host-specific configurations.
+This is a NixOS homelab configuration using flakes that manages multiple hosts including x86_64 systems (ser8, firebat) and ARM Raspberry Pi devices (pi4, pi5). The configuration uses a modular architecture with shared common modules and host-specific configurations.
 
 ## Key Architecture
 
 ### Host Architecture
-- **beelink-homelab**: Main media server with Jellyfin, Sonarr, Radarr, Transmission
+- **ser8**: Main media server with Jellyfin, Sonarr, Radarr, Transmission
 - **firebat**: Gateway/reverse proxy with Caddy, Grafana, Prometheus
 - **pi4**: DNS server with AdGuard Home
 - **pi5** (192.168.0.110): Additional Raspberry Pi for experiments
@@ -100,7 +100,7 @@ Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
 
 - All Nix files should be formatted with `nixfmt-rfc-style`
 - The repository uses GPL-3.0-or-later licensing
-- Hosts are accessible via mDNS (e.g., `beelink-homelab.local`)
+- Hosts are accessible via mDNS (e.g., `ser8.local`)
 - Some hosts use impermanence for stateless root filesystems
 - Raspberry Pi hosts may require special handling for boot firmware mounting
 

@@ -27,7 +27,7 @@
   # Media server networking configuration
   networking = {
     # Host identification
-    hostName = "beelink-homelab";
+    hostName = "ser8";
     hostId = "2d833f3e"; # Generate with: head -c 4 /dev/urandom | od -A none -t x4 | tr -d ' '
 
     # Open additional ports for media services (base ports from modules)
@@ -56,7 +56,7 @@
       mode = "failover"; # default
     };
     # Network forwarding for VPN namespace
-    forwarding = true;
+    # forwarding = true;
     # nat = {
     #   externalInterface = "enp1s0";
     #   internalInterfaces = [ "vpn-host" ];
@@ -147,7 +147,7 @@
   };
 
   sops = {
-    defaultSopsFile = ../../secrets/beelink-homelab.yaml;
+    defaultSopsFile = ../../secrets/ser8.yaml;
     defaultSopsFormat = "yaml";
     # Use SSH host key for decryption
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];

@@ -14,7 +14,7 @@
 
 # infra / code quality
 - [ ] refactor `modules`
-- [ ] `beelink-homelab` -> `beelink` (or just name the servers something else), but should probably keep mDNS incase the DNS server ever fails
+- [ ] `ser8` -> `beelink` (or just name the servers something else), but should probably keep mDNS incase the DNS server ever fails
 - [ ] provision pi5's for standalone k8s dev cluster
 
 # security / sops

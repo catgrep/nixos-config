@@ -185,6 +185,7 @@
       openFirewall = false;
       useVpnNamespace = true; # Route through VPN
     };
+    flaresolverr.enable = true;
   };
 
   # Add nginx proxy for accessing qBittorrent from host

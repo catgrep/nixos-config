@@ -29,6 +29,12 @@
         mode = "0600";
       };
 
+      "jellyfin_api_key" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
       # Sonarr authentication
       "sonarr_admin_password" = {
         owner = "root";
@@ -188,6 +194,13 @@
         group = "qbittorrent";
         mode = "0600";
       };
+    };
+  };
+
+  # Jellyfin API key configuration
+  services.declarative-jellyfin.apikeys = {
+    jellyfinarr = {
+      keyPath = config.sops.secrets.jellyfin_api_key.path;
     };
   };
 

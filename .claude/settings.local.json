@@ -1,11 +1,13 @@
 {
-    "permissions": {
-        "allow": [
-            "WebFetch(domain:github.com)",
-            "Bash(mkdir:*)",
-            "Bash(bash:*)",
-            "Bash(make ssh-ser8:*)"
-        ],
-        "deny": []
-    }
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(mkdir:*)",
+      "Bash(bash:*)",
+      "Bash(make ssh-ser8:*)",
+      "Bash(git add:*)",
+      "Bash(make:*)"
+    ],
+    "deny": []
+  }
 }

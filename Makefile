@@ -102,9 +102,10 @@ dev:
 
 # Update flake inputs
 update:
-	nix flake update
-	nix flake update --flake ./home-manager
-	$(call success_msg,"Flake inputs updated. Consider running 'make deploy-all' to apply updates.")
+	@nix flake update
+	@nix flake update --flake ./home-manager
+	@nix flake archive
+	@$(call success_msg,"Flake inputs updated.")
 
 update-nix-conf:
 	@$(call info_msg,"Backing up files...")

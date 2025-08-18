@@ -163,6 +163,9 @@
         mode = "0600";
       };
 
+      # Have qbittorrent bind to all interfaces so it will automatically
+      # use the VPN 'wgnord' private network namespace interface, instead
+      # of the standard hardware ones (like en0).
       "qbittorrent.conf" = {
         content = ''
           [LegalNotice]
@@ -171,12 +174,21 @@
           [Preferences]
           Connection\PortRangeMin=6881
           Connection\UPnP=false
+          Connection\GlobalDLLimit=0
+          Connection\GlobalUPLimit=0
+          Connection\Interface=wgnord
+          Connection\InterfaceName=wgnord
           Downloads\SavePath=/mnt/media/downloads/complete/
           Downloads\TempPath=/mnt/media/downloads/incomplete/
           Downloads\TempPathEnabled=true
           Downloads\UseIncompleteExtension=true
+          Downloads\PreAllocation=false
           General\Locale=en
+          General\UseRandomPort=false
           Queueing\QueueingEnabled=true
+          Queueing\MaxActiveDownloads=5
+          Queueing\MaxActiveTorrents=10
+          Queueing\MaxActiveUploads=5
           WebUI\Enabled=true
           WebUI\LocalHostAuth=false
           WebUI\Port=8080
@@ -186,9 +198,17 @@
           WebUI\CSRFProtection=false
           WebUI\HostHeaderValidation=false
           WebUI\UseUPnP=false
+          Bittorrent\DHT=true
+          Bittorrent\LSD=true
+          Bittorrent\PeX=true
+          Bittorrent\uTP_rate_limited=false
           BitTorrent\Session\DefaultSavePath=/mnt/media/downloads/complete/
           BitTorrent\Session\TempPath=/mnt/media/downloads/incomplete/
           BitTorrent\Session\TempPathEnabled=true
+          BitTorrent\Session\DisableAutoTMMByDefault=false
+          BitTorrent\Session\DisableAutoTMMTriggers\CategoryChanged=false
+          BitTorrent\Session\DisableAutoTMMTriggers\CategorySavePathChanged=false
+          BitTorrent\Session\DisableAutoTMMTriggers\DefaultSavePathChanged=false
         '';
         owner = "qbittorrent";
         group = "qbittorrent";

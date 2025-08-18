@@ -1,3 +1,4 @@
+# modules/media/qbittorrent.nix
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 {
@@ -83,37 +84,40 @@ in
           RestartSec = "5s";
           TimeoutStopSec = "1800";
 
-          # Sandboxing
+          # Reduced sandboxing for namespace compatibility
           LockPersonality = true;
           NoNewPrivileges = true;
-          PrivateDevices = true;
-          PrivateTmp = true;
+          # Remove these restrictions that can cause issues in namespaces:
+          # PrivateDevices = true;  # Can interfere with namespace devices
+          PrivateTmp = false; # Allow access to /tmp for downloads
           ProtectClock = true;
           ProtectControlGroups = true;
           ProtectHome = true;
-          ProtectHostname = true;
+          ProtectHostname = false; # Allow hostname access in namespace
           ProtectKernelLogs = true;
           ProtectKernelModules = true;
-          ProtectKernelTunables = true;
-          ProtectProc = "invisible";
+          ProtectKernelTunables = false; # Allow tunable access for networking
+          ProtectProc = "default"; # Changed from "invisible"
           RestrictAddressFamilies = [
             "AF_INET"
             "AF_INET6"
             "AF_NETLINK"
+            "AF_UNIX" # Add UNIX sockets
           ];
-          RestrictNamespaces = true;
+          RestrictNamespaces = false; # Allow namespace operations
           RestrictRealtime = true;
           RestrictSUIDSGID = true;
           SystemCallArchitectures = "native";
-          SystemCallFilter = [
-            "@system-service"
-            "~@privileged"
-          ];
+          # Remove SystemCallFilter to avoid blocking needed syscalls
+          # SystemCallFilter = [ "@system-service" "~@privileged" ];
 
           # Filesystem access
           ReadWritePaths = [
             "/var/lib/qbittorrent"
             "/mnt/media/downloads"
+            "/mnt/media/downloads/complete"
+            "/mnt/media/downloads/incomplete"
+            "/tmp" # Allow tmp access
           ];
         };
       }
@@ -125,12 +129,17 @@ in
         serviceConfig = {
           # Join NordVPN network namespace
           NetworkNamespacePath = "/var/run/netns/wgnord";
+          # Add capability for raw sockets in namespace
+          AmbientCapabilities = [
+            "CAP_NET_RAW"
+            "CAP_NET_BIND_SERVICE"
+          ];
         };
       })
     ];
 
-    # Open qBittorrent ports when enabled
-    networking.firewall = lib.mkIf cfg.openFirewall {
+    # Open qBittorrent ports when enabled (not needed when in namespace)
+    networking.firewall = lib.mkIf (cfg.openFirewall && !cfg.useVpnNamespace) {
       allowedTCPPorts = [
         cfg.port # Web UI
         6881 # Default torrent port
@@ -139,7 +148,5 @@ in
         6881 # Default torrent port
       ];
     };
-
-    # Note: Download directory tmpfiles are managed in impermanence.nix
   };
 }

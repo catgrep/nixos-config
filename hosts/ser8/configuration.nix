@@ -14,16 +14,6 @@
     ./media.nix
   ];
 
-  # Enable the system banner
-  programs.system-banner = {
-    enable = true;
-    shellHook = ''
-      echo
-      echo "Welcome back, $(whoami)!" | cowsay | lolcat
-    '';
-    showOnLogin = false;
-  };
-
   # Media server networking configuration
   networking = {
     # Host identification
@@ -271,6 +261,10 @@
 
     # Access jellyfin DB
     sqlite
+
+    (fastfetch.override {
+      zfsSupport = true;
+    })
   ];
 
   # System state version

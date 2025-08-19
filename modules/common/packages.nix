@@ -27,6 +27,7 @@
     cowsay
     charasay
     lolcat
+    fastfetch
 
     # Network tools
     dig
@@ -70,5 +71,12 @@
       enableSSHSupport = true;
     };
     mosh.enable = true;
+  };
+
+  programs.zsh = {
+    enable = true;
+    loginShellInit = ''
+      fastfetch
+    '';
   };
 }

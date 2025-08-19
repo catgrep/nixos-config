@@ -14,16 +14,6 @@
     ./disko-config.nix
   ];
 
-  # Enable the system banner
-  programs.system-banner = {
-    enable = true;
-    shellHook = ''
-      echo
-      echo "Welcome back, $(whoami)!" | cowsay | lolcat
-    '';
-    showOnLogin = false;
-  };
-
   # Gateway networking configuration
   networking = {
     # Host identification

@@ -6,7 +6,8 @@
       "Bash(bash:*)",
       "Bash(make ssh-ser8:*)",
       "Bash(git add:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(nix flake check:*)"
     ],
     "deny": []
   }

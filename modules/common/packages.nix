@@ -72,11 +72,4 @@
     };
     mosh.enable = true;
   };
-
-  programs.zsh = {
-    enable = true;
-    loginShellInit = ''
-      fastfetch
-    '';
-  };
 }

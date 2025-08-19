@@ -36,6 +36,11 @@
       url = "github:Sveske-Juice/declarative-jellyfin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   nixConfig = {
@@ -58,15 +63,70 @@
       nixos-raspberrypi,
       nixos-images,
       declarative-jellyfin,
+      home-manager,
       ...
     }@inputs:
     let
+      # Common module groups
+      baseModules = [
+        ./modules/common
+        ./modules/servers
+        sops-nix.nixosModules.sops
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.bdhill =
+            {
+              config,
+              lib,
+              pkgs,
+              ...
+            }:
+            (import ./users/bdhill.nix { inherit config lib pkgs; }).homeConfig;
+        }
+      ];
+
+      x86Modules = [
+        disko.nixosModules.disko
+        impermanence.nixosModules.impermanence
+        declarative-jellyfin.nixosModules.default
+      ];
+
+      piModules = [
+        ./modules/raspberrypi/base.nix
+      ];
+
+      # Helper function for Raspberry Pi systems using nixos-raspberrypi
+      mkPiSystem =
+        {
+          hostname,
+          piVersion ? "4", # "4" or "5"
+          modules ? [ ],
+        }:
+        nixos-raspberrypi.lib.nixosSystem {
+          specialArgs = {
+            inherit inputs;
+            inherit nixos-raspberrypi;
+          };
+          modules = [
+            nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".base
+            nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".display-vc4
+            ./hosts/${hostname}/configuration.nix
+          ]
+          ++ baseModules
+          ++ piModules
+          ++ modules;
+        };
+
       # Helper function to create a nixos system configuration
       mkSystem =
         {
           hostname,
           system ? "x86_64-linux",
           modules ? [ ],
+          useX86Modules ? true,
+          usePiModules ? false,
         }:
         nixpkgs.lib.nixosSystem {
           inherit system;
@@ -79,13 +139,10 @@
           };
           modules = [
             ./hosts/${hostname}
-            ./modules/common
-            ./modules/servers
-            disko.nixosModules.disko
-            impermanence.nixosModules.impermanence
-            sops-nix.nixosModules.sops
-            declarative-jellyfin.nixosModules.default
           ]
+          ++ baseModules
+          ++ (if useX86Modules then x86Modules else [ ])
+          ++ (if usePiModules then piModules else [ ])
           ++ modules;
         };
     in
@@ -109,39 +166,21 @@
         };
 
         # DNS Server (Raspberry Pi 4B)
-        pi4 = nixos-raspberrypi.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs;
-            inherit nixos-raspberrypi;
-          };
+        pi4 = mkPiSystem {
+          hostname = "pi4";
+          piVersion = "4";
           modules = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-            nixos-raspberrypi.nixosModules.raspberry-pi-4.display-vc4
-            ./hosts/pi4/configuration.nix
-            ./modules/common
-            ./modules/servers
             ./modules/dns
-            ./modules/raspberrypi/base.nix
-            sops-nix.nixosModules.sops
           ];
         };
 
         # Extraneous Server (Raspberry Pi 5)
-        pi5 = nixos-raspberrypi.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs;
-            inherit nixos-raspberrypi;
-          };
+        pi5 = mkPiSystem {
+          hostname = "pi5";
+          piVersion = "5";
           modules = [
-            nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-            nixos-raspberrypi.nixosModules.raspberry-pi-5.display-vc4
-            ./hosts/pi5/configuration.nix
             ./hosts/pi5/configtxt.nix
-            ./modules/common
-            ./modules/servers
-            ./modules/raspberrypi/base.nix
             disko.nixosModules.disko
-            sops-nix.nixosModules.sops
           ];
         };
 

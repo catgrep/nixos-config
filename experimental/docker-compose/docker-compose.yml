@@ -1,0 +1,173 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+x-nix-common: &nix-common
+  image: nixos/nix:2.30.1
+  restart: unless-stopped
+  volumes:
+    # - nix-store-cache:/nix
+    - nix-ssh-keys:/etc/ssh/keys
+    - ./secrets/keys/hosts:/host-keys
+    - ./secrets/keys/users/bobmac-rsa.pub:/tmp/user_key.pub:ro
+  environment:
+    # USER_ID=$(id -u $USER) to access and connect to unix domain socket on host
+    - USER_ID=501
+    # GROUP_ID=$(id -u $USER) to access and connect to unix domain socket on host
+    - GROUP_ID=20
+  command:
+    - bash
+    - -c
+    - |
+      # See https://nix.dev/manual/nix/2.30/advanced-topics/distributed-builds#requirements
+      # Disable auto GC so /nix/store binaries don't get removed from the
+      # docker volume and symlinks to cached build artifacts won't break
+      cat >/nix/nix.conf <<EOF
+      auto-optimise-store = false
+      min-free = 0
+      max-free = 0
+      experimental-features = nix-command flakes
+      trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
+      substituters = https://cache.nixos.org https://nixos-raspberrypi.cachix.org
+      trusted-users = root docknix
+      allowed-users = *
+      build-users-group = nixbld
+      EOF
+
+      # Auto-detect and convert architecture
+      ARCH=$$(uname -m)
+      KEY_NAME="nix-builder-$$ARCH"
+      echo "Initializing SSH for $$KEY_NAME (platform: $$ARCH)..."
+
+      # Generate host key if not exists
+      if [ ! -f "/etc/ssh/keys/$$KEY_NAME" ]; then
+        echo "Generating SSH host key for $$KEY_NAME..."
+<<<<<<< Updated upstream
+        ssh-keygen -t rsa -b 2048 -f "/tmp/ssh/keys/$$KEY_NAME" -N '' -C "$$KEY_NAME"
+        cp "/tmp/ssh/keys/$$KEY_NAME" "/host-keys/$$KEY_NAME"
+        cp "/tmp/ssh/keys/$$KEY_NAME.pub" "/host-keys/$$KEY_NAME.pub"
+        echo "SSH key generated: /tmp/ssh/keys/$$KEY_NAME"
+=======
+        ssh-keygen -t rsa -b 2048 -f "/etc/ssh/keys/$$KEY_NAME" -N '' -C "$$KEY_NAME"
+        # cp "/etc/ssh/keys/$$KEY_NAME" "/host-keys/$$KEY_NAME"
+        cp "/etc/ssh/keys/$$KEY_NAME.pub" "/host-keys/$$KEY_NAME.pub"
+        echo "SSH key generated: /etc/ssh/keys/$$KEY_NAME"
+>>>>>>> Stashed changes
+      else
+        echo "SSH key already exists: /etc/ssh/keys/$$KEY_NAME"
+      fi
+
+      # Create SSH config
+      echo "Creating SSH daemon configuration..."
+      mkdir -p /etc/ssh
+      cat > /etc/ssh/sshd_config << EOF
+      Port 22
+      HostKey /etc/ssh/keys/$$KEY_NAME
+      PermitRootLogin yes
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      # Remove AcceptEnv PATH - it's not helping
+      # AcceptEnv PATH
+      PermitUserEnvironment yes
+      UsePAM no
+      Subsystem sftp /nix/var/nix/profiles/default/libexec/sftp-server
+      EOF
+
+      # Create sshd user and group
+      echo "Creating 'sshd' user and group..."
+      mkdir -p /var/empty
+      echo "sshd:x:74:74:Privilege-separated SSH:/var/empty:/var/empty" >> /etc/passwd
+      echo "sshd:x:74:" >> /etc/group
+
+      # Create docknix user and group, and add it to nixbld group
+      echo "Creating 'docknix' user and group..."
+      echo "docknix:x:501:20:Docker Nix User:/home/docknix:/nix/var/nix/profiles/default/bin/bash" >> /etc/passwd
+      echo "docknix:x:501:" >> /etc/group
+
+      # Setup docknix home directory and SSH
+      mkdir -p /home/docknix/.ssh
+      mkdir -p /etc/ssh/authorized_keys.d/
+      mkdir -p /root/.ssh
+      if [ -f /tmp/user_key.pub ]; then
+        cp /tmp/user_key.pub /home/docknix/.ssh/authorized_keys
+        cp /tmp/user_key.pub /root/.ssh/authorized_keys
+        cp /tmp/user_key.pub /etc/ssh/authorized_keys.d/docknix
+        cp /tmp/user_key.pub /etc/ssh/authorized_keys.d/root
+        chmod 700 /home/docknix/.ssh
+        chmod 600 /home/docknix/.ssh/authorized_keys
+        chown -R 501:20 /home/docknix
+        echo "SSH keys configured for docknix user"
+      else
+        echo "Warning: /tmp/user_key.pub not found - SSH access may not work for docknix"
+      fi
+
+      # default allow
+      chmod 755 /etc/ssh/keys
+      chmod 600 /etc/ssh/keys/nix-builder-aarch64
+      chown root:root /etc/ssh/keys/nix-builder-aarch64
+
+      # Setup shell environment for Nix
+      cat > /home/docknix/.profile << 'PROFILE'
+      # Nix environment setup
+      export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin:$$PATH"
+      export NIX_PATH="nixpkgs=/nix/var/nix/profiles/default/share/nix/nixpkgs"
+      PROFILE
+      chown 501:20 /home/docknix/.profile
+
+      # Create .bashrc that sources .profile for non-interactive shells
+      cat > /home/docknix/.bashrc << 'BASHRC'
+      # Source profile for PATH setup
+      if [ -f ~/.profile ]; then
+          . ~/.profile
+      fi
+      BASHRC
+      chown 501:20 /home/docknix/.bashrc
+
+      echo "Create symlink to daemon socket (will be created after start up)..."
+      # nix-daemon &
+      # sleep 1
+      # ln -sv /nix/var/nix/daemon-socket/socket /var/socket
+      # chown 501:20 /var/socket
+
+      # Start SSH
+      echo "Starting SSH daemon..."
+      # DO NOT USE `-ddd`, as that breaks what nix expects to see in the output
+      # which is just "started".
+      #
+      # See https://github.com/DeterminateSystems/nix-src/blob/e74f285aee/src/libstore/ssh.cc#L175
+      $$(which sshd) -D
+  healthcheck:
+    test: ["CMD", "pgrep", "sshd"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+
+services:
+  nix-builder-aarch64:
+    <<: *nix-common
+    container_name: nix-builder-aarch64
+    platform: linux/arm64
+    # volumes:
+    #   - ~/.config/arm64.sock:/nix/var/nix/daemon-socket/socket
+    ports:
+      - "127.0.0.1:3022:22"
+
+  nix-builder-x86_64:
+    <<: *nix-common
+    container_name: nix-builder-x86_64
+    platform: linux/amd64
+    # volumes:
+    #   - ~/.config/amd64.sock:/nix/var/nix/daemon-socket/socket
+    ports:
+      - "127.0.0.1:3023:22"
+
+volumes:
+  # nix-store-cache:
+  #   external: true
+  amd64-sock:
+    driver: local
+  arm64_sock:
+    driver: local
+    driver_opts:
+
+  nix-ssh-keys:
+    driver: local

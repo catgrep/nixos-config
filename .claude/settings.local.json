@@ -7,7 +7,9 @@
       "Bash(make ssh-ser8:*)",
       "Bash(git add:*)",
       "Bash(make:*)",
-      "Bash(nix flake check:*)"
+      "Bash(nix flake check:*)",
+      "Bash(./scripts/docker/build-with-container.sh:*)",
+      "Bash(./scripts/docker/builders.sh:*)"
     ],
     "deny": []
   }

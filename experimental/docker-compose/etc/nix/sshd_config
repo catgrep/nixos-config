@@ -1,0 +1,24 @@
+Host nix-builder-aarch64
+  HostName 127.0.0.1
+  User docknix
+  UserKnownHostsFile /Users/bobby/.ssh/known_hosts
+  StrictHostKeyChecking no
+  IdentityFile /Users/bobby/.ssh/id_rsa
+  Port 3022
+
+Host nix-builder-x86_64
+  HostName 127.0.0.1
+<<<<<<< Updated upstream
+  User docknix
+  UserKnownHostsFile /Users/bobby/.ssh/known_hosts
+=======
+  Match User docknix
+    User docknix
+    IdentityFile /Users/bobby/.ssh/id_rsa
+  Match User root
+    User root
+    IdentityFile /Users/bobby/.ssh/id_rsa
+  UserKnownHostsFile /dev/null
+>>>>>>> Stashed changes
+  StrictHostKeyChecking no
+  Port 3023

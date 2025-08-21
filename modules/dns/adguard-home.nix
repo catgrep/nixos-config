@@ -145,7 +145,7 @@
           }
           # Direct host access
           {
-            domain = "beelink.internal";
+            domain = "ser8.internal";
             answer = "192.168.68.65";
           }
           {

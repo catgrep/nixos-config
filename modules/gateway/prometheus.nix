@@ -27,7 +27,7 @@
         static_configs = [
           {
             targets = [
-              "beelink.internal:9100" # Beelink node exporter
+              "ser8.internal:9100" # Beelink node exporter
               "firebat.internal:9100" # Firebat node exporter
               "pi4.internal:9100" # Pi4 node exporter
             ];
@@ -41,7 +41,7 @@
         static_configs = [
           {
             targets = [
-              "beelink.internal:9134" # ZFS metrics from Beelink
+              "ser8.internal:9134" # ZFS metrics from Beelink
             ];
           }
         ];
@@ -69,7 +69,7 @@
         job_name = "jellyfin";
         static_configs = [
           {
-            targets = [ "beelink.internal:8096" ];
+            targets = [ "ser8.internal:8096" ];
           }
         ];
         scrape_interval = "60s";

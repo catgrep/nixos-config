@@ -20,7 +20,7 @@ usage() {
     echo "  --help      Show this help message"
     echo ""
     title "Examples:"
-    echo "$0 beelink 192.168.1.20"
+    echo "$0 ser8 192.168.1.20"
 }
 
 pre_install_checks() {

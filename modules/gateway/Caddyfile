@@ -4,27 +4,27 @@
 }
 
 jellyfin.vofi.app {
-	reverse_proxy beelink.internal:8096
+	reverse_proxy ser8.internal:8096
 }
 
 jellyfin.vofi {
-	reverse_proxy beelink.internal:8096
+	reverse_proxy ser8.internal:8096
 }
 
 sonarr.vofi {
-	reverse_proxy beelink.internal:8989
+	reverse_proxy ser8.internal:8989
 }
 
 radarr.vofi {
-	reverse_proxy beelink.internal:7878
+	reverse_proxy ser8.internal:7878
 }
 
 torrent.vofi {
-	reverse_proxy beelink.internal:8080
+	reverse_proxy ser8.internal:8080
 }
 
 prowlarr.vofi {
-	reverse_proxy beelink.internal:9696
+	reverse_proxy ser8.internal:9696
 }
 
 # adguard should be internally accessible only

@@ -81,7 +81,7 @@ help:
 	@echo
 	@$(call title_msg,"Raspberry Pi Builds 🍓")
 	$(call help_option,"HOST-installer","Build Arm64 image for Raspberry Pi using Docker")
-	$(call help_option,"write-sd-HOST DEVICE","Write Arm64 image for Raspberry Pi to '/dev/rdiskX'")
+	$(call help_option,"write-HOST DEVICE","Write Arm64 image for Raspberry Pi to '/dev/rdiskX'")
 	@echo
 	@$(call title_msg,"SOPS Secrets Management 🤫")
 	$(call help_option,"sops-init","Generate barebones '.sops.yaml'")
@@ -157,7 +157,7 @@ store-gc:
 status:
 	@$(call info_msg,"Checking host connectivity..."); \
 	$(foreach host,$(HOSTS), \
-		if ! ping -c 1 -W 2 "$(host).local"; then \
+		if ! ping -c 1 -W 2 "$(host).internal"; then \
 			$(call error_msg,"✗ $(host): Offline"); \
 		else \
 			$(call success_msg,"✓ $(host): Online"); \
@@ -289,8 +289,8 @@ aarch64-kexec:
 %-installer: aarch64-sdimage-% aarch64-kexec
 	@$(call success_msg,"✓ $* installers complete \(SD image + kexec\)")
 
-# Write image to SD card
-write-sd-%:
+# Write raspberrypi image to a device
+write-%:
 	@if [ -z "$(DEVICE)" ]; then \
 		$(call error_msg,"Usage: make write-sd-$* DEVICE=/dev/rdiskX"); \
 		exit 1; \

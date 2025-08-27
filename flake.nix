@@ -206,10 +206,10 @@
 
         pi5 =
           (nixos-raspberrypi.lib.nixosInstaller {
-            specialArgs = inputs;
+            specialArgs = { inherit inputs nixos-raspberrypi; };
             modules = [
               nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-              ./modules/raspberrypi/installer.nix
+              ./modules/raspberrypi/usb-installer.nix
             ];
           }).config.system.build.sdImage;
 

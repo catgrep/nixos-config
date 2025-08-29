@@ -1,3 +1,3 @@
 # Docker-only remote builders for cross-platform builds
-ssh://docknix@nix-builder.aarch64 aarch64-linux - 4 1 big-parallel,kvm
-ssh://docknix@nix-builder.x86_64 x86_64-linux - 4 1 big-parallel,kvm
+ssh://docknix@nix-builder-aarch64 aarch64-linux - 4 1 big-parallel,kvm
+ssh://docknix@nix-builder-x86_64 x86_64-linux - 4 1 big-parallel,kvm

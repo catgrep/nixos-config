@@ -20,13 +20,14 @@ x-nix-common: &nix-common
       # See https://nix.dev/manual/nix/2.30/advanced-topics/distributed-builds#requirements
       # Disable auto GC so /nix/store binaries don't get removed from the
       # docker volume and symlinks to cached build artifacts won't break
-      cat >/nix/nix.conf <<EOF
+      cat >/etc/nix/nix.conf <<EOF
       auto-optimise-store = false
       min-free = 0
       max-free = 0
       experimental-features = nix-command flakes
       trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
       substituters = https://cache.nixos.org https://nixos-raspberrypi.cachix.org
+      trusted-substituters = *
       trusted-users = root docknix
       allowed-users = *
       build-users-group = nixbld
@@ -42,7 +43,7 @@ x-nix-common: &nix-common
         echo "Generating SSH host key for $$KEY_NAME..."
 <<<<<<< Updated upstream
         ssh-keygen -t rsa -b 2048 -f "/tmp/ssh/keys/$$KEY_NAME" -N '' -C "$$KEY_NAME"
-        cp "/tmp/ssh/keys/$$KEY_NAME" "/host-keys/$$KEY_NAME"
+        # cp "/tmp/ssh/keys/$$KEY_NAME" "/host-keys/$$KEY_NAME"
         cp "/tmp/ssh/keys/$$KEY_NAME.pub" "/host-keys/$$KEY_NAME.pub"
         echo "SSH key generated: /tmp/ssh/keys/$$KEY_NAME"
 =======

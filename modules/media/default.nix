@@ -9,5 +9,6 @@
     ./radarr.nix
     ./prowlarr.nix
     ./qbittorrent.nix
+    ./alldebrid-proxy.nix
   ];
 }

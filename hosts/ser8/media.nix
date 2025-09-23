@@ -87,6 +87,13 @@
         group = "root";
         mode = "0600";
       };
+
+      # AllDebrid-Proxy
+      "alldebrid_api_key" = {
+        owner = "alldebrid-proxy";
+        group = "alldebrid-proxy";
+        mode = "0400";
+      };
     };
 
     # Templates for config files
@@ -400,5 +407,11 @@
       "arr-prowlarr-setup.service"
     ];
     wantedBy = [ "multi-user.target" ];
+  };
+
+  services.alldebrid-proxy = {
+    enable = true;
+    apiKeyFile = config.sops.secrets."alldebrid_api_key".path;
+    downloadDir = "/mnt/media/downloads/alldebrid";
   };
 }

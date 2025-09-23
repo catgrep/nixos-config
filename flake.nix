@@ -37,6 +37,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    alldebrid-proxy = {
+      url = "path:/Users/bobby/github/catgrep/alldebrid-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -63,6 +68,7 @@
       nixos-raspberrypi,
       nixos-images,
       declarative-jellyfin,
+      alldebrid-proxy,
       home-manager,
       ...
     }@inputs:
@@ -91,6 +97,7 @@
         disko.nixosModules.disko
         impermanence.nixosModules.impermanence
         declarative-jellyfin.nixosModules.default
+        alldebrid-proxy.nixosModules.default
       ];
 
       piModules = [

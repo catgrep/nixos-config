@@ -4,6 +4,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
@@ -19,10 +20,15 @@
   };
 
   services.alldebrid-proxy = {
-    listenAddress = "127.0.0.1:6969";
-    logLevel = "error";
+    listenAddress = "127.0.0.1:9091";
+    client = "transmission";
+    logLevel = "debug";
   };
 
   # Open port when enabled
-  networking.firewall.allowedTCPPorts = lib.mkIf config.services.radarr.enable [ 6969 ];
+  networking.firewall.allowedTCPPorts = lib.mkIf config.services.radarr.enable [ 9091 ];
+
+  environment.systemPackages = with pkgs; [
+    inputs.alldebrid-proxy.packages.${system}.alldebrid-proxy-ctl
+  ];
 }

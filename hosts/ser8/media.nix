@@ -94,6 +94,12 @@
         group = "alldebrid-proxy";
         mode = "0400";
       };
+
+      "alldebrid_transmission_admin_password" = {
+        owner = "alldebrid-proxy";
+        group = "alldebrid-proxy";
+        mode = "0400";
+      };
     };
 
     # Templates for config files
@@ -411,6 +417,7 @@
 
   services.alldebrid-proxy = {
     enable = true;
+    adminPasswordFile = config.sops.secrets."alldebrid_transmission_admin_password".path;
     apiKeyFile = config.sops.secrets."alldebrid_api_key".path;
     downloadDir = "/mnt/media/downloads/alldebrid";
   };

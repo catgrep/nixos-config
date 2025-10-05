@@ -9,7 +9,8 @@
       "Bash(make:*)",
       "Bash(nix flake check:*)",
       "Bash(./scripts/docker/build-with-container.sh:*)",
-      "Bash(./scripts/docker/builders.sh:*)"
+      "Bash(./scripts/docker/builders.sh:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: Update documentation to reflect current infrastructure state\n\nComprehensively updated documentation based on analysis of git history,\nmodule structure, and current service deployments.\n\nCLAUDE.md changes:\n- Updated host architecture with current IPs and full service listings\n- Added detailed module descriptions including new nordvpn module\n- Documented ZFS \"Erase Your Darlings\" pattern on ser8\n- Added Service Access section with all domain mappings\n- Noted qBittorrent replaced Transmission with VPN isolation\n- Expanded development notes with user management patterns\n\nREADME.md changes:\n- Transformed into comprehensive overview with infrastructure details\n- Added Quick Start section for common operations\n- Documented all service URLs and access methods\n- Expanded DNS configuration testing procedures\n- Added Key Features section highlighting ZFS, VPN, monitoring\n\nTODO.md changes:\n- Marked 12 completed items based on git history\n- Added 10 new items discovered during review\n- Reorganized with completion status and explanations\n- Added new section for items from documentation review\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": []
   }

@@ -1,10 +1,34 @@
-# nixos-config
+# NixOS Homelab Configuration
+
+A comprehensive NixOS configuration for managing a homelab infrastructure with media services, monitoring, and DNS management.
+
+## Infrastructure Overview
+
+- **ser8** (192.168.68.65) - Media server with Jellyfin, *arr stack, and torrent management
+- **firebat** (192.168.68.63) - Gateway with Caddy reverse proxy, Prometheus, and Grafana
+- **pi4** (192.168.68.56) - DNS server running AdGuard Home
+- **pi5** (192.168.0.110) - Experimental Raspberry Pi setup
+
+## Quick Start
+
+Enter the development environment:
+```sh
+make dev
+```
+
+Deploy to a host:
+```sh
+make switch-ser8      # Deploy to ser8
+make switch-all       # Deploy to all hosts
+```
 
 ## Home-Manager
 
 Run
 ``` sh
 nix run home-manager -- switch --flake ./home-manager
+# or
+make home-switch
 ```
 
 ## Development
@@ -47,9 +71,24 @@ After updating config files, restart the nix daemon with:
 sudo launchctl kickstart -k system/org.nixos.nix-daemon
 ```
 
-# Accessing Media Drive over SMB
+## Services
 
-## MacOS
+Access services through the gateway reverse proxy:
+- **Media Services**:
+  - `jellyfin.vofi.app` - Media streaming
+  - `sonarr.vofi` - TV show management
+  - `radarr.vofi` - Movie management
+  - `prowlarr.vofi` - Indexer management
+  - `torrent.vofi` - qBittorrent web UI
+- **Monitoring**:
+  - `grafana.vofi.app` - Metrics dashboards
+  - `prometheus.vofi.app` - Prometheus metrics
+- **Internal**:
+  - `adguard.internal` - AdGuard Home DNS
+
+## Accessing Media Drive over SMB
+
+### MacOS
 
 Go to `Finder` > `Go` > `Connect to Server` (or `Command + K`)
 
@@ -61,25 +100,44 @@ smb://media@ser8.local
 And login as the `media` user.
 
 
-# Testing TP-Link Deco DHCP + DNS AdGuard
+## DNS Configuration
+
+The homelab uses AdGuard Home on pi4 as the primary DNS server. Configure your router's DHCP to use `192.168.68.56` as the DNS server.
+
+### Testing DNS Setup
 
 ```
 Client → DHCP Request → TP-Link Deco
-TP-Link Deco -> DHCP Response with Adguard DNS address "Here's IP 192.168.68.56, use 192.168.68.96 for DNS" -> Client
+TP-Link Deco -> DHCP Response with Adguard DNS address "Here's IP 192.168.68.X, use 192.168.68.56 for DNS" -> Client
 Client -> DNS Query "jellyfin.vofi.app" -> Adguard
-AdGuard → DNS Response "Redirect 192.X.X.X" → Client
+AdGuard → DNS Response "Redirect to gateway" → Client
 ```
 
 Verify after configuring your router:
-```
+```sh
+# Check DNS server
 ipconfig getpacket en0 | grep domain_name_server
-```
 
-You may need to clear out DNS entries:
-```
-# Check if you have manual DNS servers
+# Clear manual DNS entries if needed
 networksetup -getdnsservers Wi-Fi
-
-# If it shows anything other than "There aren't any DNS Servers set":
 sudo networksetup -setdnsservers Wi-Fi empty
 ```
+
+## Key Features
+
+- **ZFS Storage**: ser8 uses ZFS with automatic snapshots and weekly scrubs
+- **Impermanence**: Root filesystem rollback on boot for stateless operation
+- **VPN Integration**: qBittorrent runs in isolated NordVPN namespace
+- **Monitoring**: Prometheus + Grafana for comprehensive metrics
+- **Secrets Management**: SOPS with age encryption for sensitive data
+- **Multi-Architecture**: Supports x86_64 and ARM (Raspberry Pi)
+
+## Documentation
+
+- `CLAUDE.md` - Detailed architecture and command reference
+- `TODO.md` - Project roadmap and task tracking
+- `deploy.yaml` - Host configuration metadata
+
+## License
+
+GPL-3.0-or-later

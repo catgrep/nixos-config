@@ -9,18 +9,29 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 ## Key Architecture
 
 ### Host Architecture
-- **ser8**: Main media server with Jellyfin, Sonarr, Radarr, Transmission
-- **firebat**: Gateway/reverse proxy with Caddy, Grafana, Prometheus
-- **pi4**: DNS server with AdGuard Home
+- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, FlareSolverr, AllDebrid-proxy
+  - Uses ZFS for storage with automatic snapshots and scrubbing
+  - MergerFS for unified media view across multiple disks
+  - NordVPN integration for anonymized torrenting
+  - Hardware acceleration for media transcoding (Intel QuickSync)
+- **firebat** (192.168.68.63): Gateway/reverse proxy with Caddy, Grafana, Prometheus
+  - Manages SSL certificates using Caddy's local CA
+  - Prometheus monitoring for all hosts
+  - Grafana dashboards for visualization
+- **pi4** (192.168.68.56): DNS server with AdGuard Home
+  - Primary DNS server for the network
 - **pi5** (192.168.0.110): Additional Raspberry Pi for experiments
 
 ### Module System
-- `modules/common/`: Shared configuration (networking, SSH, users, packages)
+- `modules/common/`: Shared configuration (networking, SSH, users, packages, neovim, tmux, banner)
 - `modules/servers/`: Server-specific modules (backup, monitoring, security)
-- `modules/media/`: Media services (Jellyfin, Sonarr, Radarr, Transmission)
+- `modules/media/`: Media services (Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, Transmission, AllDebrid-proxy)
 - `modules/gateway/`: Reverse proxy and monitoring (Caddy, Grafana, Prometheus)
-- `modules/dns/`: DNS services (AdGuard Home)
-- `modules/raspberrypi/`: Raspberry Pi specific configurations
+- `modules/dns/`: DNS services (AdGuard Home, users management)
+- `modules/raspberrypi/`: Raspberry Pi specific configurations (base, installer, usb-installer)
+- `modules/nordvpn/`: NordVPN WireGuard integration with network namespace isolation
+- `modules/automation/`: Home automation services (Home Assistant - planned)
+- `modules/development/`: Development tools (Gerrit - planned)
 
 Host configurations are located in `hosts/HOSTNAME/` with each containing:
 - `configuration.nix`: Main host configuration
@@ -100,10 +111,28 @@ Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
 
 - All Nix files should be formatted with `nixfmt-rfc-style`
 - The repository uses GPL-3.0-or-later licensing
-- Hosts are accessible via mDNS (e.g., `ser8.local`)
-- Some hosts use impermanence for stateless root filesystems
+- Hosts are accessible via mDNS (e.g., `ser8.local` and `ser8.internal`)
+- ser8 uses ZFS with "Erase Your Darlings" pattern - root filesystem is rolled back on boot
 - Raspberry Pi hosts may require special handling for boot firmware mounting
+- Users are defined in `users/` directory with centralized management
+- Media services on ser8 use a shared `media` group for permissions
+- qBittorrent runs in NordVPN network namespace for anonymization
+- Transmission has been replaced by qBittorrent as the primary torrent client
+
+## Service Access
+
+Services are accessible through the Caddy reverse proxy on the firebat host:
+- `jellyfin.vofi.app`, `jellyfin.vofi` - Jellyfin media server
+- `sonarr.vofi` - Sonarr TV show management
+- `radarr.vofi` - Radarr movie management
+- `prowlarr.vofi` - Prowlarr indexer management
+- `torrent.vofi` - qBittorrent web UI
+- `grafana.vofi.app` - Grafana monitoring dashboards
+- `prometheus.vofi.app` - Prometheus metrics
+- `adguard.internal` - AdGuard Home DNS management (internal only)
+
+Note: `.vofi.app` domains use Caddy's local CA for SSL certificates.
 
 ## Testing
 
-Each host can have smoketests defined in `deploy.yaml`. Gateway and DNS modules have comprehensive test suites in `scripts/smoketests/`.
+Each host can have smoketests defined in `deploy.yaml`. Gateway, DNS, and media modules have comprehensive test suites in `scripts/smoketests/`.

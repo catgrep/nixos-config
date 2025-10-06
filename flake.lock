@@ -9,8 +9,8 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1759468720,
-        "narHash": "sha256-PIRxBVIothIVSciWIEOxb/dr8hTYMTgBkyn4k1UhxUU=",
+        "lastModified": 1759859667,
+        "narHash": "sha256-ngVl5GJ5/u+Xme7BR7vrR6y1YH2kLd4ju74B9sZYTK4=",
         "path": "/Users/bobby/github/catgrep/alldebrid-rs",
         "type": "path"
       },

@@ -118,6 +118,9 @@
     "d /mnt/media/downloads/complete 0775 media media -"
     "d /mnt/media/downloads/incomplete 0775 media media -"
 
+    # AllDebrid
+    "d /mnt/media/downloads/alldebrid 0775 media media -"
+
     # qBittorrent config directories
     "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent qbittorrent -"

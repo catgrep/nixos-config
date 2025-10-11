@@ -100,6 +100,37 @@
         group = "alldebrid-proxy";
         mode = "0400";
       };
+
+      # SABnzbd authentication and Usenet provider
+      "sabnzbd_api_key" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
+      "sabnzbd_nzb_key" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
+      "sabnzbd_admin_password" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
+      "sabnzbd_usenet_username" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
+
+      "sabnzbd_usenet_password" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
     };
 
     # Templates for config files
@@ -227,6 +258,147 @@
         group = "qbittorrent";
         mode = "0600";
       };
+
+      "sabnzbd.ini" = {
+        content = ''
+          [misc]
+          host = 0.0.0.0
+          port = 8085
+          api_key = ${config.sops.placeholder."sabnzbd_api_key"}
+          nzb_key = ${config.sops.placeholder."sabnzbd_nzb_key"}
+          username = admin
+          password = ${config.sops.placeholder."sabnzbd_admin_password"}
+          download_dir = /mnt/media/downloads/usenet/incomplete
+          complete_dir = /mnt/media/downloads/usenet/complete/default
+          script_dir =
+          log_dir = logs
+          admin_dir = admin
+          nzb_backup_dir = backup
+          dirscan_dir =
+          auto_browser = 0
+          rating_enable = 0
+          enable_https = 0
+          https_port = 9090
+          bandwidth_max =
+          refresh_rate = 0
+          cache_limit = 1G
+          pause_on_post_processing = 0
+          ignore_samples = 0
+          deobfuscate_final_filenames = 1
+          auto_sort = 0
+          propagation_delay = 0
+          folder_rename = 1
+          direct_unpack = 0
+          no_penalties = 0
+          par_option = 1
+          pre_check = 0
+          nice =
+          ionice =
+          win_process_prio = 3
+          enable_all_par = 0
+          top_only = 0
+          safe_postproc = 1
+          pause_on_pwrar = 1
+          enable_unrar = 1
+          enable_7zip = 1
+          enable_filejoin = 1
+          enable_tsjoin = 1
+          overwrite_files = 0
+          ignore_unrar_dates = 0
+          backup_for_duplicates = 1
+          empty_postproc = 0
+          wait_for_dfolder = 0
+          rss_rate = 60
+          ampm = 0
+          start_paused = 0
+          preserve_paused_state = 0
+          enable_par_cleanup = 1
+          process_unpacked_par2 = 1
+          enable_recursive = 1
+          flat_unpack = 0
+          script_can_fail = 0
+          new_nzb_on_failure = 0
+          unwanted_extensions =
+          action_on_unwanted_extensions = 0
+          unwanted_extensions_mode = 0
+          sanitize_safe = 0
+          replace_illegal = 1
+          max_art_tries = 3
+          max_art_opt = 1
+          load_balancing = 2
+          fail_hopeless_jobs = 1
+          fast_fail = 1
+          auto_disconnect = 1
+          pre_script =
+          end_queue_script =
+          no_dupes = 0
+          no_series_dupes = 0
+          series_propercheck = 1
+          no_smart_dupes = 0
+          smart_dupes_whitelist =
+          dupes_propercheck = 1
+          pause_on_queue_finish = 0
+          history_retention = 0
+          enable_https_verification = 1
+          quota_size =
+          quota_day =
+          quota_resume = 0
+          quota_period = m
+          pre_check_opt = 1
+
+          [servers]
+          [[news.frugalusenet.com]]
+          name = news.frugalusenet.com
+          displayname = news.frugalusenet.com
+          host = news.frugalusenet.com
+          port = 563
+          timeout = 120
+          username = ${config.sops.placeholder."sabnzbd_usenet_username"}
+          password = ${config.sops.placeholder."sabnzbd_usenet_password"}
+          connections = 20
+          ssl = 1
+          ssl_verify = 2
+          ssl_ciphers =
+          enable = 1
+          required = 0
+          optional = 0
+          retention = 0
+          send_group = 0
+          priority = 0
+          notes =
+
+          [categories]
+          [[tv]]
+          name = tv
+          order = 0
+          pp = 3
+          script = Default
+          dir = /mnt/media/downloads/usenet/complete/tv
+          newzbin =
+          priority = 0
+
+          [[movies]]
+          name = movies
+          order = 1
+          pp = 3
+          script = Default
+          dir = /mnt/media/downloads/usenet/complete/movies
+          newzbin =
+          priority = 0
+
+          [[*]]
+          name = *
+          order = 2
+          pp = 3
+          script = Default
+          dir = /mnt/media/downloads/usenet/complete/default
+          newzbin =
+          priority = 0
+        '';
+        owner = "sabnzbd";
+        group = "sabnzbd";
+        mode = "0600";
+      };
     };
   };
 
@@ -303,6 +475,43 @@
       '';
     };
 
+    sabnzbd-config = {
+      description = "Deploy SABnzbd configuration with secrets";
+      before = [
+        "sabnzbd.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+      };
+
+      script = ''
+        # Deploy SABnzbd configuration
+        echo "Configuring SABnzbd..."
+        CONFIG_DIR="/var/lib/sabnzbd"
+        CONFIG_FILE="$CONFIG_DIR/sabnzbd.ini"
+        TEMP_FILE="$CONFIG_DIR/sabnzbd.ini.tmp"
+
+        mkdir -p "$CONFIG_DIR"
+        chown sabnzbd:sabnzbd "$CONFIG_DIR"
+
+        # Remove existing config to avoid conflicts
+        if [ -f "$CONFIG_FILE" ]; then
+          rm -f "$CONFIG_FILE"
+        fi
+
+        # Atomic deployment
+        cp ${config.sops.templates."sabnzbd.ini".path} "$TEMP_FILE"
+        chown sabnzbd:sabnzbd "$TEMP_FILE"
+        chmod 600 "$TEMP_FILE"
+        mv "$TEMP_FILE" "$CONFIG_FILE"
+        echo "✓ SABnzbd configuration deployed"
+      '';
+    };
+
     arr-qbittorrent-setup = {
       description = "Configure qBittorrent as download client for all arr services";
       after = [
@@ -346,11 +555,123 @@
       '';
     };
 
+    arr-sabnzbd-setup = {
+      description = "Configure SABnzbd and verify API readiness";
+      after = [
+        "sabnzbd.service"
+      ];
+      wants = [
+        "sabnzbd.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+      };
+
+      script = ''
+        export CURL_BIN="${pkgs.curl}/bin/curl"
+        source ${./systemd_helpers.sh}
+        set -euo pipefail
+        echo "📦 Setting up SABnzbd..."
+
+        # Wait for SABnzbd to be ready
+        wait_for_api "SABnzbd" "http://localhost:8085/sabnzbd/api?mode=version&apikey=$(cat ${config.sops.secrets."sabnzbd_api_key".path})" 30
+
+        # Verify categories are configured
+        echo "Verifying SABnzbd categories..."
+        CATEGORIES=$($CURL_BIN -s "http://localhost:8085/sabnzbd/api?mode=get_cats&apikey=$(cat ${config.sops.secrets."sabnzbd_api_key".path})")
+
+        if echo "$CATEGORIES" | grep -q '"tv"' && echo "$CATEGORIES" | grep -q '"movies"'; then
+          echo "✓ SABnzbd categories configured correctly"
+        else
+          echo "⚠ Warning: SABnzbd categories may not be configured correctly"
+        fi
+
+        echo "🎉 SABnzbd setup complete!"
+      '';
+    };
+
+    arr-sonarr-sabnzbd-setup = {
+      description = "Configure SABnzbd as download client for Sonarr";
+      after = [
+        "arr-sabnzbd-setup.service"
+        "sonarr.service"
+      ];
+      wants = [
+        "arr-sabnzbd-setup.service"
+        "sonarr.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+      };
+
+      script = ''
+        export CURL_BIN="${pkgs.curl}/bin/curl"
+        source ${./systemd_helpers.sh}
+        set -euo pipefail
+        echo "📺 Configuring SABnzbd for Sonarr..."
+
+        # Wait for services to be ready
+        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
+
+        # Configure SABnzbd for Sonarr
+        setup_sabnzbd_client "Sonarr" "8989" "${
+          config.sops.secrets."sonarr_api_key".path
+        }" "tv" "${config.sops.secrets."sabnzbd_api_key".path}"
+
+        echo "🎉 SABnzbd configured for Sonarr!"
+      '';
+    };
+
+    arr-radarr-sabnzbd-setup = {
+      description = "Configure SABnzbd as download client for Radarr";
+      after = [
+        "arr-sabnzbd-setup.service"
+        "radarr.service"
+      ];
+      wants = [
+        "arr-sabnzbd-setup.service"
+        "radarr.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+      };
+
+      script = ''
+        export CURL_BIN="${pkgs.curl}/bin/curl"
+        source ${./systemd_helpers.sh}
+        set -euo pipefail
+        echo "🎬 Configuring SABnzbd for Radarr..."
+
+        # Wait for services to be ready
+        wait_for_api "Radarr" "http://localhost:7878/ping" 30
+
+        # Configure SABnzbd for Radarr
+        setup_sabnzbd_client "Radarr" "7878" "${
+          config.sops.secrets."radarr_api_key".path
+        }" "movies" "${config.sops.secrets."sabnzbd_api_key".path}"
+
+        echo "🎉 SABnzbd configured for Radarr!"
+      '';
+    };
+
     arr-prowlarr-setup = {
       description = "Configure Prowlarr indexers and connect to arr services";
       after = [
         "arr-config.service"
         "arr-qbittorrent-setup.service"
+        "arr-sabnzbd-setup.service"
         "prowlarr.service"
         "sonarr.service"
         "radarr.service"
@@ -390,6 +711,9 @@
           config.sops.secrets."radarr_api_key".path
         }" "[2000,2010,2020,2030,2040,2045,2050,2060]" "${config.sops.secrets."prowlarr_api_key".path}"
 
+        # Add SABnzbd download client to Prowlarr
+        add_sabnzbd_to_prowlarr "${config.sops.secrets."sabnzbd_api_key".path}" "${config.sops.secrets."prowlarr_api_key".path}"
+
         # Add popular public indexers (examples - these would need proper configuration)
         echo "ℹ️  Consider adding indexers like 1337x, RARBG alternatives, or private trackers via Prowlarr UI"
         echo "ℹ️  Prowlarr will automatically sync indexers to connected arr services"
@@ -405,11 +729,17 @@
     wants = [
       "arr-config.service"
       "arr-qbittorrent-setup.service"
+      "arr-sabnzbd-setup.service"
+      "arr-sonarr-sabnzbd-setup.service"
+      "arr-radarr-sabnzbd-setup.service"
       "arr-prowlarr-setup.service"
     ];
     after = [
       "arr-config.service"
       "arr-qbittorrent-setup.service"
+      "arr-sabnzbd-setup.service"
+      "arr-sonarr-sabnzbd-setup.service"
+      "arr-radarr-sabnzbd-setup.service"
       "arr-prowlarr-setup.service"
     ];
     wantedBy = [ "multi-user.target" ];

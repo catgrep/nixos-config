@@ -122,6 +122,66 @@ setup_qbittorrent_client() {
     fi
 }
 
+# Function to configure SABnzbd as download client for arr services
+setup_sabnzbd_client() {
+    local service_name="$1"
+    local service_port="$2"
+    local api_key_path="$3"
+    local category_value="$4"
+    local sabnzbd_api_key_path="$5"
+
+    echo "🔧 Configuring SABnzbd for $service_name..."
+
+    # Check if already configured
+    response=$($CURL_BIN -X GET \
+        -H "Content-Type: application/json" \
+        -H "X-Api-Key: $(cat "$api_key_path")" \
+        "http://localhost:$service_port/api/v3/downloadclient")
+
+    if echo "$response" | grep -q '"name": "SABnzbd"'; then
+        echo "✓ $service_name SABnzbd download client already configured"
+        return 0
+    fi
+
+    # Configure SABnzbd download client via API
+    response=$($CURL_BIN -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Api-Key: $(cat "$api_key_path")" \
+        -d "{
+      \"enable\": true,
+      \"protocol\": \"usenet\",
+      \"priority\": 1,
+      \"removeCompletedDownloads\": true,
+      \"removeFailedDownloads\": true,
+      \"name\": \"SABnzbd\",
+      \"implementation\": \"Sabnzbd\",
+      \"implementationName\": \"SABnzbd\",
+      \"configContract\": \"SabnzbdSettings\",
+      \"fields\": [
+        {\"name\": \"host\", \"value\": \"127.0.0.1\"},
+        {\"name\": \"port\", \"value\": 8085},
+        {\"name\": \"useSsl\", \"value\": false},
+        {\"name\": \"urlBase\", \"value\": \"/sabnzbd\"},
+        {\"name\": \"apiKey\", \"value\": \"$(cat "$sabnzbd_api_key_path")\"},
+        {\"name\": \"category\", \"value\": \"$category_value\"},
+        {\"name\": \"recentTvPriority\", \"value\": 0},
+        {\"name\": \"olderTvPriority\", \"value\": 0},
+        {\"name\": \"recentMoviePriority\", \"value\": 0},
+        {\"name\": \"olderMoviePriority\", \"value\": 0}
+      ]
+    }" \
+        "http://localhost:$service_port/api/v3/downloadclient")
+
+    # Check response
+    if echo "$response" | grep -q '"id":'; then
+        echo "✓ Successfully configured $service_name SABnzbd download client"
+    else
+        echo "✗ Failed to configure $service_name download client. Response:"
+        echo "$response"
+        return 1
+    fi
+}
+
 # Function to add arr service to Prowlarr
 add_arr_application() {
     local service_name="$1"
@@ -167,6 +227,56 @@ add_arr_application() {
         echo "✓ Successfully connected $service_name to Prowlarr"
     else
         echo "✗ Failed to connect $service_name to Prowlarr. Response:"
+        echo "$response"
+        return 1
+    fi
+}
+
+# Function to add SABnzbd to Prowlarr as download client
+add_sabnzbd_to_prowlarr() {
+    local sabnzbd_api_key_path="$1"
+    local prowlarr_api_key_path="$2"
+
+    echo "🔗 Adding SABnzbd to Prowlarr as download client..."
+
+    # Check if SABnzbd download client already exists in Prowlarr
+    response=$($CURL_BIN -X GET \
+        -H "Content-Type: application/json" \
+        -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
+        "http://localhost:9696/api/v1/downloadclient")
+
+    if echo "$response" | grep -q '"name": "SABnzbd"'; then
+        echo "✓ SABnzbd already configured in Prowlarr"
+        return 0
+    fi
+
+    # Add SABnzbd download client to Prowlarr
+    response=$($CURL_BIN -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
+        -d "{
+      \"enable\": true,
+      \"protocol\": \"usenet\",
+      \"priority\": 1,
+      \"name\": \"SABnzbd\",
+      \"implementation\": \"Sabnzbd\",
+      \"implementationName\": \"SABnzbd\",
+      \"configContract\": \"SabnzbdSettings\",
+      \"fields\": [
+        {\"name\": \"host\", \"value\": \"127.0.0.1\"},
+        {\"name\": \"port\", \"value\": 8085},
+        {\"name\": \"useSsl\", \"value\": false},
+        {\"name\": \"urlBase\", \"value\": \"/sabnzbd\"},
+        {\"name\": \"apiKey\", \"value\": \"$(cat "$sabnzbd_api_key_path")\"},
+        {\"name\": \"categories\", \"value\": []}
+      ]
+    }" \
+        "http://localhost:9696/api/v1/downloadclient")
+
+    if echo "$response" | grep -q '"id":'; then
+        echo "✓ Successfully added SABnzbd to Prowlarr"
+    else
+        echo "✗ Failed to add SABnzbd to Prowlarr. Response:"
         echo "$response"
         return 1
     fi

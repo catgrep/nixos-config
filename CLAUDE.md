@@ -9,10 +9,11 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 ## Key Architecture
 
 ### Host Architecture
-- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, FlareSolverr, AllDebrid-proxy
+- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, FlareSolverr, AllDebrid-proxy
   - Uses ZFS for storage with automatic snapshots and scrubbing
   - MergerFS for unified media view across multiple disks
   - NordVPN integration for anonymized torrenting
+  - SABnzbd for Usenet downloads with category-based organization
   - Hardware acceleration for media transcoding (Intel QuickSync)
 - **firebat** (192.168.68.63): Gateway/reverse proxy with Caddy, Grafana, Prometheus
   - Manages SSL certificates using Caddy's local CA
@@ -25,7 +26,7 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 ### Module System
 - `modules/common/`: Shared configuration (networking, SSH, users, packages, neovim, tmux, banner)
 - `modules/servers/`: Server-specific modules (backup, monitoring, security)
-- `modules/media/`: Media services (Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, Transmission, AllDebrid-proxy)
+- `modules/media/`: Media services (Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, Transmission, AllDebrid-proxy)
 - `modules/gateway/`: Reverse proxy and monitoring (Caddy, Grafana, Prometheus)
 - `modules/dns/`: DNS services (AdGuard Home, users management)
 - `modules/raspberrypi/`: Raspberry Pi specific configurations (base, installer, usb-installer)
@@ -127,6 +128,7 @@ Services are accessible through the Caddy reverse proxy on the firebat host:
 - `radarr.vofi` - Radarr movie management
 - `prowlarr.vofi` - Prowlarr indexer management
 - `torrent.vofi` - qBittorrent web UI
+- `sabnzbd.vofi` - SABnzbd Usenet download client
 - `grafana.vofi.app` - Grafana monitoring dashboards
 - `prometheus.vofi.app` - Prometheus metrics
 - `adguard.internal` - AdGuard Home DNS management (internal only)

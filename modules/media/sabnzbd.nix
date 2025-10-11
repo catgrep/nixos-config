@@ -26,5 +26,5 @@
   };
 
   # Open SABnzbd port when enabled
-  networking.firewall.allowedTCPPorts = lib.mkIf config.services.sabnzbd.enable [ 8080 ];
+  networking.firewall.allowedTCPPorts = lib.mkIf config.services.sabnzbd.enable [ 8085 ];
 }

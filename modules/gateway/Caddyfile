@@ -27,6 +27,10 @@ prowlarr.vofi {
 	reverse_proxy ser8.internal:9696
 }
 
+sabnzbd.vofi {
+	reverse_proxy ser8.internal:8085
+}
+
 # adguard should be internally accessible only
 adguard.internal {
 	reverse_proxy pi4.internal:3000

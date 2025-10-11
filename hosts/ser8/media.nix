@@ -415,14 +415,46 @@
     };
   };
 
-  # Consolidated SystemD services for media configuration
+  # Media Stack SystemD Services Architecture:
+  #
+  # This module configures the complete media automation stack using a 3-service architecture
+  # that ensures correct initialization order and dependency management.
+  #
+  # Service Hierarchy:
+  # 1. media-config.service (Phase 1: Configuration)
+  #    - Deploys all service configurations from SOPS templates
+  #    - Runs before any media services start
+  #    - Configures: Sonarr, Radarr, Prowlarr, SABnzbd, qBittorrent
+  #
+  # 2. servarrs-setup.service (Phase 2: Indexer Management)
+  #    - Connects Prowlarr to Sonarr and Radarr for indexer synchronization
+  #    - Depends on: media-config + all arr services running
+  #    - Runs in parallel with download-clients-setup
+  #
+  # 3. download-clients-setup.service (Phase 2: Download Client Integration)
+  #    - Connects download clients (qBittorrent, SABnzbd) to all arr services
+  #    - Configures categories for automatic media organization
+  #    - Depends on: media-config + all services running
+  #    - Runs in parallel with servarrs-setup
+  #
+  # 4. media-setup.target (Meta Target)
+  #    - Coordinates all setup services
+  #    - Provides single target for "complete media stack configuration"
+  #
+  # Key Features:
+  # - API key sanitization in all logs (prevents secrets exposure)
+  # - Idempotent operations (safe to run multiple times)
+  # - Explicit API readiness checks (no blind sleep delays)
+  # - Parallel execution where possible (servarrs-setup || download-clients-setup)
+  #
   systemd.services = {
-    arr-config = {
+    media-config = {
       description = "Deploy all media service configurations with secrets";
       before = [
         "sonarr.service"
         "radarr.service"
         "prowlarr.service"
+        "qbittorrent-nox.service"
         "sabnzbd.service"
       ];
       wantedBy = [ "multi-user.target" ];
@@ -437,29 +469,15 @@
         export CURL_BIN="${pkgs.curl}/bin/curl"
         source ${./systemd_helpers.sh}
         set -euo pipefail
-        echo "🔧 Deploying all media service configurations..."
 
+        echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd)..."
+
+        # Deploy arr service configurations
         configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
         configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
         configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
         configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
-      '';
-    };
 
-    qbittorrent-config = {
-      description = "Deploy qBittorrent configuration with secrets";
-      before = [
-        "qbittorrent-nox.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
         # Deploy qBittorrent configuration
         echo "Configuring qBittorrent..."
         CONFIG_DIR="/var/lib/qbittorrent/qBittorrent/config"
@@ -480,21 +498,20 @@
         chmod 600 "$TEMP_FILE"
         mv "$TEMP_FILE" "$CONFIG_FILE"
         echo "✓ qBittorrent configuration deployed"
+
+        echo "✓ Completed media services configuration"
       '';
     };
 
-    arr-qbittorrent-setup = {
-      description = "Configure qBittorrent as download client for all arr services";
+    servarrs-setup = {
+      description = "Configure Prowlarr connections to Sonarr and Radarr";
       after = [
+        "media-config.service"
+        "prowlarr.service"
         "sonarr.service"
         "radarr.service"
-        "qbittorrent-nox.service"
       ];
-      wants = [
-        "sonarr.service"
-        "radarr.service"
-        "qbittorrent-nox.service"
-      ];
+      requires = [ "media-config.service" ];
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {
@@ -507,13 +524,63 @@
         export CURL_BIN="${pkgs.curl}/bin/curl"
         source ${./systemd_helpers.sh}
         set -euo pipefail
-        echo "🌊 Configuring qBittorrent for all arr services..."
 
-        # Wait for services to be ready
-        echo "Waiting for Sonarr, Radarr, and qBittorrent services to be ready..."
-        sleep 30
+        echo "Starting Prowlarr connections to Sonarr and Radarr..."
 
-        # Configure qBittorrent for each service
+        # Wait for APIs to be ready
+        wait_for_api "Prowlarr" "http://localhost:9696/ping" 30
+        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
+        wait_for_api "Radarr" "http://localhost:7878/ping" 30
+
+        # Connect arr services to Prowlarr
+        add_arr_application "Sonarr" "8989" "${
+          config.sops.secrets."sonarr_api_key".path
+        }" "[5000,5030,5040]" "${config.sops.secrets."prowlarr_api_key".path}"
+
+        add_arr_application "Radarr" "7878" "${
+          config.sops.secrets."radarr_api_key".path
+        }" "[2000,2010,2020,2030,2040,2045,2050,2060]" "${config.sops.secrets."prowlarr_api_key".path}"
+
+        echo "✓ Completed Prowlarr connections to Sonarr and Radarr"
+      '';
+    };
+
+    download-clients-setup = {
+      description = "Configure download clients (qBittorrent, SABnzbd) for all Servarr services";
+      after = [
+        "media-config.service"
+        "qbittorrent-nox.service"
+        "sabnzbd.service"
+        "sonarr.service"
+        "radarr.service"
+        "prowlarr.service"
+      ];
+      requires = [ "media-config.service" ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+      };
+
+      script = ''
+        export CURL_BIN="${pkgs.curl}/bin/curl"
+        source ${./systemd_helpers.sh}
+        set -euo pipefail
+
+        echo "Starting download client connections..."
+
+        # Wait for all APIs to be ready
+        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
+        wait_for_api "Radarr" "http://localhost:7878/ping" 30
+        wait_for_api "Prowlarr" "http://localhost:9696/ping" 30
+        wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
+          config.sops.secrets."sabnzbd_api_key".path
+        })" 60
+        wait_for_api "qBittorrent" "http://localhost:8080/api/v2/app/version" 30
+
+        # Configure qBittorrent for arr services
         setup_qbittorrent_client "Sonarr" "8989" "${
           config.sops.secrets."sonarr_api_key".path
         }" "tvCategory" "tv" "${config.sops.secrets."qbittorrent_admin_password".path}"
@@ -522,38 +589,7 @@
           config.sops.secrets."radarr_api_key".path
         }" "movieCategory" "movies" "${config.sops.secrets."qbittorrent_admin_password".path}"
 
-        echo "🎉 qBittorrent configured for all arr services!"
-      '';
-    };
-
-    arr-sabnzbd-setup = {
-      description = "Configure SABnzbd and verify API readiness";
-      after = [
-        "sabnzbd.service"
-      ];
-      wants = [
-        "sabnzbd.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        source ${./systemd_helpers.sh}
-        set -euo pipefail
-        echo "📦 Setting up SABnzbd..."
-
-        # Wait for SABnzbd to be ready (60 iterations × 2s = 120s timeout)
-        wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
-          config.sops.secrets."sabnzbd_api_key".path
-        })" 60
-
-        # Verify categories are configured
+        # Verify SABnzbd categories are configured
         echo "Verifying SABnzbd categories..."
         CATEGORIES=$($CURL_BIN -s "http://localhost:8085/api?mode=get_cats&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
@@ -565,175 +601,32 @@
           echo "⚠ Warning: SABnzbd categories may not be configured correctly"
         fi
 
-        echo "🎉 SABnzbd setup complete!"
-      '';
-    };
-
-    arr-sonarr-sabnzbd-setup = {
-      description = "Configure SABnzbd as download client for Sonarr";
-      after = [
-        "arr-sabnzbd-setup.service"
-        "sonarr.service"
-      ];
-      wants = [
-        "arr-sabnzbd-setup.service"
-        "sonarr.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        source ${./systemd_helpers.sh}
-        set -euo pipefail
-        echo "📺 Configuring SABnzbd for Sonarr..."
-
-        # Wait for services to be ready
-        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
-
-        # Configure SABnzbd for Sonarr
+        # Configure SABnzbd for arr services
         setup_sabnzbd_client "Sonarr" "8989" "${config.sops.secrets."sonarr_api_key".path}" "tv" "${
           config.sops.secrets."sabnzbd_api_key".path
         }"
 
-        echo "🎉 SABnzbd configured for Sonarr!"
-      '';
-    };
-
-    arr-radarr-sabnzbd-setup = {
-      description = "Configure SABnzbd as download client for Radarr";
-      after = [
-        "arr-sabnzbd-setup.service"
-        "radarr.service"
-      ];
-      wants = [
-        "arr-sabnzbd-setup.service"
-        "radarr.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        source ${./systemd_helpers.sh}
-        set -euo pipefail
-        echo "🎬 Configuring SABnzbd for Radarr..."
-
-        # Wait for services to be ready
-        wait_for_api "Radarr" "http://localhost:7878/ping" 30
-
-        # Configure SABnzbd for Radarr
         setup_sabnzbd_client "Radarr" "7878" "${config.sops.secrets."radarr_api_key".path}" "movies" "${
           config.sops.secrets."sabnzbd_api_key".path
         }"
 
-        echo "🎉 SABnzbd configured for Radarr!"
-      '';
-    };
-
-    arr-prowlarr-setup = {
-      description = "Configure Prowlarr indexers and connect to arr services";
-      after = [
-        "arr-config.service"
-        "arr-qbittorrent-setup.service"
-        "arr-sabnzbd-setup.service"
-        "prowlarr.service"
-        "sonarr.service"
-        "radarr.service"
-      ];
-      wants = [
-        "prowlarr.service"
-        "sonarr.service"
-        "radarr.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        source ${./systemd_helpers.sh}
-        set -euo pipefail
-        echo "🔍 Configuring Prowlarr and connecting to arr services..."
-
-        # Wait for services to be ready using API health checks
-        echo "Waiting for Prowlarr, Sonarr, and Radarr services to be ready..."
-
-        # Wait for each service API to be ready
-        wait_for_api "Prowlarr" "http://localhost:9696/ping" 30
-        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
-        wait_for_api "Radarr" "http://localhost:7878/ping" 30
-        wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
-          config.sops.secrets."sabnzbd_api_key".path
-        })" 30
-
-        # Connect arr services to Prowlarr
-        add_arr_application "Sonarr" "8989" "${
-          config.sops.secrets."sonarr_api_key".path
-        }" "[5000,5030,5040]" "${config.sops.secrets."prowlarr_api_key".path}"
-        add_arr_application "Radarr" "7878" "${
-          config.sops.secrets."radarr_api_key".path
-        }" "[2000,2010,2020,2030,2040,2045,2050,2060]" "${config.sops.secrets."prowlarr_api_key".path}"
-
-        # Add SABnzbd download client to Prowlarr
+        # Add SABnzbd to Prowlarr as download client
         add_sabnzbd_to_prowlarr "${config.sops.secrets."sabnzbd_api_key".path}" "${
           config.sops.secrets."prowlarr_api_key".path
         }"
 
-        # Add popular public indexers (examples - these would need proper configuration)
-        echo "ℹ️  Consider adding indexers like 1337x, RARBG alternatives, or private trackers via Prowlarr UI"
-        echo "ℹ️  Prowlarr will automatically sync indexers to connected arr services"
-
-        echo "🎉 Prowlarr configured and connected to arr services!"
+        echo "✓ Completed download client connections"
       '';
     };
   };
 
-  # Ensure SABnzbd service waits for config deployment
-  systemd.services.sabnzbd = {
-    after = [
-      "sabnzbd-config.service"
-      "systemd-tmpfiles-setup.service"
-    ];
-    requires = [ "sabnzbd-config.service" ];
-    serviceConfig = {
-      Restart = "on-failure";
-      RestartSec = "5s";
-    };
-  };
-
-  # Meta orchestration target for complete media services setup
-  systemd.targets.media-services-setup = {
-    description = "Complete media services configuration orchestration";
+  # Meta orchestration target for complete media stack setup
+  systemd.targets.media-setup = {
+    description = "Complete media stack setup orchestration";
     wants = [
-      "arr-config.service"
-      "arr-qbittorrent-setup.service"
-      "arr-sabnzbd-setup.service"
-      "arr-sonarr-sabnzbd-setup.service"
-      "arr-radarr-sabnzbd-setup.service"
-      "arr-prowlarr-setup.service"
-    ];
-    after = [
-      "arr-config.service"
-      "arr-qbittorrent-setup.service"
-      "arr-sabnzbd-setup.service"
-      "arr-sonarr-sabnzbd-setup.service"
-      "arr-radarr-sabnzbd-setup.service"
-      "arr-prowlarr-setup.service"
+      "media-config.service"
+      "servarrs-setup.service"
+      "download-clients-setup.service"
     ];
     wantedBy = [ "multi-user.target" ];
   };

@@ -6,6 +6,42 @@
 # Use CURL_BIN environment variable if set, otherwise default to $CURL_BIN
 CURL_BIN="${CURL_BIN:-curl}"
 
+# Sanitize API keys from strings (URLs, commands, responses)
+# Supports multiple patterns:
+# - Query parameters: apikey=VALUE, api_key=VALUE, apiKey=VALUE
+# - HTTP headers: X-Api-Key: VALUE
+# - JSON fields: "apiKey": "VALUE", "api_key": "VALUE"
+sanitize_api_key() {
+    local input="$1"
+    # Sanitize query parameters (case-insensitive)
+    input=$(echo "$input" | sed -E 's/(api[_-]?key)=[^&[:space:]\"'\'')]*/\1=***REDACTED***/gi')
+    # Sanitize HTTP headers
+    input=$(echo "$input" | sed -E 's/(X-Api-Key[[:space:]]*:[[:space:]]*)[^'\''\"[:space:]]*/\1***REDACTED***/gi')
+    # Sanitize JSON fields
+    input=$(echo "$input" | sed -E 's/("api[_-]?[Kk]ey"[[:space:]]*:[[:space:]]*")[^"]*"/\1***REDACTED***"/g')
+    echo "$input"
+}
+
+# Wrapper for curl that sanitizes API keys in logs
+# Usage: curl_safe [curl arguments...]
+curl_safe() {
+    local command="$CURL_BIN $*"
+    local sanitized_command
+    sanitized_command=$(sanitize_api_key "$command")
+    echo "Executing: $sanitized_command"
+
+    # Execute curl with original (unsanitized) arguments and capture output
+    local output
+    local exit_code
+    output=$("$CURL_BIN" "$@" 2>&1)
+    exit_code=$?
+
+    # Sanitize output before returning
+    sanitize_api_key "$output"
+
+    return $exit_code
+}
+
 # Function to configure arr services (Sonarr, Radarr, Prowlarr)
 configure_arr() {
     local service_name="$1"
@@ -54,7 +90,10 @@ wait_for_api() {
     local api_url="$2"
     local timeout="$3"
 
-    echo "Waiting for $service_name API to be ready..."
+    local sanitized_url
+    sanitized_url=$(sanitize_api_key "$api_url")
+    echo "Waiting for $service_name API to be ready at $sanitized_url..."
+
     for _ in $(seq 1 "$timeout"); do
         if $CURL_BIN -f -s "$api_url" >/dev/null 2>&1; then
             echo "✓ $service_name API is ready"
@@ -78,7 +117,7 @@ setup_qbittorrent_client() {
     echo "🔧 Configuring qBittorrent for $service_name..."
 
     # Check if already configured
-    response=$($CURL_BIN -X GET \
+    response=$(curl_safe -X GET \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$api_key_path")" \
         "http://localhost:$service_port/api/v3/downloadclient")
@@ -89,7 +128,7 @@ setup_qbittorrent_client() {
     fi
 
     # Configure qBittorrent download client via API
-    response=$($CURL_BIN -X POST \
+    response=$(curl_safe -X POST \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$api_key_path")" \
         -d "{
@@ -123,8 +162,10 @@ setup_qbittorrent_client() {
     if echo "$response" | grep -q '"id":'; then
         echo "✓ Successfully configured $service_name qBittorrent download client"
     else
+        local sanitized_response
+        sanitized_response=$(sanitize_api_key "$response")
         echo "✗ Failed to configure $service_name download client. Response:"
-        echo "$response"
+        echo "$sanitized_response"
         return 1
     fi
 }
@@ -140,7 +181,7 @@ setup_sabnzbd_client() {
     echo "🔧 Configuring SABnzbd for $service_name..."
 
     # Check if already configured
-    response=$($CURL_BIN -X GET \
+    response=$(curl_safe -X GET \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$api_key_path")" \
         "http://localhost:$service_port/api/v3/downloadclient")
@@ -151,7 +192,7 @@ setup_sabnzbd_client() {
     fi
 
     # Configure SABnzbd download client via API
-    response=$($CURL_BIN -X POST \
+    response=$(curl_safe -X POST \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$api_key_path")" \
         -d "{
@@ -183,8 +224,10 @@ setup_sabnzbd_client() {
     if echo "$response" | grep -q '"id":'; then
         echo "✓ Successfully configured $service_name SABnzbd download client"
     else
+        local sanitized_response
+        sanitized_response=$(sanitize_api_key "$response")
         echo "✗ Failed to configure $service_name download client. Response:"
-        echo "$response"
+        echo "$sanitized_response"
         return 1
     fi
 }
@@ -200,7 +243,7 @@ add_arr_application() {
     echo "🔗 Connecting Prowlarr to $service_name..."
 
     # Check if application already exists
-    response=$($CURL_BIN -X GET \
+    response=$(curl_safe -X GET \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
         "http://localhost:9696/api/v1/applications")
@@ -224,7 +267,7 @@ add_arr_application() {
         ]
     }"
 
-    response=$($CURL_BIN -X POST \
+    response=$(curl_safe -X POST \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
         -d "$add_app_json" \
@@ -233,8 +276,10 @@ add_arr_application() {
     if echo "$response" | grep -q '"id":'; then
         echo "✓ Successfully connected $service_name to Prowlarr"
     else
+        local sanitized_response
+        sanitized_response=$(sanitize_api_key "$response")
         echo "✗ Failed to connect $service_name to Prowlarr. Response:"
-        echo "$response"
+        echo "$sanitized_response"
         return 1
     fi
 }
@@ -247,7 +292,7 @@ add_sabnzbd_to_prowlarr() {
     echo "🔗 Adding SABnzbd to Prowlarr as download client..."
 
     # Check if SABnzbd download client already exists in Prowlarr
-    response=$($CURL_BIN -X GET \
+    response=$(curl_safe -X GET \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
         "http://localhost:9696/api/v1/downloadclient")
@@ -258,7 +303,7 @@ add_sabnzbd_to_prowlarr() {
     fi
 
     # Add SABnzbd download client to Prowlarr
-    response=$($CURL_BIN -X POST \
+    response=$(curl_safe -X POST \
         -H "Content-Type: application/json" \
         -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
         -d "{
@@ -283,8 +328,10 @@ add_sabnzbd_to_prowlarr() {
     if echo "$response" | grep -q '"id":'; then
         echo "✓ Successfully added SABnzbd to Prowlarr"
     else
+        local sanitized_response
+        sanitized_response=$(sanitize_api_key "$response")
         echo "✗ Failed to add SABnzbd to Prowlarr. Response:"
-        echo "$response"
+        echo "$sanitized_response"
         return 1
     fi
 }

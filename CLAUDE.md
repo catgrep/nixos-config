@@ -15,6 +15,11 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
   - NordVPN integration for anonymized torrenting
   - SABnzbd for Usenet downloads with category-based organization
   - Hardware acceleration for media transcoding (Intel QuickSync)
+  - Media stack orchestration via 3 systemd services:
+    - `media-config.service`: Deploys all service configurations from SOPS templates
+    - `servarrs-setup.service`: Connects Prowlarr to Sonarr/Radarr for indexer sync
+    - `download-clients-setup.service`: Connects qBittorrent/SABnzbd to all arr services
+  - API key sanitization in all systemd logs prevents secrets exposure
 - **firebat** (192.168.68.63): Gateway/reverse proxy with Caddy, Grafana, Prometheus
   - Manages SSL certificates using Caddy's local CA
   - Prometheus monitoring for all hosts

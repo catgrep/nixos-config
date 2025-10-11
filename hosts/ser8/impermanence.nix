@@ -54,6 +54,7 @@
       "/var/lib/radarr"
       "/var/lib/prowlarr"
       "/var/lib/qbittorrent"
+      "/var/lib/sabnzbd"
       "/var/lib/postgresql"
       {
         directory = "/var/lib/docker";
@@ -121,6 +122,14 @@
     # AllDebrid
     "d /mnt/media/downloads/alldebrid 0775 media media -"
 
+    # SABnzbd Usenet downloads
+    "d /mnt/media/downloads/usenet 0775 sabnzbd media -"
+    "d /mnt/media/downloads/usenet/incomplete 0775 sabnzbd media -"
+    "d /mnt/media/downloads/usenet/complete 0775 sabnzbd media -"
+    "d /mnt/media/downloads/usenet/complete/tv 0775 sabnzbd media -"
+    "d /mnt/media/downloads/usenet/complete/movies 0775 sabnzbd media -"
+    "d /mnt/media/downloads/usenet/complete/default 0775 sabnzbd media -"
+
     # qBittorrent config directories
     "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent qbittorrent -"
@@ -132,6 +141,7 @@
     "d /persist/var/lib/radarr 0755 radarr radarr -"
     "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
     "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
+    "d /persist/var/lib/sabnzbd 0755 sabnzbd sabnzbd -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 

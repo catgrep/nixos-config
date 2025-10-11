@@ -131,6 +131,12 @@
         group = "root";
         mode = "0600";
       };
+
+      "sabnzbd_usenet_provider" = {
+        owner = "root";
+        group = "root";
+        mode = "0600";
+      };
     };
 
     # Templates for config files
@@ -347,10 +353,10 @@
           pre_check_opt = 1
 
           [servers]
-          [[news.frugalusenet.com]]
-          name = news.frugalusenet.com
-          displayname = news.frugalusenet.com
-          host = news.frugalusenet.com
+          [[${config.sops.placeholder."sabnzbd_usenet_provider"}}]]
+          name = ${config.sops.placeholder."sabnzbd_usenet_provider"}
+          displayname = ${config.sops.placeholder."sabnzbd_usenet_provider"}
+          host = ${config.sops.placeholder."sabnzbd_usenet_provider"}
           port = 563
           timeout = 120
           username = ${config.sops.placeholder."sabnzbd_usenet_username"}
@@ -578,11 +584,15 @@
         echo "📦 Setting up SABnzbd..."
 
         # Wait for SABnzbd to be ready
-        wait_for_api "SABnzbd" "http://localhost:8085/sabnzbd/api?mode=version&apikey=$(cat ${config.sops.secrets."sabnzbd_api_key".path})" 30
+        wait_for_api "SABnzbd" "http://localhost:8085/sabnzbd/api?mode=version&apikey=$(cat ${
+          config.sops.secrets."sabnzbd_api_key".path
+        })" 30
 
         # Verify categories are configured
         echo "Verifying SABnzbd categories..."
-        CATEGORIES=$($CURL_BIN -s "http://localhost:8085/sabnzbd/api?mode=get_cats&apikey=$(cat ${config.sops.secrets."sabnzbd_api_key".path})")
+        CATEGORIES=$($CURL_BIN -s "http://localhost:8085/sabnzbd/api?mode=get_cats&apikey=$(cat ${
+          config.sops.secrets."sabnzbd_api_key".path
+        })")
 
         if echo "$CATEGORIES" | grep -q '"tv"' && echo "$CATEGORIES" | grep -q '"movies"'; then
           echo "✓ SABnzbd categories configured correctly"
@@ -622,9 +632,9 @@
         wait_for_api "Sonarr" "http://localhost:8989/ping" 30
 
         # Configure SABnzbd for Sonarr
-        setup_sabnzbd_client "Sonarr" "8989" "${
-          config.sops.secrets."sonarr_api_key".path
-        }" "tv" "${config.sops.secrets."sabnzbd_api_key".path}"
+        setup_sabnzbd_client "Sonarr" "8989" "${config.sops.secrets."sonarr_api_key".path}" "tv" "${
+          config.sops.secrets."sabnzbd_api_key".path
+        }"
 
         echo "🎉 SABnzbd configured for Sonarr!"
       '';
@@ -658,9 +668,9 @@
         wait_for_api "Radarr" "http://localhost:7878/ping" 30
 
         # Configure SABnzbd for Radarr
-        setup_sabnzbd_client "Radarr" "7878" "${
-          config.sops.secrets."radarr_api_key".path
-        }" "movies" "${config.sops.secrets."sabnzbd_api_key".path}"
+        setup_sabnzbd_client "Radarr" "7878" "${config.sops.secrets."radarr_api_key".path}" "movies" "${
+          config.sops.secrets."sabnzbd_api_key".path
+        }"
 
         echo "🎉 SABnzbd configured for Radarr!"
       '';
@@ -712,7 +722,9 @@
         }" "[2000,2010,2020,2030,2040,2045,2050,2060]" "${config.sops.secrets."prowlarr_api_key".path}"
 
         # Add SABnzbd download client to Prowlarr
-        add_sabnzbd_to_prowlarr "${config.sops.secrets."sabnzbd_api_key".path}" "${config.sops.secrets."prowlarr_api_key".path}"
+        add_sabnzbd_to_prowlarr "${config.sops.secrets."sabnzbd_api_key".path}" "${
+          config.sops.secrets."prowlarr_api_key".path
+        }"
 
         # Add popular public indexers (examples - these would need proper configuration)
         echo "ℹ️  Consider adding indexers like 1337x, RARBG alternatives, or private trackers via Prowlarr UI"

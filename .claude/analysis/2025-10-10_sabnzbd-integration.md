@@ -128,22 +128,31 @@ systemd.services.arr-qbittorrent-setup = {
 
 ### Download Path Conventions
 
-**Pattern Location:** `hosts/ser8/configuration.nix:120-145` (ZFS datasets), `hosts/ser8/media.nix:95-119` (MergerFS mount)
+**Pattern Location:** `hosts/ser8/configuration.nix:106` (MergerFS mount), `hosts/ser8/impermanence.nix:105-122` (directory structure)
 
 Current path structure:
 ```
-/data/torrents/         # qBittorrent downloads
-/data/media/            # Final media storage (MergerFS pool)
-  ├── movies/
-  ├── tv/
-  └── downloads/        # Processing area for *arr apps
+/mnt/media/             # MergerFS pool (two 12 TiB drives)
+├── downloads/
+│   ├── complete/      # qBittorrent complete downloads
+│   ├── incomplete/    # qBittorrent incomplete downloads
+│   ├── alldebrid/     # AllDebrid downloads
+│   ├── tv/            # TV downloads staging
+│   └── movies/        # Movie downloads staging
+├── movies/            # Final movie storage
+├── tv/                # Final TV storage
+├── music/
+└── books/
 ```
 
 **Proposed SABnzbd Paths:**
 ```
-/data/usenet/           # New ZFS dataset for Usenet downloads
-  ├── incomplete/       # In-progress downloads
-  └── complete/         # Finished downloads (categories: tv, movies, etc.)
+/mnt/media/downloads/usenet/
+├── incomplete/         # In-progress Usenet downloads
+└── complete/           # Finished Usenet downloads
+    ├── tv/            # Category: tv
+    ├── movies/        # Category: movies
+    └── default/       # Category: default/other
 ```
 
 ---
@@ -249,37 +258,36 @@ users.groups.media = { };  # Shared with all media services
 
 **Permissions Strategy:**
 - SABnzbd runs as `sabnzbd:sabnzbd`
-- Downloads written to `/data/usenet/` with `sabnzbd:media` ownership
+- Downloads written to `/mnt/media/downloads/usenet/` with `sabnzbd:media` ownership
 - Sonarr/Radarr (in `media` group) can read completed downloads
-- Post-processing moves files to `/data/media/` with `media:media` ownership
+- Post-processing moves files to `/mnt/media/` (tv/, movies/) with `media:media` ownership
 
 ### Download Path Organization
 
-**ZFS Dataset Creation:** Add to `hosts/ser8/configuration.nix:120-145`
+**Storage Location:** Use existing MergerFS mount at `/mnt/media`
+
+The `/mnt/media` filesystem is a MergerFS pool backed by two 12 TiB drives dedicated to media storage. No new ZFS dataset creation is needed.
+
+**Directory Structure:** Add to `hosts/ser8/impermanence.nix:105-122`
 
 ```nix
-"data/usenet" = {
-  type = "zfs_fs";
-  options = {
-    mountpoint = "/data/usenet";
-    compression = "lz4";
-  };
-  postCreateHook = ''
-    zfs set recordsize=1M data/usenet  # Optimize for large files
-  '';
-};
+# SABnzbd Usenet downloads
+"d /mnt/media/downloads/usenet 0775 sabnzbd media -"
+"d /mnt/media/downloads/usenet/incomplete 0775 sabnzbd media -"
+"d /mnt/media/downloads/usenet/complete 0775 sabnzbd media -"
+"d /mnt/media/downloads/usenet/complete/tv 0775 sabnzbd media -"
+"d /mnt/media/downloads/usenet/complete/movies 0775 sabnzbd media -"
+"d /mnt/media/downloads/usenet/complete/default 0775 sabnzbd media -"
 ```
 
-**Directory Structure:**
+**Complete Path Structure:**
 ```
-/data/usenet/
+/mnt/media/downloads/usenet/
 ├── incomplete/         # Active downloads (sabnzbd writes here)
-├── complete/           # Finished downloads
-│   ├── tv/            # Category: tv
-│   ├── movies/        # Category: movies
-│   └── default/       # Category: default/other
-├── nzb-backup/        # Backup of processed NZB files
-└── logs/              # SABnzbd logs
+└── complete/           # Finished downloads
+    ├── tv/            # Category: tv
+    ├── movies/        # Category: movies
+    └── default/       # Category: default/other
 ```
 
 **Ownership:** All directories `sabnzbd:media` with `0775` permissions
@@ -463,9 +471,9 @@ fi
 3. **default**: For manual/uncategorized downloads
 
 **Path Mapping:**
-- Category `tv` → `/data/usenet/complete/tv/`
-- Category `movies` → `/data/usenet/complete/movies/`
-- Category `default` → `/data/usenet/complete/default/`
+- Category `tv` → `/mnt/media/downloads/usenet/complete/tv/`
+- Category `movies` → `/mnt/media/downloads/usenet/complete/movies/`
+- Category `default` → `/mnt/media/downloads/usenet/complete/default/`
 
 **Post-Processing:**
 SABnzbd configured to:
@@ -511,14 +519,14 @@ systemd.services.arr-sonarr-sabnzbd-setup = {
 - User creation: `modules/media/sonarr.nix:21-31`
 
 ### Phase 2: Storage Configuration
-1. Add ZFS dataset `data/usenet` to `hosts/ser8/configuration.nix`
-2. Create directory structure in impermanence config if applicable
+1. Add SABnzbd directory structure to `hosts/ser8/impermanence.nix:105-122`
+2. Create directories under `/mnt/media/downloads/usenet/`
 3. Set up proper ownership and permissions (sabnzbd:media, 0775)
-4. Configure ZFS recordsize for large file optimization
+4. Verify directories are created on boot via systemd-tmpfiles
 
 **Reference Files:**
-- ZFS datasets: `hosts/ser8/configuration.nix:120-145`
-- Impermanence: `hosts/ser8/impermanence.nix` (if applicable)
+- Impermanence directory structure: `hosts/ser8/impermanence.nix:105-122`
+- Existing download paths: `hosts/ser8/media.nix:194-195, 422`
 
 ### Phase 3: Secrets Management
 1. Add SABnzbd secrets to `secrets/ser8.yaml`:
@@ -630,7 +638,7 @@ Consider binding to `127.0.0.1:8080` instead of `0.0.0.0:8080` for defense-in-de
 ### File System Permissions
 
 **Permission Strategy:**
-- `/data/usenet/`: `sabnzbd:media` with `0775`
+- `/mnt/media/downloads/usenet/`: `sabnzbd:media` with `0775`
 - Downloaded files: `0664` (read/write for owner/group)
 - Downloaded directories: `0775` (traverse for group)
 - Config files: `0440` (read-only for sabnzbd user)
@@ -656,7 +664,7 @@ All media service users (sonarr, radarr) in `media` group can read completed dow
 **Module Validation:**
 1. Run `make check` to validate Nix syntax and module evaluation
 2. Verify user/group creation: `id sabnzbd`
-3. Check file permissions: `ls -la /data/usenet/`
+3. Check file permissions: `ls -la /mnt/media/downloads/usenet/`
 4. Validate SOPS template generation: `cat /run/secrets-rendered/sabnzbd.ini`
 
 **Reference:** `Makefile` targets for validation
@@ -691,11 +699,11 @@ All media service users (sonarr, radarr) in `media` group can read completed dow
    - Confirm Sonarr sends NZB to SABnzbd
    - Monitor SABnzbd queue
    - Wait for completion
-   - Verify Sonarr imports episode to /data/media/tv/
+   - Verify Sonarr imports episode to /mnt/media/tv/
 
 3. **Radarr Test:** Search for movie in Radarr
    - Same workflow as Sonarr but for movies
-   - Verify import to /data/media/movies/
+   - Verify import to /mnt/media/movies/
 
 **Validation Points:**
 - API calls succeed (200 responses)
@@ -785,7 +793,7 @@ run_tests test_sabnzbd_api test_sabnzbd_categories test_sonarr_sabnzbd_client
 **Likelihood:** Low (separate paths proposed)
 
 **Mitigation:**
-1. Use completely separate directory trees (`/data/usenet/` vs `/data/torrents/`)
+1. Use completely separate directory trees (`/mnt/media/downloads/usenet/` vs `/mnt/media/downloads/complete/` and `/mnt/media/downloads/incomplete/`)
 2. Enforce via configuration (hardcoded in SOPS template)
 3. Document path conventions clearly
 4. Add validation in setup service to check paths are distinct
@@ -869,10 +877,10 @@ run_tests test_sabnzbd_api test_sabnzbd_categories test_sonarr_sabnzbd_client
 - [ ] Add localhost firewall rules
 
 ### Storage Setup
-- [ ] Add `data/usenet` ZFS dataset to `hosts/ser8/configuration.nix`
-- [ ] Create directory structure in impermanence config (if applicable)
-- [ ] Set ownership to `sabnzbd:media` with proper permissions
-- [ ] Test ZFS dataset creation and mounting
+- [ ] Add SABnzbd directory structure to `hosts/ser8/impermanence.nix`
+- [ ] Create `/mnt/media/downloads/usenet/` directory tree with subdirectories
+- [ ] Set ownership to `sabnzbd:media` with proper permissions (0775)
+- [ ] Verify systemd-tmpfiles creates directories on boot
 
 ### Secrets Configuration
 - [ ] Add all SABnzbd secrets to `secrets/ser8.yaml`
@@ -931,12 +939,12 @@ run_tests test_sabnzbd_api test_sabnzbd_categories test_sonarr_sabnzbd_client
 SABnzbd integration follows established patterns in the codebase with minimal deviation. The primary additions are:
 
 1. **New module:** `modules/media/sabnzbd.nix` (follows radarr/sonarr pattern)
-2. **Storage layer:** `/data/usenet/` ZFS dataset with proper permissions
+2. **Storage layer:** `/mnt/media/downloads/usenet/` directories on existing MergerFS pool
 3. **Secrets:** SOPS-encrypted configuration template
 4. **Orchestration:** Three new systemd setup services for integration
 5. **Reverse proxy:** Caddy route for external access
 
-The architecture maintains consistency with existing media services while properly isolating Usenet downloads from torrent downloads. No VPN integration is required due to Usenet's inherent SSL encryption, simplifying the design compared to qBittorrent.
+The architecture maintains consistency with existing media services while properly isolating Usenet downloads from torrent downloads within the shared `/mnt/media` MergerFS pool. No VPN integration is required due to Usenet's inherent SSL encryption, simplifying the design compared to qBittorrent.
 
 **Key Success Factors:**
 - Follow existing patterns exactly (don't reinvent)

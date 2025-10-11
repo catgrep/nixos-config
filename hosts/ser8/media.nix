@@ -423,6 +423,7 @@
         "sonarr.service"
         "radarr.service"
         "prowlarr.service"
+        "sabnzbd.service"
       ];
       wantedBy = [ "multi-user.target" ];
 
@@ -441,6 +442,7 @@
         configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
         configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
         configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
+        configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
       '';
     };
 
@@ -478,44 +480,6 @@
         chmod 600 "$TEMP_FILE"
         mv "$TEMP_FILE" "$CONFIG_FILE"
         echo "✓ qBittorrent configuration deployed"
-      '';
-    };
-
-    sabnzbd-config = {
-      description = "Deploy SABnzbd configuration with secrets";
-      before = [
-        "sabnzbd.service"
-      ];
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        User = "root";
-      };
-
-      script = ''
-        # Deploy SABnzbd configuration
-        echo "Configuring SABnzbd..."
-        CONFIG_DIR="/var/lib/sabnzbd"
-        CONFIG_FILE="$CONFIG_DIR/sabnzbd.ini"
-        TEMP_FILE="$CONFIG_DIR/sabnzbd.ini.tmp"
-
-        # Create config directory and subdirectories
-        mkdir -p "$CONFIG_DIR"/{logs,admin,backup}
-        chown -R sabnzbd:sabnzbd "$CONFIG_DIR"
-
-        # Remove existing config to avoid conflicts
-        if [ -f "$CONFIG_FILE" ]; then
-          rm -f "$CONFIG_FILE"
-        fi
-
-        # Atomic deployment
-        cp ${config.sops.templates."sabnzbd.ini".path} "$TEMP_FILE"
-        chown sabnzbd:sabnzbd "$TEMP_FILE"
-        chmod 600 "$TEMP_FILE"
-        mv "$TEMP_FILE" "$CONFIG_FILE"
-        echo "✓ SABnzbd configuration deployed"
       '';
     };
 
@@ -741,7 +705,10 @@
 
   # Ensure SABnzbd service waits for config deployment
   systemd.services.sabnzbd = {
-    after = [ "sabnzbd-config.service" "systemd-tmpfiles-setup.service" ];
+    after = [
+      "sabnzbd-config.service"
+      "systemd-tmpfiles-setup.service"
+    ];
     requires = [ "sabnzbd-config.service" ];
     serviceConfig = {
       Restart = "on-failure";

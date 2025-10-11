@@ -33,6 +33,13 @@ configure_arr() {
         chown prowlarr:prowlarr /var/lib/prowlarr/config.xml
         chmod 600 /var/lib/prowlarr/config.xml
         ;;
+    "sabnzbd")
+        echo "Configuring SABnzbd..."
+        mkdir -p /var/lib/sabnzbd
+        cp "$template_path" /var/lib/sabnzbd/sabnzbd.ini
+        chown sabnzbd:sabnzbd /var/lib/sabnzbd/sabnzbd.ini
+        chmod 600 /var/lib/sabnzbd/sabnzbd.ini
+        ;;
     *)
         echo "✗ Unknown service: $service_name"
         return 1

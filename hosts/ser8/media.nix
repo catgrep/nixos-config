@@ -277,9 +277,9 @@
           download_dir = /mnt/media/downloads/usenet/incomplete
           complete_dir = /mnt/media/downloads/usenet/complete/default
           script_dir =
-          log_dir = logs
-          admin_dir = admin
-          nzb_backup_dir = backup
+          log_dir = /var/lib/sabnzbd/logs
+          admin_dir = /var/lib/sabnzbd/admin
+          nzb_backup_dir = /var/lib/sabnzbd/backup
           dirscan_dir =
           auto_browser = 0
           rating_enable = 0
@@ -501,8 +501,9 @@
         CONFIG_FILE="$CONFIG_DIR/sabnzbd.ini"
         TEMP_FILE="$CONFIG_DIR/sabnzbd.ini.tmp"
 
-        mkdir -p "$CONFIG_DIR"
-        chown sabnzbd:sabnzbd "$CONFIG_DIR"
+        # Create config directory and subdirectories
+        mkdir -p "$CONFIG_DIR"/{logs,admin,backup}
+        chown -R sabnzbd:sabnzbd "$CONFIG_DIR"
 
         # Remove existing config to avoid conflicts
         if [ -f "$CONFIG_FILE" ]; then
@@ -583,10 +584,10 @@
         set -euo pipefail
         echo "📦 Setting up SABnzbd..."
 
-        # Wait for SABnzbd to be ready
+        # Wait for SABnzbd to be ready (60 iterations × 2s = 120s timeout)
         wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
-        })" 30
+        })" 60
 
         # Verify categories are configured
         echo "Verifying SABnzbd categories..."
@@ -712,6 +713,9 @@
         wait_for_api "Prowlarr" "http://localhost:9696/ping" 30
         wait_for_api "Sonarr" "http://localhost:8989/ping" 30
         wait_for_api "Radarr" "http://localhost:7878/ping" 30
+        wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
+          config.sops.secrets."sabnzbd_api_key".path
+        })" 30
 
         # Connect arr services to Prowlarr
         add_arr_application "Sonarr" "8989" "${
@@ -732,6 +736,16 @@
 
         echo "🎉 Prowlarr configured and connected to arr services!"
       '';
+    };
+  };
+
+  # Ensure SABnzbd service waits for config deployment
+  systemd.services.sabnzbd = {
+    after = [ "sabnzbd-config.service" "systemd-tmpfiles-setup.service" ];
+    requires = [ "sabnzbd-config.service" ];
+    serviceConfig = {
+      Restart = "on-failure";
+      RestartSec = "5s";
     };
   };
 

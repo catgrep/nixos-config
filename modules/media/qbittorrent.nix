@@ -67,7 +67,6 @@ in
         description = "qBittorrent-nox torrent client";
         documentation = [ "man:qbittorrent-nox(1)" ];
         wants = [ "network-online.target" ];
-        requires = [ "qbittorrent-config.service" ];
         after = [
           "network-online.target"
           "nss-lookup.target"

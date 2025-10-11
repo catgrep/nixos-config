@@ -392,6 +392,15 @@
           newzbin =
           priority = 0
 
+          [[prowlarr]]
+          name = *
+          order = 2
+          pp = 3
+          script = Default
+          dir = /mnt/media/downloads/usenet/complete/prowlarr
+          newzbin =
+          priority = 0
+
           [[*]]
           name = *
           order = 2
@@ -572,13 +581,10 @@
         echo "Starting download client connections..."
 
         # Wait for all APIs to be ready
-        wait_for_api "Sonarr" "http://localhost:8989/ping" 30
-        wait_for_api "Radarr" "http://localhost:7878/ping" 30
-        wait_for_api "Prowlarr" "http://localhost:9696/ping" 30
         wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
         })" 60
-        wait_for_api "qBittorrent" "http://localhost:8080/api/v2/app/version" 30
+        # wait_for_api "qBittorrent" "http://localhost:8080/api/v2/app/version" 30
 
         # Configure qBittorrent for arr services
         setup_qbittorrent_client "Sonarr" "8989" "${

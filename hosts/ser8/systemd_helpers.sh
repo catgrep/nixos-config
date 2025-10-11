@@ -303,27 +303,35 @@ add_sabnzbd_to_prowlarr() {
     fi
 
     # Add SABnzbd download client to Prowlarr
-    response=$(curl_safe -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
-        -d "{
-      \"enable\": true,
-      \"protocol\": \"usenet\",
-      \"priority\": 1,
-      \"name\": \"SABnzbd\",
-      \"implementation\": \"Sabnzbd\",
-      \"implementationName\": \"SABnzbd\",
-      \"configContract\": \"SabnzbdSettings\",
-      \"fields\": [
-        {\"name\": \"host\", \"value\": \"127.0.0.1\"},
-        {\"name\": \"port\", \"value\": 8085},
-        {\"name\": \"useSsl\", \"value\": false},
-        {\"name\": \"urlBase\", \"value\": \"\"},
-        {\"name\": \"apiKey\", \"value\": \"$(cat "$sabnzbd_api_key_path")\"},
-        {\"name\": \"categories\", \"value\": []}
-      ]
+    response=$(
+        curl_safe -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Api-Key: $(cat "$prowlarr_api_key_path")" \
+            -d "{
+        \"enable\": true,
+        \"protocol\": \"usenet\",
+        \"priority\": 1,
+        \"name\": \"SABnzbd\",
+        \"implementation\": \"Sabnzbd\",
+        \"implementationName\": \"SABnzbd\",
+        \"configContract\": \"SabnzbdSettings\",
+        \"fields\": [
+            {\"order\":0,\"name\":\"host\",\"value\":\"127.0.0.1\",\"type\":\"textbox\",\"advanced\":false,\"privacy\":\"normal\",\"isFloat\":false},
+            {\"order\":1,\"name\":\"port\",\"value\":8085,\"type\":\"textbox\",\"advanced\":false,\"privacy\":\"normal\",\"isFloat\":false},
+            {\"order\":2,\"name\":\"useSsl\",\"value\":false,\"type\":\"checkbox\",\"advanced\":false,\"privacy\":\"normal\",\"isFloat\":false},
+            {\"order\":3,\"name\":\"urlBase\",\"value\":\"\",\"type\":\"textbox\",\"advanced\":true,\"privacy\":\"normal\",\"isFloat\":false},
+            {\"order\":4,\"name\":\"apiKey\",\"value\":\"$(cat "$sabnzbd_api_key_path")\",\"type\":\"textbox\",\"advanced\":false,\"privacy\":\"apiKey\",\"isFloat\":false},
+            {\"order\":5,\"name\":\"username\",\"value\":\"\",\"type\":\"textbox\",\"advanced\":false,\"privacy\":\"userName\",\"isFloat\":false},
+            {\"order\":6,\"name\":\"password\",\"value\":\"\",\"type\":\"password\",\"advanced\":false,\"privacy\":\"password\",\"isFloat\":false},
+            {\"order\":7,\"name\":\"category\",\"value\":\"prowlarr\",\"type\":\"textbox\",\"advanced\":false,\"privacy\":\"normal\",\"isFloat\":false},
+            {\"order\":8,\"name\":\"priority\",\"value\":-100,\"type\":\"select\",\"advanced\":false,\"privacy\":\"normal\",\"isFloat\":false}
+        ],
+        \"categories\": [],
+        \"supportsCategories\": true,
+        \"infoLink\": \"https://wiki.servarr.com/prowlarr/supported#sabnzbd\"
     }" \
-        "http://localhost:9696/api/v1/downloadclient")
+            "http://localhost:9696/api/v1/downloadclient"
+    )
 
     if echo "$response" | grep -q '"id":'; then
         echo "✓ Successfully added SABnzbd to Prowlarr"

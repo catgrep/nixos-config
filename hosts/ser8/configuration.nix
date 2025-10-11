@@ -262,6 +262,9 @@
     # Access jellyfin DB
     sqlite
 
+    # Filesystem storage metrics
+    dust
+
     (fastfetch.override {
       zfsSupport = true;
     })

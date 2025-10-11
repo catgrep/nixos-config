@@ -24,6 +24,7 @@ MEDIA_SERVICES=(
     "Radarr:radarr.vofi:7878:radarr"
     "qBittorrent:torrent.vofi:8080:qbittorrent"
     "Prowlarr:prowlarr.vofi:9696:prowlarr"
+    "SABnzbd:sabnzbd.vofi:8085:sabnzbd"
 )
 
 # test each media service

@@ -175,6 +175,7 @@
       openFirewall = false;
       useVpnNamespace = true; # Route through VPN
     };
+    sabnzbd.enable = true;
     flaresolverr.enable = true;
   };
 

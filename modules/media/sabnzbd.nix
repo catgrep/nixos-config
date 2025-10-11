@@ -8,21 +8,13 @@
 }:
 
 {
-  # Create dedicated sabnzbd system user
+  # Add sabnzbd user to media group for shared file access
   users.users.sabnzbd = lib.mkIf config.services.sabnzbd.enable {
-    isSystemUser = true;
-    group = "sabnzbd";
-    home = "/var/lib/sabnzbd";
-    description = "SABnzbd";
-    extraGroups = [
-      "media"
-    ];
+    extraGroups = [ "media" ];
   };
 
   services.sabnzbd = {
     enable = lib.mkDefault false;
-    user = "sabnzbd";
-    group = "sabnzbd";
   };
 
   # Open SABnzbd port when enabled

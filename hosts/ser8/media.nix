@@ -353,7 +353,7 @@
           pre_check_opt = 1
 
           [servers]
-          [[${config.sops.placeholder."sabnzbd_usenet_provider"}}]]
+          [[${config.sops.placeholder."sabnzbd_usenet_provider"}]]
           name = ${config.sops.placeholder."sabnzbd_usenet_provider"}
           displayname = ${config.sops.placeholder."sabnzbd_usenet_provider"}
           host = ${config.sops.placeholder."sabnzbd_usenet_provider"}
@@ -584,13 +584,13 @@
         echo "📦 Setting up SABnzbd..."
 
         # Wait for SABnzbd to be ready
-        wait_for_api "SABnzbd" "http://localhost:8085/sabnzbd/api?mode=version&apikey=$(cat ${
+        wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
         })" 30
 
         # Verify categories are configured
         echo "Verifying SABnzbd categories..."
-        CATEGORIES=$($CURL_BIN -s "http://localhost:8085/sabnzbd/api?mode=get_cats&apikey=$(cat ${
+        CATEGORIES=$($CURL_BIN -s "http://localhost:8085/api?mode=get_cats&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
         })")
 

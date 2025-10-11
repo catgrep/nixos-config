@@ -161,7 +161,7 @@ setup_sabnzbd_client() {
         {\"name\": \"host\", \"value\": \"127.0.0.1\"},
         {\"name\": \"port\", \"value\": 8085},
         {\"name\": \"useSsl\", \"value\": false},
-        {\"name\": \"urlBase\", \"value\": \"/sabnzbd\"},
+        {\"name\": \"urlBase\", \"value\": \"\"},
         {\"name\": \"apiKey\", \"value\": \"$(cat "$sabnzbd_api_key_path")\"},
         {\"name\": \"category\", \"value\": \"$category_value\"},
         {\"name\": \"recentTvPriority\", \"value\": 0},
@@ -266,7 +266,7 @@ add_sabnzbd_to_prowlarr() {
         {\"name\": \"host\", \"value\": \"127.0.0.1\"},
         {\"name\": \"port\", \"value\": 8085},
         {\"name\": \"useSsl\", \"value\": false},
-        {\"name\": \"urlBase\", \"value\": \"/sabnzbd\"},
+        {\"name\": \"urlBase\", \"value\": \"\"},
         {\"name\": \"apiKey\", \"value\": \"$(cat "$sabnzbd_api_key_path")\"},
         {\"name\": \"categories\", \"value\": []}
       ]

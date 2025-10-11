@@ -132,6 +132,10 @@
             answer = "192.168.68.63";
           }
           {
+            domain = "sabnzbd.vofi";
+            answer = "192.168.68.63";
+          }
+          {
             domain = "adguard.internal";
             answer = "192.168.68.63";
           }

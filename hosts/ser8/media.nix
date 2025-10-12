@@ -417,6 +417,10 @@
     };
   };
 
+  services.sabnzbd = {
+    configFile = "/var/lib/sabnzbd/sabnzbd.ini";
+  };
+
   # Jellyfin API key configuration
   services.declarative-jellyfin.apikeys = {
     jellyfinarr = {

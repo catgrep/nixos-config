@@ -268,6 +268,8 @@
       "sabnzbd.ini" = {
         content = ''
           [misc]
+          permissions = 2775
+          umask = 002
           host = 0.0.0.0
           port = 8085
           api_key = ${config.sops.placeholder."sabnzbd_api_key"}

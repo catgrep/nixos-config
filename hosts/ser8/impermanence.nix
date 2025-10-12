@@ -122,13 +122,13 @@
     # AllDebrid
     "d /mnt/media/downloads/alldebrid 0775 media media -"
 
-    # SABnzbd Usenet downloads
-    "d /mnt/media/downloads/usenet 0775 sabnzbd media -"
-    "d /mnt/media/downloads/usenet/incomplete 0775 sabnzbd media -"
-    "d /mnt/media/downloads/usenet/complete 0775 sabnzbd media -"
-    "d /mnt/media/downloads/usenet/complete/tv 0775 sabnzbd media -"
-    "d /mnt/media/downloads/usenet/complete/movies 0775 sabnzbd media -"
-    "d /mnt/media/downloads/usenet/complete/default 0775 sabnzbd media -"
+    # SABnzbd Usenet downloads (setgid bit ensures files inherit media group)
+    "d /mnt/media/downloads/usenet 2775 media media -"
+    "d /mnt/media/downloads/usenet/incomplete 2775 media media -"
+    "d /mnt/media/downloads/usenet/complete 2775 media media -"
+    "d /mnt/media/downloads/usenet/complete/tv 2775 media media -"
+    "d /mnt/media/downloads/usenet/complete/movies 2775 media media -"
+    "d /mnt/media/downloads/usenet/complete/default 2775 media media -"
 
     # qBittorrent config directories
     "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"

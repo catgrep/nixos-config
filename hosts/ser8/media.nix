@@ -363,7 +363,7 @@
           timeout = 120
           username = ${config.sops.placeholder."sabnzbd_usenet_username"}
           password = ${config.sops.placeholder."sabnzbd_usenet_password"}
-          connections = 20
+          connections = 100
           ssl = 1
           ssl_verify = 2
           ssl_ciphers =

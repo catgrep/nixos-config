@@ -32,6 +32,7 @@
     yq-go
     addlicense
     claude-code
+    jujutsu
   ];
 
   # Enable home-manager

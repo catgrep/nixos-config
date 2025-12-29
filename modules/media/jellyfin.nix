@@ -4,10 +4,21 @@
   config,
   lib,
   pkgs,
+  unstable,
   ...
 }:
 
 {
+  # Use jellyfin/jellyfin-web from unstable to work around npmDepsHash mismatch in 25.05
+  # Keep jellyfin-ffmpeg from stable (unstable has broken lcevc_dec dependency)
+  # See: https://github.com/NixOS/nixpkgs/issues - jellyfin-web npmDepsHash out of date
+  nixpkgs.overlays = [
+    (final: prev: {
+      jellyfin = unstable.jellyfin;
+      jellyfin-web = unstable.jellyfin-web;
+      # jellyfin-ffmpeg intentionally NOT overridden - unstable build is broken
+    })
+  ];
   users.users.jellyfin = {
     isSystemUser = true;
     group = "jellyfin";

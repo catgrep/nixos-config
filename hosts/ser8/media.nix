@@ -88,17 +88,17 @@
         mode = "0600";
       };
 
-      # AllDebrid-Proxy
+      # AllDebrid-Proxy (only create secrets when service is enabled)
       "alldebrid_api_key" = {
-        owner = "alldebrid-proxy";
-        group = "alldebrid-proxy";
-        mode = "0400";
+        owner = "root";
+        group = "root";
+        mode = "0600";
       };
 
       "alldebrid_transmission_admin_password" = {
-        owner = "alldebrid-proxy";
-        group = "alldebrid-proxy";
-        mode = "0400";
+        owner = "root";
+        group = "root";
+        mode = "0600";
       };
 
       # SABnzbd authentication and Usenet provider
@@ -643,8 +643,10 @@
     wantedBy = [ "multi-user.target" ];
   };
 
+  # Disabled - API integration is currently broken
+  # TODO: Re-enable once alldebrid-rs API issues are resolved
   services.alldebrid-proxy = {
-    enable = true;
+    enable = false;
     adminPasswordFile = config.sops.secrets."alldebrid_transmission_admin_password".path;
     apiKeyFile = config.sops.secrets."alldebrid_api_key".path;
     downloadDir = "/mnt/media/downloads/alldebrid";

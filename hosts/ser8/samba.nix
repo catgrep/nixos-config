@@ -12,6 +12,14 @@
     enable = true;
     openFirewall = true;
 
+    # nmbd was starting before network interfaces were
+    # up resulting in:
+    #
+    # NOTE: NetBIOS name resolution is not supported for Internet Protocol Version 6 (IPv6).
+    #
+    # We don't need to support NetBIOS names like '\\FILESERVER'
+    nmbd.enable = false;
+
     # New settings format
     # See https://carlosvaz.com/posts/setting-up-samba-shares-on-nixos-with-support-for-macos-time-machine-backups/
     settings = {

@@ -264,5 +264,144 @@
           x86_64-darwin.default = makeDevShell "x86_64-darwin";
           aarch64-linux.default = makeDevShell "aarch64-linux";
         };
+
+      # Service discovery - maps enabled services to their packages per host
+      # Query with: nix eval '.#enabledServices.ser8' --json
+      # Query with: nix eval '.#servicePackages.ser8' --json
+      #
+      # Note: We use options.*.isDefined to filter out renamed/deprecated options
+      # before accessing config, avoiding uncatchable abort errors
+      enabledServices = builtins.mapAttrs (
+        hostname: cfg:
+        let
+          allServices = builtins.attrNames cfg.config.services;
+
+          # Filter to services where enable option exists AND is actually defined
+          # This avoids aborts from renamed options (e.g., redis -> redis.servers)
+          isDefinedService =
+            name:
+            let
+              tryResult = builtins.tryEval (
+                (cfg.options.services.${name} ? enable)
+                && cfg.options.services.${name}.enable.isDefined
+              );
+            in
+            tryResult.success && tryResult.value;
+
+          definedServices = builtins.filter isDefinedService allServices;
+        in
+        builtins.filter (name: cfg.config.services.${name}.enable) definedServices
+      ) self.nixosConfigurations;
+
+      servicePackages = builtins.mapAttrs (
+        hostname: cfg:
+        let
+          allServices = builtins.attrNames cfg.config.services;
+
+          isDefinedService =
+            name:
+            let
+              tryResult = builtins.tryEval (
+                (cfg.options.services.${name} ? enable)
+                && cfg.options.services.${name}.enable.isDefined
+              );
+            in
+            tryResult.success && tryResult.value;
+
+          definedServices = builtins.filter isDefinedService allServices;
+          enabledSvcs = builtins.filter (name: cfg.config.services.${name}.enable) definedServices;
+
+          getPackage =
+            name:
+            let
+              svc = cfg.config.services.${name};
+            in
+            if svc ? package then svc.package.pname or svc.package.name or null else null;
+        in
+        builtins.listToAttrs (
+          builtins.filter (x: x.value != null) (
+            map (name: {
+              inherit name;
+              value = getPackage name;
+            }) enabledSvcs
+          )
+        )
+      ) self.nixosConfigurations;
+
+      # Combined package info - single evaluation for all package data
+      # Query with: nix eval '.#packageInfo.ser8' --json
+      packageInfo = builtins.mapAttrs (
+        hostname: cfg:
+        let
+          pkgs = cfg.pkgs;
+
+          # Get overlay packages with versions
+          overlayPkgs =
+            let
+              tryGetOverlays = builtins.tryEval (
+                builtins.concatMap (
+                  ov: builtins.attrNames (ov (import nixpkgs { system = "x86_64-linux"; }) (import nixpkgs { system = "x86_64-linux"; }))
+                ) cfg.config.nixpkgs.overlays
+              );
+              names = if tryGetOverlays.success then tryGetOverlays.value else [ ];
+            in
+            builtins.listToAttrs (
+              map (name: {
+                inherit name;
+                value =
+                  let
+                    tryVersion = builtins.tryEval (pkgs.${name}.version or null);
+                  in
+                  if tryVersion.success then tryVersion.value else null;
+              }) names
+            );
+
+          # Get system packages (just names, first 50)
+          systemPkgs =
+            let
+              tryGetPkgs = builtins.tryEval (
+                map (p: p.pname or p.name or "unknown") cfg.config.environment.systemPackages
+              );
+              allPkgs = if tryGetPkgs.success then tryGetPkgs.value else [ ];
+              sorted = builtins.sort (a: b: a < b) allPkgs;
+            in
+            nixpkgs.lib.take 50 sorted;
+
+          # Get service packages with versions
+          allServices = builtins.attrNames cfg.config.services;
+          isDefinedService =
+            name:
+            let
+              tryResult = builtins.tryEval (
+                (cfg.options.services.${name} ? enable)
+                && cfg.options.services.${name}.enable.isDefined
+              );
+            in
+            tryResult.success && tryResult.value;
+          definedServices = builtins.filter isDefinedService allServices;
+          enabledSvcs = builtins.filter (name: cfg.config.services.${name}.enable) definedServices;
+
+          servicePkgs = builtins.listToAttrs (
+            builtins.filter (x: x.value != null) (
+              map (name: {
+                inherit name;
+                value =
+                  let
+                    svc = cfg.config.services.${name};
+                    pkg = if svc ? package then svc.package else null;
+                    pkgName = if pkg != null then (pkg.pname or pkg.name or null) else null;
+                    pkgVersion = if pkg != null then (pkg.version or null) else null;
+                  in
+                  if pkgName != null then { package = pkgName; version = pkgVersion; } else null;
+              }) enabledSvcs
+            )
+          );
+        in
+        {
+          overlays = overlayPkgs;
+          systemPackages = systemPkgs;
+          services = servicePkgs;
+        }
+      ) self.nixosConfigurations;
     };
 }

@@ -225,7 +225,7 @@ main() {
     local host="$2"
     shift 2
 
-    raspberrypi_warning_banner
+    # raspberrypi_warning_banner
 
     case $action in
     dry-build)

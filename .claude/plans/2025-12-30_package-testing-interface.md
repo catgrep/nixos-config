@@ -109,9 +109,71 @@ Flexible inspection of any config value - useful for debugging service options, 
 
 ---
 
-## Phase 2: Package Listing Infrastructure
+## Phase 2: Flake Infrastructure for Service Discovery
 
-### Step 2.1: Add pkg-list Action Framework to nixos-rebuild.sh
+### Step 2.0: Add servicePackages Output to flake.nix
+
+**Files to modify:**
+- `flake.nix` (add new output after `devShells` section, around line 266)
+
+**What to add:**
+```nix
+# Service discovery - maps enabled services to their packages per host
+# Query with: nix eval '.#enabledServices.ser8' --json
+# Query with: nix eval '.#servicePackages.ser8' --json
+enabledServices = builtins.mapAttrs (hostname: cfg:
+  builtins.filter (name:
+    let svc = cfg.config.services.${name};
+    in (svc ? enable) && svc.enable
+  ) (builtins.attrNames cfg.config.services)
+) self.nixosConfigurations;
+
+servicePackages = builtins.mapAttrs (hostname: cfg:
+  let
+    enabledSvcs = builtins.filter (name:
+      let svc = cfg.config.services.${name};
+      in (svc ? enable) && svc.enable
+    ) (builtins.attrNames cfg.config.services);
+
+    # Get package for each service (if it has one)
+    getPackage = name:
+      let svc = cfg.config.services.${name};
+      in if svc ? package
+         then svc.package.pname or svc.package.name or null
+         else null;
+  in
+    builtins.listToAttrs (
+      builtins.filter (x: x.value != null) (
+        map (name: { inherit name; value = getPackage name; }) enabledSvcs
+      )
+    )
+) self.nixosConfigurations;
+```
+
+**Why:**
+- `enabledServices` - Lists all services with `enable = true` per host
+- `servicePackages` - Maps service name → package name for enabled services
+- Computed in Nix (single source of truth), queried from bash
+- No hardcoded mappings in scripts
+
+**Usage:**
+```bash
+# List all enabled services for ser8
+nix eval '.#enabledServices.ser8' --json
+# ["jellyfin","openssh","radarr","sabnzbd","sonarr",...]
+
+# Get service → package mapping
+nix eval '.#servicePackages.ser8' --json
+# {"jellyfin":"jellyfin","radarr":"radarr","sonarr":"sonarr",...}
+```
+
+**Dependencies:** None
+
+---
+
+## Phase 3: Package Listing Infrastructure
+
+### Step 3.1: Add pkg-list Action Framework to nixos-rebuild.sh
 
 **Files to modify:**
 - `scripts/nixos-rebuild.sh` (add after pkg-eval case)
@@ -146,11 +208,11 @@ pkg-list)
 **Why:**
 Framework for the comprehensive listing feature. Uses bash `;;&` for fall-through to support `all` category showing everything.
 
-**Dependencies:** Steps 2.2, 2.3, 2.4 (helper functions)
+**Dependencies:** Steps 3.2, 3.3, 3.4 (helper functions)
 
 ---
 
-### Step 2.2: Add pkg_list_overlays Helper Function
+### Step 3.2: Add pkg_list_overlays Helper Function
 
 **Files to modify:**
 - `scripts/nixos-rebuild.sh` (add as new function before main())
@@ -190,7 +252,7 @@ Shows packages that are overridden via overlays - these are the most likely cand
 
 ---
 
-### Step 2.3: Add pkg_list_system Helper Function
+### Step 3.3: Add pkg_list_system Helper Function
 
 **Files to modify:**
 - `scripts/nixos-rebuild.sh` (add after pkg_list_overlays)
@@ -226,7 +288,7 @@ Shows explicitly installed system packages. Limited to 30 to avoid overwhelming 
 
 ---
 
-### Step 2.4: Add pkg_list_services Helper Function
+### Step 3.4: Add pkg_list_services Helper Function
 
 **Files to modify:**
 - `scripts/nixos-rebuild.sh` (add after pkg_list_system)
@@ -236,45 +298,49 @@ Shows explicitly installed system packages. Limited to 30 to avoid overwhelming 
 pkg_list_services() {
     local host="$1"
     echo ""
-    info "$(fmt_bold "Service packages") (based on host tags):"
+    info "$(fmt_bold "Service packages") (enabled services with packages):"
 
-    local tags
-    tags=$(get_tags "$host" 2>/dev/null) || tags=""
+    # Query the flake's servicePackages output (computed in Nix)
+    local svc_pkgs
+    svc_pkgs=$(nix eval ".#servicePackages.${host}" --json 2>/dev/null) || {
+        echo "  (unable to evaluate servicePackages)"
+        return 0
+    }
 
-    # Define service packages per tag
-    declare -A SERVICE_PKGS=(
-        ["media"]="jellyfin jellyfin-web jellyfin-ffmpeg sonarr radarr prowlarr qbittorrent sabnzbd"
-        ["gateway"]="caddy grafana prometheus"
-        ["dns"]="adguardhome"
-    )
-
-    local found=0
-    for tag in $tags; do
-        if [ -n "${SERVICE_PKGS[$tag]:-}" ]; then
-            echo "  [$tag]:"
-            for pkg in ${SERVICE_PKGS[$tag]}; do
-                local version
-                version=$(nix eval --raw ".#nixosConfigurations.${host}.pkgs.${pkg}.version" 2>/dev/null) || version="n/a"
-                printf "    %-25s %s\n" "$pkg" "($version)"
-            done
-            found=1
-        fi
-    done
-
-    if [ "$found" -eq 0 ]; then
-        echo "  (no service packages for tags: $tags)"
+    if [ "$svc_pkgs" = "{}" ]; then
+        echo "  (no services with packages found)"
+        return 0
     fi
+
+    # Parse JSON and display service → package with versions
+    echo "$svc_pkgs" | jq -r 'to_entries | .[] | "\(.key) \(.value)"' | while read -r svc pkg; do
+        local version
+        version=$(nix eval --raw ".#nixosConfigurations.${host}.pkgs.${pkg}.version" 2>/dev/null) || version="?"
+        printf "  %-25s → %-20s (%s)\n" "$svc" "$pkg" "$version"
+    done
 }
 ```
 
 **Why:**
-Maps host tags from deploy.yaml to relevant service packages. Provides context-aware package listings based on what services the host runs.
+- Uses the `servicePackages` flake output (Step 2.0) instead of hardcoded mappings
+- Single source of truth - service discovery computed in Nix
+- Automatically updates when services are enabled/disabled
+- Shows service name → package name → version
 
-**Dependencies:** yq.sh `get_tags()` function
+**Example output:**
+```
+[info] Service packages (enabled services with packages):
+  jellyfin                  → jellyfin             (10.11.5)
+  radarr                    → radarr               (5.x.x)
+  sonarr                    → sonarr               (4.x.x)
+  sabnzbd                   → sabnzbd              (4.x.x)
+```
+
+**Dependencies:** Step 2.0 (flake.nix `servicePackages` output)
 
 ---
 
-### Step 2.5: Update usage() Function
+### Step 3.5: Update usage() Function
 
 **Files to modify:**
 - `scripts/nixos-rebuild.sh` (update usage function around line 13)
@@ -303,9 +369,9 @@ Documents new functionality with concrete examples.
 
 ---
 
-## Phase 3: Makefile Integration
+## Phase 4: Makefile Integration
 
-### Step 3.1: Add Package Operation Targets to Makefile
+### Step 4.1: Add Package Operation Targets to Makefile
 
 **Files to modify:**
 - `Makefile` (add after deployment targets section, before SOPS section)
@@ -351,7 +417,7 @@ Provides the standard `make` interface consistent with existing host-based targe
 
 ---
 
-### Step 3.2: Add Help Documentation for Package Operations
+### Step 4.2: Add Help Documentation for Package Operations
 
 **Files to modify:**
 - `Makefile` (add to help target, after deployment section)
@@ -381,9 +447,35 @@ Documents the new targets with practical examples directly in `make help` output
 
 ---
 
-## Phase 4: Testing & Validation
+## Phase 5: Testing & Validation
 
-### Step 4.1: Test pkg-list Functionality
+### Step 5.0: Test Flake Outputs
+
+**Commands to run:**
+```bash
+# Test enabledServices output
+nix eval '.#enabledServices.ser8' --json 2>/dev/null | jq
+
+# Test servicePackages output
+nix eval '.#servicePackages.ser8' --json 2>/dev/null | jq
+
+# Test for other hosts
+nix eval '.#enabledServices.firebat' --json 2>/dev/null | jq
+nix eval '.#servicePackages.pi4' --json 2>/dev/null | jq
+```
+
+**Expected output:**
+```json
+// enabledServices.ser8
+["adguardhome","declarative-jellyfin","home-manager","jellyfin","openssh",...]
+
+// servicePackages.ser8
+{"jellyfin":"jellyfin","radarr":"radarr","sonarr":"sonarr",...}
+```
+
+---
+
+### Step 5.1: Test pkg-list Functionality
 
 **Commands to run:**
 ```bash
@@ -407,7 +499,7 @@ make pkg-list-ser8 CATEGORY=overlays
 
 ---
 
-### Step 4.2: Test pkg-build Functionality
+### Step 5.2: Test pkg-build Functionality
 
 **Commands to run:**
 ```bash
@@ -427,7 +519,7 @@ make pkg-build-ser8  # Should show usage error
 
 ---
 
-### Step 4.3: Test pkg-version Functionality
+### Step 5.3: Test pkg-version Functionality
 
 **Commands to run:**
 ```bash
@@ -448,7 +540,7 @@ make pkg-version-ser8 PKG=lcevcdec
 
 ---
 
-### Step 4.4: Test pkg-eval Functionality
+### Step 5.4: Test pkg-eval Functionality
 
 **Commands to run:**
 ```bash
@@ -468,18 +560,29 @@ make pkg-eval-ser8 EXPR='config.services.jellyfin.enable'
 
 ## Summary
 
-| Phase | Steps | Complexity |
-|-------|-------|------------|
-| 1: Core Script | 3 steps | Low |
-| 2: Package Listing | 4 steps | Medium |
-| 3: Makefile Integration | 2 steps | Low |
-| 4: Testing | 4 steps | Low |
+| Phase | Steps | Complexity | Description |
+|-------|-------|------------|-------------|
+| 1: Core Script | 3 steps | Low | `pkg-build`, `pkg-version`, `pkg-eval` actions |
+| 2: Flake Infrastructure | 1 step | Low | `enabledServices` + `servicePackages` outputs |
+| 3: Package Listing | 5 steps | Medium | `pkg-list` with overlays/system/services |
+| 4: Makefile Integration | 2 steps | Low | `make pkg-*-HOST` targets |
+| 5: Testing | 4 steps | Low | Validation commands |
 
-**Total new lines of code:** ~150-200 lines
-**Files modified:** 2 (`scripts/nixos-rebuild.sh`, `Makefile`)
+**Total new lines of code:** ~180-220 lines
+**Files modified:** 3 (`flake.nix`, `scripts/nixos-rebuild.sh`, `Makefile`)
 
 **Key Benefits:**
 - Fast iteration on build failures (build single package vs full system)
 - Easy version debugging (overlay mismatches like lcevcdec)
 - Discoverable interface (pkg-list shows what's available)
+- Single source of truth - service discovery in Nix, not hardcoded in bash
 - Consistent with existing patterns (same host-based targeting)
+
+**New Flake Outputs:**
+```bash
+# List enabled services
+nix eval '.#enabledServices.ser8' --json
+
+# Get service → package mapping
+nix eval '.#servicePackages.ser8' --json
+```

@@ -356,16 +356,24 @@
               }) names
             );
 
-          # Get system packages (just names, first 50)
+          # Get system packages with versions (first 50)
           systemPkgs =
             let
-              tryGetPkgs = builtins.tryEval (
-                map (p: p.pname or p.name or "unknown") cfg.config.environment.systemPackages
-              );
+              tryGetPkgs = builtins.tryEval cfg.config.environment.systemPackages;
               allPkgs = if tryGetPkgs.success then tryGetPkgs.value else [ ];
-              sorted = builtins.sort (a: b: a < b) allPkgs;
+              # Extract name and version, deduplicate by name
+              pkgInfo = map (p: {
+                name = p.pname or p.name or "unknown";
+                version = p.version or null;
+              }) allPkgs;
+              # Sort by name and take first 50 unique
+              sorted = builtins.sort (a: b: a.name < b.name) pkgInfo;
+              unique = builtins.foldl' (
+                acc: pkg:
+                if builtins.any (x: x.name == pkg.name) acc then acc else acc ++ [ pkg ]
+              ) [ ] sorted;
             in
-            nixpkgs.lib.take 50 sorted;
+            nixpkgs.lib.take 50 unique;
 
           # Get service packages with versions
           allServices = builtins.attrNames cfg.config.services;

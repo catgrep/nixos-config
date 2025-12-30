@@ -163,7 +163,7 @@ pkg_list_all() {
     local host="$1"
     local category="$2"
 
-    info "Fetching package info (single evaluation)..."
+    info "Fetching package info..."
 
     local pkg_info
     pkg_info=$(nix eval ".#packageInfo.${host}" --json 2>/dev/null) || {
@@ -180,7 +180,7 @@ pkg_list_all() {
         if [ "$overlay_count" = "0" ]; then
             echo "  (none)"
         else
-            echo "$pkg_info" | jq -r '.overlays | to_entries | .[] | "\(.key)\t\(.value // "?")"' | \
+            echo "$pkg_info" | jq -r '.overlays | to_entries | .[] | "\(.key)\t\(.value // "?")"' |
                 while IFS=$'\t' read -r pkg version; do
                     printf "  %-30s (%s)\n" "$pkg" "$version"
                 done
@@ -191,12 +191,11 @@ pkg_list_all() {
     if [ "$category" = "system" ] || [ "$category" = "all" ]; then
         echo ""
         info "$(fmt_bold "System packages") (environment.systemPackages):"
-        local sys_count
-        sys_count=$(echo "$pkg_info" | jq '.systemPackages | length')
-        echo "  (showing first 50 of ~${sys_count}+ packages)"
-        echo "$pkg_info" | jq -r '.systemPackages[]' | while read -r pkg; do
-            echo "  $pkg"
-        done
+        echo "  (showing first 50 unique packages)"
+        echo "$pkg_info" | jq -r '.systemPackages[] | "\(.name)\t\(.version // "?")"' |
+            while IFS=$'\t' read -r pkg version; do
+                printf "  %-30s (%s)\n" "$pkg" "$version"
+            done
     fi
 
     # Display service packages
@@ -208,7 +207,7 @@ pkg_list_all() {
         if [ "$svc_count" = "0" ]; then
             echo "  (no services with packages found)"
         else
-            echo "$pkg_info" | jq -r '.services | to_entries | .[] | "\(.key)\t\(.value.package)\t\(.value.version // "?")"' | \
+            echo "$pkg_info" | jq -r '.services | to_entries | .[] | "\(.key)\t\(.value.package)\t\(.value.version // "?")"' |
                 while IFS=$'\t' read -r svc pkg version; do
                     printf "  %-25s -> %-20s (%s)\n" "$svc" "$pkg" "$version"
                 done
@@ -314,14 +313,14 @@ main() {
         title "Package listing for host '$host' (category: $category)"
 
         case "$category" in
-            overlays|system|services|all)
-                pkg_list_all "$host" "$category"
-                ;;
-            *)
-                fail "Unknown category '$category'"
-                fail "Valid categories: overlays, system, services, all"
-                exit 1
-                ;;
+        overlays | system | services | all)
+            pkg_list_all "$host" "$category"
+            ;;
+        *)
+            fail "Unknown category '$category'"
+            fail "Valid categories: overlays, system, services, all"
+            exit 1
+            ;;
         esac
         ;;
     *)

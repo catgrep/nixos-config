@@ -7,5 +7,6 @@
     ./caddy.nix
     ./prometheus.nix
     ./grafana.nix
+    ./tailscale.nix
   ];
 }

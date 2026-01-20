@@ -645,10 +645,10 @@
 
   # Disabled - API integration is currently broken
   # TODO: Re-enable once alldebrid-rs API issues are resolved
-  services.alldebrid-proxy = {
-    enable = false;
-    adminPasswordFile = config.sops.secrets."alldebrid_transmission_admin_password".path;
-    apiKeyFile = config.sops.secrets."alldebrid_api_key".path;
-    downloadDir = "/mnt/media/downloads/alldebrid";
-  };
+  # services.alldebrid-proxy = {
+  #   enable = false;
+  #   adminPasswordFile = config.sops.secrets."alldebrid_transmission_admin_password".path;
+  #   apiKeyFile = config.sops.secrets."alldebrid_api_key".path;
+  #   downloadDir = "/mnt/media/downloads/alldebrid";
+  # };
 }

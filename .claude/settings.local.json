@@ -18,7 +18,8 @@
       "Bash(./scripts/nixos-rebuild.sh:*)",
       "Bash(timeout 120 nix eval:*)",
       "Bash(timeout 30 nix eval:*)",
-      "Bash(timeout 60 nix eval:*)"
+      "Bash(timeout 60 nix eval:*)",
+      "Bash(ssh:*)"
     ],
     "deny": []
   }

@@ -3,6 +3,7 @@
 
 TESTS=(
     ./scripts/smoketests/gateway/test-caddy.sh
+    ./scripts/smoketests/gateway/test-tailscale.sh
 )
 
 for test in "${TESTS[@]}"; do

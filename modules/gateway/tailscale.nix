@@ -13,6 +13,8 @@
     useRoutingFeatures = "server";
   };
 
+  networking.search = [ "shad-bangus.ts.net" ];
+
   networking.firewall = {
     trustedInterfaces = [ "tailscale0" ];
     allowedUDPPorts = [ config.services.tailscale.port ];

@@ -14,6 +14,22 @@
     ./disko-config.nix
   ];
 
+  # SOPS secrets configuration
+  sops = {
+    defaultSopsFile = ../../secrets/firebat.yaml;
+    defaultSopsFormat = "yaml";
+    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
+
+    secrets = {
+      # Tailscale auth key for Caddy plugin
+      "caddy_ts_authkey" = {
+        owner = "caddy";
+        group = "caddy";
+        mode = "0400";
+      };
+    };
+  };
+
   # Gateway networking configuration
   networking = {
     # Host identification
@@ -27,7 +43,7 @@
     forwarding = true;
     adguard = {
       enabled = true;
-      mode = "strict"; # only use AdGuard, no fallback
+      mode = "failover"; # AdGuard primary, with fallback for Tailscale DNS bootstrap
     };
   };
 

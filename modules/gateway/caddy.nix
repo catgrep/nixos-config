@@ -32,6 +32,26 @@ in
     configFile = ./Caddyfile;
   };
 
+  # Configure Caddy to use Tailscale auth key from SOPS secret
+  # Only enabled when the caddy_ts_authkey secret is configured
+  systemd.services.caddy = lib.mkIf (config.sops.secrets ? caddy_ts_authkey) {
+    # Override ExecStart to inject TS_AUTHKEY from SOPS secret
+    # Must use list with empty string first to clear the original ExecStart in systemd drop-in
+    serviceConfig.ExecStart = lib.mkForce [
+      ""  # Clear original ExecStart
+      (
+        let
+          caddyBin = "${caddyWithTailscale}/bin/caddy";
+          caddyConfig = config.services.caddy.configFile;
+        in
+        pkgs.writeShellScript "caddy-start" ''
+          export TS_AUTHKEY="$(cat ${config.sops.secrets.caddy_ts_authkey.path})"
+          exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
+        ''
+      )
+    ];
+  };
+
   # Open firewall ports
   networking.firewall.allowedTCPPorts = [
     80

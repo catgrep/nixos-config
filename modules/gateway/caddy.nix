@@ -4,20 +4,20 @@
   config,
   lib,
   pkgs,
+  unstable,
   ...
 }:
 
 let
-  # Build Caddy with Tailscale plugin using caddy-nix overlay
-  # The overlay provides pkgs.caddy.withPlugins with better build handling
-  caddyWithTailscale = pkgs.caddy.withPlugins {
+  # Build Caddy with Tailscale plugin using caddy-nix overlay on unstable
+  # This gets us Caddy 2.10.2+ with latest caddy-tailscale plugin
+  caddyWithTailscale = unstable.caddy.withPlugins {
     plugins = [
       # Tailscale plugin for automatic HTTPS certificate provisioning
-      # Pinned to Sept 2025 version compatible with Caddy 2.10.0
-      # (commit bd3189d bumped to 2.10.2 in Oct 2025)
-      "github.com/tailscale/caddy-tailscale@v0.0.0-20250915161136-32b202f0a953"
+      # Using latest from main branch for Caddy 2.10.x compatibility
+      "github.com/tailscale/caddy-tailscale@v0.0.0-20260106222316-bb080c4414ac"
     ];
-    hash = "sha256-EfA2TmBJ3Z/1nG4UPhNeJ4qGgKzbS6z/4wgUkg/GYcY=";
+    hash = "sha256-4vXIpEWx+rmcaPCU7Nw2T5vQpeHQptXH91ep92Lo4rY=";
   };
 in
 {
@@ -38,7 +38,7 @@ in
     # Override ExecStart to inject TS_AUTHKEY from SOPS secret
     # Must use list with empty string first to clear the original ExecStart in systemd drop-in
     serviceConfig.ExecStart = lib.mkForce [
-      ""  # Clear original ExecStart
+      "" # Clear original ExecStart
       (
         let
           caddyBin = "${caddyWithTailscale}/bin/caddy";

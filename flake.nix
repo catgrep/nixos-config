@@ -149,6 +149,8 @@
             unstable = import nixpkgs-unstable {
               inherit system;
               config.allowUnfree = true;
+              # Apply caddy-nix overlay to unstable for Caddy with plugins support
+              overlays = [ caddy-nix.overlays.default ];
             };
           };
           modules = [
@@ -293,8 +295,7 @@
             name:
             let
               tryResult = builtins.tryEval (
-                (cfg.options.services.${name} ? enable)
-                && cfg.options.services.${name}.enable.isDefined
+                (cfg.options.services.${name} ? enable) && cfg.options.services.${name}.enable.isDefined
               );
             in
             tryResult.success && tryResult.value;
@@ -313,8 +314,7 @@
             name:
             let
               tryResult = builtins.tryEval (
-                (cfg.options.services.${name} ? enable)
-                && cfg.options.services.${name}.enable.isDefined
+                (cfg.options.services.${name} ? enable) && cfg.options.services.${name}.enable.isDefined
               );
             in
             tryResult.success && tryResult.value;
@@ -351,7 +351,10 @@
             let
               tryGetOverlays = builtins.tryEval (
                 builtins.concatMap (
-                  ov: builtins.attrNames (ov (import nixpkgs { system = "x86_64-linux"; }) (import nixpkgs { system = "x86_64-linux"; }))
+                  ov:
+                  builtins.attrNames (
+                    ov (import nixpkgs { system = "x86_64-linux"; }) (import nixpkgs { system = "x86_64-linux"; })
+                  )
                 ) cfg.config.nixpkgs.overlays
               );
               names = if tryGetOverlays.success then tryGetOverlays.value else [ ];
@@ -380,8 +383,7 @@
               # Sort by name and take first 50 unique
               sorted = builtins.sort (a: b: a.name < b.name) pkgInfo;
               unique = builtins.foldl' (
-                acc: pkg:
-                if builtins.any (x: x.name == pkg.name) acc then acc else acc ++ [ pkg ]
+                acc: pkg: if builtins.any (x: x.name == pkg.name) acc then acc else acc ++ [ pkg ]
               ) [ ] sorted;
             in
             nixpkgs.lib.take 50 unique;
@@ -392,8 +394,7 @@
             name:
             let
               tryResult = builtins.tryEval (
-                (cfg.options.services.${name} ? enable)
-                && cfg.options.services.${name}.enable.isDefined
+                (cfg.options.services.${name} ? enable) && cfg.options.services.${name}.enable.isDefined
               );
             in
             tryResult.success && tryResult.value;
@@ -411,7 +412,13 @@
                     pkgName = if pkg != null then (pkg.pname or pkg.name or null) else null;
                     pkgVersion = if pkg != null then (pkg.version or null) else null;
                   in
-                  if pkgName != null then { package = pkgName; version = pkgVersion; } else null;
+                  if pkgName != null then
+                    {
+                      package = pkgName;
+                      version = pkgVersion;
+                    }
+                  else
+                    null;
               }) enabledSvcs
             )
           );

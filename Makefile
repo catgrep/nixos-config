@@ -122,7 +122,7 @@ update:
 
 update-nix-conf:
 	@$(call info_msg,"Backing up files...")
-	@cp -v /etc/nix/machines /etc/nix/machines.old
+	@cp -v /etc/nix/machines /etc/nix/machines.old || true
 	@cp -v ./etc/nix/machines /etc/nix/machines
 	@cp -v /etc/nix/nix.custom.conf /etc/nix/nix.custom.conf.old
 	@cp -v ./etc/nix/nix.custom.conf /etc/nix/nix.custom.conf

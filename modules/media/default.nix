@@ -10,6 +10,6 @@
     ./prowlarr.nix
     ./qbittorrent.nix
     ./sabnzbd.nix
-    ./alldebrid-proxy.nix
+    # ./alldebrid-proxy.nix
   ];
 }

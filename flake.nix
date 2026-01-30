@@ -122,6 +122,11 @@
           specialArgs = {
             inherit inputs;
             inherit nixos-raspberrypi;
+            # Provide unstable packages for Tailscale and other services
+            unstable = import nixpkgs-unstable {
+              system = "aarch64-linux";
+              config.allowUnfree = true;
+            };
           };
           modules = [
             nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".base

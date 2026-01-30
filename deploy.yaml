@@ -2,6 +2,11 @@
 
 # deploy.yaml - Host deployment metadata
 # All the static IPs were reserved using TP Link Deco's DHCP server
+
+# Tailscale configuration for remote access
+tailscale:
+  domain: "shad-bangus.ts.net"
+
 hosts:
   ser8:
     targetHost: "192.168.68.65"

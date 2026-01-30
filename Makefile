@@ -29,7 +29,9 @@ HOSTS := $(shell yq eval '.hosts | keys | .[]' $(DEPLOY_YAML))
 
 # Helper functions to get host metadata
 get-host-user = $(shell yq eval '.hosts."$(1)".targetUser' $(DEPLOY_YAML))
-get-host-ip = $(shell yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
+# Smart host resolution: uses local IP or falls back to Tailscale domain
+# See scripts/lib/resolve-host.sh for details
+get-host-ip = $(shell ./scripts/lib/resolve-host.sh $(1) 2>/dev/null || yq eval '.hosts."$(1)".targetHost' $(DEPLOY_YAML))
 get-build-on-target = $(shell yq eval '.hosts."$(1)".buildOnTarget' $(DEPLOY_YAML))
 get-host-tags = $(shell yq eval '.hosts."$(1)".tags[]' $(DEPLOY_YAML))
 get-host-smoketests = $(shell yq eval '.hosts."$(1)".smoketests' $(DEPLOY_YAML))

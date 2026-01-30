@@ -17,3 +17,6 @@ get_tags() { yq -e eval ".hosts.$1.tags[]" "$DEPLOY_YAML"; }
 list_hosts() { yq -e eval ".hosts | keys | .[]" "$DEPLOY_YAML"; }
 
 print_yaml() { yq -e eval -P "$1"; }
+
+# Tailscale configuration
+get_tailscale_domain() { yq -e eval ".tailscale.domain" "$DEPLOY_YAML"; }

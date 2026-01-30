@@ -1,3 +1,6 @@
 result
 logs
 tmp
+
+# Tailscale fallback cache (created when local network unreachable)
+.use_tailscale

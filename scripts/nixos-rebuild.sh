@@ -77,7 +77,7 @@ nixos_rebuild() {
     local user
     local ip
     user="$(get_user "$host")"
-    ip="$(get_ip "$host")"
+    ip="$(resolve_ssh_host "$host")"
 
     if [ -n "$NIXBUILD_USER" ]; then
         info "Build user will be '$NIXBUILD_USER' instead of '$user'"
@@ -120,7 +120,7 @@ nixos_generate_config() {
     local ip
 
     user="$(get_user "$host")"
-    ip="$(get_ip "$host")"
+    ip="$(resolve_ssh_host "$host")"
 
     if [ -n "$NIXBUILD_USER" ]; then
         info "Build user will be '$NIXBUILD_USER' instead of '$user'"
@@ -137,7 +137,7 @@ nixos_reboot() {
     local ip
 
     user="$(get_user "$host")"
-    ip="$(get_ip "$host")"
+    ip="$(resolve_ssh_host "$host")"
 
     info "Rebooting '${user}@${ip}'..."
     ssh -o StrictHostKeyChecking=no "${user}@${ip}" -- sudo reboot

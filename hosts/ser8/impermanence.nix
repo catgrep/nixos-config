@@ -67,6 +67,9 @@
         mode = "0700";
       }
 
+      # Tailscale authentication state
+      "/var/lib/tailscale"
+
       # Add these for network persistence:
       "/var/lib/systemd/network" # Network state
       {

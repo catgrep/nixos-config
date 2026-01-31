@@ -332,4 +332,10 @@ main() {
     pass "$(fmt_blue "$0") completed"
 }
 
+if ! command -v nixos-rebuild; then
+    fail "nixos-rebuild not found"
+    info "Are you running in a nix development shell?"
+    exit 1
+fi
+
 main "$@"

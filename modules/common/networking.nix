@@ -196,11 +196,29 @@ with lib;
         };
 
         # Prevent DHCP from overwriting DNS settings when using AdGuard
+        # dhcpcd config (for non-networkd systems)
         networking.dhcpcd.extraConfig =
           mkIf (cfg.adguard.enabled && (!config.services.adguardhome.enable or false))
             ''
               nohook resolv.conf
             '';
+
+        # networkd config: ignore DNS from DHCP when AdGuard is enabled
+        # This prevents the router/ISP from pushing their DNS servers
+        systemd.network.networks."40-${cfg.interface}" = mkIf (cfg.adguard.enabled && config.networking.useNetworkd) {
+          dhcpV4Config = {
+            UseDNS = false;
+          };
+          dhcpV6Config = {
+            UseDNS = false;
+          };
+          # Explicitly set DNS servers for this interface
+          dns =
+            if cfg.adguard.mode == "strict" then
+              [ cfg.adguard.address ]
+            else
+              [ cfg.adguard.address "192.168.68.1" ];
+        };
 
         # Enable mDNS for .local domain resolution
         services.avahi = {

@@ -220,6 +220,15 @@ with lib;
               [ cfg.adguard.address "192.168.68.1" ];
         };
 
+        # Ensure systemd-resolved restarts when DNS config changes
+        # This is needed because resolved caches DNS settings and won't pick up
+        # new config from networkd without a restart
+        systemd.services.systemd-resolved = {
+          restartTriggers = [
+            config.environment.etc."systemd/resolved.conf".source
+          ];
+        };
+
         # Enable mDNS for .local domain resolution
         services.avahi = {
           enable = true;

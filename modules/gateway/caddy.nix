@@ -32,25 +32,38 @@ in
     configFile = ./Caddyfile;
   };
 
-  # Configure Caddy to use Tailscale auth key from SOPS secret
-  # Only enabled when the caddy_ts_authkey secret is configured
-  systemd.services.caddy = lib.mkIf (config.sops.secrets ? caddy_ts_authkey) {
-    # Override ExecStart to inject TS_AUTHKEY from SOPS secret
-    # Must use list with empty string first to clear the original ExecStart in systemd drop-in
-    serviceConfig.ExecStart = lib.mkForce [
-      "" # Clear original ExecStart
-      (
-        let
-          caddyBin = "${caddyWithTailscale}/bin/caddy";
-          caddyConfig = config.services.caddy.configFile;
-        in
-        pkgs.writeShellScript "caddy-start" ''
-          export TS_AUTHKEY="$(cat ${config.sops.secrets.caddy_ts_authkey.path})"
-          exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
-        ''
-      )
-    ];
-  };
+  # Caddy systemd configuration
+  systemd.services.caddy = lib.mkMerge [
+    # Ensure Caddy restarts when systemd-resolved restarts
+    # This is needed because Caddy caches DNS lookups and won't pick up
+    # new DNS config until restarted
+    {
+      after = [ "systemd-resolved.service" ];
+      requires = [ "systemd-resolved.service" ];
+      # PartOf makes Caddy restart when resolved restarts
+      partOf = [ "systemd-resolved.service" ];
+    }
+
+    # Configure Caddy to use Tailscale auth key from SOPS secret
+    # Only enabled when the caddy_ts_authkey secret is configured
+    (lib.mkIf (config.sops.secrets ? caddy_ts_authkey) {
+      # Override ExecStart to inject TS_AUTHKEY from SOPS secret
+      # Must use list with empty string first to clear the original ExecStart in systemd drop-in
+      serviceConfig.ExecStart = lib.mkForce [
+        "" # Clear original ExecStart
+        (
+          let
+            caddyBin = "${caddyWithTailscale}/bin/caddy";
+            caddyConfig = config.services.caddy.configFile;
+          in
+          pkgs.writeShellScript "caddy-start" ''
+            export TS_AUTHKEY="$(cat ${config.sops.secrets.caddy_ts_authkey.path})"
+            exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
+          ''
+        )
+      ];
+    })
+  ];
 
   # Open firewall ports
   networking.firewall.allowedTCPPorts = [

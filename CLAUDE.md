@@ -48,6 +48,11 @@ Host configurations are located in `hosts/HOSTNAME/` with each containing:
 ### Secrets Management
 Uses SOPS for managing secrets with age encryption. Host keys are stored in `secrets/keys/hosts/` and user keys in `secrets/keys/users/`.
 
+- `secrets/HOST.yaml`: Host-specific secrets (only that host can decrypt)
+- `secrets/shared.yaml`: Shared secrets readable by all hosts (e.g., `tailscale_authkey`)
+
+The dual secret declaration pattern allows the same yaml key to be decrypted with different file permissions (e.g., root:root for tailscale daemon, caddy:caddy for Caddy service).
+
 ## Essential Commands
 
 ### Development Environment
@@ -86,7 +91,9 @@ make write-sd-HOST DEVICE=/dev/rdiskX  # Write image to SD card
 make sops-init             # Initialize SOPS configuration
 make sops-add-user         # Add user to SOPS
 make sops-add-host-keys    # Add host keys to SOPS
+make sops-add-shared-secrets  # Add shared secrets rule for all hosts
 make sops-edit-HOST        # Edit secrets for specific host
+make sops-edit-shared      # Edit shared secrets (all hosts can read)
 make sops-status           # Check SOPS status
 ```
 
@@ -124,6 +131,7 @@ Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
 - Media services on ser8 use a shared `media` group for permissions
 - qBittorrent runs in NordVPN network namespace for anonymization
 - Transmission has been replaced by qBittorrent as the primary torrent client
+- All hosts auto-authenticate to Tailscale on boot using shared `tailscale_authkey`
 
 ## Service Access
 

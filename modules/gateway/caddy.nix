@@ -21,6 +21,16 @@ let
   };
 in
 {
+  # SOPS secret for Tailscale auth key (Caddy's copy with caddy ownership)
+  # This references the same yaml key as tailscale.nix but with different permissions
+  sops.secrets."tailscale_authkey_caddy" = {
+    sopsFile = ../../secrets/shared.yaml;
+    key = "tailscale_authkey"; # Reference same key in yaml
+    owner = "caddy";
+    group = "caddy";
+    mode = "0400";
+  };
+
   services.caddy = {
     enable = true;
     email = "catgrep@sudomail.com";
@@ -44,9 +54,9 @@ in
       partOf = [ "systemd-resolved.service" ];
     }
 
-    # Configure Caddy to use Tailscale auth key from SOPS secret
-    # Only enabled when the caddy_ts_authkey secret is configured
-    (lib.mkIf (config.sops.secrets ? caddy_ts_authkey) {
+    # Configure Caddy to use Tailscale auth key from shared SOPS secret
+    # Uses tailscale_authkey_caddy which has caddy:caddy ownership
+    {
       # Override ExecStart to inject TS_AUTHKEY from SOPS secret
       # Must use list with empty string first to clear the original ExecStart in systemd drop-in
       serviceConfig.ExecStart = lib.mkForce [
@@ -57,12 +67,12 @@ in
             caddyConfig = config.services.caddy.configFile;
           in
           pkgs.writeShellScript "caddy-start" ''
-            export TS_AUTHKEY="$(cat ${config.sops.secrets.caddy_ts_authkey.path})"
+            export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey_caddy.path})"
             exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
           ''
         )
       ];
-    })
+    }
   ];
 
   # Open firewall ports

@@ -105,7 +105,9 @@ help:
 	$(call help_option,"sops-update-keys","Update '.sops.yaml' keys if new hosts were added")
 	$(call help_option,"sops-replace-host-key-HOST","Replace host public key in './secrets/keys/hosts'")
 	$(call help_option,"sops-add-host-secrets-HOST","Create new secrets file './secrets/HOST.yaml'")
+	$(call help_option,"sops-add-shared-secrets","Add shared secrets rule for all hosts")
 	$(call help_option,"sops-edit-HOST","Edit secrets for './secrets/HOST.yaml'")
+	$(call help_option,"sops-edit-shared","Edit shared secrets './secrets/shared.yaml'")
 	$(call help_option,"sops-gen-hash","Generate a PBKDF2-SHA512 hashed password to use in declarative-jellyfin")
 	$(call help_option,"sops-gen-hash-qbittorrent","Generate PBKDF2-SHA512 hash for qBittorrent WebUI password")
 	$(call help_option,"sops-gen-api-key","Generate API keys for services")
@@ -390,6 +392,12 @@ sops-add-host-secrets-%:
 
 sops-update-keys:
 	@sops updatekeys secrets/secrets.yaml
+
+sops-add-shared-secrets:
+	@./scripts/sops/add-shared-secrets.sh
+
+sops-edit-shared:
+	@sops edit secrets/shared.yaml
 
 sops-edit-%:
 	@sops edit secrets/$*.yaml

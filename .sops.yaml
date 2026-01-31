@@ -43,3 +43,12 @@ creation_rules:
           - *admin_bobby
         age:
           - *server_firebat
+  # Shared secrets file (all hosts) added with './scripts/sops/add-shared-secrets.sh' on Sat Jan 31 15:11:53 PST 2026
+  - path_regex: ^secrets/shared.yaml$
+    key_groups:
+      - pgp:
+          - *admin_bobby
+        age:
+          - *server_pi4
+          - *server_firebat
+          - *server_ser8

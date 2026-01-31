@@ -20,14 +20,7 @@
     defaultSopsFormat = "yaml";
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
-    secrets = {
-      # Tailscale auth key for Caddy plugin
-      "caddy_ts_authkey" = {
-        owner = "caddy";
-        group = "caddy";
-        mode = "0400";
-      };
-    };
+    secrets = { };
   };
 
   # Gateway networking configuration

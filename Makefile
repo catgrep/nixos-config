@@ -284,7 +284,7 @@ apply-%:
 switch-all:
 	@$(call info_msg,"Deploying to all hosts...")
 	@for host in $(HOSTS); do \
-		$(MAKE) deploy-$$host; \
+		$(MAKE) switch-$$host; \
 	done
 	@$(call success_msg,"✓ All deployments complete")
 

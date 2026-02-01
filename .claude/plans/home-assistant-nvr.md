@@ -91,19 +91,22 @@ rtsp://username:password@<camera_ip>:554/stream2  # 640x360
 | RAM | 64GB DDR5 | Shared with Frigate |
 | NVMe | 1TB CT1000P3PSSD8 | System, temp recordings |
 | Media HDDs | 2x12TB (MergerFS) | Jellyfin/media content |
-| Backup HDDs | 6x4TB (RAIDZ2) | **Camera storage** |
+| Backup HDDs | 4x6TB (RAIDZ2) | **Camera storage** |
 
-**Correction:** ser8 uses AMD Ryzen, not Intel. The iGPU is AMD Radeon 780M with RDNA3 architecture. Frigate supports AMD VA-API for hardware acceleration.
+**Hardware Notes:**
+- ser8 uses AMD Ryzen, not Intel. The iGPU is AMD Radeon 780M with RDNA3 architecture.
+- Frigate supports AMD VA-API for hardware acceleration via `radeonsi` driver.
+- Verify with `vainfo` on ser8 before deployment.
 
 ## Storage Design
 
 ### Capacity Analysis
 
-**RAIDZ2 Pool (6x4TB):**
+**RAIDZ2 Pool (4x6TB):**
 - Raw capacity: 24TB
-- Usable capacity (RAIDZ2): ~16TB (2 disks parity)
+- Usable capacity (RAIDZ2): ~12TB (2 disks parity with 4 disks)
 - Reserved for ZFS overhead: ~1TB
-- Available for cameras: **~15TB**
+- Available for cameras: **~11TB**
 
 ### Storage Calculations
 
@@ -141,6 +144,8 @@ zpool.backup.datasets = {
       atime = "off";            # Reduce write overhead
       xattr = "sa";
       acltype = "posixacl";
+      dedup = "off";            # IMPORTANT: dedup is bad for video (low ratio, high RAM)
+      "com.sun:auto-snapshot" = "false";  # Exclude from auto-snapshots
     };
   };
   "cameras/recordings" = {
@@ -159,6 +164,8 @@ zpool.backup.datasets = {
   };
 };
 ```
+
+**Note:** The backup pool has `dedup = "on"` by default. Camera datasets explicitly disable dedup since video has very low deduplication ratios and dedup uses ~5GB RAM per TB of unique data.
 
 ### SD Card Strategy
 
@@ -182,8 +189,9 @@ modules/automation/
   default.nix           # Imports all automation modules
   home-assistant.nix    # Home Assistant configuration (existing)
   frigate.nix           # NEW: Frigate NVR configuration
-  mosquitto.nix         # NEW: MQTT broker (optional, HA has embedded)
 ```
+
+**Note:** Use existing Mosquitto from home-assistant.nix (already configured for localhost).
 
 ### Frigate Module (`modules/automation/frigate.nix`)
 
@@ -196,41 +204,20 @@ modules/automation/
   ...
 }:
 
-let
-  cfg = config.services.frigate;
-in
 {
-  options.services.frigate = {
-    # Extend existing options with custom ones
-    storageDir = lib.mkOption {
-      type = lib.types.path;
-      default = "/mnt/cameras";
-      description = "Base directory for Frigate recordings";
-    };
-
-    cameras = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          ip = lib.mkOption {
-            type = lib.types.str;
-            description = "Camera IP address";
-          };
-          credentialsFile = lib.mkOption {
-            type = lib.types.path;
-            description = "Path to file containing camera credentials";
-          };
-        };
-      });
-      default = {};
-      description = "Camera configurations";
-    };
+  # Define frigate user/group explicitly
+  users.users.frigate = {
+    isSystemUser = true;
+    group = "frigate";
+    extraGroups = [ "video" "render" "media" ];
   };
+  users.groups.frigate = {};
 
-  config = lib.mkIf cfg.enable {
-    # Frigate service configuration
-    services.frigate = {
-      enable = true;
-      hostname = "frigate";
+  # Enable upstream Frigate service directly
+  # (Don't define custom options under services.frigate - conflicts with nixpkgs)
+  services.frigate = {
+    enable = true;
+    hostname = "frigate";
 
       # AMD VA-API driver for hardware acceleration
       # Note: ser8 has AMD Radeon 780M, not Intel
@@ -404,8 +391,12 @@ in
       8555  # WebRTC
     ];
 
-    # Add frigate user to video group for GPU access
-    users.users.frigate.extraGroups = [ "video" "render" ];
+    # Service dependencies - wait for storage and secrets
+    systemd.services.frigate = {
+      after = [ "zfs-mount.service" "network-online.target" "sops-nix.service" ];
+      requires = [ "zfs-mount.service" ];
+      wants = [ "network-online.target" ];
+    };
   };
 }
 ```
@@ -612,7 +603,11 @@ Add to `modules/gateway/Caddyfile`:
 
 ```caddyfile
 frigate.vofi {
-    reverse_proxy ser8.local:5000
+    reverse_proxy ser8.local:5000 {
+        # WebSocket support required for Frigate live view
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection "Upgrade"
+    }
 }
 
 hass.vofi {
@@ -629,7 +624,10 @@ https://frigate.shad-bangus.ts.net {
         level DEBUG
     }
     bind tailscale/frigate
-    reverse_proxy ser8.local:5000
+    reverse_proxy ser8.local:5000 {
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection "Upgrade"
+    }
 }
 
 https://hass.shad-bangus.ts.net {
@@ -637,7 +635,10 @@ https://hass.shad-bangus.ts.net {
         level DEBUG
     }
     bind tailscale/hass
-    reverse_proxy ser8.local:8123
+    reverse_proxy ser8.local:8123 {
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection "Upgrade"
+    }
 }
 ```
 
@@ -651,16 +652,27 @@ environment.persistence."/persist" = {
     # ... existing directories ...
 
     # Frigate
-    "/var/lib/frigate"  # Database, config cache
+    "/var/lib/frigate"  # Database, model cache, config
 
     # Home Assistant
     "/var/lib/hass"     # HA state, automations, integrations
   ];
 };
 
+# Tmpfiles rules for proper permissions
+systemd.tmpfiles.rules = [
+  "d /persist/var/lib/frigate 0755 frigate frigate -"
+  "d /persist/var/lib/hass 0755 hass hass -"
+  "d /mnt/cameras 0755 frigate frigate -"
+  "d /mnt/cameras/recordings 0755 frigate frigate -"
+  "d /mnt/cameras/clips 0755 frigate frigate -"
+];
+
 # Camera recordings are on ZFS backup pool, not impermanence
 # /mnt/cameras is mounted from backup pool
 ```
+
+**Note:** Frigate downloads ML models on first start. Without persistence, models re-download on every reboot.
 
 ## Security Considerations
 
@@ -704,32 +716,72 @@ environment.persistence."/persist" = {
 4. **Disable UPnP** - Prevent cameras from punching holes in firewall
 5. **Local storage only** - Configure SD cards for local backup, not cloud
 
+### Immediate Mitigations (Until VLAN Implemented)
+
+Since cameras are currently on main LAN:
+1. Block camera IPs from internet access at router level
+2. Disable UPnP on router entirely
+3. Use strong unique RTSP passwords per camera
+4. Disable Tapo cloud features in app
+
 ### Frigate Security
 
 1. **No direct internet exposure** - Access via Caddy/Tailscale only
 2. **RTSP stream encryption** - Not supported by Tapo C120, rely on network security
 3. **Home Assistant authentication** - Use HA's built-in auth for API access
+4. **Reduce credential logging** - Configure Frigate logger to reduce RTSP URL exposure:
+   ```yaml
+   logger:
+     logs:
+       frigate.video: warning
+   ```
+
+## Resource Requirements
+
+### Memory Estimate (~2-3GB)
+
+| Component | Memory |
+|-----------|--------|
+| Frigate base | ~300MB |
+| Per camera (recording) | ~50-100MB × 6 = ~450MB |
+| Per camera (detection) | ~100-150MB × 4 = ~500MB |
+| Detection model (SSD-MobileNet) | ~500MB |
+| go2rtc | ~100MB |
+| Home Assistant | ~500MB |
+| **Total** | **~2.5GB** |
+
+With 64GB RAM on ser8, this is well within capacity.
 
 ## Implementation Plan
 
-### Phase 1: Storage Preparation (1-2 hours)
+### Phase 1: Verify Hardware Acceleration
+
+Before deploying, verify VA-API works on ser8:
+```bash
+ssh ser8 "vainfo"
+# Should show: Driver: Mesa Gallium driver for AMD Radeon 780M
+```
+
+### Phase 2: Storage Preparation
 
 1. Create ZFS datasets for camera storage:
    ```bash
-   zfs create backup/cameras
-   zfs create backup/cameras/continuous
-   zfs create backup/cameras/events
-   zfs set quota=2T backup/cameras/continuous
-   zfs set quota=2T backup/cameras/events
-   zfs set recordsize=1M backup/cameras
-   zfs set compression=lz4 backup/cameras
+   zfs create -o compression=lz4 -o recordsize=1M -o atime=off \
+              -o dedup=off -o "com.sun:auto-snapshot=false" backup/cameras
+   zfs create -o quota=600G backup/cameras/recordings
+   zfs create -o quota=600G backup/cameras/clips
    ```
 
 2. Update `hosts/ser8/disko-config.nix` with dataset definitions
 
 3. Update `hosts/ser8/impermanence.nix` for Frigate persistence
 
-### Phase 2: Frigate Installation (2-3 hours)
+### Phase 3: MQTT Setup
+
+1. Enable Mosquitto in host config (already in home-assistant.nix, just enable)
+2. Verify MQTT is listening on localhost:1883
+
+### Phase 4: Frigate Installation
 
 1. Create `modules/automation/frigate.nix` module
 
@@ -743,37 +795,39 @@ environment.persistence."/persist" = {
 
 4. Verify hardware acceleration with AMD VA-API
 
-### Phase 3: Home Assistant Integration (2-3 hours)
+### Phase 5: Home Assistant Integration
 
 1. Enable Home Assistant service on ser8
 
-2. Configure Frigate integration in HA
+2. Configure Frigate integration in HA (requires HACS or manual setup)
 
 3. Set up basic automations (person detection notifications)
 
 4. Test MQTT communication
 
-### Phase 4: Full Camera Deployment (2-3 hours)
+### Phase 6: Full Camera Deployment
 
 1. Configure all 6 cameras with unique names and zones
+   - 4 outdoor: front_door, backyard, driveway, side_gate (detection enabled)
+   - 2 indoor: living_room, basement (detection disabled)
 
-2. Define detection zones per camera
+2. Define detection zones per outdoor camera
 
 3. Configure SD card fallback recording on cameras
 
 4. Test failover scenarios
 
-### Phase 5: Monitoring Integration (1-2 hours)
+### Phase 7: Monitoring Integration
 
 1. Add Frigate scrape config to Prometheus
 
-2. Import Grafana dashboard
+2. Import Grafana dashboard (#18226)
 
-3. Configure alert rules
+3. Configure alert rules (camera offline, high CPU, storage)
 
 4. Test alerting
 
-### Phase 6: Documentation and Testing (1-2 hours)
+### Phase 8: Documentation and Testing
 
 1. Update CLAUDE.md with new services
 

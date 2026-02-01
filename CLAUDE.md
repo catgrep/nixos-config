@@ -14,7 +14,7 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
   - MergerFS for unified media view across multiple disks
   - NordVPN integration for anonymized torrenting
   - SABnzbd for Usenet downloads with category-based organization
-  - Hardware acceleration for media transcoding (Intel QuickSync)
+  - Hardware acceleration for media transcoding (AMD VA-API with Radeon 780M)
   - Media stack orchestration via 3 systemd services:
     - `media-config.service`: Deploys all service configurations from SOPS templates
     - `servarrs-setup.service`: Connects Prowlarr to Sonarr/Radarr for indexer sync
@@ -153,3 +153,22 @@ Note: `.vofi.app` domains use Caddy's local CA for SSL certificates.
 ## Testing
 
 Each host can have smoketests defined in `deploy.yaml`. Gateway, DNS, and media modules have comprehensive test suites in `scripts/smoketests/`.
+
+## Debugging Tips
+
+### Testing Packages on Remote Hosts
+
+Use `nix-shell` to try out packages or commands on a remote host before adding them to the configuration:
+
+```bash
+# Test a single command with a package
+ssh bdhill@ser8 nix-shell -p libva-utils --command vainfo
+
+# Interactive shell with multiple packages
+ssh bdhill@ser8 nix-shell -p htop iotop
+
+# Example: verify VA-API hardware acceleration
+ssh bdhill@ser8 nix-shell -p libva-utils --command "vainfo 2>&1 | grep -E 'Driver|profile'"
+```
+
+This avoids the full rebuild/switch cycle when debugging or verifying hardware capabilities.

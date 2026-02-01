@@ -271,6 +271,9 @@
     # Filesystem storage metrics
     dust
 
+    # VA-API diagnostics (for verifying hardware acceleration)
+    libva-utils
+
     (fastfetch.override {
       zfsSupport = true;
     })

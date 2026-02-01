@@ -2,6 +2,9 @@
 
 # Frigate NVR configuration for security cameras
 # Provides AI-powered object detection with Home Assistant integration
+#
+# Camera credentials are injected via SOPS secrets using Frigate's
+# environment variable substitution: {FRIGATE_CAM_USER}, {FRIGATE_CAM_PASS}
 {
   config,
   lib,
@@ -16,6 +19,34 @@
     "frigate-0.15.2"
     "frigate-web-0.15.2"
   ];
+
+  # SOPS secrets for camera credentials (only when Frigate is enabled)
+  sops.secrets = lib.mkIf config.services.frigate.enable {
+    "frigate_cam_user" = {
+      owner = "root";
+      group = "root";
+      mode = "0600";
+    };
+    "frigate_cam_pass" = {
+      owner = "root";
+      group = "root";
+      mode = "0600";
+    };
+  };
+
+  # SOPS template for Frigate environment file
+  sops.templates = lib.mkIf config.services.frigate.enable {
+    "frigate.env" = {
+      content = ''
+        FRIGATE_CAM_USER=${config.sops.placeholder."frigate_cam_user"}
+        FRIGATE_CAM_PASS=${config.sops.placeholder."frigate_cam_pass"}
+      '';
+      owner = "frigate";
+      group = "frigate";
+      mode = "0600";
+    };
+  };
+
   # Define frigate user/group explicitly
   users.users.frigate = {
     isSystemUser = true;
@@ -132,20 +163,24 @@
       };
 
       # Camera configurations
-      # Note: Camera-specific config with credentials should be added via SOPS template
-      # These are placeholder entries - actual RTSP URLs come from secrets
+      # Credentials injected via environment variables from SOPS:
+      #   {FRIGATE_CAM_USER} - Camera RTSP username
+      #   {FRIGATE_CAM_PASS} - Camera RTSP password
+      # TP-Link Tapo C120 streams:
+      #   stream1 = Main stream (2K/1080p for recording)
+      #   stream2 = Sub stream (360p for detection)
       cameras = {
         # OUTDOOR CAMERAS (4x) - Detection enabled, 5-day retention
         front_door = {
-          enabled = false; # Enable after adding SOPS credentials
+          enabled = false; # Enable after adding SOPS credentials and verifying camera IPs
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.101:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.101:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://user:pass@192.168.68.101:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.101:554/stream2";
                 roles = [ "detect" ];
               }
             ];
@@ -173,11 +208,11 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.102:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.102:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://user:pass@192.168.68.102:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.102:554/stream2";
                 roles = [ "detect" ];
               }
             ];
@@ -205,11 +240,11 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.103:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.103:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://user:pass@192.168.68.103:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.103:554/stream2";
                 roles = [ "detect" ];
               }
             ];
@@ -237,11 +272,11 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.104:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.104:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://user:pass@192.168.68.104:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.104:554/stream2";
                 roles = [ "detect" ];
               }
             ];
@@ -270,7 +305,7 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.105:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.105:554/stream1";
                 roles = [ "record" ];
               }
             ];
@@ -291,7 +326,7 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://user:pass@192.168.68.106:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.106:554/stream1";
                 roles = [ "record" ];
               }
             ];
@@ -334,5 +369,10 @@
     ];
     requires = [ "zfs-mount.service" ];
     wants = [ "network-online.target" ];
+
+    # Load camera credentials from SOPS template
+    serviceConfig = {
+      EnvironmentFile = config.sops.templates."frigate.env".path;
+    };
   };
 }

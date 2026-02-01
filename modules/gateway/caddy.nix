@@ -57,21 +57,26 @@ in
     # Configure Caddy to use Tailscale auth key from shared SOPS secret
     # Uses tailscale_authkey_caddy which has caddy:caddy ownership
     {
-      # Override ExecStart to inject TS_AUTHKEY from SOPS secret
-      # Must use list with empty string first to clear the original ExecStart in systemd drop-in
-      serviceConfig.ExecStart = lib.mkForce [
-        "" # Clear original ExecStart
-        (
-          let
-            caddyBin = "${caddyWithTailscale}/bin/caddy";
-            caddyConfig = config.services.caddy.configFile;
-          in
-          pkgs.writeShellScript "caddy-start" ''
-            export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey_caddy.path})"
-            exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
-          ''
-        )
-      ];
+      serviceConfig = {
+        # Increase startup timeout - Caddy needs time to establish all Tailscale connections
+        TimeoutStartSec = "5min";
+
+        # Override ExecStart to inject TS_AUTHKEY from SOPS secret
+        # Must use list with empty string first to clear the original ExecStart in systemd drop-in
+        ExecStart = lib.mkForce [
+          "" # Clear original ExecStart
+          (
+            let
+              caddyBin = "${caddyWithTailscale}/bin/caddy";
+              caddyConfig = config.services.caddy.configFile;
+            in
+            pkgs.writeShellScript "caddy-start" ''
+              export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey_caddy.path})"
+              exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
+            ''
+          )
+        ];
+      };
     }
   ];
 

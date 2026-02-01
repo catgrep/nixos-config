@@ -9,7 +9,7 @@
 
 let
   # Fetch dashboards from grafana.com at build time
-  dashboards = {
+  fetchedDashboards = {
     node-exporter = pkgs.fetchurl {
       url = "https://grafana.com/api/dashboards/1860/revisions/37/download";
       hash = "sha256-1DE1aaanRHHeCOMWDGdOS1wBXxOF84UXAjJzT5Ek6mM=";
@@ -23,6 +23,17 @@ let
       hash = "sha256-+nsi8/dYNvGVGV+ftfO1gSAQbO5GpZwW480T5mHMM4Q=";
     };
   };
+
+  # Replace ${DS_*} datasource template variables with our Prometheus datasource
+  # Grafana.com dashboards use these placeholders which aren't resolved during provisioning
+  # See: https://github.com/grafana/grafana/issues/10786
+  processDashboard =
+    name: src:
+    pkgs.runCommand "dashboard-${name}.json" { } ''
+      sed -E 's/\$\{DS_[A-Z_]+\}/Prometheus/g' ${src} > $out
+    '';
+
+  dashboards = builtins.mapAttrs processDashboard fetchedDashboards;
 in
 {
   # SOPS secret for Grafana admin password

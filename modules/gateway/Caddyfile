@@ -32,7 +32,7 @@ sabnzbd.vofi {
 }
 
 frigate.vofi {
-	reverse_proxy ser8.local:5000 {
+	reverse_proxy ser8.local:80 {
 		# WebSocket support required for Frigate live view
 		header_up Upgrade {http.request.header.Upgrade}
 		header_up Connection "Upgrade"
@@ -109,7 +109,7 @@ https://frigate.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/frigate
-	reverse_proxy ser8.local:5000 {
+	reverse_proxy ser8.local:80 {
 		header_up Upgrade {http.request.header.Upgrade}
 		header_up Connection "Upgrade"
 	}

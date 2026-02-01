@@ -146,6 +146,16 @@
         };
       };
 
+      # Disable TLS - Caddy handles HTTPS externally
+      tls = {
+        enabled = false;
+      };
+
+      # Auth enabled - exposes port 8971 for reverse proxy
+      auth = {
+        enabled = true;
+      };
+
       # UI configuration
       ui = {
         live_mode = "webrtc";
@@ -355,7 +365,7 @@
 
   # Open firewall ports
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.frigate.enable [
-    5000 # Frigate web UI
+    80 # Frigate web UI (nginx serves on port 80)
     8554 # RTSP restream
     8555 # WebRTC
   ];

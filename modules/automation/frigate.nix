@@ -22,6 +22,7 @@
 
   # SOPS secrets for camera credentials (only when Frigate is enabled)
   sops.secrets = lib.mkIf config.services.frigate.enable {
+    # RTSP camera account credentials
     "frigate_cam_user" = {
       owner = "root";
       group = "root";
@@ -151,16 +152,15 @@
         enabled = false;
       };
 
-      # Auth enabled - exposes port 8971 for reverse proxy
+      # Auth disabled - Frigate is behind Tailscale
       auth = {
-        enabled = true;
+        enabled = false;
       };
 
       # UI configuration
       ui = {
         live_mode = "webrtc";
         timezone = "America/Los_Angeles";
-        use_experimental = false;
       };
 
       # go2rtc for WebRTC streaming
@@ -246,15 +246,19 @@
         };
 
         garage = {
-          enabled = false;
+          enabled = true;
           ffmpeg = {
+            # Use TCP transport for stability with Tapo cameras
+            # See: https://github.com/blakeblackshear/frigate/discussions/14888
             inputs = [
               {
                 path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
                 path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
+                input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
             ];

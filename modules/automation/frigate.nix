@@ -245,16 +245,16 @@
           };
         };
 
-        driveway = {
+        garage = {
           enabled = false;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.103:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.103:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
                 roles = [ "detect" ];
               }
             ];

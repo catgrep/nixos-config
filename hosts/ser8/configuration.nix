@@ -65,6 +65,7 @@
     zfs = {
       forceImportRoot = false;
       devNodes = "/dev/disk/by-id/";
+      extraPools = [ "backup" ]; # Auto-import backup pool on boot
     };
 
     # Kernel parameters for ZFS

@@ -23,9 +23,10 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
     - `download-clients-setup.service`: Connects qBittorrent/SABnzbd to all arr services
   - API key sanitization in all systemd logs prevents secrets exposure
 - **firebat** (192.168.68.63): Gateway/reverse proxy with Caddy, Grafana, Prometheus
-  - Manages SSL certificates using Caddy's local CA
-  - Prometheus monitoring for all hosts
-  - Grafana dashboards for visualization
+  - Caddy with Tailscale plugin for reverse proxy and automatic HTTPS via Let's Encrypt
+  - Prometheus monitoring with node-exporter (all hosts) and zfs-exporter (ser8)
+  - Grafana with provisioned dashboards (Node Exporter Full, ZFS, Prometheus Stats)
+  - Grafana admin password managed via SOPS (`grafana_admin_password`)
 - **pi4** (192.168.68.56): DNS server with AdGuard Home
   - Primary DNS server for the network
 - **pi5** (192.168.0.110): Additional Raspberry Pi for experiments
@@ -126,7 +127,8 @@ Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
 
 - All Nix files should be formatted with `nixfmt-rfc-style`
 - The repository uses GPL-3.0-or-later licensing
-- Hosts are accessible via mDNS (e.g., `ser8.local` and `ser8.internal`)
+- Hosts are accessible via mDNS (e.g., `ser8.local`) and AdGuard rewrites (e.g., `ser8.internal`)
+- Prometheus uses `.local` mDNS for scraping (not `.internal` which requires AdGuard DNS)
 - ser8 uses ZFS with "Erase Your Darlings" pattern - root filesystem is rolled back on boot
 - Raspberry Pi hosts may require special handling for boot firmware mounting
 - Users are defined in `users/` directory with centralized management
@@ -160,9 +162,37 @@ Services are accessible through the Caddy reverse proxy on the firebat host:
 - `prometheus.vofi.app` - Prometheus metrics
 - `adguard.internal` - AdGuard Home DNS management (internal only)
 
-Note: `.vofi.app` domains use Caddy's local CA for SSL certificates.
+Note: `.vofi.app` and `.vofi` domains use Caddy's local CA (self-signed, will show as insecure).
 
-Services are also accessible via Tailscale MagicDNS (e.g., `frigate.shad-bangus.ts.net`, `hass.shad-bangus.ts.net`).
+Services are also accessible via Tailscale MagicDNS with valid Let's Encrypt certificates:
+- `jellyfin.shad-bangus.ts.net`, `sonarr.shad-bangus.ts.net`, `radarr.shad-bangus.ts.net`
+- `prowlarr.shad-bangus.ts.net`, `sabnzbd.shad-bangus.ts.net`
+- `frigate.shad-bangus.ts.net`, `hass.shad-bangus.ts.net`
+- `grafana.shad-bangus.ts.net`, `prom.shad-bangus.ts.net`
+
+**Prefer Tailscale URLs for valid TLS certificates.**
+
+## Monitoring Stack
+
+Prometheus and Grafana run on firebat for homelab monitoring:
+
+### Prometheus Scrape Targets
+- `node-exporter`: System metrics from ser8, firebat, pi4 (port 9100)
+- `zfs-exporter`: ZFS pool metrics from ser8 (port 9134)
+- `prometheus`: Self-monitoring (localhost:9090)
+
+### Grafana Dashboards
+Dashboards are fetched from grafana.com at build time and processed to replace `${DS_*}` datasource template variables:
+- Node Exporter Full (ID 1860) - Comprehensive system metrics
+- ZFS Pool Status (ID 7845) - ZFS health and metrics
+- Prometheus Stats (ID 3662) - Prometheus self-monitoring
+
+### Prometheus Admin API
+Enabled for series management. To delete stale series:
+```bash
+ssh bdhill@firebat 'curl -X POST "http://localhost:9090/api/v1/admin/tsdb/delete_series" --data-urlencode "match[]={instance=~\".*pattern.*\"}"'
+ssh bdhill@firebat 'curl -X POST "http://localhost:9090/api/v1/admin/tsdb/clean_tombstones"'
+```
 
 ## Testing
 

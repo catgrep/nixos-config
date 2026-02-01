@@ -228,14 +228,14 @@
     };
   };
 
-  # Hardware acceleration for media transcoding
+  # Hardware acceleration for media transcoding (AMD Ryzen 7 8845HS with Radeon 780M)
   hardware.graphics = {
     enable = true;
     extraPackages = with pkgs; [
-      intel-media-driver
-      vaapiIntel
-      vaapiVdpau
+      # AMD VA-API driver (radeonsi via mesa)
       libvdpau-va-gl
+      # ROCm OpenCL runtime for GPU compute
+      rocmPackages.clr.icd
     ];
   };
 

@@ -47,44 +47,9 @@
         ];
         scrape_interval = "30s";
       }
-      {
-        # FIXME: add sops-nix to firebat to access adguard api
-        job_name = "adguard";
-        static_configs = [
-          {
-            targets = [
-              "pi4.internal:80" # AdGuard Home built-in metrics
-            ];
-          }
-        ];
-        scrape_interval = "30s";
-        metrics_path = "/control/stats";
-        # Note: You may need to configure authentication for AdGuard API
-        # basic_auth = {
-        #   username = "admin";
-        #   password_file = "/run/secrets/adguard-prometheus-password";
-        # };
-      }
-      {
-        job_name = "jellyfin";
-        static_configs = [
-          {
-            targets = [ "ser8.internal:8096" ];
-          }
-        ];
-        scrape_interval = "60s";
-        metrics_path = "/health";
-      }
-      {
-        job_name = "frigate";
-        static_configs = [
-          {
-            targets = [ "ser8.internal:5000" ];
-          }
-        ];
-        scrape_interval = "30s";
-        metrics_path = "/api/stats";
-      }
+      # Note: AdGuard, Jellyfin, and Frigate removed - they don't expose
+      # Prometheus-compatible metrics endpoints. Consider adding dedicated
+      # exporters in the future (exportarr for arr apps, etc.)
     ];
 
     # Retention
@@ -138,24 +103,6 @@
                   severity: warning
                 annotations:
                   summary: "CPU temperature is above 80°C on {{ $labels.instance }}"
-
-          - name: frigate
-            rules:
-              - alert: FrigateCameraOffline
-                expr: frigate_camera_fps == 0
-                for: 5m
-                labels:
-                  severity: warning
-                annotations:
-                  summary: "Camera {{ $labels.camera }} is not receiving frames"
-
-              - alert: FrigateHighCPU
-                expr: frigate_cpu_usage_percent > 80
-                for: 10m
-                labels:
-                  severity: warning
-                annotations:
-                  summary: "Frigate CPU usage is above 80%"
 
               - alert: CameraStorageHigh
                 expr: (node_filesystem_avail_bytes{mountpoint="/mnt/cameras"} / node_filesystem_size_bytes{mountpoint="/mnt/cameras"}) * 100 < 20

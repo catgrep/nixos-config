@@ -27,9 +27,9 @@
         static_configs = [
           {
             targets = [
-              "ser8.internal:9100" # Beelink node exporter
-              "firebat.internal:9100" # Firebat node exporter
-              "pi4.internal:9100" # Pi4 node exporter
+              "ser8.local:9100" # Beelink node exporter
+              "firebat.local:9100" # Firebat node exporter
+              "pi4.local:9100" # Pi4 node exporter
             ];
           }
         ];
@@ -41,7 +41,7 @@
         static_configs = [
           {
             targets = [
-              "ser8.internal:9134" # ZFS metrics from Beelink
+              "ser8.local:9134" # ZFS metrics from Beelink
             ];
           }
         ];

@@ -97,7 +97,7 @@
         latitude = "37.3861"; # Los Altos, CA
         longitude = "-122.1140";
         elevation = 60;
-        unit_system = "imperial";
+        unit_system = "us_customary";
         time_zone = "America/Los_Angeles";
         currency = "USD";
         country = "US";

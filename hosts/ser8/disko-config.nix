@@ -261,6 +261,31 @@
               dedup = "on";
             };
           };
+
+          # Camera storage for Frigate NVR
+          "cameras" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "/mnt/cameras";
+              compression = "lz4";
+              recordsize = "1M"; # Optimal for video files
+              atime = "off"; # Reduce write overhead
+              dedup = "off"; # Video has low dedup ratio, uses lots of RAM
+              "com.sun:auto-snapshot" = "false"; # Frigate handles its own retention
+            };
+          };
+          "cameras/recordings" = {
+            type = "zfs_fs";
+            options = {
+              quota = "600G";
+            };
+          };
+          "cameras/clips" = {
+            type = "zfs_fs";
+            options = {
+              quota = "600G";
+            };
+          };
         };
       };
     };

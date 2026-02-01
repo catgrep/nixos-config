@@ -36,7 +36,7 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 - `modules/dns/`: DNS services (AdGuard Home, users management)
 - `modules/raspberrypi/`: Raspberry Pi specific configurations (base, installer, usb-installer)
 - `modules/nordvpn/`: NordVPN WireGuard integration with network namespace isolation
-- `modules/automation/`: Home automation services (Home Assistant - planned)
+- `modules/automation/`: Home automation services (Home Assistant, Frigate NVR)
 - `modules/development/`: Development tools (Gerrit - planned)
 
 Host configurations are located in `hosts/HOSTNAME/` with each containing:
@@ -142,6 +142,8 @@ Services are accessible through the Caddy reverse proxy on the firebat host:
 - `prowlarr.vofi` - Prowlarr indexer management
 - `torrent.vofi` - qBittorrent web UI
 - `sabnzbd.vofi` - SABnzbd Usenet download client
+- `frigate.vofi` - Frigate NVR security camera system
+- `hass.vofi` - Home Assistant automation
 - `grafana.vofi.app` - Grafana monitoring dashboards
 - `prometheus.vofi.app` - Prometheus metrics
 - `adguard.internal` - AdGuard Home DNS management (internal only)

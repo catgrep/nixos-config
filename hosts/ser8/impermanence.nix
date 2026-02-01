@@ -70,6 +70,10 @@
       # Tailscale authentication state
       "/var/lib/tailscale"
 
+      # Home automation
+      "/var/lib/frigate" # Frigate NVR database, model cache
+      "/var/lib/hass" # Home Assistant state
+
       # Add these for network persistence:
       "/var/lib/systemd/network" # Network state
       {
@@ -147,6 +151,12 @@
     "d /persist/var/lib/sabnzbd 0755 sabnzbd sabnzbd -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
+
+    # Frigate NVR
+    "d /persist/var/lib/frigate 0755 frigate frigate -"
+
+    # Home Assistant
+    "d /persist/var/lib/hass 0755 hass hass -"
 
     # Ensure Samba directories exist
     "d /persist/var/lib/samba 0755 root root -"

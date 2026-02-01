@@ -75,6 +75,16 @@
         scrape_interval = "60s";
         metrics_path = "/health";
       }
+      {
+        job_name = "frigate";
+        static_configs = [
+          {
+            targets = [ "ser8.internal:5000" ];
+          }
+        ];
+        scrape_interval = "30s";
+        metrics_path = "/api/stats";
+      }
     ];
 
     # Retention
@@ -128,6 +138,32 @@
                   severity: warning
                 annotations:
                   summary: "CPU temperature is above 80°C on {{ $labels.instance }}"
+
+          - name: frigate
+            rules:
+              - alert: FrigateCameraOffline
+                expr: frigate_camera_fps == 0
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Camera {{ $labels.camera }} is not receiving frames"
+
+              - alert: FrigateHighCPU
+                expr: frigate_cpu_usage_percent > 80
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Frigate CPU usage is above 80%"
+
+              - alert: CameraStorageHigh
+                expr: (node_filesystem_avail_bytes{mountpoint="/mnt/cameras"} / node_filesystem_size_bytes{mountpoint="/mnt/cameras"}) * 100 < 20
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Camera storage is above 80% full"
       '')
     ];
   };

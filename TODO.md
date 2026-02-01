@@ -36,8 +36,8 @@
 - [x] ~~add nordvpn integration~~ **COMPLETED** - NordVPN WireGuard with network namespace isolation
 
 # services
-- [ ] setup home-assistant server (maybe one of the `pi5`s?)
-- [ ] setup tplink cameras for home-assistant server
+- [x] ~~setup home-assistant server (maybe one of the `pi5`s?)~~ **COMPLETED** - Home Assistant on ser8 with Frigate NVR
+- [x] ~~setup tplink cameras for home-assistant server~~ **COMPLETED** - 6x TP-Link C120 cameras configured (4 outdoor w/ detection, 2 indoor)
 - [ ] setup gerrit
 - [ ] add grafana dashboards to make use of exported prom metrics
 - [x] ~~isolate torrent clients~~ **COMPLETED** - qBittorrent runs in NordVPN network namespace
@@ -61,7 +61,7 @@ Need
 Better to test pre-deployment with VMs and virtual network (it would be nice to have generic scaffolding / template that can be reused)
 
 # new items (discovered during documentation review)
-- [ ] complete Home Assistant automation module (currently planned)
+- [x] ~~complete Home Assistant automation module (currently planned)~~ **COMPLETED** - Home Assistant + Frigate NVR with 6 cameras configured
 - [ ] complete Gerrit development module (currently planned)
 - [ ] add Grafana dashboards for ZFS monitoring (exporter already configured)
 - [ ] document MergerFS configuration and usage

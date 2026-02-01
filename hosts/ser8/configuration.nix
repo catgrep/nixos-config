@@ -177,6 +177,11 @@
     };
     sabnzbd.enable = true;
     flaresolverr.enable = true;
+
+    # Home automation services
+    home-assistant.enable = true;
+    frigate.enable = true;
+    mosquitto.enable = true; # MQTT broker for Frigate <-> Home Assistant
   };
 
   # Add nginx proxy for accessing qBittorrent from host

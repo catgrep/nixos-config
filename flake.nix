@@ -179,6 +179,7 @@
           modules = [
             ./modules/media
             ./modules/nordvpn
+            ./modules/automation
           ];
         };
 

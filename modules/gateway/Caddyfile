@@ -31,6 +31,22 @@ sabnzbd.vofi {
 	reverse_proxy ser8.local:8085
 }
 
+frigate.vofi {
+	reverse_proxy ser8.local:5000 {
+		# WebSocket support required for Frigate live view
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection "Upgrade"
+	}
+}
+
+hass.vofi {
+	reverse_proxy ser8.local:8123 {
+		# WebSocket support for Home Assistant
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection "Upgrade"
+	}
+}
+
 # adguard should be internally accessible only
 adguard.internal {
 	reverse_proxy pi4.local:3000
@@ -86,4 +102,26 @@ https://prowlarr.shad-bangus.ts.net {
 	}
 	bind tailscale/prowlarr
 	reverse_proxy ser8.local:9696
+}
+
+https://frigate.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/frigate
+	reverse_proxy ser8.local:5000 {
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection "Upgrade"
+	}
+}
+
+https://hass.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/hass
+	reverse_proxy ser8.local:8123 {
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection "Upgrade"
+	}
 }

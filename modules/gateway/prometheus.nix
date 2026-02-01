@@ -52,10 +52,11 @@
       # exporters in the future (exportarr for arr apps, etc.)
     ];
 
-    # Retention
+    # Retention and admin API
     extraFlags = [
       "--storage.tsdb.retention.time=30d"
       "--storage.tsdb.retention.size=10GB"
+      "--web.enable-admin-api" # Enable admin API for series deletion
     ];
 
     # Rules for alerting

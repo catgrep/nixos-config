@@ -60,10 +60,12 @@ prometheus.vofi.app {
 	reverse_proxy firebat.local:9090
 }
 
-# Tailscale-exposed services (*.shad-bangus.ts.net)
+# -- Tailscale-exposed services (*.shad-bangus.ts.net)
 # These use caddy-tailscale plugin to create separate Tailscale nodes
 # Each service gets its own node and DNS entry via MagicDNS
 # TLS certificates are obtained automatically via Tailscale's ACME
+
+# -- Media *Arr services
 https://jellyfin.shad-bangus.ts.net {
 	log tailscale {
 		level DEBUG
@@ -104,6 +106,24 @@ https://prowlarr.shad-bangus.ts.net {
 	reverse_proxy ser8.local:9696
 }
 
+# -- Service monitoring
+https://grafana.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/grafana
+	reverse_proxy firebat.local:3000
+}
+
+https://prom.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/prom
+	reverse_proxy firebat.local:9090
+}
+
+# -- Smart home devices
 https://frigate.shad-bangus.ts.net {
 	log tailscale {
 		level DEBUG

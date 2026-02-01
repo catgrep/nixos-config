@@ -9,12 +9,14 @@ This is a NixOS homelab configuration using flakes that manages multiple hosts i
 ## Key Architecture
 
 ### Host Architecture
-- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, FlareSolverr, AllDebrid-proxy
+- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, FlareSolverr, AllDebrid-proxy, Frigate NVR, Home Assistant
   - Uses ZFS for storage with automatic snapshots and scrubbing
   - MergerFS for unified media view across multiple disks
   - NordVPN integration for anonymized torrenting
   - SABnzbd for Usenet downloads with category-based organization
   - Hardware acceleration for media transcoding (AMD VA-API with Radeon 780M)
+  - Frigate NVR for security cameras with CPU-based object detection
+  - Home Assistant for home automation with MQTT integration
   - Media stack orchestration via 3 systemd services:
     - `media-config.service`: Deploys all service configurations from SOPS templates
     - `servarrs-setup.service`: Connects Prowlarr to Sonarr/Radarr for indexer sync
@@ -133,6 +135,16 @@ Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
 - Transmission has been replaced by qBittorrent as the primary torrent client
 - All hosts auto-authenticate to Tailscale on boot using shared `tailscale_authkey`
 
+## Frigate NVR Configuration
+
+Frigate runs on ser8 for security camera management:
+- Camera credentials stored in SOPS (`frigate_cam_user`, `frigate_cam_pass`)
+- Uses Frigate's environment variable substitution: `{FRIGATE_CAM_USER}`, `{FRIGATE_CAM_PASS}` in RTSP URLs
+- TP-Link Tapo cameras require TCP transport (`preset-rtsp-restream`) for WiFi stability
+- Auth disabled since Frigate is behind Tailscale
+- Camera recordings stored on ZFS backup pool (`/mnt/cameras`)
+- Reference for Tapo camera stability: https://github.com/blakeblackshear/frigate/discussions/14888
+
 ## Service Access
 
 Services are accessible through the Caddy reverse proxy on the firebat host:
@@ -149,6 +161,8 @@ Services are accessible through the Caddy reverse proxy on the firebat host:
 - `adguard.internal` - AdGuard Home DNS management (internal only)
 
 Note: `.vofi.app` domains use Caddy's local CA for SSL certificates.
+
+Services are also accessible via Tailscale MagicDNS (e.g., `frigate.shad-bangus.ts.net`, `hass.shad-bangus.ts.net`).
 
 ## Testing
 

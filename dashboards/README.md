@@ -9,6 +9,7 @@ All `${DS_*}` variables have been replaced with `Prometheus`:
 - `${DS_PROMETHEUS-MAIN}` → `Prometheus`
 - `${DS_THEMIS}` → `Prometheus`
 - `${DS_RANCHER_MONITORING}` → `Prometheus`
+- `${VAR_PORT_NODE_EXPORTER}` → `9100`
 
 ## Dashboard Sources
 
@@ -24,6 +25,7 @@ All `${DS_*}` variables have been replaced with `Prometheus`:
 | systemd | Grafana Labs | 1617 | 1 |
 | adguard | Grafana Labs | 13330 | 3 |
 | caddy | Grafana Labs | 22870 | 3 |
+| services | Grafana Labs | 22161 | 1 |
 
 ## Updating Dashboards
 

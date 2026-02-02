@@ -67,7 +67,7 @@
         ];
         scrape_interval = "15s";
       }
-      # systemd unit metrics from all hosts
+      # systemd unit metrics from all hosts (state, restarts, network I/O per unit)
       {
         job_name = "systemd";
         static_configs = [
@@ -80,6 +80,20 @@
           }
         ];
         scrape_interval = "30s";
+      }
+      # process-exporter for per-service CPU/memory/IO metrics
+      {
+        job_name = "process";
+        static_configs = [
+          {
+            targets = [
+              "ser8.local:9256"
+              "firebat.local:9256"
+              "pi4.local:9256"
+            ];
+          }
+        ];
+        scrape_interval = "15s";
       }
       # Jellyfin metrics (via jellyfin-exporter)
       {

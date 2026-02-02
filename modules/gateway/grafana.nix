@@ -34,6 +34,7 @@ let
     systemd = ../../dashboards/systemd.json;
     adguard = ../../dashboards/adguard.json;
     caddy = ../../dashboards/caddy.json;
+    services = ../../dashboards/services.json; # Per-service CPU/memory/IO from process-exporter
   };
 in
 {
@@ -115,6 +116,7 @@ in
     "L+ /var/lib/grafana/dashboards/systemd.json - - - - ${dashboards.systemd}"
     "L+ /var/lib/grafana/dashboards/adguard.json - - - - ${dashboards.adguard}"
     "L+ /var/lib/grafana/dashboards/caddy.json - - - - ${dashboards.caddy}"
+    "L+ /var/lib/grafana/dashboards/services.json - - - - ${dashboards.services}"
   ];
 
   # Open firewall port for Grafana

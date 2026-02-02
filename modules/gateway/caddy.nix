@@ -84,5 +84,6 @@ in
   networking.firewall.allowedTCPPorts = [
     80
     443
+    2019 # Caddy admin API (metrics)
   ];
 }

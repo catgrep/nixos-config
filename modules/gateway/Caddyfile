@@ -1,6 +1,12 @@
 # use caddy's local CA until we're ready to make 'vofi.app' public
 {
 	local_certs
+
+	# Enable Prometheus metrics on admin API
+	servers {
+		metrics
+	}
+	admin :2019
 }
 
 jellyfin.vofi.app {

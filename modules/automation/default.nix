@@ -6,5 +6,6 @@
   imports = [
     ./home-assistant.nix
     ./frigate.nix
+    ./frigate-exporter.nix
   ];
 }

@@ -19,7 +19,16 @@
       "Bash(timeout 120 nix eval:*)",
       "Bash(timeout 30 nix eval:*)",
       "Bash(timeout 60 nix eval:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(grep:*)",
+      "Bash(chmod:*)",
+      "Bash(nix search:*)",
+      "WebFetch(domain:jellyfin.org)",
+      "WebFetch(domain:grafana.com)",
+      "Bash(nix-prefetch-url:*)",
+      "Bash(nix hash convert:*)",
+      "WebFetch(domain:mynixos.com)",
+      "WebFetch(domain:docs.frigate.video)"
     ],
     "deny": []
   }

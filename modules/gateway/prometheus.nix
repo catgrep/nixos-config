@@ -47,9 +47,74 @@
         ];
         scrape_interval = "30s";
       }
-      # Note: AdGuard, Jellyfin, and Frigate removed - they don't expose
-      # Prometheus-compatible metrics endpoints. Consider adding dedicated
-      # exporters in the future (exportarr for arr apps, etc.)
+      # Frigate NVR metrics (via prometheus-frigate-exporter)
+      {
+        job_name = "frigate";
+        static_configs = [
+          {
+            targets = [ "ser8.local:9710" ];
+          }
+        ];
+        scrape_interval = "30s";
+      }
+      # Caddy reverse proxy metrics (admin API)
+      {
+        job_name = "caddy";
+        static_configs = [
+          {
+            targets = [ "localhost:2019" ];
+          }
+        ];
+        scrape_interval = "15s";
+      }
+      # systemd unit metrics from all hosts
+      {
+        job_name = "systemd";
+        static_configs = [
+          {
+            targets = [
+              "ser8.local:9558"
+              "firebat.local:9558"
+              "pi4.local:9558"
+            ];
+          }
+        ];
+        scrape_interval = "30s";
+      }
+      # Jellyfin metrics (via jellyfin-exporter)
+      {
+        job_name = "jellyfin";
+        static_configs = [
+          {
+            targets = [ "ser8.local:9711" ];
+          }
+        ];
+        scrape_interval = "30s";
+      }
+      # Exportarr metrics for arr stack
+      {
+        job_name = "exportarr";
+        static_configs = [
+          {
+            targets = [
+              "ser8.local:9707" # Sonarr
+              "ser8.local:9708" # Radarr
+              "ser8.local:9709" # Prowlarr
+            ];
+          }
+        ];
+        scrape_interval = "60s";
+      }
+      # AdGuard Home DNS metrics
+      {
+        job_name = "adguard";
+        static_configs = [
+          {
+            targets = [ "pi4.local:9618" ];
+          }
+        ];
+        scrape_interval = "30s";
+      }
     ];
 
     # Retention and admin API

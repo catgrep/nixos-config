@@ -5,5 +5,6 @@
 {
   imports = [
     ./adguard-home.nix
+    ./adguard-exporter.nix
   ];
 }

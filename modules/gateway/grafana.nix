@@ -119,6 +119,10 @@ in
     "L+ /var/lib/grafana/dashboards/services.json - - - - ${dashboards.services}"
   ];
 
+  # Automatically restart Grafana when dashboard files change
+  # This ensures provisioned dashboards are reloaded without manual intervention
+  systemd.services.grafana.restartTriggers = builtins.attrValues dashboards;
+
   # Open firewall port for Grafana
   networking.firewall.allowedTCPPorts = [ 3000 ];
 }

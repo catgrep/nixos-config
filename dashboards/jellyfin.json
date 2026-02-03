@@ -2303,10 +2303,15 @@
           "text": "1m",
           "value": "1m"
         },
-        "description": "5s,30s,1m,5m,10m,30m,1h,6h,1d",
+        "description": "1s,5s,30s,1m,5m,10m,30m,1h,6h,1d",
         "label": "Interval",
         "name": "interval",
         "options": [
+          {
+            "selected": false,
+            "text": "1s",
+            "value": "1s"
+          },
           {
             "selected": false,
             "text": "5s",
@@ -2353,7 +2358,7 @@
             "value": "1d"
           }
         ],
-        "query": "5s,30s,1m,5m,10m,30m,1h,6h,1d",
+        "query": "1s,5s,30s,1m,5m,10m,30m,1h,6h,1d",
         "refresh": 2,
         "type": "interval"
       },

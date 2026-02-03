@@ -70,6 +70,28 @@ prometheus.vofi.app {
 # These use caddy-tailscale plugin to create separate Tailscale nodes
 # Each service gets its own node and DNS entry via MagicDNS
 # TLS certificates are obtained automatically via Tailscale's ACME
+#
+# IMPORTANT: Use static IPs (not .local mDNS names) for reverse_proxy backends!
+#
+# The caddy-tailscale plugin creates virtual Tailscale network nodes that are bound
+# to the Tailscale network interface, not the local LAN interface (eno1). This means:
+# - mDNS (multicast DNS used by .local names) uses link-local multicast (224.0.0.251)
+# - mDNS broadcasts only work on the local network interface where Avahi is listening
+# - Tailscale virtual nodes cannot receive these mDNS broadcasts
+# - DNS resolution from Tailscale contexts fails intermittently with "device or resource busy"
+#
+# Debugging this issue (Feb 2026):
+# - Observed 502 errors with "dial tcp: lookup ser8.local: device or resource busy"
+# - Confirmed mDNS works from firebat host: `ping ser8.local` succeeded
+# - But resolution failed from certain contexts: `resolvectl query ser8.local` failed
+# - Error specifically appeared in "http.log.error.tailscale" logger (not local sites)
+# - Root cause: Tailscale-bound Caddy instances can't access local mDNS broadcasts
+# - Solution: Use static IPs (192.168.68.65, etc.) which work reliably from all contexts
+#
+# Static IP mappings (from deploy.yaml):
+# - ser8: 192.168.68.65
+# - firebat: 192.168.68.63
+# - pi4: 192.168.68.56
 
 # -- Media *Arr services
 https://jellyfin.shad-bangus.ts.net {
@@ -77,7 +99,7 @@ https://jellyfin.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/jellyfin
-	reverse_proxy ser8.local:8096
+	reverse_proxy 192.168.68.65:8096
 }
 
 https://sabnzbd.shad-bangus.ts.net {
@@ -85,7 +107,7 @@ https://sabnzbd.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/sabnzbd
-	reverse_proxy ser8.local:8085
+	reverse_proxy 192.168.68.65:8085
 }
 
 https://radarr.shad-bangus.ts.net {
@@ -93,7 +115,7 @@ https://radarr.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/radarr
-	reverse_proxy ser8.local:7878
+	reverse_proxy 192.168.68.65:7878
 }
 
 https://sonarr.shad-bangus.ts.net {
@@ -101,7 +123,7 @@ https://sonarr.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/sonarr
-	reverse_proxy ser8.local:8989
+	reverse_proxy 192.168.68.65:8989
 }
 
 https://prowlarr.shad-bangus.ts.net {
@@ -109,7 +131,7 @@ https://prowlarr.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/prowlarr
-	reverse_proxy ser8.local:9696
+	reverse_proxy 192.168.68.65:9696
 }
 
 # -- Service monitoring
@@ -118,7 +140,7 @@ https://grafana.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/grafana
-	reverse_proxy firebat.local:3000
+	reverse_proxy 192.168.68.63:3000
 }
 
 https://prom.shad-bangus.ts.net {
@@ -126,7 +148,7 @@ https://prom.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/prom
-	reverse_proxy firebat.local:9090
+	reverse_proxy 192.168.68.63:9090
 }
 
 # -- Smart home devices
@@ -135,7 +157,7 @@ https://frigate.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/frigate
-	reverse_proxy ser8.local:80 {
+	reverse_proxy 192.168.68.65:80 {
 		header_up Upgrade {http.request.header.Upgrade}
 		header_up Connection "Upgrade"
 	}
@@ -146,7 +168,7 @@ https://hass.shad-bangus.ts.net {
 		level DEBUG
 	}
 	bind tailscale/hass
-	reverse_proxy ser8.local:8123 {
+	reverse_proxy 192.168.68.65:8123 {
 		header_up Upgrade {http.request.header.Upgrade}
 		header_up Connection "Upgrade"
 	}

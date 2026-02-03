@@ -182,15 +182,15 @@
       cameras = {
         # OUTDOOR CAMERAS (4x) - Detection enabled, 5-day retention
         front_door = {
-          enabled = false; # Enable after adding SOPS credentials and verifying camera IPs
+          enabled = true;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.101:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.101:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
                 roles = [ "detect" ];
               }
             ];

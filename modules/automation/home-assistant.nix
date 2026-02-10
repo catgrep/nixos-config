@@ -15,11 +15,11 @@ let
   # Deployed as a symlink from /var/lib/hass/cameras-dashboard.yaml -> /nix/store/...
   camerasDashboard = pkgs.writeText "cameras-dashboard.yaml" (builtins.toJSON dashboardConfig);
 
-  # Helper: frigate-hass-card (advanced-camera-card) for live camera view
+  # Helper: advanced-camera-card (formerly frigate-hass-card) for live camera view
   # Per user decision: live video stream default, click to fullscreen, no bounding boxes
   # Includes conditional "Detection Off" badge overlay when detection switch is off
   cameraCard = cameraName: displayName: {
-    type = "custom:frigate-card";
+    type = "custom:advanced-camera-card";
     cameras = [
       {
         camera_entity = "camera.${cameraName}";
@@ -159,7 +159,7 @@ let
         cards = [
           # All cameras combined view with object type filtering
           {
-            type = "custom:frigate-card";
+            type = "custom:advanced-camera-card";
             cameras = [
               {
                 camera_entity = "camera.driveway";
@@ -245,7 +245,7 @@ in
     config.lovelace = {
       mode = "storage"; # Keep default dashboard UI-editable
       dashboards = {
-        cameras = {
+        lovelace-cameras = {
           mode = "yaml";
           filename = "cameras-dashboard.yaml";
           title = "Cameras";

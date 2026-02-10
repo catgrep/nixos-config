@@ -1,242 +1,267 @@
 # Project Research Summary
 
-**Project:** Frigate-Home Assistant Integration
-**Domain:** NVR-to-Home Automation Integration (NixOS, declarative)
-**Researched:** 2026-02-09
+**Project:** Monitoring, Alerting & Log Aggregation for NixOS Homelab
+**Domain:** Infrastructure observability
+**Researched:** 2026-02-10
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This milestone integrates an existing Frigate 0.15.2 NVR installation (3 active cameras: driveway, front_door, garage) with Home Assistant to enable automated push notifications on person detection. The integration requires three components: (1) the Frigate custom component from nixpkgs to create HA entities, (2) MQTT broker (Mosquitto) for event messaging, and (3) declarative automations in Nix that trigger on Frigate review events and dispatch mobile notifications with snapshots.
+This project adds centralized logging, alert delivery, and comprehensive service monitoring to an existing Prometheus + Grafana metrics stack. The homelab already collects metrics from all hosts but has two critical gaps: (1) alert rules exist but nobody receives notifications, and (2) logs are scattered across hosts with no aggregation or search capability. The research confirms the Grafana stack (Loki + Alloy + Grafana Unified Alerting) is the right choice for NixOS homelabs, with strong module support and straightforward integration patterns.
 
-The recommended approach follows a layered implementation: establish the integration foundation first (custom component + config entries), then build notification automations using the frigate/reviews MQTT topic, and finally polish with dashboard views using advanced-camera-card. The entire integration runs locally on ser8 (Frigate, Mosquitto, HA all on localhost), with external access via Tailscale for mobile notifications.
+The recommended approach uses Loki for log aggregation on firebat (the monitoring host), Grafana Alloy on all hosts for journal shipping (replacing deprecated Promtail), Blackbox Exporter for HTTP/ICMP probing, and Grafana Unified Alerting for notification delivery via email or webhooks. All components have mature NixOS modules and fit the existing declarative provisioning patterns. The stack integrates naturally with existing Prometheus metrics and Home Assistant automations.
 
-The primary risk is the hybrid declarative/imperative model inherent to modern Home Assistant on NixOS. Two critical config entries (MQTT broker connection, Frigate integration URL) cannot be declared in Nix and must be configured once through the HA web UI. These persist in /var/lib/hass/.storage/ via impermanence, but this creates a one-time manual setup step that breaks pure Nix reproducibility. Mitigate by (1) verifying impermanence correctly persists .storage/, (2) documenting the UI setup steps in a runbook, and (3) validating persistence survives reboots before building automations on top.
+The primary risk is impermanence-related data loss on ser8 (which uses ZFS rollback). Loki MUST run on firebat where state persists naturally, and Promtail/Alloy positions files MUST be added to ser8's persistence configuration. Secondary risks include schema version mismatches (Loki 3.x requires TSDB + v13), silent permission failures (journal access), and alert delivery confusion (Prometheus vs Grafana alerting). All critical pitfalls have known mitigations with strong documentation.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is already determined by existing infrastructure: Frigate 0.15.2 NVR, Home Assistant (NixOS module), Mosquitto MQTT broker, all running on ser8. The missing piece is the Frigate custom component for Home Assistant, available in nixpkgs as `home-assistant-custom-components.frigate`.
+The research identified seven technology additions, all available in nixpkgs 25.05 with native NixOS modules. No unstable packages required. Core additions center on the Grafana ecosystem for natural integration with the existing Prometheus/Grafana setup.
 
 **Core technologies:**
-- **Frigate custom component** (nixpkgs): Creates HA entities from Frigate MQTT messages, proxies API for media access — official integration, HIGH confidence
-- **Mosquitto MQTT** (already running): Message broker for Frigate-to-HA events and entity state — lightweight, localhost-only, already configured
-- **home-assistant.config automations** (declarative Nix): Push notification logic with snapshot attachments — version-controlled, reproducible
-- **advanced-camera-card** (customLovelaceModules): Dashboard for live feeds and event browsing — optional polish, verify nixos-25.05 availability
-- **HA Companion App** (iOS/Android): Push notification endpoint with image support — requires manual device registration
+
+- **Grafana Loki 3.4.5** (log backend) — Native NixOS module with filesystem storage, TSDB indexing, 30-day retention matching Prometheus. Runs on firebat where state persists naturally.
+- **Grafana Alloy 1.8.3** (log collector) — Replaces Promtail (EOL March 2026). NixOS module available, uses loki.source.journal for systemd scraping. Future-proof official replacement.
+- **Blackbox Exporter 0.27.0** (HTTP/ICMP probes) — Native NixOS exporter module. Probes 12+ services for uptime, latency, cert expiry. Runs on firebat with Prometheus.
+- **Grafana SMTP config** (email alerting) — Built into Grafana, uses services.grafana.settings.smtp with Gmail App Password via SOPS. No new service.
+- **Grafana Unified Alerting** (alert rules + delivery) — Declarative provisioning via services.grafana.provision.alerting. Replaces need for standalone Alertmanager.
+- **Home Assistant Prometheus integration** (HA metrics) — Built-in HA feature exposing /api/prometheus endpoint. Enables entity state tracking in Grafana.
+- **Loki datasource provisioning** — Standard Grafana datasource config alongside existing Prometheus datasource.
+
+**Version confidence:** All packages verified in nixpkgs 25.05. Loki and Alloy are 2-5 minor versions behind upstream but stable for homelab use (filesystem storage and journal scraping APIs unchanged).
 
 ### Expected Features
 
-Research identified clear feature tiers based on official Frigate documentation and community patterns.
+Research categorized features into table stakes (monitoring broken without them), differentiators (elevate setup quality), and anti-features (avoid complexity). MVP focuses heavily on table stakes since existing alert rules fire into the void.
 
 **Must have (table stakes):**
-- Frigate entities in HA (cameras, motion sensors, detection switches) — without entities, the systems are disconnected
-- MQTT connectivity between Frigate and HA — foundation for all entity creation and automation
-- Push notifications on person detection with snapshot — the primary motivation for this milestone
-- Per-camera identification — users need to know WHERE detection happened
-- Notification deduplication — prevents spam from repeated review updates
+
+- Alert delivery via email — Existing Prometheus rules are decorative without notification delivery
+- Service HTTP probes — Need to know if Jellyfin/Sonarr/Radarr/etc respond, not just that processes run
+- Disk space alerting per mount — Graduated severity for root, /mnt/media, /mnt/cameras
+- ZFS health alerting — Scrub errors, capacity thresholds, ARC hit ratio monitoring
+- Service crash/restart alerting — systemd-exporter already tracks, needs alert rules
+- Uptime status dashboard — Single-pane green/red for every service
+- Host down alerting with delivery — Existing rule needs notification path
 
 **Should have (competitive):**
-- Camera dashboard with live feeds — visual monitoring alongside home controls
-- Zone-aware notifications — "person at front porch" vs "person detected anywhere"
-- Severity-based filtering — Frigate 0.14+ has alert vs detection severity, only alert-level events push
-- Quiet hours / Do Not Disturb — suppress notifications during sleep or when home
-- Actionable notification buttons — tap to view live feed or clip
+
+- Log aggregation across hosts — Searchable journald history, currently 1GB per-host with no central view
+- Log-based error alerting — Catch OOM kills, ZFS errors, service crash patterns metrics miss
+- HA entity tracking dashboard — Camera online/offline, MQTT status, automation success rates
+- Grafana alerting provisioned as code — Declarative YAML avoids click-ops
+- Network connectivity monitoring — ICMP probes, DNS resolution checks against pi4 AdGuard
+- Certificate expiry monitoring — Tailscale + Caddy cert expiry tracking
 
 **Defer (v2+):**
-- Zone configuration in Frigate (separate Nix change, requires per-camera zone definition)
-- Birdseye overview dashboard (easy but not essential)
-- Clip/event history browsing (provided by advanced-camera-card, polish tier)
 
-**Explicitly avoid (anti-features):**
-- HACS for any component — conflicts with NixOS declarative philosophy
-- LLM/AI verification — adds latency, cost, complexity for marginal accuracy gain
-- Facial recognition — privacy concern, high false-positive rate
-- Node-RED flows — over-engineering for simple MQTT-to-notification patterns
-- External notification services (Pushover, Telegram) — HA Mobile App already works
+- SMART disk monitoring — Useful but hardware-specific, nixpkgs smartctl_exporter has quirks
+- Standalone Alertmanager — Grafana Unified Alerting handles everything for homelab scale
+- Uptime Kuma / status page — Redundant with Blackbox + Grafana dashboard
+- Multi-tenant features — auth_enabled: false is correct for single-operator homelab
 
 ### Architecture Approach
 
-All components run on ser8 localhost. The integration uses two communication paths: (1) the frigate-hass-integration custom component creates entities via MQTT subscription and proxies Frigate's HTTP API for media access, and (2) MQTT-triggered automations in HA respond to frigate/reviews events to dispatch push notifications via the mobile_app service.
+The architecture centers on firebat as the monitoring hub (Prometheus, Grafana, Loki, Blackbox all co-located). Agents on each host (node-exporter, systemd-exporter, Alloy) push metrics and logs to firebat. This follows the existing pattern and avoids cross-host query dependencies.
 
 **Major components:**
-1. **Frigate NVR** — Camera ingestion, object detection, recording, MQTT event publishing. Owns detection logic and snapshot generation.
-2. **Mosquitto** — Pure message broker routing frigate/reviews, frigate/events, and per-camera topics between Frigate and HA. No transformation.
-3. **Home Assistant** — Automation hub, dashboard presentation, push notification dispatch. Owns when-to-notify logic.
-4. **Frigate custom component** — Entity auto-creation from MQTT, /api/frigate/notifications/* proxy for media access. Runs inside HA process.
-5. **HA Companion App** — Mobile push notification endpoint. Requires external URL access via Tailscale for snapshot images.
-6. **Caddy** (firebat) — Reverse proxy for HTTPS access to both Frigate and HA. Not used for internal localhost integration.
 
-**Data flow pattern for notifications:**
-Camera RTSP → Frigate detects person → Publishes frigate/reviews (type: new, severity: alert, camera: driveway, detections: [event-id]) → HA automation triggers on MQTT → Conditions filter (type == new, severity == alert, "person" in objects) → Action: notify.mobile_app with image: /api/frigate/notifications/event-id/thumbnail.jpg, tag: frigate-review-id → Companion app shows notification with snapshot.
+1. **Loki on firebat** — Log aggregation backend with TSDB index, filesystem chunks, compactor-based retention. Uses /var/lib/loki for state. Co-located with Grafana for localhost datasource queries.
 
-**Critical pattern:** Use frigate/reviews topic (not frigate/events) for notifications because reviews aggregate frame-level detections into incidents, provide severity filtering, and include detection IDs for media fetching. Using frigate/events causes notification floods.
+2. **Alloy on all hosts (ser8, firebat, pi4)** — Scrapes local systemd journal via loki.source.journal, adds labels (host, unit, priority), pushes to Loki HTTP API. Stateless except positions file (must persist on ser8).
+
+3. **Blackbox Exporter on firebat** — Runs HTTP, TCP, ICMP probe modules. Prometheus scrapes it using multi-target relabel pattern. Probes direct service ports (http://ser8.local:8096) not Caddy proxies to avoid self-signed cert issues.
+
+4. **Grafana Unified Alerting on firebat** — Evaluates alert rules from Prometheus AND Loki datasources. Routes via notification policies to contact points (email via SMTP, webhook to HA). Replaces need for Prometheus Alertmanager.
+
+5. **Home Assistant Prometheus integration on ser8** — Enables /api/prometheus endpoint via prometheus: in HA config. Prometheus scrapes with bearer token. Exposes entity states as metrics.
+
+**Key patterns:**
+
+- Push model for logs (Alloy pushes, Loki receives) — unlike Prometheus pull model
+- Declarative provisioning for all Grafana resources (datasources, dashboards, alerting) — matches existing pattern
+- Host label consistency (config.networking.hostName) — enables metric/log correlation
+- SOPS for all credentials (SMTP password, HA token, etc.) — extends existing secrets pattern
 
 ### Critical Pitfalls
 
-Research identified 13 pitfalls across critical/moderate/minor severity. Top 5 that directly impact roadmap:
+The research identified 17 pitfalls across critical, moderate, and minor severity. Top 5 have rewrites-or-data-loss consequences.
 
-1. **MQTT Integration Requires UI Config Flow, Not YAML** — Modern HA requires MQTT broker connection via web UI (Settings → Integrations → Add MQTT). Declaring mqtt: in NixOS config generates yaml entries that are silently ignored. Prevention: Accept one-time manual UI step, verify config entry persists in .storage/core.config_entries, document in runbook. CRITICAL for Phase 1.
+1. **Loki on wrong host (ser8 vs firebat) + impermanence** — ser8 uses ZFS rollback on boot. Deploying Loki there loses all log data on every reboot. Alloy positions file also needs persistence on ser8 (/var/lib/promtail or /var/lib/alloy). Deploy Loki on firebat, persist Alloy state on ser8.
 
-2. **Frigate Integration Requires Custom Component, Not Just MQTT Discovery** — Frigate does not publish HA MQTT discovery messages. Without the frigate-hass-integration custom component, no entities appear. Prevention: Add pkgs.home-assistant-custom-components.frigate to customComponents, configure integration URL via UI (http://127.0.0.1:5000). CRITICAL for Phase 1.
+2. **Loki 3.x schema mismatch** — nixpkgs 25.05 ships Loki 3.4.5 which requires TSDB index + v13 schema. Old examples use boltdb-shipper + v11/v12 and Loki refuses to start. Use schema: "v13", store: "tsdb", object_store: "filesystem" from day one.
 
-3. **Impermanence Wipes UI-Configured Integrations on Reboot** — MQTT and Frigate config entries live in /var/lib/hass/.storage/. ZFS root rollback destroys these unless /var/lib/hass is properly persisted. Prevention: Verify impermanence bind mount works, test reboot before building automations. CRITICAL for Phase 1.
+3. **Grafana SMTP password in Nix store** — services.grafana.settings.smtp.password writes plaintext to world-readable /nix/store. Use $__file{${config.sops.secrets.grafana_smtp_password.path}} provider pattern (same as grafana_admin_password).
 
-4. **Declarative Config Overwrites UI Changes on NixOS Rebuild** — configuration.yaml is symlinked from Nix store, regenerated on each activation. Prevention: Use split pattern: "automation manual" for Nix automations, "automation ui" = "!include automations.yaml" for UI-created ones. Create empty automations.yaml via tmpfiles to prevent boot failure. CRITICAL for Phase 2.
+4. **Alloy cannot read journald without group membership** — Alloy user needs systemd-journal group or service fails silently (no errors, zero logs). Add users.users.alloy.extraGroups = [ "systemd-journal" ] on all hosts or use systemd.services.alloy.serviceConfig.SupplementaryGroups.
 
-5. **Service Startup Race Between Mosquitto, Frigate, and HA** — Without explicit systemd dependencies, Frigate may start before Mosquitto accepts connections, or HA loads before Frigate publishes initial state. Prevention: Add after/requires dependencies: Frigate after mosquitto.service, HA after both. MODERATE for Phase 1.
+5. **Blackbox exporter relabeling pattern** — Multi-target exporter requires specific relabel_configs: copy __address__ to __param_target, copy to instance, replace __address__ with localhost:9115. Wrong config = scraping exporter instead of targets.
+
+**Moderate pitfalls:** Loki retention requires compactor.retention_enabled (not automatic), Grafana file-provisioned alerts are UI-locked (plan workflow), HA Prometheus integration needs manual prometheus: in config, Prometheus vs Grafana alerting confusion (choose one notification path), Loki datasource not auto-provisioned.
+
+**Minor pitfalls:** Gmail App Password format (16 chars, port 587, STARTTLS), Loki WAL silent data loss on disk full, blackbox TLS verification fails on Caddy local_certs, Alloy backlog after ser8 reboot if max_age too large.
 
 ## Implications for Roadmap
 
-Based on research, this milestone naturally decomposes into 3 sequential phases driven by dependency ordering and pitfall mitigation.
+Research suggests a 4-phase approach based on dependencies, risk mitigation, and incremental value delivery. Each phase stands alone and delivers observable improvement.
 
-### Phase 1: Integration Foundation (Service Wiring + Entity Creation)
-**Rationale:** Must establish baseline connectivity before building automations. The 3 critical config-flow pitfalls all surface here. This phase validates impermanence, systemd ordering, and one-time UI setup before any code depends on it.
+### Phase 1: Alert Delivery + Core Probes
 
-**Delivers:** Frigate entities appear in HA (cameras, motion sensors, detection switches, performance sensors). Manual verification that entities update in real-time and persist across reboots.
+**Rationale:** Existing Prometheus rules fire silently. This is the highest-impact gap — monitoring exists but notifications don't work. Blackbox probes add service-level health checks (not just process checks). Both are foundational for later phases.
 
-**Addresses:**
-- Frigate custom component installation (customComponents)
-- MQTT config entry (UI, one-time)
-- Frigate config entry (UI, one-time)
-- Verify entity creation (table stakes from FEATURES.md)
-- Impermanence validation (reboot test)
+**Delivers:** Email notifications for existing alerts, HTTP/ICMP uptime monitoring for 12+ services, uptime dashboard
 
-**Avoids:**
-- Pitfall 1 (MQTT config flow)
-- Pitfall 2 (custom component requirement)
-- Pitfall 3 (impermanence wipe)
-- Pitfall 5 (startup race)
-- Pitfall 10 (missing automations.yaml)
+**Addresses features:**
+- Alert delivery via email (table stakes)
+- Service HTTP probes (table stakes)
+- Uptime status dashboard (table stakes)
+- Host down alerting with delivery (table stakes)
 
-**Implementation notes:**
-- Add systemd dependencies: frigate.service after/requires mosquitto.service, home-assistant.service after mosquitto + frigate
-- Create empty automations.yaml via tmpfiles rule
-- Document UI setup steps in .planning/research/RUNBOOK.md: (1) Add MQTT integration at localhost:1883, (2) Add Frigate integration at http://127.0.0.1:5000
-- After deployment, reboot and verify entities persist
-- Add "automation manual" and "automation ui" split to config structure
+**Avoids pitfalls:**
+- SMTP password in Nix store (use SOPS + $__file{})
+- Gmail config mistakes (port 587, STARTTLS, App Password)
+- Blackbox relabeling pattern (use exact multi-target config)
+- Existing rules fire silently (connect to Grafana Alertmanager first)
 
-**Research flag:** No additional research needed. Well-documented patterns.
+**Stack elements:** Grafana SMTP, Blackbox Exporter, Grafana Unified Alerting
 
-### Phase 2: Push Notifications (Primary Goal)
-**Rationale:** Core value delivery. Once entities exist, notifications are pure MQTT automation logic. This phase implements the primary user story: "When Frigate detects a person, I get a push notification with a snapshot on my phone."
+**Research flag:** NONE — well-documented patterns, existing codebase provides model
 
-**Delivers:** Working push notifications with snapshots for person detection on all 3 cameras. Notifications include camera name, snapshot image, and deduplication via tags.
+### Phase 2: Log Aggregation
 
-**Addresses:**
-- Person detection notification automation (table stakes)
-- Notification deduplication (table stakes)
-- Per-camera identification (table stakes)
-- Snapshot in notifications (table stakes)
-- Severity-based filtering (differentiator, built into frigate/reviews)
+**Rationale:** Depends on Phase 1 being stable (don't add log infrastructure until basic alerting works). Log aggregation is the second-biggest gap after alert delivery. Enables "what happened on ser8 at 3am" queries and log-based alerting.
 
-**Avoids:**
-- Pitfall 4 (declarative/UI boundary via automation manual section)
-- Pitfall 7 (notification snapshots require external URL + unauthenticated proxy)
+**Delivers:** Centralized searchable logs from all 3 hosts, LogQL queries in Grafana Explore, 30-day log retention
 
-**Implementation notes:**
-- Declare automation in services.home-assistant.config."automation manual"
-- Trigger: MQTT frigate/reviews topic
-- Condition: type == "new", severity == "alert", "person" in objects
-- Action: notify.mobile_app_DEVICE with image: /api/frigate/notifications/.../thumbnail.jpg, tag: frigate-review-id
-- Configure HA external URL in UI: https://hass.shad-bangus.ts.net
-- Enable "Unauthenticated notification event proxy" in Frigate integration settings (Advanced Mode required)
-- Register Companion App via Tailscale URL, verify device appears in .storage/core.device_registry
+**Addresses features:**
+- Log aggregation (differentiator)
+- Log-based error alerting (differentiator, enables OOM/crash pattern detection)
 
-**Research flag:** No additional research needed. Official Frigate notification guide provides complete automation template.
+**Avoids pitfalls:**
+- Loki on wrong host (deploy on firebat, NOT ser8)
+- Loki 3.x schema (use TSDB + v13)
+- Alloy journal permissions (systemd-journal group on all hosts)
+- Alloy positions persistence (add /var/lib/alloy to ser8 impermanence)
+- Loki retention not working (enable compactor from start)
+- Loki datasource not auto-provisioned (add to grafana.nix)
+- Network access (open port 3100 on firebat)
+- Backlog after ser8 reboot (max_age: 12h + persist positions)
 
-### Phase 3: Dashboard Polish (Optional, Quality of Life)
-**Rationale:** Notifications work, now add visual monitoring. This phase is entirely optional polish — the core functionality is complete without it. Dashboard iteration can happen in UI before codifying in Nix.
+**Stack elements:** Loki, Alloy (all hosts), Loki datasource
 
-**Delivers:** Lovelace dashboard with live camera feeds, motion state indicators, detection toggle switches, and event browsing (if advanced-camera-card is available).
+**Research flag:** MEDIUM — Alloy config format (HCL-like) different from Promtail, verify NixOS module behavior. Consider starting with Promtail (EOL Feb 28, 2026 but simpler NixOS integration) and migrating to Alloy in Phase 4.
 
-**Addresses:**
-- Camera dashboard with live feeds (differentiator)
-- Detection toggle switches (table stakes, already exist as entities, just need dashboard cards)
-- advanced-camera-card for event timeline and clip browsing (differentiator)
+### Phase 3: Refined Alert Rules + Dashboards
 
-**Avoids:**
-- HACS anti-pattern (use customLovelaceModules if available)
-- Over-engineering dashboard before validating notification UX
+**Rationale:** With alert delivery (Phase 1) and logs (Phase 2) working, refine and expand alerting. Migrate existing Prometheus rules to Grafana, add graduated severity, add log-based alerts, provision everything as code.
 
-**Implementation notes:**
-- Verify pkgs.home-assistant-custom-lovelace-modules.advanced-camera-card exists on nixos-25.05 branch
-- If not packaged, defer dashboard polish or create via picture-entity cards
-- Build dashboard iteratively in HA UI, do not attempt to declare Lovelace in Nix (complexity not worth it)
-- Dashboard config lives in .storage/, persists via impermanence
+**Delivers:** Graduated alert severity (warning/critical), per-mount disk alerts, ZFS scrub error alerts, service restart alerts, log-based error alerts, provisioned alert rules as YAML
 
-**Research flag:** Need to verify advanced-camera-card availability in nixpkgs. If not available, document manual installation path or defer.
+**Addresses features:**
+- Disk space alerting per mount (table stakes)
+- ZFS health alerting (table stakes)
+- Service crash/restart alerting (table stakes)
+- Grafana alerting provisioned as code (differentiator)
+
+**Avoids pitfalls:**
+- Grafana file-provisioned alerts UI-locked (start with UI rules, provision after stable)
+- Prometheus vs Grafana alerting confusion (migrate Prometheus rules to Grafana)
+
+**Stack elements:** Grafana alert provisioning, LogQL alert rules
+
+**Research flag:** LOW — alert rule catalog provided in FEATURES.md, provisioning pattern documented
+
+### Phase 4: Home Assistant Monitoring
+
+**Rationale:** Independent of log aggregation, depends on alert delivery working. Complements Prometheus with HA-native monitoring. Enables camera/automation-specific alerts via mobile push.
+
+**Delivers:** HA entity metrics in Prometheus/Grafana, entity tracking dashboard, HA infrastructure automations (camera offline → mobile push)
+
+**Addresses features:**
+- HA entity tracking dashboard (differentiator)
+- Network connectivity monitoring (differentiator, via HA binary sensors)
+
+**Avoids pitfalls:**
+- HA Prometheus integration not enabled (add prometheus: to config)
+- Auth token needed (Long-Lived Access Token via SOPS)
+
+**Stack elements:** HA Prometheus integration, HA automations
+
+**Research flag:** NONE — HA integration well-documented, existing HA config provides pattern
 
 ### Phase Ordering Rationale
 
-- **Phase 1 must come first** because automations and dashboards require entities to exist. The integration foundation validates all config-flow setup and impermanence behavior. Without entity creation working and persisting, Phases 2-3 cannot proceed.
-
-- **Phase 2 before Phase 3** because notifications are the stated goal and dashboard is polish. If advanced-camera-card is not packaged, Phase 3 can be deferred entirely without blocking core functionality.
-
-- **Each phase is independently deployable and testable**, enabling incremental validation rather than big-bang integration.
-
-- **Architecture naturally suggests this decomposition**: Phase 1 = entity layer, Phase 2 = automation layer, Phase 3 = presentation layer. Clean separation of concerns.
-
-- **Pitfall mitigation drives phase structure**: All critical pitfalls surface in Phase 1 (config flow, impermanence, startup ordering). Phase 2 addresses moderate pitfalls (notification URLs, external access). Phase 3 has minimal risk.
+- **Phase 1 first** because existing monitoring is broken without alert delivery. Immediate value.
+- **Phase 2 before Phase 3** because log-based alerts (Phase 3) depend on Loki running (Phase 2).
+- **Phase 4 independent** can happen anytime after Phase 1, but deferred to avoid too many changes at once.
+- **Pitfall mitigation front-loaded:** All critical pitfalls addressed in Phase 1-2 (impermanence, schema, permissions, secrets).
 
 ### Research Flags
 
 **Phases needing deeper research during planning:**
-- **Phase 3:** Verify advanced-camera-card package availability on nixos-25.05. If not available, decide between (1) manual Lovelace card creation in UI, (2) defer dashboard polish, or (3) package it ourselves.
+- **Phase 2 (Log Aggregation):** Alloy vs Promtail decision (Promtail simpler but EOL March 2026, Alloy future-proof but newer). Verify NixOS Alloy module behavior and HCL config format. May start with Promtail and migrate.
 
 **Phases with standard patterns (skip research-phase):**
-- **Phase 1:** Well-documented in Frigate HA integration docs, NixOS Wiki, and existing codebase (frigate.nix, home-assistant.nix). No unknowns.
-- **Phase 2:** Official Frigate notification guide provides complete automation template. MQTT trigger patterns are standard HA. No unknowns.
+- **Phase 1:** Grafana SMTP, Blackbox Exporter, alert provisioning all have strong NixOS module docs and existing codebase examples.
+- **Phase 3:** Alert rule catalog provided by research (awesome-prometheus-alerts), provisioning follows Phase 1 pattern.
+- **Phase 4:** HA Prometheus integration official and simple (one-line config), automation patterns already in codebase.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All components already running (Frigate, Mosquitto, HA). Only missing piece is frigate custom component, confirmed available in nixpkgs via PR #371866. |
-| Features | HIGH | Feature requirements derived from official Frigate HA integration docs and notification guide. Table stakes are clearly documented, differentiators have community consensus. |
-| Architecture | HIGH | Verified against official Frigate MQTT docs, HA integration docs, and existing codebase. Data flow patterns match recommended approach. |
-| Pitfalls | HIGH | All critical pitfalls validated via official docs, NixOS Wiki, GitHub issues, and community reports. Impermanence behavior confirmed in existing ser8 config. |
+| Stack | HIGH | All packages verified in nixpkgs 25.05, NixOS modules exist for all components, versions stable |
+| Features | HIGH | Clear table stakes vs differentiators, existing alert rules catalog (awesome-prometheus-alerts), codebase review confirms gaps |
+| Architecture | HIGH | Extends existing Prometheus/Grafana pattern on firebat, component placement verified against impermanence config |
+| Pitfalls | HIGH | 17 pitfalls identified with sources, all critical ones have documented mitigations, several confirmed from codebase analysis |
 
 **Overall confidence:** HIGH
 
-Research covered all four areas comprehensively. Official Frigate documentation is excellent and covers the exact integration path (MQTT + custom component + notifications). NixOS-specific concerns (config flow vs declarative yaml, impermanence, customComponents pattern) are well-documented on NixOS Wiki and confirmed in existing codebase.
-
 ### Gaps to Address
 
-Minor gaps that can be resolved during planning/execution:
+**Alloy vs Promtail timing:** Promtail EOL is February 28, 2026 (18 days from research date). If Phase 2 timeline extends beyond that, start with Alloy directly. If Phase 2 starts immediately, Promtail is simpler and can be migrated later using `alloy convert --source-format=promtail`.
 
-- **advanced-camera-card availability**: Needs package search on nixos-25.05 branch during Phase 3 planning. If not available, document workaround (manual card creation) or defer dashboard polish.
+**firebat impermanence status:** Research found firebat imports impermanence modules but no impermanence.nix file. Needs verification during Phase 2: if firebat does NOT rollback root, Loki state persists naturally. If it does, add /var/lib/loki to persistence config.
 
-- **Frigate integration version compatibility**: Check nixpkgs version of home-assistant-custom-components.frigate matches Frigate 0.15.2 during Phase 1 planning. Version mismatches can cause entity creation failures. Mitigation: pin package version if needed.
+**Blackbox TLS verification:** Caddy uses local_certs (self-signed). Blackbox probes should target direct HTTP ports (http://ser8.local:8096) not Caddy HTTPS proxies. For external accessibility checks, probe Tailscale URLs (*.shad-bangus.ts.net) which have real Let's Encrypt certs.
 
-- **Mobile device name for notify service**: The automation needs the actual device name (notify.mobile_app_DEVICE_NAME). This is determined during Companion App registration in Phase 2. Placeholder in automation template, fill after registration.
+**Alert rule tuning window:** Grafana file-provisioned alert rules are UI-locked. Plan for iteration: start with UI-created rules during tuning phase, migrate to provisioned YAML once thresholds stable. Or accept rebuild cycle for changes.
 
-- **Tailscale external URL validation**: Assumption that https://hass.shad-bangus.ts.net works for external notification image access needs validation during Phase 2. If images don't load, may need to adjust Caddy config or Tailscale settings.
-
-All gaps are implementation details, not architectural unknowns. None block roadmap creation.
+**HA entity filtering:** HA Prometheus integration exposes all entities by default. May want to filter with include_domains to reduce metric cardinality. Test with full export first, refine if Prometheus performance issues appear.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Frigate Home Assistant Integration Docs](https://docs.frigate.video/integrations/home-assistant/) — integration setup, entity types, config flow requirements
-- [Frigate MQTT Documentation](https://docs.frigate.video/integrations/mqtt/) — topic structure, payload formats, retained messages
-- [Frigate HA Notification Guide](https://docs.frigate.video/guides/ha_notifications/) — complete automation templates, best practices
-- [frigate-hass-integration GitHub](https://github.com/blakeblackshear/frigate-hass-integration) — custom component source, version compatibility
-- [NixOS Wiki: Home Assistant](https://wiki.nixos.org/wiki/Home_Assistant) — customComponents pattern, config flow vs yaml, impermanence considerations
-- [Home Assistant MQTT Integration](https://www.home-assistant.io/integrations/mqtt) — config flow requirement, YAML deprecation
-- [NixOS HA Module Source](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/home-automation/home-assistant.nix) — automation manual/ui coexistence pattern
-- Existing codebase (modules/automation/frigate.nix, modules/automation/home-assistant.nix, hosts/ser8/impermanence.nix) — current configuration state
+
+- NixOS Wiki: Grafana Loki — Module usage, configuration patterns
+- NixOS Wiki: Grafana — Provisioning patterns including alerting
+- NixOS Wiki: Prometheus — Exporter module patterns
+- nixpkgs module sources (loki.nix, blackbox.nix, alloy.nix, promtail.nix) — Implementation details
+- MyNixOS options reference (services.loki, services.alloy, services.grafana.provision.alerting.*) — Configuration options
+- Grafana official docs (Loki, Alloy, Unified Alerting, file provisioning) — Architecture and features
+- Home Assistant Prometheus integration docs — Configuration and endpoint spec
+- Prometheus official docs (multi-target exporter guide, alerting) — Blackbox pattern, alert rules
+- Awesome Prometheus Alerts (samber.github.io) — Alert rule catalog with expressions
+- Loki 3.0 release notes, upgrade guide — Schema changes, TSDB requirements
+- Loki retention documentation — Compactor configuration
+- Loki WAL documentation — Silent data loss behavior
+- Grafana community forums (SMTP setup, provisioning patterns) — Common configurations
+- GitHub issues (Loki #7836, nixpkgs #2865) — Known bugs and workarounds
+- Existing codebase (modules/gateway/prometheus.nix, grafana.nix, modules/automation/home-assistant.nix, hosts/ser8/impermanence.nix) — Current patterns and gaps
 
 ### Secondary (MEDIUM confidence)
-- [nixpkgs PR #371866](https://github.com/NixOS/nixpkgs/pull/371866) — Frigate component package version
-- [advanced-camera-card GitHub](https://github.com/dermotduffy/advanced-camera-card) — dashboard card features, renamed from frigate-hass-card
-- [SgtBatten HA Blueprints](https://github.com/SgtBatten/HA_blueprints) — community notification automation patterns
-- [Frigate GitHub issue #5295](https://github.com/blakeblackshear/frigate/issues/5295) — MQTT retained message cleanup
-- [HA Community: MQTT YAML not working](https://community.home-assistant.io/t/mqtt-integration-setup-in-configuration-yaml-does-not-work/480421) — config flow requirement confirmation
-- [HA Community: Frigate MQTT issues](https://community.home-assistant.io/t/frigate-mqtt-not-playing-nicely-together/688973) — integration URL troubleshooting
-- [Frigate 0.14 Review Notifications](https://github.com/blakeblackshear/frigate/discussions/11554) — severity filtering introduction
+
+- Promtail deprecation blog posts (techanek.com) — EOL timeline context
+- Grafana blog: provisioning notification policies — API workarounds
+- Prometheus Alertmanager vs Grafana Alerts analysis articles — Decision criteria
+- nixpkgs issues (#293088) — Loki config validation discussions
+
+### Tertiary (LOW confidence, reference only)
+
+- Third-party NixOS observability examples (github.com/shinbunbun/nixos-observability) — Pattern validation
+- Community Home Assistant blueprints — Automation ideas (not using blueprints, patterns only)
 
 ---
-*Research completed: 2026-02-09*
+*Research completed: 2026-02-10*
 *Ready for roadmap: yes*

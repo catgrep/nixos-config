@@ -1,212 +1,443 @@
 # Technology Stack
 
-**Project:** Frigate-Home Assistant Integration on NixOS
-**Researched:** 2026-02-09
+**Project:** Monitoring, Alerting & Log Aggregation for NixOS Homelab
+**Researched:** 2026-02-10
 
-## Recommended Stack
+## Existing Infrastructure (DO NOT re-add)
 
-### Integration Layer (Frigate <-> Home Assistant)
+These are already deployed and working. Listed here to prevent duplication and to show integration points.
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| `home-assistant-custom-components.frigate` | 5.6.0+ (nixpkgs) | HA custom component providing Frigate entities, sensors, switches, cameras | The only officially supported integration path. Creates camera entities, motion binary sensors, detection switches, and sensor entities per camera. Packaged in nixpkgs since NixOS 23.11 via `services.home-assistant.customComponents`, so no HACS needed. | HIGH |
-| `home-assistant-custom-lovelace-modules.advanced-camera-card` | 7.x (nixpkgs) | Dashboard card for live camera views, clip/snapshot browsing | Renamed from `frigate-hass-card` in v7.0.0 (Feb 2025). Provides live view, mini-gallery, event browsing, WebRTC support. Available in nixpkgs as a Lovelace module via `customLovelaceModules`. | MEDIUM |
+| Technology | Version | Where | Integration Point |
+|------------|---------|-------|-------------------|
+| Prometheus | 3.5.0 | firebat | Scrapes node-exporter, zfs-exporter, systemd-exporter, process-exporter, frigate, caddy, jellyfin, exportarr, adguard |
+| Grafana | 12.0.7 | firebat | 11 provisioned dashboards, Prometheus datasource, anonymous viewer access |
+| node-exporter | - | ser8, firebat, pi4 | Port 9100, system metrics |
+| systemd-exporter | - | ser8, firebat, pi4 | Port 9558, unit state/restarts |
+| process-exporter | - | ser8, firebat, pi4 | Port 9256, per-service CPU/memory/IO |
+| Home Assistant | - | ser8 | MQTT, Companion app push notifications |
+| Caddy | - | firebat | Reverse proxy for all services, metrics on :2019 |
+| SOPS | - | all hosts | Secrets management with age encryption |
 
-### Communication Layer (MQTT)
+## Recommended Stack Additions
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| Mosquitto MQTT broker | Already deployed | Message bus between Frigate and Home Assistant | Already running on localhost:1883 with no auth. Frigate already publishes to MQTT. No changes needed to the broker. | HIGH |
-| HA MQTT integration | Built-in | Subscribes to Frigate MQTT topics, discovers entities | Already listed in `extraComponents`. Requires one-time UI setup to point at localhost:1883. Cannot be fully declarative -- MQTT integration config entry must be created through HA UI on first boot. | HIGH |
+### 1. Grafana Loki (Log Aggregation Server)
 
-### Notification Layer
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| Grafana Loki | 3.4.5 | firebat | Log aggregation backend, stores logs from all hosts | The standard log backend for the Grafana ecosystem. Already a native NixOS module (`services.loki`). Integrates seamlessly with existing Grafana for log exploration via LogQL. Lightweight single-binary deployment suitable for homelab scale. |
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| HA Mobile App (`mobile_app` component) | Built-in | Push notifications to iOS/Android | Already in `extraComponents`. Standard approach for Frigate notifications. Provides `notify.mobile_app_<device>` service. | HIGH |
-| HA Automations (declarative YAML in Nix) | N/A | Trigger notifications on detection events | Write automations directly in `services.home-assistant.config` as Nix attribute sets. Triggers on `frigate/reviews` MQTT topic with `payload: alert` for high-severity detections. | HIGH |
+**Confidence:** HIGH -- verified package version 3.4.5 in nixpkgs nixos-25.05 via `nix eval`
 
-### Dashboard Layer
+**NixOS Module:** `services.loki`
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| HA Lovelace dashboards | Built-in | Camera views, event history, detection controls | Configure via HA UI after integration entities are available. Cannot be fully declarative. | HIGH |
-| `advanced-camera-card` (Lovelace module) | 7.x | Rich camera card with live view, clip browsing, WebRTC | Provides far better camera experience than built-in picture-entity card. Supports Frigate-native features like event scrubbing. | MEDIUM |
+Key options:
+- `services.loki.enable` -- enable Grafana Loki
+- `services.loki.configuration` -- Nix attribute set mapped to Loki's YAML config
+- `services.loki.dataDir` -- data directory (default: `/var/lib/loki`)
+- `services.loki.user` / `services.loki.group` -- service user (default: `loki`)
 
-### Existing Infrastructure (No Changes Needed)
+**Deployment location:** firebat (same host as Grafana/Prometheus). Firebat uses ext4 on a 512GB NVMe, no impermanence -- Loki data persists naturally at `/var/lib/loki`. No special persistence configuration needed.
 
-| Technology | Current State | Notes |
-|------------|--------------|-------|
-| Frigate NVR 0.15.2 | Running, MQTT enabled, snapshots enabled, 3 active cameras | Already publishes to `frigate/events`, `frigate/reviews`, `frigate/<camera>/person/snapshot` etc. |
-| Mosquitto | Running on 127.0.0.1:1883, no auth | Frigate already connected |
-| Home Assistant | Running, `mqtt` + `mobile_app` in extraComponents | Needs MQTT config entry + Frigate integration setup |
-| Impermanence | `/var/lib/hass` persisted | HA state survives reboots. Config entries, automations stored here. |
-| Caddy reverse proxy | Frigate and HA both proxied | `frigate.vofi`, `hass.vofi`, plus Tailscale URLs |
-
-## NixOS-Specific Configuration
-
-### Frigate Custom Component (Declarative)
-
+**Configuration pattern:**
 ```nix
-services.home-assistant = {
-  # Add Frigate integration as a custom component
-  customComponents = with pkgs.home-assistant-custom-components; [
-    frigate
-  ];
+services.loki = {
+  enable = true;
+  configuration = {
+    auth_enabled = false;  # Single-tenant homelab
+    server.http_listen_port = 3100;
 
-  # Add camera card for dashboards
-  customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
-    # Check availability: may be frigate-hass-card or advanced-camera-card
-    # depending on nixpkgs version
-  ];
+    common = {
+      ring.instance_addr = "127.0.0.1";
+      replication_factor = 1;
+      path_prefix = "/var/lib/loki";
+    };
+
+    schema_config.configs = [{
+      from = "2026-02-10";
+      store = "tsdb";
+      object_store = "filesystem";
+      schema = "v13";
+      index = {
+        prefix = "index_";
+        period = "24h";
+      };
+    }];
+
+    storage_config.filesystem.directory = "/var/lib/loki/chunks";
+
+    limits_config = {
+      retention_period = "30d";  # Match Prometheus retention
+      ingestion_burst_size_mb = 16;
+    };
+
+    compactor = {
+      working_directory = "/var/lib/loki/compactor";
+      compaction_interval = "10m";
+      retention_enabled = true;
+      delete_request_store = "filesystem";
+    };
+  };
 };
 ```
 
-### Automations in Nix (Declarative)
+### 2. Alloy (Log Collector -- Promtail Replacement)
 
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| Grafana Alloy | 1.8.3 | ser8, firebat, pi4 | Collects journald logs and ships to Loki | **Promtail is EOL March 2026** -- one month from now. Alloy is the official replacement, already has a NixOS module (`services.alloy`), and is the future-proof choice. Uses `loki.source.journal` component for systemd journal scraping. Supports HCL-based config with a built-in debugging UI. |
+
+**Confidence:** HIGH -- verified package version 1.8.3 in nixpkgs nixos-25.05 via `nix eval`. Promtail EOL confirmed for March 2026 by Grafana Labs.
+
+**Why Alloy over Promtail:**
+- Promtail enters EOL March 2, 2026 -- installing it now would require a migration within weeks
+- Alloy has a NixOS module (`services.alloy`) with `enable`, `configPath`, `extraFlags`, `environmentFile`, `package` options
+- Alloy provides a debugging UI at port 12345 for inspecting pipeline state
+- Alloy uses the same Loki write protocol, so Loki config is identical regardless of collector
+- Alloy config uses HCL-like syntax, not YAML -- slightly different but well-documented migration path
+
+**NixOS Module:** `services.alloy`
+
+Key options:
+- `services.alloy.enable` -- enable Grafana Alloy
+- `services.alloy.configPath` -- path to directory containing `*.alloy` config files, or single file in Nix store
+- `services.alloy.extraFlags` -- extra CLI flags
+- `services.alloy.environmentFile` -- systemd EnvironmentFile for secrets
+- `services.alloy.package` -- the grafana-alloy package
+
+**Configuration pattern (Alloy HCL format):**
+```hcl
+// /etc/alloy/config.alloy -- journal scraping for NixOS host
+
+loki.source.journal "journal" {
+  forward_to = [loki.write.local.receiver]
+
+  relabel_rules = loki.relabel.journal.rules
+  labels = {
+    job = "journal",
+  }
+}
+
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal__hostname"]
+    target_label  = "hostname"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "priority"
+  }
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "syslog_identifier"
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://firebat.local:3100/loki/api/v1/push"
+  }
+}
+```
+
+**NixOS integration pattern:**
 ```nix
-services.home-assistant.config = {
-  # Declarative automations coexist with UI-created ones
-  "automation manual" = [
-    {
-      alias = "Frigate - Person Alert";
-      trigger = [
-        {
-          platform = "mqtt";
-          topic = "frigate/reviews";
-          payload = "alert";
-          value_template = "{{ value_json['type'] }}";
-        }
-      ];
-      condition = [
-        {
-          condition = "template";
-          value_template = "{{ 'person' in trigger.payload_json['before']['data']['objects'] }}";
-        }
-      ];
-      action = [
-        {
-          service = "notify.mobile_app_DEVICE_NAME";
-          data = {
-            title = "Person Detected";
-            message = "{{ trigger.payload_json['before']['data']['objects'] | join(', ') }} detected on {{ trigger.payload_json['before']['camera'] }}";
-            data = {
-              image = "/api/frigate/notifications/{{ trigger.payload_json['before']['data']['detections'][0] }}/thumbnail.jpg";
-            };
-          };
-        }
-      ];
-    }
-  ];
-  # Also allow UI-created automations
-  "automation ui" = "!include automations.yaml";
+# Write Alloy config as a Nix store path, reference via configPath
+services.alloy = {
+  enable = true;
+  configPath = pkgs.writeTextDir "config.alloy" ''
+    // ... Alloy HCL config here ...
+  '' + "/config.alloy";
 };
 ```
 
-### MQTT Integration (Partially Declarative)
+**Note on ser8 impermanence:** Alloy is stateless (it reads journal and pushes to Loki). No persistence directory needed. The journal itself is already persisted at `/var/log` on ser8 via bind mount to `/persist/var/log`.
 
-The MQTT integration **cannot** be fully set up declaratively. It requires a config entry created through the HA UI. However, MQTT-based entities (sensors, binary sensors) and automations CAN be declared in Nix.
+### 3. Blackbox Exporter (HTTP Service Probing)
 
-**First-boot procedure:** After deploying the Nix config, navigate to HA UI -> Settings -> Integrations -> Add MQTT -> broker: localhost, port: 1883, no auth.
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| prometheus-blackbox-exporter | 0.27.0 | firebat | HTTP endpoint probes for service uptime/latency | Native NixOS module (`services.prometheus.exporters.blackbox`). Probes services from the gateway perspective (same host as Caddy). Provides `probe_success`, `probe_duration_seconds`, `probe_http_status_code`, `probe_ssl_earliest_cert_expiry` metrics. Enables uptime tracking dashboards. |
 
-This is a one-time step. The config entry persists in `/var/lib/hass/.storage/core.config_entries` which survives reboots via impermanence.
+**Confidence:** HIGH -- verified package version 0.27.0 in nixpkgs nixos-25.05 via `nix eval`
 
-### Frigate Integration (UI Setup Required)
+**NixOS Module:** `services.prometheus.exporters.blackbox`
 
-Similarly, the Frigate custom component requires a config entry via UI:
-HA UI -> Settings -> Integrations -> Add Frigate -> URL: `http://localhost:5000`
+Key options:
+- `services.prometheus.exporters.blackbox.enable`
+- `services.prometheus.exporters.blackbox.port` (default: 9115)
+- `services.prometheus.exporters.blackbox.configFile` -- probe module definitions
+- `services.prometheus.exporters.blackbox.openFirewall`
 
-This persists in the same config entries storage.
+**Configuration pattern:**
+```nix
+# On firebat -- blackbox exporter config
+services.prometheus.exporters.blackbox = {
+  enable = true;
+  port = 9115;
+  configFile = pkgs.writeText "blackbox.yml" (builtins.toJSON {
+    modules = {
+      http_2xx = {
+        prober = "http";
+        timeout = "10s";
+        http = {
+          valid_http_versions = [ "HTTP/1.1" "HTTP/2.0" ];
+          preferred_ip_protocol = "ip4";
+          follow_redirects = true;
+        };
+      };
+      http_2xx_no_tls_verify = {
+        prober = "http";
+        timeout = "10s";
+        http = {
+          valid_http_versions = [ "HTTP/1.1" "HTTP/2.0" ];
+          tls_config.insecure_skip_verify = true;
+          preferred_ip_protocol = "ip4";
+        };
+      };
+      icmp_ping = {
+        prober = "icmp";
+        timeout = "5s";
+      };
+    };
+  });
+};
+```
+
+**Prometheus scrape config addition (on firebat):**
+```nix
+# Added to services.prometheus.scrapeConfigs
+{
+  job_name = "blackbox-http";
+  metrics_path = "/probe";
+  params.module = [ "http_2xx_no_tls_verify" ];
+  static_configs = [{
+    targets = [
+      "http://ser8.local:8096"    # Jellyfin
+      "http://ser8.local:8989"    # Sonarr
+      "http://ser8.local:7878"    # Radarr
+      "http://ser8.local:9696"    # Prowlarr
+      "http://ser8.local:8085"    # SABnzbd
+      "http://ser8.local:80"      # Frigate
+      "http://ser8.local:8123"    # Home Assistant
+      "http://ser8.local:8080"    # qBittorrent (via nginx proxy)
+      "http://pi4.local:3000"     # AdGuard Home
+      "http://firebat.local:3000" # Grafana
+      "http://firebat.local:9090" # Prometheus
+    ];
+  }];
+  relabel_configs = [
+    { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+    { source_labels = [ "__param_target" ]; target_label = "instance"; }
+    { target_label = "__address__"; replacement = "localhost:9115"; }
+  ];
+  scrape_interval = "60s";
+}
+```
+
+### 4. Grafana SMTP (Email Alerting)
+
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| Grafana SMTP config | N/A (Grafana setting) | firebat | Sends alert notification emails via Gmail | Built into Grafana -- no new service needed. Uses `services.grafana.settings.smtp` NixOS options. Gmail App Password stored in SOPS. Enables email contact points for Grafana Unified Alerting. |
+
+**Confidence:** HIGH -- NixOS module has explicit `services.grafana.settings.smtp.*` options
+
+**NixOS configuration pattern:**
+```nix
+# SOPS secret for Gmail App Password
+sops.secrets.grafana_smtp_password = {
+  owner = "grafana";
+  group = "grafana";
+  mode = "0400";
+};
+
+services.grafana.settings.smtp = {
+  enabled = true;
+  host = "smtp.gmail.com:587";
+  user = "your-email@gmail.com";
+  # Use $__file{} provider to avoid password in Nix store
+  password = "$__file{${config.sops.secrets.grafana_smtp_password.path}}";
+  from_address = "your-email@gmail.com";
+  from_name = "Homelab Alerts";
+  startTLS_policy = "MandatoryStartTLS";
+};
+```
+
+**Gmail prerequisite:** Generate a Gmail App Password at https://myaccount.google.com/apppasswords (requires 2FA enabled). Store in SOPS as `grafana_smtp_password` in `secrets/firebat.yaml`.
+
+### 5. Grafana Unified Alerting (Alert Rules + Contact Points)
+
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| Grafana Alerting Provisioning | N/A (Grafana 12.x built-in) | firebat | Declarative alert rules, contact points, notification policies | NixOS provides `services.grafana.provision.alerting.*` options. Alert rules can query both Prometheus AND Loki datasources. Enables fully declarative alerting without manual UI setup. |
+
+**Confidence:** HIGH -- NixOS module `services.grafana.provision.alerting` confirmed with sub-options for `rules`, `contactPoints`, `policies`, `muteTimings`, `templates`
+
+**NixOS Module options:**
+- `services.grafana.provision.alerting.rules.settings` -- alert rule definitions (Nix attrset -> YAML)
+- `services.grafana.provision.alerting.rules.path` -- or path to YAML file
+- `services.grafana.provision.alerting.contactPoints.settings` -- contact point definitions
+- `services.grafana.provision.alerting.contactPoints.path`
+- `services.grafana.provision.alerting.policies.settings` -- notification routing policies
+- `services.grafana.provision.alerting.policies.path`
+- `services.grafana.provision.alerting.muteTimings.settings` -- mute windows
+- `services.grafana.provision.alerting.templates.settings` -- notification templates
+
+**Important:** Cannot set both `.settings` and `.path` for the same category. Choose one approach. Recommend `.settings` for full declarative control in Nix.
+
+**Note:** The existing Prometheus `ruleFiles` with `alert:` definitions (in `modules/gateway/prometheus.nix`) define recording/alerting rules at the Prometheus level. These fire alerts but have no notification routing -- Prometheus alone cannot send emails. Grafana Unified Alerting replaces or complements this by:
+1. Evaluating alert rules directly in Grafana (can query Prometheus AND Loki)
+2. Routing fired alerts to contact points (email, etc.)
+3. Supporting notification policies and mute timings
+
+**Strategy:** Keep existing Prometheus alert rules for recording purposes. Add Grafana alerting rules that reference the same conditions but route to email contact points. This provides dual-layer alerting.
+
+### 6. Home Assistant Prometheus Integration
+
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| HA Prometheus integration | Built into HA | ser8 | Exposes HA entity metrics for Prometheus scraping | Built-in HA integration -- just needs `prometheus:` in HA's `configuration.yaml`. Exposes all HA entity states as Prometheus metrics at `/api/prometheus` on port 8123. Enables dashboards for HA sensor data (temperature, humidity, device states, automation triggers). |
+
+**Confidence:** HIGH -- official HA integration, documented at home-assistant.io/integrations/prometheus/
+
+**HA configuration (declarative in Nix):**
+```nix
+services.home-assistant.config.prometheus = {};
+# That's it -- minimal config exposes all entities
+# Optional: filter with include/exclude domains
+```
+
+**Prometheus scrape config addition:**
+```nix
+{
+  job_name = "homeassistant";
+  scrape_interval = "60s";
+  metrics_path = "/api/prometheus";
+  bearer_token_file = "/path/to/ha-token";  # Long-lived access token
+  static_configs = [{
+    targets = [ "ser8.local:8123" ];
+  }];
+}
+```
+
+**Authentication:** Requires a Home Assistant Long-Lived Access Token. Generate in HA UI: Profile -> Security -> Long-Lived Access Tokens -> Create Token. Store in SOPS, make available to Prometheus on firebat.
+
+**Alternative approach (no auth):** If HA's Prometheus endpoint is only accessed from the local network and HA has `trusted_proxies` configured (which it does for `192.168.68.0/24`), the bearer token may not be required for local scraping. Verify during implementation.
+
+### 7. Grafana Loki Datasource
+
+| Technology | Version | Where | Purpose | Why |
+|------------|---------|-------|---------|-----|
+| Grafana Loki datasource | N/A (provisioning config) | firebat | Connects Grafana to Loki for log exploration | Extends existing `services.grafana.provision.datasources` with a Loki entry. Enables Explore view for logs and LogQL-based alert rules. |
+
+**Confidence:** HIGH -- standard Grafana provisioning, same pattern as existing Prometheus datasource
+
+**Configuration pattern:**
+```nix
+# Add to existing datasources list in modules/gateway/grafana.nix
+services.grafana.provision.datasources.settings.datasources = [
+  {
+    name = "Prometheus";
+    type = "prometheus";
+    access = "proxy";
+    url = "http://localhost:9090";
+    isDefault = true;
+  }
+  {
+    name = "Loki";
+    type = "loki";
+    access = "proxy";
+    url = "http://localhost:3100";
+  }
+];
+```
+
+## Complete Port Allocation
+
+New ports introduced by this milestone:
+
+| Port | Service | Host | Existing/New |
+|------|---------|------|-------------|
+| 3100 | Loki HTTP API | firebat | NEW |
+| 9095 | Loki gRPC (internal) | firebat | NEW |
+| 9115 | Blackbox exporter | firebat | NEW |
+| 12345 | Alloy debug UI | each host | NEW |
 
 ## Alternatives Considered
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Integration method | `customComponents` in Nix | HACS (Home Assistant Community Store) | HACS is imperative, not reproducible, requires GitHub tokens, and defeats the purpose of declarative NixOS config. nixpkgs has the frigate component packaged. |
-| Notification trigger | `frigate/reviews` MQTT topic | `frigate/events` MQTT topic | `frigate/reviews` is the recommended approach since Frigate 0.14+. Reviews consolidate related detections (person + package = one review) and are the basis for the Frigate UI. `frigate/events` still works but produces more granular, noisier notifications. |
-| Notification method | HA Mobile App push | Pushover / Telegram / Email | Mobile App is built-in, supports rich media (images, video), actionable notifications, and requires no external services. Already in extraComponents. |
-| Dashboard card | `advanced-camera-card` | Built-in `picture-entity` card | The built-in card lacks clip browsing, event timeline, WebRTC support, and Frigate-native features. The advanced card is purpose-built for camera surveillance. |
-| Automation approach | Declarative YAML in Nix | Blueprint (SgtBatten) | Blueprints are UI-imported and not declarative. However, the SgtBatten blueprint YAML can be used as a **reference** for writing the Nix automation. The blueprint handles edge cases (cooldowns, zones, update vs new messages) that are worth studying. |
-| Camera card package | `advanced-camera-card` | `frigate-hass-card` (legacy name) | Same project, renamed in v7.0.0. The nixpkgs package may still use the old name depending on channel version. Check `nix search nixpkgs home-assistant-custom-lovelace-modules` for actual availability. |
+| Log collector | Grafana Alloy | Promtail | Promtail EOL March 2026 -- installing it now would require migration within weeks. Alloy has a NixOS module, is the official successor, and supports the same journal scraping. |
+| Log collector | Grafana Alloy | Fluentd / Fluent Bit | Not part of the Grafana ecosystem. Adds operational complexity without benefit when Loki + Alloy provide a fully integrated stack. |
+| Log backend | Loki | Elasticsearch/OpenSearch | Massive resource overhead for a homelab. Loki's label-based indexing is far lighter. Native Grafana integration. NixOS module available. |
+| Log backend | Loki | journald-remote (systemd) | Only centralizes journal files -- no query language, no Grafana integration, no alerting on log patterns. |
+| Alerting | Grafana Unified Alerting | Prometheus Alertmanager | Alertmanager is a separate service. Grafana Unified Alerting is built into Grafana 12.x, supports both Prometheus and Loki datasources, and has NixOS provisioning support. Less infrastructure to manage. |
+| Email provider | Gmail SMTP | Self-hosted SMTP / SES | Gmail App Passwords are simple and free for homelab volume. No DNS/SPF/DKIM setup needed. Self-hosted SMTP is unnecessary complexity. |
+| HTTP probing | Blackbox exporter | Uptime Kuma | Blackbox exporter integrates natively with Prometheus/Grafana. Uptime Kuma is a standalone tool with its own UI -- redundant when Grafana already exists. |
+| HA metrics | HA Prometheus integration | Custom exporter | HA has a built-in Prometheus integration. No external exporter needed. One line of config (`prometheus: {}`). |
 
-## What NOT to Use
+## What NOT to Add
 
 | Anti-Technology | Why Avoid |
 |-----------------|-----------|
-| **HACS** | Imperative package manager for HA. Downloads from GitHub at runtime, not reproducible, breaks declarative NixOS philosophy. Use `customComponents` instead. |
-| **HA Add-ons** | Require HA OS or HA Supervised. NixOS runs HA Core only. Frigate runs as a native NixOS service, not an add-on. |
-| **Node-RED** | Over-engineering for simple MQTT-trigger-to-notification flows. Adds another service to maintain. HA automations are sufficient. |
-| **frigate/events MQTT topic** (as primary trigger) | Produces per-object events rather than consolidated reviews. Results in duplicate notifications (person + package = 2 notifications instead of 1). Use `frigate/reviews` instead. |
-| **Webhooks for notifications** | Requires exposing HA externally. Frigate and HA are on the same host -- MQTT is the standard local communication path. |
+| **Prometheus Alertmanager** | Grafana Unified Alerting replaces this for our use case. Alertmanager would be a separate service to configure and maintain when Grafana already handles alert routing, grouping, and notification. |
+| **Promtail** | EOL March 2, 2026. Would require immediate migration to Alloy. Start with Alloy directly. |
+| **Uptime Kuma** | Standalone uptime monitor with its own web UI. Redundant since blackbox exporter + Grafana provides the same functionality within the existing stack. |
+| **Elasticsearch / OpenSearch** | Orders of magnitude more resource-hungry than Loki. Designed for full-text search at enterprise scale. Loki's label-based approach is better suited to structured log queries from systemd journal. |
+| **Grafana OnCall** | Enterprise-grade incident management. Overkill for a homelab. Email notifications via SMTP are sufficient. |
+| **Thanos / Cortex** | Multi-cluster Prometheus backends. Single Prometheus instance is fine for 3-4 hosts. |
 
-## MQTT Topic Reference
+## Secrets Required (New SOPS Entries)
 
-Key topics Frigate publishes that the HA integration and automations consume:
+| Secret | SOPS File | Used By | Purpose |
+|--------|-----------|---------|---------|
+| `grafana_smtp_password` | `secrets/firebat.yaml` | Grafana SMTP | Gmail App Password for sending alert emails |
+| `ha_prometheus_token` | `secrets/firebat.yaml` | Prometheus | HA Long-Lived Access Token for scraping `/api/prometheus` |
 
-| Topic | Purpose | Used By |
-|-------|---------|---------|
-| `frigate/available` | Frigate online/offline status | HA Frigate integration (availability) |
-| `frigate/events` | Per-object detection lifecycle (new/update/end) | HA Frigate integration (entity updates) |
-| `frigate/reviews` | Consolidated review items (alert/detection severity) | Notification automations |
-| `frigate/<camera>/person/snapshot` | JPEG snapshot of detected person | Can be used in notifications |
-| `frigate/<camera>/detect/state` | Detection enabled/disabled state | HA switch entities |
-| `frigate/<camera>/recordings/state` | Recording enabled/disabled state | HA switch entities |
+## Firewall Rules Required
 
-## Version Compatibility Matrix
+| Host | Port | Protocol | Service | Direction |
+|------|------|----------|---------|-----------|
+| firebat | 3100 | TCP | Loki | Inbound from ser8, pi4 (Alloy pushes logs) |
+| firebat | 9115 | TCP | Blackbox exporter | Localhost only (Prometheus scrapes) |
 
-| Component | Version | Requires |
-|-----------|---------|----------|
-| Frigate NVR | 0.15.2 (installed) | MQTT broker |
-| frigate-hass-integration | 5.6.0+ | HA 2024.1+, MQTT integration configured, Frigate with MQTT enabled |
-| Home Assistant | 2025.x (nixos-25.05 channel) | Python 3.12+ |
-| advanced-camera-card | 7.x | frigate-hass-integration installed |
-| Mosquitto | 2.x (installed) | N/A |
+## Version Summary
 
-## Installation Summary
+All versions verified against nixpkgs nixos-25.05 (the flake's nixpkgs input) on 2026-02-10:
 
-```nix
-# In modules/automation/home-assistant.nix -- additions to existing config
+| Package | nixos-25.05 Version | Latest Upstream | Gap | Risk |
+|---------|---------------------|-----------------|-----|------|
+| grafana-loki | 3.4.5 | 3.6.5 | 2 minor versions | LOW -- stable API, filesystem storage unchanged |
+| grafana-alloy | 1.8.3 | 1.13.0 | 5 minor versions | LOW -- journal scraping and loki.write stable since 1.x |
+| prometheus-blackbox-exporter | 0.27.0 | 0.27.x | Patch at most | NONE |
+| grafana | 12.0.7 | 12.x | Patches | NONE -- unified alerting stable since Grafana 10 |
+| prometheus | 3.5.0 | 3.5.x | Current | NONE |
 
-services.home-assistant = {
-  # NEW: Add Frigate custom component
-  customComponents = with pkgs.home-assistant-custom-components; [
-    frigate
-  ];
-
-  # NEW: Add camera dashboard card (verify package name for nixos-25.05)
-  # customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
-  #   advanced-camera-card  # or frigate-hass-card depending on channel
-  # ];
-
-  # EXISTING extraComponents -- no changes needed
-  # mqtt, mobile_app, generic, ffmpeg already listed
-
-  # NEW: Add notification automations
-  config = {
-    # ... existing config ...
-
-    # Automations for Frigate notifications
-    "automation manual" = [
-      # Per-camera notification automations go here
-    ];
-    "automation ui" = "!include automations.yaml";
-  };
-};
-```
-
-No new flake inputs needed. No new system packages needed. No infrastructure changes needed.
+No packages require nixpkgs-unstable. Everything is available in the nixos-25.05 channel.
 
 ## Sources
 
-- [Frigate Home Assistant Integration Docs](https://docs.frigate.video/integrations/home-assistant/) -- Official integration requirements and setup
-- [Frigate MQTT Docs](https://docs.frigate.video/integrations/mqtt/) -- MQTT topic structure and payloads
-- [Frigate HA Notifications Guide](https://docs.frigate.video/guides/ha_notifications/) -- Official notification patterns
-- [frigate-hass-integration GitHub](https://github.com/blakeblackshear/frigate-hass-integration) -- Integration source, releases (v5.9.x latest upstream)
-- [NixOS Wiki: Home Assistant](https://wiki.nixos.org/wiki/Home_Assistant) -- customComponents and customLovelaceModules usage
-- [nixpkgs PR #371866](https://github.com/NixOS/nixpkgs/pull/371866) -- frigate custom component 5.3.0 -> 5.6.0 update
-- [nixpkgs PR #371860](https://github.com/NixOS/nixpkgs/pull/371860) -- frigate-hass-card 6.1.2 init in nixpkgs
-- [advanced-camera-card GitHub](https://github.com/dermotduffy/advanced-camera-card) -- Renamed from frigate-hass-card v7.0.0
-- [SgtBatten HA Blueprints](https://github.com/SgtBatten/HA_blueprints) -- Reference notification automation patterns
-- [Frigate 0.14 Review Notifications Guide](https://github.com/blakeblackshear/frigate/discussions/11554) -- frigate/reviews topic usage
-- [NixOS Discourse: Frigate into Home Assistant](https://discourse.nixos.org/t/frigate-into-home-assistant/62851) -- NixOS-specific integration discussion
-- [MyNixOS: services.home-assistant.customComponents](https://mynixos.com/nixpkgs/option/services.home-assistant.customComponents) -- Option documentation
+- [NixOS Wiki: Grafana Loki](https://wiki.nixos.org/wiki/Grafana_Loki) -- NixOS module usage and configuration examples
+- [NixOS Wiki: Grafana](https://wiki.nixos.org/wiki/Grafana) -- Grafana provisioning patterns including alerting
+- [NixOS Wiki: Prometheus](https://wiki.nixos.org/wiki/Prometheus) -- Exporter module patterns
+- [nixpkgs services/monitoring/loki.nix](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/monitoring/loki.nix) -- Loki NixOS module source
+- [nixpkgs exporters/blackbox.nix](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/monitoring/prometheus/exporters/blackbox.nix) -- Blackbox exporter module source
+- [MyNixOS: services.alloy options](https://mynixos.com/nixpkgs/options/services.alloy) -- Alloy NixOS module options
+- [MyNixOS: services.grafana.settings.smtp](https://mynixos.com/options/services.grafana.settings.smtp) -- Grafana SMTP NixOS options
+- [MyNixOS: services.grafana.provision.alerting.rules.settings](https://mynixos.com/nixpkgs/options/services.grafana.provision.alerting.rules.settings) -- Alerting provisioning options
+- [Grafana Loki Releases](https://github.com/grafana/loki/releases) -- Version tracking (3.6.5 latest)
+- [Grafana Alloy Releases](https://github.com/grafana/alloy/releases) -- Version tracking (1.13.0 latest)
+- [Grafana Alloy: loki.source.journal](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.journal/) -- Journal scraping component docs
+- [Grafana Alloy: Migrate from Promtail](https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/) -- Migration guide
+- [Promtail EOL Announcement](https://community.grafana.com/t/promtail-end-of-life-eol-march-2026-how-to-migrate-to-grafana-alloy-for-existing-loki-server-deployments/159636) -- Official EOL timeline
+- [Grafana: Configure email for alerts](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-email/) -- SMTP setup docs
+- [Grafana: File provisioning for alerting](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/) -- Provisioning format
+- [Home Assistant: Prometheus Integration](https://www.home-assistant.io/integrations/prometheus/) -- HA metrics endpoint
+- [Blackbox Exporter Configuration](https://github.com/prometheus/blackbox_exporter/blob/master/CONFIGURATION.md) -- Module configuration reference
+- [Gmail SMTP with Grafana](https://community.grafana.com/t/setup-smtp-with-gmail/85815) -- Gmail App Password setup

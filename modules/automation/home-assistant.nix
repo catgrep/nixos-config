@@ -36,9 +36,10 @@
     ];
 
     # Extra Python packages for integrations
-    extraPackages = python3Packages: with python3Packages; [
-      paho-mqtt
-    ];
+    extraPackages =
+      python3Packages: with python3Packages; [
+        paho-mqtt
+      ];
 
     # Frigate custom component for HA integration
     customComponents = with pkgs.home-assistant-custom-components; [
@@ -109,8 +110,14 @@
   # Service ordering: HA starts after Mosquitto and Frigate
   # Uses `wants` (not `requires`) so HA can start even if Frigate is temporarily down
   systemd.services.home-assistant = {
-    after = [ "mosquitto.service" "frigate.service" ];
-    wants = [ "mosquitto.service" "frigate.service" ];
+    after = [
+      "mosquitto.service"
+      "frigate.service"
+    ];
+    wants = [
+      "mosquitto.service"
+      "frigate.service"
+    ];
   };
 
   # Required system packages

@@ -44,11 +44,11 @@ Plans:
   3. Repeated detections from the same Frigate review event update the existing notification in-place rather than creating duplicates
   4. Tapping a notification opens the relevant clip or event detail in HA (actionable notification)
   5. All notification automations are declared in Nix configuration (not HA UI-only)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Add Frigate notification automation to Nix, set up Companion app, deploy to ser8
+- [ ] 02-02-PLAN.md -- Verify end-to-end notification delivery with real detections
 
 ### Phase 3: Camera Dashboard
 **Goal**: I can monitor all cameras live, browse detection events, and toggle detection per camera from an HA dashboard
@@ -72,5 +72,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Integration Foundation | 2/2 | Complete | 2026-02-10 |
-| 2. Push Notifications | 0/TBD | Not started | - |
+| 2. Push Notifications | 0/2 | Not started | - |
 | 3. Camera Dashboard | 0/TBD | Not started | - |

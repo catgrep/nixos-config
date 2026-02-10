@@ -1,6 +1,23 @@
 {
   "permissions": {
     "allow": [
+      "Bash(date:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sort:*)",
+      "Bash(grep:*)",
+      "Bash(tr:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git tag:*)",
       "WebFetch(domain:github.com)",
       "Bash(mkdir:*)",
       "Bash(bash:*)",
@@ -29,7 +46,11 @@
       "Bash(nix hash convert:*)",
       "WebFetch(domain:mynixos.com)",
       "WebFetch(domain:docs.frigate.video)",
-      "Bash(nix-env:*)"
+      "Bash(nix-env:*)",
+      "Bash(node /Users/bobby/.claude/get-shit-done/bin/gsd-tools.js commit \"docs: define v1 requirements\" --files .planning/REQUIREMENTS.md)",
+      "Bash(node /Users/bobby/.claude/get-shit-done/bin/gsd-tools.js commit:*)",
+      "Bash(node:*)",
+      "Bash(git -C /Users/bobby/github/catgrep/nixos-config diff modules/automation/home-assistant.nix)"
     ],
     "deny": []
   }

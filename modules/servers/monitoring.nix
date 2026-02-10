@@ -66,24 +66,77 @@ in
     openFirewall = true;
     settings.process_names = [
       # Media services
-      { name = "jellyfin"; comm = [ "jellyfin" ]; }
-      { name = "sonarr"; comm = [ "Sonarr" ]; }
-      { name = "radarr"; comm = [ "Radarr" ]; }
-      { name = "prowlarr"; comm = [ "Prowlarr" ]; }
-      { name = "sabnzbd"; comm = [ "SABnzbd.py" "sabnzbd" ]; }
-      { name = "qbittorrent"; comm = [ "qbittorrent-nox" ]; }
+      {
+        name = "jellyfin";
+        comm = [ "jellyfin" ];
+      }
+      {
+        name = "sonarr";
+        comm = [ "Sonarr" ];
+      }
+      {
+        name = "radarr";
+        comm = [ "Radarr" ];
+      }
+      {
+        name = "prowlarr";
+        comm = [ "Prowlarr" ];
+      }
+      {
+        name = "sabnzbd";
+        comm = [
+          "SABnzbd.py"
+          "sabnzbd"
+        ];
+      }
+      {
+        name = "qbittorrent";
+        comm = [ "qbittorrent-nox" ];
+      }
       # Automation
-      { name = "frigate"; comm = [ "python3" ]; cmdline = [ ".*frigate.*" ]; }
-      { name = "home-assistant"; comm = [ "hass" "python3" ]; cmdline = [ ".*homeassistant.*" ]; }
-      { name = "mosquitto"; comm = [ "mosquitto" ]; }
+      {
+        name = "frigate";
+        comm = [ "python3" ];
+        cmdline = [ ".*frigate.*" ];
+      }
+      {
+        name = "home-assistant";
+        comm = [
+          "hass"
+          "python3"
+        ];
+        cmdline = [ ".*homeassistant.*" ];
+      }
+      {
+        name = "mosquitto";
+        comm = [ "mosquitto" ];
+      }
       # Gateway services
-      { name = "caddy"; comm = [ "caddy" ]; }
-      { name = "grafana"; comm = [ "grafana" "grafana-server" ]; }
-      { name = "prometheus"; comm = [ "prometheus" ]; }
+      {
+        name = "caddy";
+        comm = [ "caddy" ];
+      }
+      {
+        name = "grafana";
+        comm = [
+          "grafana"
+          "grafana-server"
+        ];
+      }
+      {
+        name = "prometheus";
+        comm = [ "prometheus" ];
+      }
       # DNS
-      { name = "adguardhome"; comm = [ "AdGuardHome" ]; }
+      {
+        name = "adguardhome";
+        comm = [ "AdGuardHome" ];
+      }
       # Catch-all for other interesting processes
-      { name = "{{.Comm}}"; cmdline = [ ".+" ]; }
+      {
+        name = "{{.Comm}}";
+        cmdline = [ ".+" ];
+      }
     ];
   };
 

@@ -205,20 +205,25 @@ with lib;
 
         # networkd config: ignore DNS from DHCP when AdGuard is enabled
         # This prevents the router/ISP from pushing their DNS servers
-        systemd.network.networks."40-${cfg.interface}" = mkIf (cfg.adguard.enabled && config.networking.useNetworkd) {
-          dhcpV4Config = {
-            UseDNS = false;
-          };
-          dhcpV6Config = {
-            UseDNS = false;
-          };
-          # Explicitly set DNS servers for this interface
-          dns =
-            if cfg.adguard.mode == "strict" then
-              [ cfg.adguard.address ]
-            else
-              [ cfg.adguard.address "192.168.68.1" ];
-        };
+        systemd.network.networks."40-${cfg.interface}" =
+          mkIf (cfg.adguard.enabled && config.networking.useNetworkd)
+            {
+              dhcpV4Config = {
+                UseDNS = false;
+              };
+              dhcpV6Config = {
+                UseDNS = false;
+              };
+              # Explicitly set DNS servers for this interface
+              dns =
+                if cfg.adguard.mode == "strict" then
+                  [ cfg.adguard.address ]
+                else
+                  [
+                    cfg.adguard.address
+                    "192.168.68.1"
+                  ];
+            };
 
         # Ensure systemd-resolved restarts when DNS config changes
         # This is needed because resolved caches DNS settings and won't pick up

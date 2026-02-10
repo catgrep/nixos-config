@@ -77,6 +77,8 @@
       };
 
       # Mobile app integration for push notifications via Companion app
+      # Test with: Developer Tools -> Actions -> notify.mobile_app_bobbo_dhillons_iphone
+      #   YAML mode -> message: "Test from HA" -> Perform Action
       mobile_app = { };
 
       # Automation split: manual (Nix-declared) + UI (automations.yaml)

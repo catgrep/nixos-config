@@ -24,6 +24,7 @@
     charasay
     gitingest # From unstable channel
     colmena
+    colima
     openssh
     openssl
     shellcheck

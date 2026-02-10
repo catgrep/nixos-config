@@ -28,7 +28,8 @@
       "Bash(nix-prefetch-url:*)",
       "Bash(nix hash convert:*)",
       "WebFetch(domain:mynixos.com)",
-      "WebFetch(domain:docs.frigate.video)"
+      "WebFetch(domain:docs.frigate.video)",
+      "Bash(nix-env:*)"
     ],
     "deny": []
   }

@@ -75,6 +75,26 @@ let
     ];
   };
 
+  advancedCameraCard = pkgs.home-assistant-custom-lovelace-modules.advanced-camera-card;
+
+  # Lovelace resource registration for storage mode
+  # When lovelace.mode = "storage", HA ignores lovelace.resources in configuration.yaml
+  # and reads from .storage/lovelace_resources instead. We create this file declaratively.
+  lovelaceResources = pkgs.writeText "lovelace_resources" (
+    builtins.toJSON {
+      version = 1;
+      minor_version = 1;
+      key = "lovelace_resources";
+      data.items = [
+        {
+          id = "nixos-advanced-camera-card";
+          type = "module";
+          url = "/local/nixos-lovelace-modules/advanced-camera-card.js?${advancedCameraCard.version}";
+        }
+      ];
+    }
+  );
+
   dashboardConfig = {
     views = [
       # Tab 1: Live Cameras
@@ -83,81 +103,19 @@ let
         path = "live";
         icon = "mdi:camera";
         cards = [
-          # 3-camera grid (equal layout, fixed order: driveway, front_door, garage)
-          # Note on mobile responsiveness: HA grid cards automatically collapse to fewer columns
-          # on narrow screens. On phone-width viewports the grid renders as a single column.
-          {
-            type = "grid";
-            columns = 3;
-            square = false;
-            cards = [
-              (cameraCard "driveway" "Driveway")
-              (cameraCard "front_door" "Front Door")
-              (cameraCard "garage" "Garage")
-            ];
-          }
-          # Detection Controls: split into two entities cards so each has its own master toggle.
-          # Per user decision: "Master toggle for all cameras + individual per-camera toggles.
-          # Both object detection AND motion detection toggles per camera."
-          #
-          # Using two separate entities cards ensures:
-          # - The Detection card's header toggle controls only detection switches (not motion)
-          # - The Motion card's header toggle controls only motion switches (not detection)
-          # - show_header_toggle = true adds a master on/off toggle in the card header
-          #   that controls all entities within that card
-          {
-            type = "entities";
-            title = "Object Detection";
-            show_header_toggle = true; # Master toggle for all detection switches
-            entities = [
-              {
-                entity = "switch.driveway_detect";
-                name = "Driveway";
-              }
-              {
-                entity = "switch.front_door_detect";
-                name = "Front Door";
-              }
-              {
-                entity = "switch.garage_detect";
-                name = "Garage";
-              }
-            ];
-          }
-          {
-            type = "entities";
-            title = "Motion Detection";
-            show_header_toggle = true; # Master toggle for all motion switches
-            entities = [
-              {
-                entity = "switch.driveway_motion";
-                name = "Driveway";
-              }
-              {
-                entity = "switch.front_door_motion";
-                name = "Front Door";
-              }
-              {
-                entity = "switch.garage_motion";
-                name = "Garage";
-              }
-            ];
-          }
+          (cameraCard "driveway" "Driveway")
+          (cameraCard "front_door" "Front Door")
+          (cameraCard "garage" "Garage")
         ];
       }
-      # Tab 2: Events -- filterable by camera AND object type (per user decision)
-      # Uses frigate-hass-card's built-in gallery view which provides:
-      # - Thumbnail grid of detection snapshots with camera name + timestamp
-      # - Clicking thumbnail expands inline with larger snapshot and event details
-      # - Card-level media filter for object types
-      # All 3 cameras in one card for camera-level filtering; built-in
-      # filter bar allows filtering by object type (person, car, package)
+      # Tab 2: Events timeline + detection controls
       {
         title = "Events";
         path = "events";
         icon = "mdi:motion-sensor";
         cards = [
-          # All cameras combined view with object type filtering
+          # Timeline: compact static ratio to show just the timeline bars
+          # Clicking an event expands the media preview within the card
           {
             type = "custom:advanced-camera-card";
             cameras = [
@@ -177,22 +135,70 @@ let
                 frigate.camera_name = "garage";
               }
             ];
-            view = {
-              default = "clips";
-            };
-            event_gallery = {
-              min_columns = 3;
-            };
-            # The frigate-hass-card gallery view includes a built-in filter bar
-            # at the top allowing filtering by camera and by object type (label).
-            # With all 3 cameras listed, the filter bar shows camera + label dropdowns.
-            media_gallery = {
-              controls = {
-                filter = {
-                  mode = "left";
+            dimensions = {
+              aspect_ratio = "9:16";
+              layout = {
+                fit = "cover";
+                position = {
+                  x = 0;
                 };
               };
             };
+            view = {
+              default = "timeline";
+
+            };
+            media_gallery = {
+              controls = {
+                filter.mode = "left";
+                thumbnails = {
+                  size = 200;
+                  show_details = false;
+                  show_download_control = true;
+                  show_favorite_control = true;
+                  show_timeline_control = true;
+                };
+              };
+            };
+          }
+          # Detection & motion controls
+          {
+            type = "entities";
+            title = "Object Detection";
+            show_header_toggle = true;
+            entities = [
+              {
+                entity = "switch.driveway_detect";
+                name = "Driveway";
+              }
+              {
+                entity = "switch.front_door_detect";
+                name = "Front Door";
+              }
+              {
+                entity = "switch.garage_detect";
+                name = "Garage";
+              }
+            ];
+          }
+          {
+            type = "entities";
+            title = "Motion Detection";
+            show_header_toggle = true;
+            entities = [
+              {
+                entity = "switch.driveway_motion";
+                name = "Driveway";
+              }
+              {
+                entity = "switch.front_door_motion";
+                name = "Front Door";
+              }
+              {
+                entity = "switch.garage_motion";
+                name = "Garage";
+              }
+            ];
           }
         ];
       }
@@ -393,11 +399,19 @@ in
     "f /var/lib/hass/automations.yaml 0644 hass hass"
     # Symlink cameras dashboard from Nix store (JSON is valid YAML)
     "L+ /var/lib/hass/cameras-dashboard.yaml - - - - ${camerasDashboard}"
+    # Register Lovelace resources for storage mode (HA ignores configuration.yaml resources)
+    "C+ /var/lib/hass/.storage/lovelace_resources 0600 hass hass - ${lovelaceResources}"
   ];
 
   # Service ordering: HA starts after Mosquitto and Frigate
   # Uses `wants` (not `requires`) so HA can start even if Frigate is temporarily down
   systemd.services.home-assistant = {
+    # Restart HA when dashboard config or lovelace resources change
+    # (HA only reads YAML dashboards at startup, not on reload)
+    restartTriggers = [
+      camerasDashboard
+      lovelaceResources
+    ];
     after = [
       "mosquitto.service"
       "frigate.service"

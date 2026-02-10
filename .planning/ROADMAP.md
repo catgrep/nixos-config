@@ -59,10 +59,11 @@ Plans:
   2. Recent detection events are displayed with snapshot thumbnails showing what was detected and when
   3. Detection can be enabled or disabled per camera directly from the HA dashboard
   4. Detection event history is browsable with the ability to filter by camera or object type
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md -- Add advanced-camera-card to customLovelaceModules, declare YAML-mode cameras dashboard, deploy to ser8
+- [ ] 03-02-PLAN.md -- Verify dashboard rendering (live feeds, events, controls), fix issues, user approval on desktop and mobile
 
 ## Progress
 
@@ -73,4 +74,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Integration Foundation | 2/2 | Complete | 2026-02-10 |
 | 2. Push Notifications | 2/2 | Complete | 2026-02-10 |
-| 3. Camera Dashboard | 0/TBD | Not started | - |
+| 3. Camera Dashboard | 0/2 | Not started | - |

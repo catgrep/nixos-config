@@ -76,6 +76,9 @@
         default = "warning";
       };
 
+      # Mobile app integration for push notifications via Companion app
+      mobile_app = { };
+
       # Automation split: manual (Nix-declared) + UI (automations.yaml)
       # Source: https://docs.frigate.video/guides/ha_notifications/
       # Source: https://companion.home-assistant.io/docs/notifications/notifications-basic/
@@ -107,8 +110,7 @@
           ];
           action = [
             {
-              # Replace PLACEHOLDER_DEVICE_ID with actual device ID after Companion app setup
-              action = "notify.mobile_app_PLACEHOLDER_DEVICE_ID";
+              action = "notify.mobile_app_bobbo_dhillons_iphone";
               data = {
                 title = "{{ trigger.payload_json['after']['data']['objects'] | sort | join(', ') | title }} Detected";
                 message = "{{ trigger.payload_json['after']['camera'] | replace('_', ' ') | title }}";

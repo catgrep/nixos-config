@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When Frigate detects a person, car, or package, a push notification with a snapshot image arrives on my phone within seconds -- and I can review all events from the HA dashboard.
-**Current focus:** Phase 1: Integration Foundation
+**Current focus:** Phase 2: Push Notifications
 
 ## Current Position
 
-Phase: 1 of 3 (Integration Foundation)
-Plan: 2 of 2 in current phase
-Status: Phase complete, awaiting verification
-Last activity: 2026-02-10 -- Completed 01-02-PLAN.md (deploy + verify)
+Phase: 2 of 3 (Push Notifications)
+Plan: 1 of 2 in current phase
+Status: Plan 02-01 complete, starting 02-02 (end-to-end verification)
+Last activity: 2026-02-10 -- Completed 02-01-PLAN.md (notification automation + Companion app)
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 10min
-- Total execution time: 20min
+- Total plans completed: 3
+- Average duration: 12min
+- Total execution time: 35min
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | Phase 01 P01 | 5min | 3 tasks | 2 files |
 | Phase 01 P02 | 15min | 3 tasks | 0 files (deploy+verify) |
+| Phase 02 P01 | 15min | 3 tasks | 1 file |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 15min
-- Trend: -
+- Last 5 plans: 5min, 15min, 15min
+- Trend: stable
 
 *Updated after each plan completion*
 
@@ -51,6 +52,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Zone coordinates are placeholders to be tuned via Frigate UI in Plan 02
 - [Phase 01]: MQTT broker configured without auth (local-only, behind Tailscale)
 - [Phase 01]: Transient Frigate API 500s during startup are expected, self-resolve
+- [Phase 02]: mobile_app = {} must be in HA config section (extraComponents alone insufficient)
+- [Phase 02]: Device ID hardcoded in Nix (single-user homelab): bobbo_dhillons_iphone
+- [Phase 02]: HA Developer Tools "Services" renamed to "Actions" in newer HA versions
 
 ### Pending Todos
 
@@ -64,5 +68,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Phase 1 complete, running verification
+Stopped at: Plan 02-01 complete, starting Wave 2 (02-02 verification)
 Resume file: None

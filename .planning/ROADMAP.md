@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Integration Foundation** - Wire Frigate to HA so entities exist, persist, and update in real-time
 - [x] **Phase 2: Push Notifications** - Deliver snapshot notifications on person/car/package detection
-- [ ] **Phase 3: Camera Dashboard** - Live camera feeds and detection event browsing in HA
+- [x] **Phase 3: Camera Dashboard** - Live camera feeds and detection event browsing in HA
 
 ## Phase Details
 
@@ -62,8 +62,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Add advanced-camera-card to customLovelaceModules, declare YAML-mode cameras dashboard, deploy to ser8
-- [ ] 03-02-PLAN.md -- Verify dashboard rendering (live feeds, events, controls), fix issues, user approval on desktop and mobile
+- [x] 03-01-PLAN.md -- Add advanced-camera-card to customLovelaceModules, declare YAML-mode cameras dashboard, deploy to ser8
+- [x] 03-02-PLAN.md -- Verify dashboard rendering (live feeds, events, controls), fix issues, user approval on desktop and mobile
 
 ## Progress
 
@@ -74,4 +74,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Integration Foundation | 2/2 | Complete | 2026-02-10 |
 | 2. Push Notifications | 2/2 | Complete | 2026-02-10 |
-| 3. Camera Dashboard | 0/2 | Not started | - |
+| 3. Camera Dashboard | 2/2 | Complete | 2026-02-10 |

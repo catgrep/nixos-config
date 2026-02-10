@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When Frigate detects a person, car, or package, a push notification with a snapshot image arrives on my phone within seconds -- and I can review all events from the HA dashboard.
-**Current focus:** Phase 3 in progress -- camera dashboard
+**Current focus:** All 3 phases complete — milestone done
 
 ## Current Position
 
 Phase: 3 of 3 (Camera Dashboard)
-Plan: 1 of 2 in current phase
-Status: Plan 01 complete
-Last activity: 2026-02-10 -- Completed 03-01-PLAN.md (camera dashboard config + deploy)
+Plan: 2 of 2 in current phase
+Status: Milestone complete
+Last activity: 2026-02-10 -- Completed 03-02-PLAN.md (dashboard verification + fixes)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 12min
-- Total execution time: 62min
+- Total plans completed: 6
+- Average duration: 15min
+- Total execution time: 107min
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [████████░░] 83%
 | Phase 02 P01 | 15min | 3 tasks | 1 file |
 | Phase 02 P02 | 20min | 2 tasks | 1 file |
 | Phase 03 P01 | 7min | 2 tasks | 1 file |
+| Phase 03 P02 | 45min | 2 tasks | 2 files (iterative fix cycle) |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 15min, 15min, 20min, 7min
-- Trend: stable
+- Last 6 plans: 5min, 15min, 15min, 20min, 7min, 45min
+- Trend: Phase 3 P02 longer due to multiple bug fixes during verification
 
 *Updated after each plan completion*
 
@@ -63,10 +64,18 @@ Recent decisions affecting current work:
 - [Phase 03]: Deploy dashboard via L+ tmpfiles symlink from Nix store
 - [Phase 03]: Separate entities cards for detection vs motion master toggles
 - [Phase 03]: advanced-camera-card confirmed available in nixpkgs
+- [Phase 03]: customLovelaceModules auto-registration only works with lovelace.mode = "yaml"
+- [Phase 03]: Storage mode requires declarative .storage/lovelace_resources via tmpfiles C+
+- [Phase 03]: restartTriggers (not reloadTriggers) needed — HA reads YAML dashboards at startup only
+- [Phase 03]: Card type renamed in v7.0.0: custom:frigate-card -> custom:advanced-camera-card
+- [Phase 03]: HA dashboard URL paths must contain a hyphen (lovelace-cameras, not cameras)
+- [Phase 03]: Frigate stationary detection: threshold=300 (5min), interval=432000 (24hr) at 5fps
+- [Phase 03]: Deep-link to specific clip by event ID not supported by advanced-camera-card (issues #1246, #2138)
+- [Phase 03]: persistent_notification.create for HA Notifications tab alongside mobile push
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -76,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 03-01-PLAN.md
+Stopped at: Milestone complete
 Resume file: None

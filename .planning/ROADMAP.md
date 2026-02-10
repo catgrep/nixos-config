@@ -13,7 +13,7 @@ This milestone connects the existing Frigate NVR (3 cameras: driveway, front_doo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Integration Foundation** - Wire Frigate to HA so entities exist, persist, and update in real-time
-- [ ] **Phase 2: Push Notifications** - Deliver snapshot notifications on person/car/package detection
+- [x] **Phase 2: Push Notifications** - Deliver snapshot notifications on person/car/package detection
 - [ ] **Phase 3: Camera Dashboard** - Live camera feeds and detection event browsing in HA
 
 ## Phase Details
@@ -47,8 +47,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Add Frigate notification automation to Nix, set up Companion app, deploy to ser8
-- [ ] 02-02-PLAN.md -- Verify end-to-end notification delivery with real detections
+- [x] 02-01-PLAN.md -- Add Frigate notification automation to Nix, set up Companion app, deploy to ser8
+- [x] 02-02-PLAN.md -- Verify end-to-end notification delivery with real detections
 
 ### Phase 3: Camera Dashboard
 **Goal**: I can monitor all cameras live, browse detection events, and toggle detection per camera from an HA dashboard
@@ -72,5 +72,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Integration Foundation | 2/2 | Complete | 2026-02-10 |
-| 2. Push Notifications | 0/2 | Not started | - |
+| 2. Push Notifications | 2/2 | Complete | 2026-02-10 |
 | 3. Camera Dashboard | 0/TBD | Not started | - |

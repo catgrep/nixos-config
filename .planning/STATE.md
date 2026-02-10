@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When Frigate detects a person, car, or package, a push notification with a snapshot image arrives on my phone within seconds -- and I can review all events from the HA dashboard.
-**Current focus:** Phase 2: Push Notifications
+**Current focus:** Phase 2 complete, ready for Phase 3
 
 ## Current Position
 
 Phase: 2 of 3 (Push Notifications)
-Plan: 1 of 2 in current phase
-Status: Plan 02-01 complete, starting 02-02 (end-to-end verification)
-Last activity: 2026-02-10 -- Completed 02-01-PLAN.md (notification automation + Companion app)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 -- Completed 02-02-PLAN.md (end-to-end verification)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 12min
-- Total execution time: 35min
+- Total plans completed: 4
+- Average duration: 14min
+- Total execution time: 55min
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P01 | 5min | 3 tasks | 2 files |
 | Phase 01 P02 | 15min | 3 tasks | 0 files (deploy+verify) |
 | Phase 02 P01 | 15min | 3 tasks | 1 file |
+| Phase 02 P02 | 20min | 2 tasks | 1 file |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 15min, 15min
+- Last 5 plans: 5min, 15min, 15min, 20min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -54,7 +55,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Transient Frigate API 500s during startup are expected, self-resolve
 - [Phase 02]: mobile_app = {} must be in HA config section (extraComponents alone insufficient)
 - [Phase 02]: Device ID hardcoded in Nix (single-user homelab): bobbo_dhillons_iphone
-- [Phase 02]: HA Developer Tools "Services" renamed to "Actions" in newer HA versions
+- [Phase 02]: HA 2025.5+: use trigger.payload | from_json, NOT trigger.payload_json
+- [Phase 02]: HA Developer Tools "Services" renamed to "Actions" in newer versions
+- [Phase 02]: Test notifications via Actions UI YAML mode with just message: field
 
 ### Pending Todos
 
@@ -68,5 +71,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Plan 02-01 complete, starting Wave 2 (02-02 verification)
+Stopped at: Phase 2 complete
 Resume file: None

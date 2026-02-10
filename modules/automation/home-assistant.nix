@@ -10,6 +10,195 @@
   ...
 }:
 
+let
+  # Camera dashboard configuration (Nix attrset -> JSON, which is valid YAML)
+  # Deployed as a symlink from /var/lib/hass/cameras-dashboard.yaml -> /nix/store/...
+  camerasDashboard = pkgs.writeText "cameras-dashboard.yaml" (builtins.toJSON dashboardConfig);
+
+  # Helper: frigate-hass-card (advanced-camera-card) for live camera view
+  # Per user decision: live video stream default, click to fullscreen, no bounding boxes
+  # Includes conditional "Detection Off" badge overlay when detection switch is off
+  cameraCard = cameraName: displayName: {
+    type = "custom:frigate-card";
+    cameras = [
+      {
+        camera_entity = "camera.${cameraName}";
+        live_provider = "auto";
+        title = displayName;
+        frigate = {
+          camera_name = cameraName;
+        };
+      }
+    ];
+    live = {
+      controls = {
+        builtin = true;
+      };
+    };
+    menu = {
+      buttons = {
+        frigate = {
+          enabled = true;
+        };
+        fullscreen = {
+          enabled = true;
+        };
+      };
+    };
+    view = {
+      default = "live";
+    };
+    # "Detection Off" overlay badge when detection is disabled (per user decision)
+    elements = [
+      {
+        type = "conditional";
+        conditions = [
+          {
+            entity = "switch.${cameraName}_detect";
+            state = "off";
+          }
+        ];
+        elements = [
+          {
+            type = "state-badge";
+            entity = "switch.${cameraName}_detect";
+            style = {
+              top = "8%";
+              right = "8%";
+              left = "auto";
+              color = "red";
+              opacity = "0.8";
+            };
+          }
+        ];
+      }
+    ];
+  };
+
+  dashboardConfig = {
+    views = [
+      # Tab 1: Live Cameras
+      {
+        title = "Live Cameras";
+        path = "live";
+        icon = "mdi:camera";
+        cards = [
+          # 3-camera grid (equal layout, fixed order: driveway, front_door, garage)
+          # Note on mobile responsiveness: HA grid cards automatically collapse to fewer columns
+          # on narrow screens. On phone-width viewports the grid renders as a single column.
+          {
+            type = "grid";
+            columns = 3;
+            square = false;
+            cards = [
+              (cameraCard "driveway" "Driveway")
+              (cameraCard "front_door" "Front Door")
+              (cameraCard "garage" "Garage")
+            ];
+          }
+          # Detection Controls: split into two entities cards so each has its own master toggle.
+          # Per user decision: "Master toggle for all cameras + individual per-camera toggles.
+          # Both object detection AND motion detection toggles per camera."
+          #
+          # Using two separate entities cards ensures:
+          # - The Detection card's header toggle controls only detection switches (not motion)
+          # - The Motion card's header toggle controls only motion switches (not detection)
+          # - show_header_toggle = true adds a master on/off toggle in the card header
+          #   that controls all entities within that card
+          {
+            type = "entities";
+            title = "Object Detection";
+            show_header_toggle = true; # Master toggle for all detection switches
+            entities = [
+              {
+                entity = "switch.driveway_detect";
+                name = "Driveway";
+              }
+              {
+                entity = "switch.front_door_detect";
+                name = "Front Door";
+              }
+              {
+                entity = "switch.garage_detect";
+                name = "Garage";
+              }
+            ];
+          }
+          {
+            type = "entities";
+            title = "Motion Detection";
+            show_header_toggle = true; # Master toggle for all motion switches
+            entities = [
+              {
+                entity = "switch.driveway_motion";
+                name = "Driveway";
+              }
+              {
+                entity = "switch.front_door_motion";
+                name = "Front Door";
+              }
+              {
+                entity = "switch.garage_motion";
+                name = "Garage";
+              }
+            ];
+          }
+        ];
+      }
+      # Tab 2: Events -- filterable by camera AND object type (per user decision)
+      # Uses frigate-hass-card's built-in gallery view which provides:
+      # - Thumbnail grid of detection snapshots with camera name + timestamp
+      # - Clicking thumbnail expands inline with larger snapshot and event details
+      # - Card-level media filter for object types
+      # All 3 cameras in one card for camera-level filtering; built-in
+      # filter bar allows filtering by object type (person, car, package)
+      {
+        title = "Events";
+        path = "events";
+        icon = "mdi:motion-sensor";
+        cards = [
+          # All cameras combined view with object type filtering
+          {
+            type = "custom:frigate-card";
+            cameras = [
+              {
+                camera_entity = "camera.driveway";
+                title = "Driveway";
+                frigate.camera_name = "driveway";
+              }
+              {
+                camera_entity = "camera.front_door";
+                title = "Front Door";
+                frigate.camera_name = "front_door";
+              }
+              {
+                camera_entity = "camera.garage";
+                title = "Garage";
+                frigate.camera_name = "garage";
+              }
+            ];
+            view = {
+              default = "clips";
+            };
+            event_gallery = {
+              min_columns = 3;
+            };
+            # The frigate-hass-card gallery view includes a built-in filter bar
+            # at the top allowing filtering by camera and by object type (label).
+            # With all 3 cameras listed, the filter bar shows camera + label dropdowns.
+            media_gallery = {
+              controls = {
+                filter = {
+                  mode = "left";
+                };
+              };
+            };
+          }
+        ];
+      }
+    ];
+  };
+in
 {
   services.home-assistant = {
     enable = lib.mkDefault false;
@@ -202,7 +391,8 @@
     "d /var/lib/hass/custom_components 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
     "f /var/lib/hass/automations.yaml 0644 hass hass"
-    "f /var/lib/hass/cameras-dashboard.yaml 0644 hass hass"
+    # Symlink cameras dashboard from Nix store (JSON is valid YAML)
+    "L+ /var/lib/hass/cameras-dashboard.yaml - - - - ${camerasDashboard}"
   ];
 
   # Service ordering: HA starts after Mosquitto and Frigate

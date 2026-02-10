@@ -122,6 +122,19 @@
         };
       };
 
+      # Detection: stop tracking stationary objects after 5 minutes
+      # Prevents duplicate events from parked cars or idle objects
+      detect = {
+        stationary = {
+          # frames without movement before marked stationary
+          # 300 frames is a 5 minute stationary period for a 5 fps detection rate (5 m = 300 frames / 5 fps / 60 s)
+          threshold = 300;
+          # interval is defined as the frequency for running detection on stationary objects.
+          # 432000 frames is a 24h interval for 5 fps detection rate (24 hr = 432000 frames / 5 fps / 60 s / 60 m)
+          interval = 432000;
+        };
+      };
+
       # Object tracking
       objects = {
         track = [

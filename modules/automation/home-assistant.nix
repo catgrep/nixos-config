@@ -118,6 +118,7 @@ let
           # Clicking an event expands the media preview within the card
           {
             type = "custom:advanced-camera-card";
+            card_id = "events_card"; # Required for URL action deep-linking from notifications
             cameras = [
               {
                 camera_entity = "camera.driveway";
@@ -336,6 +337,16 @@ in
                 review = "{{ trigger.payload | from_json }}";
               };
             }
+            # Show in HA Notifications tab
+            {
+              action = "persistent_notification.create";
+              data = {
+                title = "{{ review['after']['data']['objects'] | sort | join(', ') | title }} Detected";
+                message = "{{ review['after']['camera'] | replace('_', ' ') | title }} at {{ review['after']['start_time'] | int | timestamp_local }}";
+                notification_id = "frigate_{{ review['after']['id'] }}";
+              };
+            }
+            # Push notification to phone
             {
               action = "notify.mobile_app_bobbo_dhillons_iphone";
               data = {
@@ -350,20 +361,11 @@ in
                   when = "{{ review['after']['start_time'] | int }}";
                   # iOS: camera entity for live preview
                   entity_id = "camera.{{ review['after']['camera'] }}";
-                  # Tap to view clip (iOS)
-                  url = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
-                  # Tap to view clip (Android)
-                  clickAction = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
+                  # Tap to open HA cameras events tab
+                  url = "/lovelace-cameras/events";
+                  clickAction = "/lovelace-cameras/events";
                   # Group notifications by camera
                   group = "frigate-{{ review['after']['camera'] }}";
-                  # Action buttons
-                  actions = [
-                    {
-                      action = "URI";
-                      title = "View Clip";
-                      uri = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
-                    }
-                  ];
                 };
               };
             }

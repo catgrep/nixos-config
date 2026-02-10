@@ -100,41 +100,50 @@
             # Only notify for person, car, package (not dog, cat, etc.)
             {
               condition = "template";
-              value_template = "{{ trigger.payload_json['after']['data']['objects'] | select('in', ['person', 'car', 'package']) | list | length > 0 }}";
+              # Use from_json filter instead of trigger.payload_json (HA 2025.5+ compat)
+              value_template = "{{ (trigger.payload | from_json)['after']['data']['objects'] | select('in', ['person', 'car', 'package']) | list | length > 0 }}";
             }
             # Ensure detections array is not empty (defensive guard)
             {
               condition = "template";
-              value_template = "{{ trigger.payload_json['after']['data']['detections'] | length > 0 }}";
+              value_template = "{{ (trigger.payload | from_json)['after']['data']['detections'] | length > 0 }}";
             }
           ];
           action = [
+            # Parse MQTT payload once and store as variable for all templates below
+            # This avoids relying on trigger.payload_json which is unavailable in
+            # HA 2025.5.x action template context (UndefinedError)
+            {
+              variables = {
+                review = "{{ trigger.payload | from_json }}";
+              };
+            }
             {
               action = "notify.mobile_app_bobbo_dhillons_iphone";
               data = {
-                title = "{{ trigger.payload_json['after']['data']['objects'] | sort | join(', ') | title }} Detected";
-                message = "{{ trigger.payload_json['after']['camera'] | replace('_', ' ') | title }}";
+                title = "{{ review['after']['data']['objects'] | sort | join(', ') | title }} Detected";
+                message = "{{ review['after']['camera'] | replace('_', ' ') | title }}";
                 data = {
                   # Snapshot image via Frigate proxy (uses detection event ID, NOT review ID)
-                  image = "/api/frigate/notifications/{{ trigger.payload_json['after']['data']['detections'][0] }}/snapshot.jpg";
+                  image = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/snapshot.jpg";
                   # Tag for deduplication (uses review ID -- same review replaces notification in-place)
-                  tag = "{{ trigger.payload_json['after']['id'] }}";
+                  tag = "{{ review['after']['id'] }}";
                   # Timestamp for notification ordering
-                  when = "{{ trigger.payload_json['after']['start_time'] | int }}";
+                  when = "{{ review['after']['start_time'] | int }}";
                   # iOS: camera entity for live preview
-                  entity_id = "camera.{{ trigger.payload_json['after']['camera'] }}";
+                  entity_id = "camera.{{ review['after']['camera'] }}";
                   # Tap to view clip (iOS)
-                  url = "/api/frigate/notifications/{{ trigger.payload_json['after']['data']['detections'][0] }}/clip.mp4";
+                  url = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
                   # Tap to view clip (Android)
-                  clickAction = "/api/frigate/notifications/{{ trigger.payload_json['after']['data']['detections'][0] }}/clip.mp4";
+                  clickAction = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
                   # Group notifications by camera
-                  group = "frigate-{{ trigger.payload_json['after']['camera'] }}";
+                  group = "frigate-{{ review['after']['camera'] }}";
                   # Action buttons
                   actions = [
                     {
                       action = "URI";
                       title = "View Clip";
-                      uri = "/api/frigate/notifications/{{ trigger.payload_json['after']['data']['detections'][0] }}/clip.mp4";
+                      uri = "/api/frigate/notifications/{{ review['after']['data']['detections'][0] }}/clip.mp4";
                     }
                   ];
                 };

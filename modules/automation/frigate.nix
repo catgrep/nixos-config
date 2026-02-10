@@ -181,7 +181,7 @@
       #   stream2 = Sub stream (360p for detection)
       cameras = {
         # OUTDOOR CAMERAS (4x) - Detection enabled, 5-day retention
-        front_door = {
+        driveway = {
           enabled = true;
           ffmpeg = {
             inputs = [
@@ -213,16 +213,16 @@
           };
         };
 
-        backyard = {
-          enabled = false;
+        front_door = {
+          enabled = true;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.102:554/stream1";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.64:554/stream1";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.102:554/stream2";
+                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.64:554/stream2";
                 roles = [ "detect" ];
               }
             ];

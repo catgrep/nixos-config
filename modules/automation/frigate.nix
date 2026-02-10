@@ -211,6 +211,23 @@
           snapshots = {
             enabled = true;
           };
+          zones = {
+            driveway_zone = {
+              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
+              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              objects = [
+                "person"
+                "car"
+                "package"
+              ];
+              inertia = 3;
+            };
+          };
+          review = {
+            alerts = {
+              required_zones = [ "driveway_zone" ];
+            };
+          };
         };
 
         front_door = {
@@ -242,6 +259,22 @@
           };
           snapshots = {
             enabled = true;
+          };
+          zones = {
+            porch_zone = {
+              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
+              coordinates = "0.10,0.35,0.90,0.35,0.90,0.90,0.10,0.90";
+              objects = [
+                "person"
+                "package"
+              ];
+              inertia = 3;
+            };
+          };
+          review = {
+            alerts = {
+              required_zones = [ "porch_zone" ];
+            };
           };
         };
 
@@ -278,6 +311,23 @@
           };
           snapshots = {
             enabled = true;
+          };
+          zones = {
+            garage_zone = {
+              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
+              coordinates = "0.10,0.25,0.90,0.25,0.90,0.90,0.10,0.90";
+              objects = [
+                "person"
+                "car"
+                "package"
+              ];
+              inertia = 3;
+            };
+          };
+          review = {
+            alerts = {
+              required_zones = [ "garage_zone" ];
+            };
           };
         };
 
@@ -374,14 +424,18 @@
     8555 # WebRTC
   ];
 
-  # Service dependencies - wait for storage and secrets
+  # Service dependencies - wait for MQTT broker, storage, and secrets
   systemd.services.frigate = lib.mkIf config.services.frigate.enable {
     after = [
+      "mosquitto.service"
       "zfs-mount.service"
       "network-online.target"
       "sops-nix.service"
     ];
-    requires = [ "zfs-mount.service" ];
+    requires = [
+      "mosquitto.service"
+      "zfs-mount.service"
+    ];
     wants = [ "network-online.target" ];
 
     # Load camera credentials from SOPS template

@@ -40,6 +40,11 @@
       paho-mqtt
     ];
 
+    # Frigate custom component for HA integration
+    customComponents = with pkgs.home-assistant-custom-components; [
+      frigate
+    ];
+
     # Minimal declarative config - rest configured via UI
     config = {
       # Basic identification (location/timezone set via UI on first boot)
@@ -69,6 +74,10 @@
       logger = {
         default = "warning";
       };
+
+      # Automation split: manual (Nix-declared) + UI (automations.yaml)
+      "automation manual" = [ ];
+      "automation ui" = "!include automations.yaml";
     };
 
     openFirewall = true;
@@ -89,12 +98,20 @@
     ];
   };
 
-  # Ensure Home Assistant data directories exist
+  # Ensure Home Assistant data directories and files exist
   systemd.tmpfiles.rules = [
     "d /var/lib/hass 0755 hass hass -"
     "d /var/lib/hass/custom_components 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
+    "f /var/lib/hass/automations.yaml 0644 hass hass"
   ];
+
+  # Service ordering: HA starts after Mosquitto and Frigate
+  # Uses `wants` (not `requires`) so HA can start even if Frigate is temporarily down
+  systemd.services.home-assistant = {
+    after = [ "mosquitto.service" "frigate.service" ];
+    wants = [ "mosquitto.service" "frigate.service" ];
+  };
 
   # Required system packages
   environment.systemPackages = with pkgs; [

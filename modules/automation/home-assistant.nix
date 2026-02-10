@@ -46,6 +46,27 @@
       frigate
     ];
 
+    # Frigate Lovelace card (frigate-hass-card) for camera dashboard
+    # Package renamed from frigate-hass-card to advanced-camera-card in v7.0.0
+    customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
+      advanced-camera-card
+    ];
+
+    # Lovelace dashboard configuration
+    config.lovelace = {
+      mode = "storage"; # Keep default dashboard UI-editable
+      dashboards = {
+        cameras = {
+          mode = "yaml";
+          filename = "cameras-dashboard.yaml";
+          title = "Cameras";
+          icon = "mdi:cctv";
+          show_in_sidebar = true;
+          require_admin = false;
+        };
+      };
+    };
+
     # Minimal declarative config - rest configured via UI
     config = {
       # Basic identification (location/timezone set via UI on first boot)
@@ -181,6 +202,7 @@
     "d /var/lib/hass/custom_components 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
     "f /var/lib/hass/automations.yaml 0644 hass hass"
+    "f /var/lib/hass/cameras-dashboard.yaml 0644 hass hass"
   ];
 
   # Service ordering: HA starts after Mosquitto and Frigate

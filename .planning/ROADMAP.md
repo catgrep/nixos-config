@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. All Frigate entities and integration config entries persist after ser8 reboot (impermanence validated)
   4. Services start in correct order after reboot without manual intervention (Mosquitto before Frigate before HA)
   5. Detection zones are configured per camera so that irrelevant areas do not generate false positive events
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- NixOS module changes: Frigate custom component, systemd ordering, automation split, detection zones
+- [ ] 01-02-PLAN.md -- Deploy to ser8, complete UI config flows, verify entity discovery and reboot persistence
 
 ### Phase 2: Push Notifications
 **Goal**: A push notification with a snapshot image arrives on my phone within seconds of Frigate detecting a person, car, or package
@@ -71,6 +71,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Integration Foundation | 0/TBD | Not started | - |
+| 1. Integration Foundation | 0/2 | Planned | - |
 | 2. Push Notifications | 0/TBD | Not started | - |
 | 3. Camera Dashboard | 0/TBD | Not started | - |

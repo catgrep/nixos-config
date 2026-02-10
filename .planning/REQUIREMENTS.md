@@ -1,7 +1,7 @@
 # Requirements: NixOS Homelab Monitoring & Alerting
 
 **Defined:** 2026-02-10
-**Core Value:** The homelab runs reliably without manual intervention — when something needs attention, I know about it before it becomes a problem.
+**Core Value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
 
 ## v1.1 Requirements
 
@@ -45,9 +45,9 @@ Requirements for milestone v1.1. Each maps to roadmap phases.
 
 ### HA Automations
 
-- [ ] **HA-01**: HA automation: camera offline detection → push notification
-- [ ] **HA-02**: HA automation: MQTT broker disconnect → push notification
-- [ ] **HA-03**: HA automation: integration failure detection → push notification
+- [ ] **HA-01**: HA automation: camera offline detection -> push notification
+- [ ] **HA-02**: HA automation: MQTT broker disconnect -> push notification
+- [ ] **HA-03**: HA automation: integration failure detection -> push notification
 - [ ] **HA-04**: HA Prometheus integration enabled for entity metrics export
 
 ## Future Requirements
@@ -62,7 +62,7 @@ Deferred to future milestone. Tracked but not in current roadmap.
 ### Advanced Alerting
 
 - **ADV-01**: PagerDuty/Discord webhook integration for critical alerts
-- **ADV-02**: Alert escalation policies (warning → critical → page)
+- **ADV-02**: Alert escalation policies (warning -> critical -> page)
 
 ## Out of Scope
 
@@ -75,7 +75,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Multi-tenant Loki | Single-operator homelab, auth_enabled: false is correct |
 | Tracing / APM | Overkill for homelab, metrics + logs sufficient |
 | External uptime monitoring | All internal, Tailscale-only access |
-| SMART disk monitoring | Useful but nixpkgs smartctl_exporter has device permission quirks — defer |
+| SMART disk monitoring | Useful but nixpkgs smartctl_exporter has device permission quirks -- defer |
 
 ## Traceability
 
@@ -83,37 +83,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ALERT-01 | — | Pending |
-| ALERT-02 | — | Pending |
-| ALERT-03 | — | Pending |
-| ALERT-04 | — | Pending |
-| PROBE-01 | — | Pending |
-| PROBE-02 | — | Pending |
-| PROBE-03 | — | Pending |
-| PROBE-04 | — | Pending |
-| HW-01 | — | Pending |
-| HW-02 | — | Pending |
-| HW-03 | — | Pending |
-| HW-04 | — | Pending |
-| HW-05 | — | Pending |
-| LOG-01 | — | Pending |
-| LOG-02 | — | Pending |
-| LOG-03 | — | Pending |
-| LOG-04 | — | Pending |
-| LOG-05 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| HA-01 | — | Pending |
-| HA-02 | — | Pending |
-| HA-03 | — | Pending |
-| HA-04 | — | Pending |
+| ALERT-01 | Phase 4 | Pending |
+| ALERT-02 | Phase 4 | Pending |
+| ALERT-03 | Phase 4 | Pending |
+| ALERT-04 | Phase 4 | Pending |
+| PROBE-01 | Phase 4 | Pending |
+| PROBE-02 | Phase 4 | Pending |
+| PROBE-03 | Phase 4 | Pending |
+| PROBE-04 | Phase 4 | Pending |
+| HW-01 | Phase 5 | Pending |
+| HW-02 | Phase 5 | Pending |
+| HW-03 | Phase 5 | Pending |
+| HW-04 | Phase 5 | Pending |
+| HW-05 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| LOG-01 | Phase 6 | Pending |
+| LOG-02 | Phase 6 | Pending |
+| LOG-03 | Phase 6 | Pending |
+| LOG-04 | Phase 6 | Pending |
+| LOG-05 | Phase 6 | Pending |
+| DASH-02 | Phase 7 | Pending |
+| DASH-03 | Phase 7 | Pending |
+| HA-01 | Phase 7 | Pending |
+| HA-02 | Phase 7 | Pending |
+| HA-03 | Phase 7 | Pending |
+| HA-04 | Phase 7 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-10*
-*Last updated: 2026-02-10 after initial definition*
+*Last updated: 2026-02-10 after roadmap creation*

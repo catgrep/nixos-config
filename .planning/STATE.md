@@ -10,27 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 1 of 3 (Integration Foundation)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-10 -- Completed 01-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete, awaiting verification
+Last activity: 2026-02-10 -- Completed 01-02-PLAN.md (deploy + verify)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 5min
-- Total execution time: 5min
+- Total plans completed: 2
+- Average duration: 10min
+- Total execution time: 20min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 01 P01 | 5min | 3 tasks | 2 files |
+| Phase 01 P02 | 15min | 3 tasks | 0 files (deploy+verify) |
 
 **Recent Trend:**
-- Last 5 plans: 5min
+- Last 5 plans: 5min, 15min
 - Trend: -
 
 *Updated after each plan completion*
@@ -48,6 +49,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Used wants (not requires) for HA->Frigate so HA starts even if Frigate is down
 - [Phase 01]: Used requires for Frigate->Mosquitto since Frigate cannot function without MQTT
 - [Phase 01]: Zone coordinates are placeholders to be tuned via Frigate UI in Plan 02
+- [Phase 01]: MQTT broker configured without auth (local-only, behind Tailscale)
+- [Phase 01]: Transient Frigate API 500s during startup are expected, self-resolve
 
 ### Pending Todos
 
@@ -61,5 +64,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01-01-PLAN.md
+Stopped at: Phase 1 complete, running verification
 Resume file: None

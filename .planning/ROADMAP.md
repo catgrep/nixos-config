@@ -57,11 +57,11 @@ Plans:
   3. Stopping a service (e.g., Jellyfin) causes an email alert to arrive after the 2-minute threshold
   4. TLS certificate expiry dates for Tailscale URLs are visible as metrics in Grafana
   5. All alert rules and probe configuration are in Nix files (no UI click-ops required to reproduce from scratch)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- Grafana SMTP email delivery, contact point, notification policy, 6 migrated alert rules
+- [ ] 04-02-PLAN.md -- Blackbox exporter, HTTP/ICMP/TLS probes, 3 probe-based alert rules
 
 ### Phase 5: Hardware Alerts & Status Dashboard
 **Goal**: Hardware problems (disk space, ZFS degradation, CPU/memory/temp) trigger graduated alerts, and a single dashboard shows green/red status for every monitored service
@@ -119,7 +119,7 @@ Phases execute in numeric order: 4 -> 5 -> 6 -> 7
 | 1. Integration Foundation | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 2. Push Notifications | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 3. Camera Dashboard | v1.0 | 2/2 | Complete | 2026-02-10 |
-| 4. Alert Delivery & Service Probes | v1.1 | 0/TBD | Not started | - |
+| 4. Alert Delivery & Service Probes | v1.1 | 0/2 | Planned | - |
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/TBD | Not started | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |

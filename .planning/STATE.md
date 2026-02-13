@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 5 of 7 (Hardware Alerts & Status Dashboard)
-Plan: 1 of 2 complete
-Status: Executing
-Last activity: 2026-02-13 -- Phase 5 plan 01 executed (graduated disk alerts + CPU alert)
+Phase: 5 of 7 (Hardware Alerts & Status Dashboard) -- COMPLETE
+Plan: 2 of 2 complete
+Status: Phase Complete
+Last activity: 2026-02-13 -- Phase 5 complete (uptime dashboard + ZFS zed email alerts)
 
-Progress: [######░░░░] 64% (9/14 plans across both milestones)
+Progress: [#######░░░] 71% (10/14 plans across both milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (6 v1.0 + 3 v1.1)
-- Average duration: ~18 min
-- Total execution time: ~2.7 hours
+- Total plans completed: 10 (6 v1.0 + 4 v1.1)
+- Average duration: ~17 min
+- Total execution time: ~2.9 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [######░░░░] 64% (9/14 plans across both milestones)
 | 2. Push Notifications | 2 | ~32 min | ~16 min |
 | 3. Camera Dashboard | 2 | ~40 min | ~20 min |
 | 4. Alert Delivery & Service Probes | 2 | ~45 min | ~23 min |
-| 5. Hardware Alerts & Status Dashboard | 1 | ~10 min | ~10 min |
+| 5. Hardware Alerts & Status Dashboard | 2 | ~21 min | ~11 min |
 
 **Recent Trend:**
-- Last 2 plans: Phase 5 plan 01 (graduated disk + CPU alerts)
-- Trend: Faster (simple config change, no new modules)
+- Last 2 plans: Phase 5 plan 01 + 02 (graduated alerts + uptime dashboard + zed)
+- Trend: Consistent (~11 min avg for Phase 5)
 
 *Updated after each plan completion*
 
@@ -56,6 +56,8 @@ Recent decisions affecting current work:
 - [Phase 4]: Prometheus ruleFiles kept as defense-in-depth alongside Grafana-managed rules
 - [Phase 5]: Grafana deleteRules needed to remove deprecated file-provisioned alert rules
 - [Phase 5]: rate() over irate() for alert PromQL expressions (smoother signal, fewer false positives)
+- [Phase 5]: msmtp as lightweight MTA on ser8 (not full Postfix); only zed needs email capability
+- [Phase 5]: Grafana field overrides for friendly display names in state-timeline panels
 
 ### Pending Todos
 
@@ -71,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 05-01-PLAN.md (graduated disk alerts + CPU alert)
+Stopped at: Completed 05-02-PLAN.md (Phase 5 complete: uptime dashboard + ZFS zed email alerts)
 Resume file: None

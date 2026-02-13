@@ -101,6 +101,34 @@
       weekly = 4; # Keep 4 weekly snapshots
       monthly = 12; # Keep 12 monthly snapshots
     };
+    # ZFS Event Daemon -- sends email on scrub errors, resilver events, etc.
+    zed = {
+      enableMail = true;
+      settings = {
+        ZED_EMAIL_ADDR = [ "catgrep@sudomail.com" ];
+        ZED_NOTIFY_VERBOSE = true;
+        ZED_SCRUB_AFTER_RESILVER = true;
+      };
+    };
+  };
+
+  # Lightweight MTA for system email (used by ZFS zed for scrub error alerts)
+  programs.msmtp = {
+    enable = true;
+    setSendmail = true;
+    defaults = {
+      auth = true;
+      tls = true;
+      tls_starttls = true;
+      logfile = "/var/log/msmtp.log";
+    };
+    accounts.default = {
+      host = "smtp.gmail.com";
+      port = 587;
+      from = "shadbangus@gmail.com";
+      user = "shadbangus@gmail.com";
+      passwordeval = "cat ${config.sops.secrets.gmail_smtp_password.path}";
+    };
   };
 
   # MergerFS for unified media view
@@ -149,6 +177,10 @@
         owner = "root";
         group = "root";
         mode = "0600";
+      };
+      # Gmail SMTP password for msmtp (ZFS zed email alerts)
+      "gmail_smtp_password" = {
+        mode = "0400";
       };
     };
   };

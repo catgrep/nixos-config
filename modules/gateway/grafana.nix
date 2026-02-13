@@ -35,6 +35,7 @@ let
     adguard = ../../dashboards/adguard.json;
     caddy = ../../dashboards/caddy.json;
     services = ../../dashboards/services.json; # Per-service CPU/memory/IO from process-exporter
+    uptime = ../../dashboards/uptime.json; # Service uptime, host reachability, TLS cert expiry
   };
 in
 {
@@ -877,6 +878,7 @@ in
     "L+ /var/lib/grafana/dashboards/adguard.json - - - - ${dashboards.adguard}"
     "L+ /var/lib/grafana/dashboards/caddy.json - - - - ${dashboards.caddy}"
     "L+ /var/lib/grafana/dashboards/services.json - - - - ${dashboards.services}"
+    "L+ /var/lib/grafana/dashboards/uptime.json - - - - ${dashboards.uptime}"
   ];
 
   # Automatically restart Grafana when dashboard files change

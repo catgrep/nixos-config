@@ -72,10 +72,11 @@ Plans:
   2. A degraded ZFS pool or scrub errors trigger an email alert
   3. Sustained high CPU (>90% for 5min) or low available memory (<10%) triggers an email alert
   4. Grafana uptime dashboard shows a green/red indicator for every probed service with availability history over time
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md -- Graduated disk alerts (warning 80%, critical 90%), CPU sustained usage alert, Prometheus ruleFiles update
+- [ ] 05-02-PLAN.md -- Uptime/status dashboard with state-timeline panels, ZFS zed email via msmtp on ser8
 
 ### Phase 6: Log Aggregation
 **Goal**: Logs from all hosts are searchable in one place, and critical error patterns (OOM kills, ZFS errors, service crashes) trigger alerts automatically
@@ -120,6 +121,6 @@ Phases execute in numeric order: 4 -> 5 -> 6 -> 7
 | 2. Push Notifications | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 3. Camera Dashboard | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 4. Alert Delivery & Service Probes | v1.1 | 2/2 | Complete | 2026-02-12 |
-| 5. Hardware Alerts & Status Dashboard | v1.1 | 0/TBD | Not started | - |
+| 5. Hardware Alerts & Status Dashboard | v1.1 | 0/2 | Planned | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |

@@ -169,7 +169,7 @@ in
         ];
       };
 
-      # Alerting: 6 Grafana-managed alert rules mirroring existing Prometheus ruleFiles
+      # Alerting: Grafana-managed alert rules mirroring existing Prometheus ruleFiles
       # These rules query the Prometheus datasource with the same PromQL expressions.
       # Existing Prometheus ruleFiles are kept as defense-in-depth (visible in Prometheus UI)
       # but cannot deliver notifications without a standalone Alertmanager.
@@ -243,10 +243,10 @@ in
                 isPaused = false;
               }
 
-              # 2. High Disk Usage -- less than 10% free for 5m (warning)
+              # 2. Disk Usage Warning -- less than 20% free for 5m (warning)
               {
-                uid = "high_disk_usage";
-                title = "High Disk Usage";
+                uid = "disk_usage_warning";
+                title = "Disk Usage Warning (>80%)";
                 condition = "C";
                 data = [
                   {
@@ -257,7 +257,67 @@ in
                     };
                     datasourceUid = "prometheus";
                     model = {
-                      expr = "(node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100";
+                      expr = ''(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|devtmpfs|fuse\\.mergerfs",mountpoint!~"/boot.*|/run.*|/sys.*|/proc.*|/dev.*"} / node_filesystem_size_bytes) * 100'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 20 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "Disk usage above 80% on {{ $labels.instance }} mount {{ $labels.mountpoint }}";
+                };
+                isPaused = false;
+              }
+
+              # 3. Disk Usage Critical -- less than 10% free for 5m (critical)
+              {
+                uid = "disk_usage_critical";
+                title = "Disk Usage Critical (>90%)";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|devtmpfs|fuse\\.mergerfs",mountpoint!~"/boot.*|/run.*|/sys.*|/proc.*|/dev.*"} / node_filesystem_size_bytes) * 100'';
                       intervalMs = 1000;
                       maxDataPoints = 43200;
                       refId = "A";
@@ -295,15 +355,15 @@ in
                 noDataState = "NoData";
                 execErrState = "Alerting";
                 labels = {
-                  severity = "warning";
+                  severity = "critical";
                 };
                 annotations = {
-                  summary = "Disk usage is above 90% on {{ $labels.instance }}";
+                  summary = "Disk usage above 90% on {{ $labels.instance }} mount {{ $labels.mountpoint }}";
                 };
                 isPaused = false;
               }
 
-              # 3. High Memory Usage -- less than 10% available for 5m (warning)
+              # 4. High Memory Usage -- less than 10% available for 5m (warning)
               {
                 uid = "high_memory_usage";
                 title = "High Memory Usage";
@@ -363,7 +423,7 @@ in
                 isPaused = false;
               }
 
-              # 4. ZFS Pool Unhealthy -- non-online state for 5m (critical)
+              # 5. ZFS Pool Unhealthy -- non-online state for 5m (critical)
               {
                 uid = "zfs_pool_unhealthy";
                 title = "ZFS Pool Unhealthy";
@@ -423,7 +483,7 @@ in
                 isPaused = false;
               }
 
-              # 5. High CPU Temperature -- above 80C for 5m (warning)
+              # 6. High CPU Temperature -- above 80C for 5m (warning)
               {
                 uid = "high_cpu_temp";
                 title = "High CPU Temperature";
@@ -483,7 +543,7 @@ in
                 isPaused = false;
               }
 
-              # 6. Camera Storage High -- less than 20% free for 5m (warning)
+              # 7. Camera Storage High -- less than 20% free for 5m (warning)
               {
                 uid = "camera_storage_high";
                 title = "Camera Storage High";
@@ -497,7 +557,7 @@ in
                     };
                     datasourceUid = "prometheus";
                     model = {
-                      expr = ''(node_filesystem_avail_bytes{mountpoint="/mnt/cameras"} / node_filesystem_size_bytes{mountpoint="/mnt/cameras"}) * 100'';
+                      expr = ''(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|devtmpfs|fuse\\.mergerfs",mountpoint="/mnt/cameras"} / node_filesystem_size_bytes{mountpoint="/mnt/cameras"}) * 100'';
                       intervalMs = 1000;
                       maxDataPoints = 43200;
                       refId = "A";
@@ -539,6 +599,66 @@ in
                 };
                 annotations = {
                   summary = "Camera storage is above 80% full";
+                };
+                isPaused = false;
+              }
+
+              # 8. High CPU Usage -- above 90% sustained for 5m (warning)
+              {
+                uid = "high_cpu_usage";
+                title = "High CPU Usage (>90% sustained)";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 600;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 90 ];
+                            type = "gt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "CPU usage above 90% sustained for 5+ minutes on {{ $labels.instance }}";
                 };
                 isPaused = false;
               }

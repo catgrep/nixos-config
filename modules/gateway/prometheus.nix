@@ -259,13 +259,21 @@
                 annotations:
                   summary: "Host {{ $labels.instance }} is down"
 
-              - alert: HighDiskUsage
-                expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+              - alert: HighDiskUsageWarning
+                expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|devtmpfs|fuse.mergerfs",mountpoint!~"/boot.*|/run.*|/sys.*|/proc.*|/dev.*"} / node_filesystem_size_bytes) * 100 < 20
                 for: 5m
                 labels:
                   severity: warning
                 annotations:
-                  summary: "Disk usage is above 90% on {{ $labels.instance }}"
+                  summary: "Disk usage above 80% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
+
+              - alert: HighDiskUsageCritical
+                expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|devtmpfs|fuse.mergerfs",mountpoint!~"/boot.*|/run.*|/sys.*|/proc.*|/dev.*"} / node_filesystem_size_bytes) * 100 < 10
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Disk usage above 90% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
 
               - alert: HighMemoryUsage
                 expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
@@ -298,6 +306,14 @@
                   severity: warning
                 annotations:
                   summary: "Camera storage is above 80% full"
+
+              - alert: HighCPUSustained
+                expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "CPU usage above 90% sustained for 5+ minutes on {{ $labels.instance }}"
       '')
     ];
   };

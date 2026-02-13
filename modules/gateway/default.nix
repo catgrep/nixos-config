@@ -8,5 +8,6 @@
     ./prometheus.nix
     ./grafana.nix
     ./tailscale.nix
+    ./blackbox.nix
   ];
 }

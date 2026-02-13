@@ -129,6 +129,113 @@
         ];
         scrape_interval = "30s";
       }
+      # Blackbox HTTP probes -- check service availability via direct HTTP ports
+      {
+        job_name = "blackbox-http";
+        metrics_path = "/probe";
+        params = {
+          module = [ "http_2xx" ];
+        };
+        static_configs = [
+          {
+            targets = [
+              "http://ser8.local:8096" # Jellyfin
+              "http://ser8.local:8989" # Sonarr
+              "http://ser8.local:7878" # Radarr
+              "http://ser8.local:9696" # Prowlarr
+              "http://ser8.local:8080" # qBittorrent (via nginx VPN proxy)
+              "http://ser8.local:8085" # SABnzbd
+              "http://ser8.local:80" # Frigate (via nginx)
+              "http://ser8.local:8123" # Home Assistant
+            ];
+          }
+        ];
+        scrape_interval = "60s";
+        relabel_configs = [
+          {
+            source_labels = [ "__address__" ];
+            target_label = "__param_target";
+          }
+          {
+            source_labels = [ "__param_target" ];
+            target_label = "instance";
+          }
+          {
+            target_label = "__address__";
+            replacement = "localhost:9115";
+          }
+        ];
+      }
+      # Blackbox ICMP probes -- check host reachability via ping
+      {
+        job_name = "blackbox-icmp";
+        metrics_path = "/probe";
+        params = {
+          module = [ "icmp_ping" ];
+        };
+        static_configs = [
+          {
+            targets = [
+              "ser8.local"
+              "firebat.local"
+              "pi4.local"
+            ];
+          }
+        ];
+        scrape_interval = "60s";
+        relabel_configs = [
+          {
+            source_labels = [ "__address__" ];
+            target_label = "__param_target";
+          }
+          {
+            source_labels = [ "__param_target" ];
+            target_label = "instance";
+          }
+          {
+            target_label = "__address__";
+            replacement = "localhost:9115";
+          }
+        ];
+      }
+      # Blackbox TLS probes -- check certificate expiry on Tailscale URLs
+      {
+        job_name = "blackbox-tls";
+        metrics_path = "/probe";
+        params = {
+          module = [ "tls_connect" ];
+        };
+        static_configs = [
+          {
+            targets = [
+              "https://jellyfin.shad-bangus.ts.net"
+              "https://sonarr.shad-bangus.ts.net"
+              "https://radarr.shad-bangus.ts.net"
+              "https://prowlarr.shad-bangus.ts.net"
+              "https://sabnzbd.shad-bangus.ts.net"
+              "https://frigate.shad-bangus.ts.net"
+              "https://hass.shad-bangus.ts.net"
+              "https://grafana.shad-bangus.ts.net"
+              "https://prom.shad-bangus.ts.net"
+            ];
+          }
+        ];
+        scrape_interval = "300s";
+        relabel_configs = [
+          {
+            source_labels = [ "__address__" ];
+            target_label = "__param_target";
+          }
+          {
+            source_labels = [ "__param_target" ];
+            target_label = "instance";
+          }
+          {
+            target_label = "__address__";
+            replacement = "localhost:9115";
+          }
+        ];
+      }
     ];
 
     # Retention and admin API

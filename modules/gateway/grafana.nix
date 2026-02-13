@@ -176,6 +176,13 @@ in
       # Grafana's built-in Alertmanager handles ONLY Grafana-managed rules.
       alerting.rules.settings = {
         apiVersion = 1;
+        # Delete rules removed from provisioning (Grafana doesn't auto-delete file-provisioned rules)
+        deleteRules = [
+          {
+            orgId = 1;
+            uid = "high_disk_usage"; # Replaced by graduated disk_usage_warning + disk_usage_critical
+          }
+        ];
         groups = [
           {
             orgId = 1;

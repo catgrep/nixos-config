@@ -544,6 +544,193 @@ in
               }
             ];
           }
+          {
+            orgId = 1;
+            name = "homelab_probes";
+            folder = "Alerting";
+            interval = "1m";
+            rules = [
+              # 1. Service Down -- probe_success == 0 for 2m (critical)
+              {
+                uid = "service_down";
+                title = "Service Down (Probe Failed)";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''probe_success{job="blackbox-http"}'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 1 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "2m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "critical";
+                };
+                annotations = {
+                  summary = "Service {{ $labels.instance }} is unreachable";
+                };
+                isPaused = false;
+              }
+
+              # 2. Host Unreachable -- ICMP probe failed for 2m (critical)
+              {
+                uid = "host_unreachable";
+                title = "Host Unreachable (ICMP Failed)";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''probe_success{job="blackbox-icmp"}'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 1 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "2m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "critical";
+                };
+                annotations = {
+                  summary = "Host {{ $labels.instance }} is unreachable via ICMP";
+                };
+                isPaused = false;
+              }
+
+              # 3. TLS Certificate Expiring Soon -- less than 14 days until expiry (warning)
+              {
+                uid = "tls_cert_expiring";
+                title = "TLS Certificate Expiring Soon";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 600;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''(probe_ssl_earliest_cert_expiry{job="blackbox-tls"} - time()) / 86400'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 14 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "1h";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "TLS certificate for {{ $labels.instance }} expires in {{ $value }} days";
+                };
+                isPaused = false;
+              }
+            ];
+          }
         ];
       };
     };

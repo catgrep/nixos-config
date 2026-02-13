@@ -139,14 +139,14 @@
         static_configs = [
           {
             targets = [
-              "http://ser8.local:8096" # Jellyfin
-              "http://ser8.local:8989" # Sonarr
-              "http://ser8.local:7878" # Radarr
-              "http://ser8.local:9696" # Prowlarr
-              "http://ser8.local:8080" # qBittorrent (via nginx VPN proxy)
-              "http://ser8.local:8085" # SABnzbd
-              "http://ser8.local:80" # Frigate (via nginx)
-              "http://ser8.local:8123" # Home Assistant
+              "http://192.168.68.65:8096" # Jellyfin (ser8)
+              "http://192.168.68.65:8989" # Sonarr (ser8)
+              "http://192.168.68.65:7878" # Radarr (ser8)
+              "http://192.168.68.65:9696" # Prowlarr (ser8)
+              "http://192.168.68.65:8080" # qBittorrent via nginx (ser8)
+              "http://192.168.68.65:8085" # SABnzbd (ser8)
+              "http://192.168.68.65:80" # Frigate via nginx (ser8)
+              "http://192.168.68.65:8123" # Home Assistant (ser8)
             ];
           }
         ];
@@ -176,9 +176,9 @@
         static_configs = [
           {
             targets = [
-              "ser8.local"
-              "firebat.local"
-              "pi4.local"
+              "192.168.68.65" # ser8
+              "192.168.68.63" # firebat
+              "192.168.68.56" # pi4
             ];
           }
         ];

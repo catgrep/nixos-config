@@ -45,6 +45,13 @@ in
     mode = "0400";
   };
 
+  # SOPS secret for Grafana SMTP password (Gmail App Password)
+  sops.secrets.grafana_smtp_password = {
+    owner = "grafana";
+    group = "grafana";
+    mode = "0400";
+  };
+
   services.grafana = {
     enable = lib.mkDefault true;
     settings = {
@@ -58,6 +65,17 @@ in
       security = {
         admin_user = "admin";
         admin_password = "$__file{${config.sops.secrets.grafana_admin_password.path}}";
+      };
+
+      # SMTP configuration for email alert delivery via Gmail
+      smtp = {
+        enabled = true;
+        host = "smtp.gmail.com:587";
+        user = "shadbangus@gmail.com";
+        password = "$__file{${config.sops.secrets.grafana_smtp_password.path}}";
+        from_address = "shadbangus@gmail.com";
+        from_name = "Homelab Alerts";
+        startTLS_policy = "MandatoryStartTLS";
       };
 
       # Anonymous access for viewing dashboards
@@ -78,6 +96,7 @@ in
             type = "prometheus";
             access = "proxy";
             url = "http://localhost:9090";
+            uid = "prometheus"; # Stable UID for alert rule datasource references
             isDefault = true;
           }
         ];
@@ -97,6 +116,433 @@ in
             options = {
               path = "/var/lib/grafana/dashboards";
             };
+          }
+        ];
+      };
+
+      # Alerting: Contact point for email delivery
+      alerting.contactPoints.settings = {
+        apiVersion = 1;
+        contactPoints = [
+          {
+            orgId = 1;
+            name = "email-alerts";
+            receivers = [
+              {
+                uid = "email-alerts-uid";
+                type = "email";
+                settings = {
+                  addresses = "shadbangus@gmail.com";
+                  singleEmail = false;
+                };
+                disableResolveMessage = false;
+              }
+            ];
+          }
+        ];
+      };
+
+      # Alerting: Notification policy routing severity alerts to email
+      alerting.policies.settings = {
+        apiVersion = 1;
+        policies = [
+          {
+            orgId = 1;
+            receiver = "email-alerts";
+            group_by = [
+              "grafana_folder"
+              "alertname"
+            ];
+            routes = [
+              {
+                receiver = "email-alerts";
+                object_matchers = [
+                  [
+                    "severity"
+                    "=~"
+                    "critical|warning"
+                  ]
+                ];
+              }
+            ];
+          }
+        ];
+      };
+
+      # Alerting: 6 Grafana-managed alert rules mirroring existing Prometheus ruleFiles
+      # These rules query the Prometheus datasource with the same PromQL expressions.
+      # Existing Prometheus ruleFiles are kept as defense-in-depth (visible in Prometheus UI)
+      # but cannot deliver notifications without a standalone Alertmanager.
+      # Grafana's built-in Alertmanager handles ONLY Grafana-managed rules.
+      alerting.rules.settings = {
+        apiVersion = 1;
+        groups = [
+          {
+            orgId = 1;
+            name = "homelab_infrastructure";
+            folder = "Alerting";
+            interval = "1m";
+            rules = [
+              # 1. Host Down -- up{job="node-exporter"} == 0 for 5m (critical)
+              {
+                uid = "host_down";
+                title = "Host Down";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''up{job="node-exporter"} == 0'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 1 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "critical";
+                };
+                annotations = {
+                  summary = "Host {{ $labels.instance }} is down";
+                };
+                isPaused = false;
+              }
+
+              # 2. High Disk Usage -- less than 10% free for 5m (warning)
+              {
+                uid = "high_disk_usage";
+                title = "High Disk Usage";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = "(node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100";
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 10 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "Disk usage is above 90% on {{ $labels.instance }}";
+                };
+                isPaused = false;
+              }
+
+              # 3. High Memory Usage -- less than 10% available for 5m (warning)
+              {
+                uid = "high_memory_usage";
+                title = "High Memory Usage";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = "(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100";
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 10 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "Memory usage is above 90% on {{ $labels.instance }}";
+                };
+                isPaused = false;
+              }
+
+              # 4. ZFS Pool Unhealthy -- non-online state for 5m (critical)
+              {
+                uid = "zfs_pool_unhealthy";
+                title = "ZFS Pool Unhealthy";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''node_zfs_zpool_health_state{state!="online"}'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 0 ];
+                            type = "gt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "critical";
+                };
+                annotations = {
+                  summary = "ZFS pool {{ $labels.pool }} is not healthy on {{ $labels.instance }}";
+                };
+                isPaused = false;
+              }
+
+              # 5. High CPU Temperature -- above 80C for 5m (warning)
+              {
+                uid = "high_cpu_temp";
+                title = "High CPU Temperature";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = "node_hwmon_temp_celsius";
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 80 ];
+                            type = "gt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "CPU temperature is above 80C on {{ $labels.instance }}";
+                };
+                isPaused = false;
+              }
+
+              # 6. Camera Storage High -- less than 20% free for 5m (warning)
+              {
+                uid = "camera_storage_high";
+                title = "Camera Storage High";
+                condition = "C";
+                data = [
+                  {
+                    refId = "A";
+                    relativeTimeRange = {
+                      from = 300;
+                      to = 0;
+                    };
+                    datasourceUid = "prometheus";
+                    model = {
+                      expr = ''(node_filesystem_avail_bytes{mountpoint="/mnt/cameras"} / node_filesystem_size_bytes{mountpoint="/mnt/cameras"}) * 100'';
+                      intervalMs = 1000;
+                      maxDataPoints = 43200;
+                      refId = "A";
+                    };
+                  }
+                  {
+                    refId = "B";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "A";
+                      reducer = "last";
+                      type = "reduce";
+                      refId = "B";
+                    };
+                  }
+                  {
+                    refId = "C";
+                    datasourceUid = "__expr__";
+                    model = {
+                      expression = "B";
+                      type = "threshold";
+                      conditions = [
+                        {
+                          evaluator = {
+                            params = [ 20 ];
+                            type = "lt";
+                          };
+                        }
+                      ];
+                      refId = "C";
+                    };
+                  }
+                ];
+                "for" = "5m";
+                noDataState = "NoData";
+                execErrState = "Alerting";
+                labels = {
+                  severity = "warning";
+                };
+                annotations = {
+                  summary = "Camera storage is above 80% full";
+                };
+                isPaused = false;
+              }
+            ];
           }
         ];
       };

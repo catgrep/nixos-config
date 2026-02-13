@@ -132,7 +132,7 @@ in
                 uid = "email-alerts-uid";
                 type = "email";
                 settings = {
-                  addresses = "shadbangus@gmail.com";
+                  addresses = "catgrep@sudomail.com";
                   singleEmail = false;
                 };
                 disableResolveMessage = false;

@@ -40,7 +40,7 @@ Plans:
 
 **Milestone Goal:** Comprehensive monitoring with proactive alerting so I never discover problems by stumbling into them.
 
-- [ ] **Phase 4: Alert Delivery & Service Probes** - Email notifications for existing alerts, HTTP/ICMP probes for all services
+- [x] **Phase 4: Alert Delivery & Service Probes** - Email notifications for existing alerts, HTTP/ICMP probes for all services
 - [ ] **Phase 5: Hardware Alerts & Status Dashboard** - Hardware health alert rules, uptime dashboard showing service availability
 - [ ] **Phase 6: Log Aggregation** - Centralized searchable logs from all hosts with log-based alerting
 - [ ] **Phase 7: HA Monitoring** - HA automations for infrastructure alerts, HA dashboards for entity tracking
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Grafana SMTP email delivery, contact point, notification policy, 6 migrated alert rules
-- [ ] 04-02-PLAN.md -- Blackbox exporter, HTTP/ICMP/TLS probes, 3 probe-based alert rules
+- [x] 04-01-PLAN.md -- Grafana SMTP email delivery, contact point, notification policy, 6 migrated alert rules
+- [x] 04-02-PLAN.md -- Blackbox exporter, HTTP/ICMP/TLS probes, 3 probe-based alert rules
 
 ### Phase 5: Hardware Alerts & Status Dashboard
 **Goal**: Hardware problems (disk space, ZFS degradation, CPU/memory/temp) trigger graduated alerts, and a single dashboard shows green/red status for every monitored service
@@ -119,7 +119,7 @@ Phases execute in numeric order: 4 -> 5 -> 6 -> 7
 | 1. Integration Foundation | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 2. Push Notifications | v1.0 | 2/2 | Complete | 2026-02-10 |
 | 3. Camera Dashboard | v1.0 | 2/2 | Complete | 2026-02-10 |
-| 4. Alert Delivery & Service Probes | v1.1 | 0/2 | Planned | - |
+| 4. Alert Delivery & Service Probes | v1.1 | 2/2 | Complete | 2026-02-12 |
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/TBD | Not started | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |

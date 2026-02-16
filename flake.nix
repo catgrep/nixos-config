@@ -273,6 +273,7 @@
                 dhcping
                 caddy
                 python3
+                statix
                 wireguard-tools
               ];
             };

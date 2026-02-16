@@ -137,6 +137,7 @@ update-nix-conf:
 # Check flake and run basic tests
 check:
 	@nix flake check
+	@statix check
 	@$(call success_msg,"✓ Flake check passed")
 	@$(call info_msg,"Testing host configurations..."); \
 	for host in $(HOSTS); do \

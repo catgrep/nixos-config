@@ -95,74 +95,18 @@ let
     }
   );
 
-  dashboardConfig = {
-    views = [
-      # Tab 1: Live Cameras
-      {
-        title = "Live Cameras";
-        path = "live";
-        icon = "mdi:camera";
-        cards = [
-          (cameraCard "driveway" "Driveway")
-          (cameraCard "front_door" "Front Door")
-          (cameraCard "garage" "Garage")
-        ];
-      }
-      # Tab 2: Events timeline + detection controls
-      {
-        title = "Events";
-        path = "events";
-        icon = "mdi:motion-sensor";
-        cards = [
-          # Timeline: compact static ratio to show just the timeline bars
-          # Clicking an event expands the media preview within the card
-          {
-            type = "custom:advanced-camera-card";
-            card_id = "events_card"; # Required for URL action deep-linking from notifications
-            cameras = [
-              {
-                camera_entity = "camera.driveway";
-                title = "Driveway";
-                frigate.camera_name = "driveway";
-              }
-              {
-                camera_entity = "camera.front_door";
-                title = "Front Door";
-                frigate.camera_name = "front_door";
-              }
-              {
-                camera_entity = "camera.garage";
-                title = "Garage";
-                frigate.camera_name = "garage";
-              }
-            ];
-            dimensions = {
-              aspect_ratio = "9:16";
-              layout = {
-                fit = "cover";
-                position = {
-                  x = 0;
-                };
-              };
-            };
-            view = {
-              default = "timeline";
+  # Admin-only dashboard for detection/motion controls
+  adminDashboard = pkgs.writeText "camera-admin-dashboard.yaml" (
+    builtins.toJSON adminDashboardConfig
+  );
 
-            };
-            media_gallery = {
-              controls = {
-                filter.mode = "left";
-                thumbnails = {
-                  size = 200;
-                  show_details = false;
-                  show_download_control = true;
-                  show_favorite_control = true;
-                  show_timeline_control = true;
-                };
-              };
-            };
-          }
-          # Detection & motion controls
+  adminDashboardConfig = {
+    views = [
+      {
+        title = "Camera Controls";
+        path = "controls";
+        icon = "mdi:cog";
+        cards = [
           {
             type = "entities";
             title = "Object Detection";
@@ -205,8 +149,113 @@ let
       }
     ];
   };
+
+  dashboardConfig = {
+    views = [
+      # Tab 1: Live Cameras
+      {
+        title = "Live Cameras";
+        path = "live";
+        icon = "mdi:camera";
+        cards = [
+          (cameraCard "driveway" "Driveway")
+          (cameraCard "front_door" "Front Door")
+          (cameraCard "garage" "Garage")
+        ];
+      }
+      # Tab 2: Events timeline
+      {
+        title = "Events";
+        path = "events";
+        icon = "mdi:motion-sensor";
+        cards = [
+          # Timeline: compact static ratio to show just the timeline bars
+          # Clicking an event expands the media preview within the card
+          {
+            type = "custom:advanced-camera-card";
+            card_id = "events_card";
+            cameras = [
+              {
+                camera_entity = "camera.driveway";
+                title = "Driveway";
+                frigate.camera_name = "driveway";
+              }
+              {
+                camera_entity = "camera.front_door";
+                title = "Front Door";
+                frigate.camera_name = "front_door";
+              }
+              {
+                camera_entity = "camera.garage";
+                title = "Garage";
+                frigate.camera_name = "garage";
+              }
+            ];
+            dimensions = {
+              aspect_ratio = "9:16";
+              layout = {
+                fit = "cover";
+                position = {
+                  x = 0;
+                };
+              };
+            };
+            view = {
+              default = "timeline";
+            };
+            media_gallery = {
+              controls = {
+                filter.mode = "left";
+                thumbnails = {
+                  size = 200;
+                  show_details = false;
+                  show_download_control = true;
+                  show_favorite_control = true;
+                  show_timeline_control = true;
+                };
+              };
+            };
+          }
+        ];
+      }
+      # Per-camera subviews for notification deep-linking
+      # subview hides from tab bar; back button returns to live cameras
+      {
+        title = "Driveway";
+        path = "camera_driveway";
+        subview = true;
+        cards = [ (cameraCard "driveway" "Driveway") ];
+      }
+      {
+        title = "Front Door";
+        path = "camera_front_door";
+        subview = true;
+        cards = [ (cameraCard "front_door" "Front Door") ];
+      }
+      {
+        title = "Garage";
+        path = "camera_garage";
+        subview = true;
+        cards = [ (cameraCard "garage" "Garage") ];
+      }
+    ];
+  };
 in
 {
+  # SOPS secrets for family HA user (only when HA is enabled)
+  sops.secrets = lib.mkIf config.services.home-assistant.enable {
+    "hass_family_username" = {
+      owner = "hass";
+      group = "hass";
+      mode = "0400";
+    };
+    "hass_family_password" = {
+      owner = "hass";
+      group = "hass";
+      mode = "0400";
+    };
+  };
+
   services.home-assistant = {
     enable = lib.mkDefault false;
 
@@ -259,6 +308,14 @@ in
           icon = "mdi:cctv";
           show_in_sidebar = true;
           require_admin = false;
+        };
+        lovelace-camera-admin = {
+          mode = "yaml";
+          filename = "camera-admin-dashboard.yaml";
+          title = "Camera Admin";
+          icon = "mdi:shield-lock";
+          show_in_sidebar = true;
+          require_admin = true;
         };
       };
     };
@@ -361,9 +418,9 @@ in
                   when = "{{ review['after']['start_time'] | int }}";
                   # iOS: camera entity for live preview
                   entity_id = "camera.{{ review['after']['camera'] }}";
-                  # Tap to open HA cameras events tab
-                  url = "/lovelace-cameras/events";
-                  clickAction = "/lovelace-cameras/events";
+                  # Tap to open specific camera live feed
+                  url = "/lovelace-cameras/camera_{{ review['after']['camera'] }}";
+                  clickAction = "/lovelace-cameras/camera_{{ review['after']['camera'] }}";
                   # Group notifications by camera
                   group = "frigate-{{ review['after']['camera'] }}";
                 };
@@ -399,8 +456,9 @@ in
     "d /var/lib/hass/custom_components 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
     "f /var/lib/hass/automations.yaml 0644 hass hass"
-    # Symlink cameras dashboard from Nix store (JSON is valid YAML)
+    # Symlink dashboards from Nix store (JSON is valid YAML)
     "L+ /var/lib/hass/cameras-dashboard.yaml - - - - ${camerasDashboard}"
+    "L+ /var/lib/hass/camera-admin-dashboard.yaml - - - - ${adminDashboard}"
     # Register Lovelace resources for storage mode (HA ignores configuration.yaml resources)
     "C+ /var/lib/hass/.storage/lovelace_resources 0600 hass hass - ${lovelaceResources}"
   ];
@@ -412,6 +470,7 @@ in
     # (HA only reads YAML dashboards at startup, not on reload)
     restartTriggers = [
       camerasDashboard
+      adminDashboard
       lovelaceResources
     ];
     after = [
@@ -422,6 +481,27 @@ in
       "mosquitto.service"
       "frigate.service"
     ];
+    # Create non-admin family user (idempotent: skips if user exists)
+    preStart = lib.mkAfter ''
+      HASS_USERNAME=$(cat ${config.sops.secrets."hass_family_username".path})
+      HASS_PASSWORD=$(cat ${config.sops.secrets."hass_family_password".path})
+
+      AUTH_FILE="/var/lib/hass/.storage/auth"
+      if [ -f "$AUTH_FILE" ] && \
+         ${pkgs.jq}/bin/jq -e \
+           --arg user "$HASS_USERNAME" \
+           '.data.users[] | select(.name == $user)' \
+           "$AUTH_FILE" > /dev/null 2>&1; then
+        echo "hass-family-user: already exists, skipping"
+      else
+        echo "hass-family-user: creating..."
+        ${lib.getExe config.services.home-assistant.package} \
+          --script auth \
+          --config /var/lib/hass \
+          add "$HASS_USERNAME" "$HASS_PASSWORD"
+        echo "hass-family-user: created"
+      fi
+    '';
   };
 
   # Required system packages

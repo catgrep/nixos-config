@@ -50,7 +50,8 @@
       "Bash(node /Users/bobby/.claude/get-shit-done/bin/gsd-tools.js commit \"docs: define v1 requirements\" --files .planning/REQUIREMENTS.md)",
       "Bash(node /Users/bobby/.claude/get-shit-done/bin/gsd-tools.js commit:*)",
       "Bash(node:*)",
-      "Bash(git -C /Users/bobby/github/catgrep/nixos-config diff modules/automation/home-assistant.nix)"
+      "Bash(git -C /Users/bobby/github/catgrep/nixos-config diff modules/automation/home-assistant.nix)",
+      "WebFetch(domain:companion.home-assistant.io)"
     ],
     "deny": []
   }

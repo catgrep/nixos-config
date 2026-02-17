@@ -40,6 +40,7 @@
     pciutils
     usbutils
     smartmontools
+    ghostty.terminfo
 
     # Archive tools
     unzip

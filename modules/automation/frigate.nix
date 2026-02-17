@@ -13,13 +13,6 @@
 }:
 
 {
-  # Allow insecure Frigate packages (has known CVE, but we're behind firewall/Tailscale)
-  # See: https://github.com/blakeblackshear/frigate/security/advisories/GHSA-vg28-83rp-8xx4
-  nixpkgs.config.permittedInsecurePackages = lib.mkIf config.services.frigate.enable [
-    "frigate-0.15.2"
-    "frigate-web-0.15.2"
-  ];
-
   # SOPS secrets for camera credentials (only when Frigate is enabled)
   sops.secrets = lib.mkIf config.services.frigate.enable {
     # RTSP camera account credentials
@@ -84,19 +77,31 @@
 
       # AMD GPU hardware acceleration
       ffmpeg = {
+        path = "${pkgs.ffmpeg-headless}";
         hwaccel_args = "preset-vaapi";
         output_args = {
           record = "preset-record-generic-audio-aac";
         };
       };
 
-      # Object detection configuration (CPU-based initially)
+      # Object detection via ONNX with ROCm/MIGraphX on AMD GPU
       detectors = {
-        cpu = {
-          type = "cpu";
-          num_threads = 4;
+        onnx = {
+          type = "onnx";
+          device = "CPU";
         };
-        # Future: OpenVINO on AMD GPU or dedicated TPU
+      };
+
+      # YOLOv8s ONNX model (320x320, exported via ultralytics)
+      # model_type "yolo-generic" supports v3/v4/v7/v8/v9 architectures
+      model = {
+        path = "/var/cache/frigate/model_cache/yolov8s.onnx";
+        model_type = "yolo-generic";
+        width = 320;
+        height = 320;
+        input_tensor = "nchw";
+        input_dtype = "float";
+        labelmap_path = "${pkgs.frigate}/share/frigate/labelmap.txt";
       };
 
       # Recording configuration (global defaults)
@@ -452,7 +457,36 @@
     ];
     wants = [ "network-online.target" ];
 
-    # Load camera credentials from SOPS template
+    environment = {
+      # Radeon 780M is gfx1103 (RDNA 3 iGPU), not officially supported
+      # Override to gfx1100 (RX 7900 XT) which has compatible ISA
+      HSA_OVERRIDE_GFX_VERSION = "11.0.0";
+      # MIGraphX optimization flags (from Frigate's ROCm Dockerfile)
+      MIGRAPHX_DISABLE_MIOPEN_FUSION = "1";
+      MIGRAPHX_DISABLE_SCHEDULE_PASS = "1";
+      MIGRAPHX_DISABLE_REDUCE_FUSION = "1";
+      MIGRAPHX_ENABLE_HIPRTC_WORKAROUNDS = "1";
+      # Prevent transformers library from importing tensorflow
+      USE_TF = "0";
+      # Remove tensorflow from PYTHONPATH to prevent protobuf
+      # symbol collision with onnxruntime. tensorflow statically
+      # links protobuf into libtensorflow_framework.so.2; when
+      # loaded alongside onnxruntime (dynamic libprotobuf.so),
+      # the competing symbols cause segfaults in forked detectors.
+      # Build a clean PYTHONPATH: remove tensorflow (protobuf collision)
+      # and fix frigate's self-reference (overrideAttrs doesn't update
+      # the pythonPath passthru attribute's self-reference).
+      PYTHONPATH = lib.mkForce (
+        let
+          paths = lib.splitString ":" pkgs.frigate.pythonPath;
+          frigateSitePackages = "${pkgs.frigate}/${pkgs.frigate.python.sitePackages}";
+          fixed = map (p: if lib.hasInfix "frigate-" p then frigateSitePackages else p) paths;
+          filtered = builtins.filter (p: !(lib.hasInfix "tensorflow-" p)) fixed;
+        in
+        builtins.concatStringsSep ":" filtered
+      );
+    };
+
     serviceConfig = {
       EnvironmentFile = config.sops.templates."frigate.env".path;
     };

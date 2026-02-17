@@ -180,6 +180,7 @@
             ./modules/media
             ./modules/nordvpn
             ./modules/automation
+            { nixpkgs.overlays = [ (import ./overlays/frigate-rocm.nix nixpkgs-unstable) ]; }
           ];
         };
 

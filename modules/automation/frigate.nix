@@ -84,11 +84,11 @@
         };
       };
 
-      # Object detection via ONNX with ROCm/MIGraphX on AMD GPU
+      # Object detection via ONNX with ROCm on AMD GPU
+      # device "AUTO" picks up ROCMExecutionProvider when available
       detectors = {
         onnx = {
           type = "onnx";
-          device = "CPU";
         };
       };
 

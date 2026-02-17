@@ -6,6 +6,11 @@
 # onnxruntime AND frigate from nixpkgs-unstable to keep the entire
 # dependency tree consistent (protobuf, abseil-cpp, tensorflow, etc.).
 #
+# Setting config.rocmSupport=true on the unstable import propagates
+# ROCm into python3Packages.onnxruntime, which frigate pulls through
+# its dependencies list. Without this, frigate's closure contains
+# CPU-only onnxruntime regardless of top-level overlay overrides.
+#
 # The frigate package is patched to make TFLite imports non-fatal,
 # allowing tensorflow to be removed from PYTHONPATH at runtime.
 # This prevents a protobuf symbol collision: tensorflow statically
@@ -18,13 +23,14 @@ nixpkgs-unstable: final: prev:
 let
   unstable = import nixpkgs-unstable {
     inherit (prev) system;
-    config.allowUnfree = true;
+    config = {
+      allowUnfree = true;
+      rocmSupport = true;
+    };
   };
 in
 {
-  onnxruntime = unstable.onnxruntime.override {
-    rocmSupport = true;
-  };
+  onnxruntime = unstable.onnxruntime;
 
   # Use frigate from unstable for consistent deps with ROCm onnxruntime.
   # Skip installCheck: ROCm onnxruntime segfaults in the build sandbox

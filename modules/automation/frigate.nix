@@ -117,6 +117,7 @@
       # Snapshot configuration
       snapshots = {
         enabled = true;
+        bounding_box = true;
         retain = {
           default = 30;
         };
@@ -274,7 +275,7 @@
             enabled = true;
           };
           zones = {
-            porch_zone = {
+            front_door_zone = {
               # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
               coordinates = "0.10,0.35,0.90,0.35,0.90,0.90,0.10,0.90";
               objects = [
@@ -286,7 +287,7 @@
           };
           review = {
             alerts = {
-              required_zones = [ "porch_zone" ];
+              required_zones = [ "front_door_zone" ];
             };
           };
         };

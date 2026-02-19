@@ -112,6 +112,9 @@ help:
 	$(call help_option,"sops-gen-hash-qbittorrent","Generate PBKDF2-SHA512 hash for qBittorrent WebUI password")
 	$(call help_option,"sops-gen-api-key","Generate API keys for services")
 	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
+	@echo
+	@$(call title_msg,"💡 Lutron Caseta")
+	$(call help_option,"lutron-setup BRIDGE_IP=<ip>","Pair with Lutron Smart Bridge and print SOPS-ready certificates")
 
 # Home-manager dev shell
 dev:
@@ -414,6 +417,9 @@ sops-gen-hash-qbittorrent:
 
 sops-gen-api-key:
 	@./scripts/sops/gen-api-key.py
+
+lutron-setup:
+	@./scripts/lutron/setup.sh $(BRIDGE_IP)
 
 clean:
 	git clean -xfd

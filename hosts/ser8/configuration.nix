@@ -69,7 +69,10 @@
     };
 
     # Kernel parameters for ZFS
-    kernelParams = [ "zfs.zfs_arc_max=8589934592" ]; # 8GB ARC max
+    kernelParams = [
+      "zfs.zfs_arc_max=8589934592" # 8GB ARC max
+      "amdgpu.cwsr_enable=0" # Prevents MES firmware hang on RDNA3 iGPU (780M) under ROCm
+    ];
 
     # Bootloader
     loader = {

@@ -78,10 +78,14 @@ make ssh-HOST              # SSH into host
 ```bash
 make build-HOST            # Build configuration without activation
 make test-HOST             # Build and temporarily activate (reverts on reboot)
-make switch-HOST           # Build, activate, and make boot default
+NO_CONFIRM=true make switch-HOST   # Build, activate, and make boot default
+NO_CONFIRM=true make reboot-HOST   # Reboot host and wait for it to come back
 make apply-HOST            # Full deployment: test + switch + reboot + smoketests
 make rollback-HOST         # Roll back to previous configuration
 ```
+
+> **Note:** Deployment and reboot targets prompt for confirmation by default. Always pass
+> `NO_CONFIRM=true` to skip the interactive prompt when running non-interactively.
 
 ### Raspberry Pi Management
 ```bash

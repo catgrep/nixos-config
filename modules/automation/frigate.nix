@@ -84,8 +84,8 @@
         };
       };
 
-      # Object detection via ONNX with ROCm on AMD GPU
-      # device "AUTO" picks up ROCMExecutionProvider when available
+      # Object detection via ONNX with ROCm on AMD GPU (Radeon 780M)
+      # Hangs mitigated by: amdgpu.cwsr_enable=0 (kernel) + HSA_ENABLE_SDMA=0 (env)
       detectors = {
         onnx = {
           type = "onnx";
@@ -461,6 +461,9 @@
       # Radeon 780M is gfx1103 (RDNA 3 iGPU), not officially supported
       # Override to gfx1100 (RX 7900 XT) which has compatible ISA
       HSA_OVERRIDE_GFX_VERSION = "11.0.0";
+      # Use blit kernels instead of SDMA hardware for memory copies on APU.
+      # On Infinity Fabric shared memory, this improves stability and bandwidth.
+      HSA_ENABLE_SDMA = "0";
       # MIGraphX optimization flags (from Frigate's ROCm Dockerfile)
       MIGRAPHX_DISABLE_MIOPEN_FUSION = "1";
       MIGRAPHX_DISABLE_SCHEDULE_PASS = "1";

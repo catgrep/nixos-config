@@ -267,7 +267,13 @@
             enabled = true;
             width = 640;
             height = 360;
-            fps = 5;
+            fps = 10;
+            stationary = {
+              # 3000 frames = 5 min at 10 fps (5 min × 60 s × 10 fps)
+              threshold = 3000;
+              # 864000 frames = 24 h at 10 fps (24 h × 3600 s × 10 fps)
+              interval = 864000;
+            };
           };
           record = {
             enabled = true;
@@ -316,7 +322,13 @@
             enabled = true;
             width = 640;
             height = 360;
-            fps = 5;
+            fps = 10;
+            stationary = {
+              # 3000 frames = 5 min at 10 fps (5 min × 60 s × 10 fps)
+              threshold = 3000;
+              # 864000 frames = 24 h at 10 fps (24 h × 3600 s × 10 fps)
+              interval = 864000;
+            };
           };
           record = {
             enabled = true;

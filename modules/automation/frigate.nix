@@ -133,10 +133,10 @@
       detect = {
         stationary = {
           # frames without movement before marked stationary
-          # 300 frames is a 5 minute stationary period for a 5 fps detection rate (5 m = 300 frames / 5 fps / 60 s)
-          threshold = 300;
-          # interval is defined as the frequency for running detection on stationary objects.
-          # 432000 frames is a 24h interval for 5 fps detection rate (24 hr = 432000 frames / 5 fps / 60 s / 60 m)
+          # 1500 frames = 5 min at 5 fps (5 min × 60 s × 5 fps)
+          threshold = 1500;
+          # frequency for running detection on stationary objects
+          # 432000 frames = 24 h at 5 fps (24 h × 3600 s × 5 fps)
           interval = 432000;
         };
       };
@@ -153,7 +153,7 @@
         filters = {
           person = {
             min_area = 5000;
-            max_area = 100000;
+            max_area = 200000;
             threshold = 0.7;
           };
         };
@@ -182,7 +182,7 @@
         timezone = "America/Los_Angeles";
       };
 
-      # go2rtc for WebRTC streaming
+      # go2rtc for WebRTC live view (streams managed by services.go2rtc below)
       go2rtc = {
         webrtc = {
           candidates = [
@@ -205,11 +205,11 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
+                path = "rtsp://127.0.0.1:8554/driveway_main";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
+                path = "rtsp://127.0.0.1:8554/driveway_sub";
                 roles = [ "detect" ];
               }
             ];
@@ -254,11 +254,11 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.64:554/stream1";
+                path = "rtsp://127.0.0.1:8554/front_door_main";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.64:554/stream2";
+                path = "rtsp://127.0.0.1:8554/front_door_sub";
                 roles = [ "detect" ];
               }
             ];
@@ -300,17 +300,14 @@
         garage = {
           enabled = true;
           ffmpeg = {
-            # Use TCP transport for stability with Tapo cameras
-            # See: https://github.com/blakeblackshear/frigate/discussions/14888
+            # go2rtc handles the camera connection; preset-rtsp-restream no longer needed
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
-                input_args = "preset-rtsp-restream";
+                path = "rtsp://127.0.0.1:8554/garage_main";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
-                input_args = "preset-rtsp-restream";
+                path = "rtsp://127.0.0.1:8554/garage_sub";
                 roles = [ "detect" ];
               }
             ];
@@ -350,16 +347,17 @@
           };
         };
 
+        # PLACEHOLDERS (no cameras yet)
         side_gate = {
           enabled = false;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.104:554/stream1";
+                path = "rtsp://127.0.0.1:8554/side_gate_main";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.104:554/stream2";
+                path = "rtsp://127.0.0.1:8554/side_gate_sub";
                 roles = [ "detect" ];
               }
             ];
@@ -388,7 +386,7 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.105:554/stream1";
+                path = "rtsp://127.0.0.1:8554/living_room_main";
                 roles = [ "record" ];
               }
             ];
@@ -409,7 +407,7 @@
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://{FRIGATE_CAM_USER}:{FRIGATE_CAM_PASS}@192.168.68.106:554/stream1";
+                path = "rtsp://127.0.0.1:8554/basement_main";
                 roles = [ "record" ];
               }
             ];
@@ -425,6 +423,44 @@
           };
         };
       };
+    };
+  };
+
+  # go2rtc streaming server — single RTSP connection per camera, restreamed
+  # internally so Frigate's record and detect roles share one connection.
+  # Tapo cameras have a low concurrent-connection limit; this prevents
+  # instability from multiple ffmpeg processes connecting simultaneously.
+  #
+  # Streams use go2rtc's ${ENV_VAR} substitution syntax (not Frigate's
+  # {VAR} syntax). Credentials come from the shared frigate.env via
+  # EnvironmentFile so no separate SOPS template is needed.
+  services.go2rtc = lib.mkIf config.services.frigate.enable {
+    enable = true;
+    settings.streams = {
+      driveway_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
+      driveway_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
+      front_door_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.64:554/stream1";
+      front_door_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.64:554/stream2";
+      garage_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
+      garage_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
+      # Placeholders for future cameras
+      side_gate_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.104:554/stream1";
+      side_gate_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.104:554/stream2";
+      living_room_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.105:554/stream1";
+      basement_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.106:554/stream1";
+    };
+  };
+
+  # Override go2rtc service: run as frigate user so it can read frigate.env,
+  # and wait for SOPS secrets before starting.
+  systemd.services.go2rtc = lib.mkIf config.services.frigate.enable {
+    after = [ "sops-nix.service" ];
+    wants = [ "sops-nix.service" ];
+    serviceConfig = {
+      DynamicUser = lib.mkForce false;
+      User = lib.mkForce "frigate";
+      Group = lib.mkForce "frigate";
+      EnvironmentFile = config.sops.templates."frigate.env".path;
     };
   };
 
@@ -447,12 +483,14 @@
   systemd.services.frigate = lib.mkIf config.services.frigate.enable {
     after = [
       "mosquitto.service"
+      "go2rtc.service"
       "zfs-mount.service"
       "network-online.target"
       "sops-nix.service"
     ];
     requires = [
       "mosquitto.service"
+      "go2rtc.service"
       "zfs-mount.service"
     ];
     wants = [ "network-online.target" ];

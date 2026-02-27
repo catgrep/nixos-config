@@ -134,6 +134,14 @@ https://prowlarr.shad-bangus.ts.net {
 	reverse_proxy 192.168.68.65:9696
 }
 
+https://torrent.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/torrent
+	reverse_proxy 192.168.68.65:8080
+}
+
 # -- Service monitoring
 https://grafana.shad-bangus.ts.net {
 	log tailscale {

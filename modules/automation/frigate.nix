@@ -84,11 +84,14 @@
         };
       };
 
-      # Object detection via ONNX with ROCm on AMD GPU (Radeon 780M)
-      # Hangs mitigated by: amdgpu.cwsr_enable=0 (kernel) + HSA_ENABLE_SDMA=0 (env)
+      # Object detection via ONNX on CPU
+      # ROCm inference combined with VAAPI decode causes GPU context resets
+      # on the Radeon 780M iGPU after ~5 days. VAAPI decode is kept (saves
+      # more CPU) while inference runs on CPU (~18ms, acceptable).
       detectors = {
         onnx = {
           type = "onnx";
+          device = "CPU";
         };
       };
 
@@ -542,6 +545,8 @@
 
     serviceConfig = {
       EnvironmentFile = config.sops.templates."frigate.env".path;
+      Restart = "on-failure";
+      RestartSec = 10;
     };
   };
 }

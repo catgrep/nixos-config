@@ -27,6 +27,7 @@
     yq-go
     addlicense
     jujutsu
+    just
   ];
 
   # Enable home-manager

@@ -283,7 +283,7 @@
           "cameras/clips" = {
             type = "zfs_fs";
             options = {
-              quota = "600G";
+              quota = "5T";
             };
           };
         };

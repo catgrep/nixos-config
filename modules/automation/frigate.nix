@@ -111,12 +111,18 @@
       record = {
         enabled = true;
         retain = {
-          days = 5;
+          days = 7;
           mode = "motion";
         };
-        events = {
+        alerts = {
           retain = {
-            default = 30;
+            days = 36500;
+            mode = "motion";
+          };
+        };
+        detections = {
+          retain = {
+            days = 30;
             mode = "active_objects";
           };
         };
@@ -127,7 +133,7 @@
         enabled = true;
         bounding_box = true;
         retain = {
-          default = 30;
+          default = 36500;
         };
       };
 
@@ -226,7 +232,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 5;
+              days = 7;
               mode = "motion";
             };
           };
@@ -281,7 +287,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 5;
+              days = 7;
               mode = "motion";
             };
           };
@@ -336,7 +342,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 5;
+              days = 7;
               mode = "motion";
             };
           };
@@ -386,7 +392,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 5;
+              days = 7;
               mode = "motion";
             };
           };
@@ -412,7 +418,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 3;
+              days = 7;
             };
           };
         };
@@ -433,7 +439,7 @@
           record = {
             enabled = true;
             retain = {
-              days = 3;
+              days = 7;
             };
           };
         };
@@ -485,6 +491,8 @@
     "d /mnt/cameras/recordings 0755 frigate frigate -"
     "d /mnt/cameras/clips 0755 frigate frigate -"
     "d /var/lib/frigate 0755 frigate frigate -"
+    "L+ /var/lib/frigate/recordings - - - - /mnt/cameras/recordings"
+    "L+ /var/lib/frigate/clips - - - - /mnt/cameras/clips"
   ];
 
   # Open firewall ports

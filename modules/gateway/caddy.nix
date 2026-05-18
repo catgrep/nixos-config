@@ -4,14 +4,11 @@
   config,
   lib,
   pkgs,
-  unstable,
   ...
 }:
 
 let
-  # Build Caddy with Tailscale plugin using caddy-nix overlay on unstable
-  # This gets us Caddy 2.10.2+ with latest caddy-tailscale plugin
-  caddyWithTailscale = unstable.caddy.withPlugins {
+  caddyWithTailscale = pkgs.caddy.withPlugins {
     plugins = [
       # Tailscale plugin for automatic HTTPS certificate provisioning
       # Using latest from main branch for Caddy 2.10.x compatibility

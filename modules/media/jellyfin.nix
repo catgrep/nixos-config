@@ -4,23 +4,10 @@
   config,
   lib,
   pkgs,
-  unstable,
   ...
 }:
 
 {
-  # Use jellyfin stack from unstable to work around build issues in 25.05:
-  # - jellyfin-web: npmDepsHash mismatch
-  # - lcevcdec: 25.05 has 3.3.5, but jellyfin-ffmpeg requires >= 4.0.0
-  # See: https://github.com/NixOS/nixpkgs/pull/369159
-  nixpkgs.overlays = [
-    (final: prev: {
-      jellyfin = unstable.jellyfin;
-      jellyfin-web = unstable.jellyfin-web;
-      jellyfin-ffmpeg = unstable.jellyfin-ffmpeg;
-      lcevcdec = unstable.lcevcdec;
-    })
-  ];
   users.users.jellyfin = {
     isSystemUser = true;
     group = "jellyfin";

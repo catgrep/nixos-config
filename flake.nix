@@ -4,7 +4,7 @@
   description = "Bobby's Homelab NixOS configurations";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/daa628a725ab4948e0e2b795e8fb6f4c3e289a7a";
 
@@ -128,7 +128,8 @@
           specialArgs = {
             inherit inputs;
             inherit nixos-raspberrypi;
-            # Provide unstable packages for Tailscale and other services
+            # Unstable tailscale: stable 25.11 has 1.90.9, need >= 1.92.5
+            # Remove when stable tailscale >= 1.92.5
             unstable = import nixpkgs-unstable {
               system = "aarch64-linux";
               config.allowUnfree = true;
@@ -157,11 +158,11 @@
           inherit system;
           specialArgs = {
             inherit inputs;
+            # Unstable tailscale: stable 25.11 has 1.90.9, need >= 1.92.5
+            # Remove when stable tailscale >= 1.92.5
             unstable = import nixpkgs-unstable {
               inherit system;
               config.allowUnfree = true;
-              # Apply caddy-nix overlay to unstable for Caddy with plugins support
-              overlays = [ caddy-nix.overlays.default ];
             };
           };
           modules = [
@@ -186,7 +187,6 @@
             ./modules/media
             ./modules/nordvpn
             ./modules/automation
-            { nixpkgs.overlays = [ (import ./overlays/frigate-rocm.nix nixpkgs-unstable) ]; }
           ];
         };
 

@@ -16,6 +16,29 @@
         "type": "github"
       }
     },
+    "ast-outline": {
+      "inputs": {
+        "crane": "crane",
+        "flake-parts": "flake-parts",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1778431053,
+        "narHash": "sha256-Er70BIOhGruyTYpZi3XFir4WPLGOd/JaMiH/NPj507A=",
+        "owner": "aeroxy",
+        "repo": "ast-outline",
+        "rev": "c765238b1df8269357c5d464ca8b589a3579e997",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aeroxy",
+        "repo": "ast-outline",
+        "rev": "c765238b1df8269357c5d464ca8b589a3579e997",
+        "type": "github"
+      }
+    },
     "caddy-nix": {
       "locked": {
         "lastModified": 1759295910,
@@ -28,6 +51,21 @@
       "original": {
         "owner": "vincentbernat",
         "repo": "caddy-nix",
+        "type": "github"
+      }
+    },
+    "crane": {
+      "locked": {
+        "lastModified": 1777242778,
+        "narHash": "sha256-VWTeqWeb8Sel/QiWyaPvCa9luAbcGawR+Rw09FJoHz0=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "ad8b31ad0ba8448bd958d7a5d50d811dc5d271c0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
         "type": "github"
       }
     },
@@ -91,6 +129,24 @@
     },
     "flake-parts": {
       "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
+      "locked": {
+        "lastModified": 1775087534,
+        "narHash": "sha256-91qqW8lhL7TLwgQWijoGBbiD4t7/q75KTi8NxjVmSmA=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "3107b77cd68437b9a76194f0f7f9c55f2329ca5b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_2": {
+      "inputs": {
         "nixpkgs-lib": [
           "declarative-jellyfin",
           "nix-fast-build",
@@ -149,7 +205,7 @@
     },
     "nix-fast-build": {
       "inputs": {
-        "flake-parts": "flake-parts",
+        "flake-parts": "flake-parts_2",
         "nixpkgs": "nixpkgs",
         "treefmt-nix": "treefmt-nix"
       },
@@ -300,6 +356,21 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib": {
+      "locked": {
+        "lastModified": 1774748309,
+        "narHash": "sha256-+U7gF3qxzwD5TZuANzZPeJTZRHS29OFQgkQ2kiTJBIQ=",
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "rev": "333c4e0545a6da976206c74db8773a1645b5870a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1766902085,
@@ -350,6 +421,7 @@
     },
     "root": {
       "inputs": {
+        "ast-outline": "ast-outline",
         "caddy-nix": "caddy-nix",
         "declarative-jellyfin": "declarative-jellyfin",
         "disko": "disko",

@@ -52,6 +52,11 @@
       url = "github:vincentbernat/caddy-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    ast-outline = {
+      url = "github:aeroxy/ast-outline/c765238b1df8269357c5d464ca8b589a3579e997"; # v2.1.0
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   nixConfig = {
@@ -77,6 +82,7 @@
       # alldebrid-proxy,
       home-manager,
       caddy-nix,
+      ast-outline,
       ...
     }@inputs:
     let
@@ -276,6 +282,7 @@
                 python3
                 statix
                 wireguard-tools
+                ast-outline.packages.${system}.default
               ];
             };
         in

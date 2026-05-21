@@ -23,9 +23,13 @@
     };
 
     nixos-raspberrypi = {
-      url = "github:nvmd/nixos-raspberrypi/main";
-      # Don't follow nixpkgs - let it use its own fork, since it extends the deprecated
-      # boot.loader.raspberryPi option in nixpkgs with one provided by nixos-raspberrypi
+      # Pinned (not `main`): nixos-raspberrypi uses its own nixpkgs fork
+      # (nvmd/nixpkgs/modules-with-keys-25.05), which keeps boot.loader.raspberryPi --
+      # read via .variant/.bootloader in modules/raspberrypi/base.nix:56. `main` has
+      # moved to upstream nixpkgs 25.11, where that option is removed, breaking the Pis.
+      # Omitting an `inputs.nixpkgs.follows` doesn't pin which nixpkgs nixos-raspberrypi
+      # uses -- only pinning this input's rev does. Unpin with a base.nix migration.
+      url = "github:nvmd/nixos-raspberrypi/a12cce5710031c44e0e36b581d8e71bc4f157907";
     };
 
     nixos-images = {

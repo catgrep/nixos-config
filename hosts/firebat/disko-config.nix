@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Simple single-disk configuration for Firebat gateway
-{ ... }:
+_:
 
 {
   disko.devices = {

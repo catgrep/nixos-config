@@ -2,7 +2,7 @@
 
 # Gateway-specific Tailscale configuration
 # Base Tailscale config comes from modules/servers/tailscale.nix
-{ ... }:
+_:
 
 {
   # Enable routing features for gateway role

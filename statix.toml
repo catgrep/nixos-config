@@ -1,0 +1,9 @@
+# statix lint configuration.
+#
+# repeated_keys flags any attribute path that recurs within a set, regardless of
+# distance -- including auto-generated hardware-configuration.nix files and host
+# modules where systemd.* / services.* blocks are deliberately placed next to
+# related config (e.g. hosts/ser8/configuration.nix has services at 3 points
+# ~130 lines apart; modules/dns/adguard-home.nix ~230 lines apart). Mechanically
+# hoisting those into one attrset hurts readability, so the lint is disabled.
+disabled = ["repeated_keys"]

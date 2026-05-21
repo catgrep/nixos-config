@@ -363,7 +363,7 @@
       packageInfo = builtins.mapAttrs (
         hostname: cfg:
         let
-          pkgs = cfg.pkgs;
+          inherit (cfg) pkgs;
 
           # Get overlay packages with versions
           overlayPkgs =
@@ -427,7 +427,7 @@
                 value =
                   let
                     svc = cfg.config.services.${name};
-                    pkg = if svc ? package then svc.package else null;
+                    pkg = svc.package or null;
                     pkgName = if pkg != null then (pkg.pname or pkg.name or null) else null;
                     pkgVersion = if pkg != null then (pkg.version or null) else null;
                   in

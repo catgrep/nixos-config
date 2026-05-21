@@ -50,7 +50,7 @@ in
     # Create dedicated qbittorrent system user
     users.users.${cfg.user} = {
       isSystemUser = true;
-      group = cfg.group;
+      inherit (cfg) group;
       home = "/var/lib/qbittorrent";
       description = "qBittorrent";
       extraGroups = [ "media" ];

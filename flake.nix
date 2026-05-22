@@ -285,6 +285,7 @@
                 caddy
                 python3
                 statix
+                nurl
                 wireguard-tools
                 ast-outline.packages.${system}.default
               ];

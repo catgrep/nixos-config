@@ -186,10 +186,10 @@
       };
 
       # UI configuration
-      ui = {
-        live_mode = "webrtc";
-        timezone = "America/Los_Angeles";
-      };
+      # ui = {
+      #   live_mode = "webrtc";
+      #   timezone = "America/Los_Angeles";
+      # };
 
       # go2rtc for WebRTC live view (streams managed by services.go2rtc below)
       go2rtc = {

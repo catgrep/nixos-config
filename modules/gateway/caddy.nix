@@ -14,7 +14,7 @@ let
       # Using latest from main branch for Caddy 2.10.x compatibility
       "github.com/tailscale/caddy-tailscale@v0.0.0-20260106222316-bb080c4414ac"
     ];
-    hash = "sha256-4vXIpEWx+rmcaPCU7Nw2T5vQpeHQptXH91ep92Lo4rY=";
+    hash = "sha256-fBrfiD0aFUwwKZCQAXupClIfVdrUFLIjdp3gAkRHCQk=";
   };
 in
 {

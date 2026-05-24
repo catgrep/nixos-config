@@ -57,8 +57,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ast-outline = {
-      url = "github:aeroxy/ast-outline/c765238b1df8269357c5d464ca8b589a3579e997"; # v2.1.0
+    ast-bro = {
+      url = "github:aeroxy/ast-bro/92a5559b5364587386666f54307e65985ac040ce"; # v2.2.0
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -86,7 +86,7 @@
       # alldebrid-proxy,
       home-manager,
       caddy-nix,
-      ast-outline,
+      ast-bro,
       ...
     }@inputs:
     let
@@ -287,7 +287,7 @@
                 statix
                 nurl
                 wireguard-tools
-                ast-outline.packages.${system}.default
+                ast-bro.packages.${system}.default
               ];
             };
         in

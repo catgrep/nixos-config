@@ -16,7 +16,7 @@
         "type": "github"
       }
     },
-    "ast-outline": {
+    "ast-bro": {
       "inputs": {
         "crane": "crane",
         "flake-parts": "flake-parts",
@@ -25,17 +25,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1778431053,
-        "narHash": "sha256-Er70BIOhGruyTYpZi3XFir4WPLGOd/JaMiH/NPj507A=",
+        "lastModified": 1779520728,
+        "narHash": "sha256-vgOzJTMiA/uSa6BZVN2VPh6JEPvSCer9BVmjm3UrDj4=",
         "owner": "aeroxy",
-        "repo": "ast-outline",
-        "rev": "c765238b1df8269357c5d464ca8b589a3579e997",
+        "repo": "ast-bro",
+        "rev": "92a5559b5364587386666f54307e65985ac040ce",
         "type": "github"
       },
       "original": {
         "owner": "aeroxy",
-        "repo": "ast-outline",
-        "rev": "c765238b1df8269357c5d464ca8b589a3579e997",
+        "repo": "ast-bro",
+        "rev": "92a5559b5364587386666f54307e65985ac040ce",
         "type": "github"
       }
     },
@@ -449,7 +449,7 @@
     },
     "root": {
       "inputs": {
-        "ast-outline": "ast-outline",
+        "ast-bro": "ast-bro",
         "caddy-nix": "caddy-nix",
         "declarative-jellyfin": "declarative-jellyfin",
         "disko": "disko",

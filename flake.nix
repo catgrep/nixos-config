@@ -237,6 +237,9 @@
             ./modules/media
             ./modules/nordvpn
             ./modules/automation
+            {
+              nixpkgs.overlays = [ (import ./overlays/frigate-tflite-optional.nix) ];
+            }
           ];
         };
 

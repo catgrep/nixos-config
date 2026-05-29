@@ -57,6 +57,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    sagent = {
+      url = "path:./tools/sagent";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     ast-bro = {
       url = "github:aeroxy/ast-bro/92a5559b5364587386666f54307e65985ac040ce"; # v2.2.0
       inputs.nixpkgs.follows = "nixpkgs";
@@ -86,10 +91,45 @@
       # alldebrid-proxy,
       home-manager,
       caddy-nix,
+      sagent,
       ast-bro,
       ...
     }@inputs:
     let
+      sagentFor =
+        system:
+        let
+          pkgs = nixpkgs-unstable.legacyPackages.${system};
+        in
+        sagent.lib.mkSagent {
+          inherit system pkgs;
+          extraReadPaths = [
+            "~/.npm-global"
+          ];
+          extraWritePaths = [
+            "~/github/catgrep/nixos-config"
+            "~/.docker"
+          ];
+          allowDockerSocket = true;
+          extraEnv = {
+            AST_OUTLINE_MODEL_DIR = "~/.cache/ast-outline/models";
+            AST_OUTLINE_TLS_STRICT = "1";
+          };
+        };
+
+      sagentPackages = builtins.mapAttrs (
+        system: packages:
+        let
+          pkgs = nixpkgs-unstable.legacyPackages.${system};
+          configuredSagent = sagentFor system;
+        in
+        packages
+        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+          sagent = configuredSagent;
+          default = configuredSagent;
+        }
+      ) sagent.packages;
+
       # Common module groups
       baseModules = [
         ./modules/common
@@ -229,6 +269,10 @@
         "provisioning-pi5" = self.nixosConfigurations.pi5;
       };
 
+      lib = sagent.lib;
+
+      packages = sagentPackages;
+
       # Add minimally configured SD card image builders
       # (these are pre-builts provided by nixos-raspberrypi)
       installerConfigurations = {
@@ -264,31 +308,36 @@
               pkgs = nixpkgs-unstable.legacyPackages.${system};
             in
             pkgs.mkShell {
-              buildInputs = with pkgs; [
-                nixfmt-rfc-style
-                nixos-rebuild
-                git
-                jq
-                yq-go
-                sops
-                age
-                ssh-to-age
-                openssl
-                sshpass
-                mkpasswd
-                inetutils
-                shellcheck
-                nixos-anywhere
-                mkcert
-                addlicense
-                dhcping
-                caddy
-                python3
-                statix
-                nurl
-                wireguard-tools
-                ast-bro.packages.${system}.default
-              ];
+              buildInputs =
+                with pkgs;
+                [
+                  nixfmt-rfc-style
+                  nixos-rebuild
+                  git
+                  jq
+                  yq-go
+                  sops
+                  age
+                  ssh-to-age
+                  openssl
+                  sshpass
+                  mkpasswd
+                  inetutils
+                  shellcheck
+                  nixos-anywhere
+                  mkcert
+                  addlicense
+                  dhcping
+                  caddy
+                  python3
+                  statix
+                  nurl
+                  wireguard-tools
+                  ast-bro.packages.${system}.default
+                ]
+                ++ lib.optionals pkgs.stdenv.isDarwin [
+                  (sagentFor system)
+                ];
             };
         in
         {

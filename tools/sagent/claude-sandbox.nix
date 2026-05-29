@@ -11,19 +11,35 @@
   extraReadPaths ? [ ],
   extraWritePaths ? [ ],
   denyClaudeConfigWrites ? true,
-  allowDockerSocket ? false,
+  networkAccess ? false,
+  unixSocketPaths ? [ ],
 }:
 
 let
   # SBPL's `subpath` operand is a literal string; it does not expand `~`.
   mkSubpath =
     p:
-    if lib.hasPrefix "~/" p then
-      ''(subpath (string-append (param "HOME_DIR") "${lib.removePrefix "~" p}"))''
-    else if lib.hasPrefix "/" p then
-      ''(subpath "${p}")''
+    let
+      path = toString p;
+    in
+    if lib.hasPrefix "~/" path then
+      ''(subpath (string-append (param "HOME_DIR") "${lib.removePrefix "~" path}"))''
+    else if lib.hasPrefix "/" path then
+      ''(subpath "${path}")''
     else
-      throw "extra sandbox path must be absolute or '~/'-prefixed: ${p}";
+      throw "extra sandbox path must be absolute or '~/'-prefixed: ${path}";
+
+  mkLiteral =
+    p:
+    let
+      path = toString p;
+    in
+    if lib.hasPrefix "~/" path then
+      ''(literal (string-append (param "HOME_DIR") "${lib.removePrefix "~" path}"))''
+    else if lib.hasPrefix "/" path then
+      ''(literal "${path}")''
+    else
+      throw "unix socket path must be absolute or '~/'-prefixed: ${path}";
 
   extraReadsFragment = lib.optionalString (extraReadPaths != [ ]) ''
 
@@ -58,25 +74,29 @@ let
       (subpath (string-append (param "HOME_DIR") "/.local/state/claude")))
   '';
 
-  # Docker Desktop on macOS routes /var/run/docker.sock to a per-user socket
-  # under ~/.docker/run/docker.sock. The sandbox needs both file-read on the
-  # symlink and real path, plus network-outbound on the unix socket.
-  dockerSocketFragment = lib.optionalString allowDockerSocket ''
+  networkFragment = lib.optionalString networkAccess ''
 
-    ;; sagent: docker daemon socket access (Docker Desktop on macOS)
+    ;; sagent: unrestricted outbound network access
+    (allow network-outbound)
+  '';
+
+  unixSocketsFragment = lib.optionalString (unixSocketPaths != [ ]) ''
+
+    ;; sagent: Unix socket access
     (allow file-read*
-      (literal "/var/run/docker.sock")
-      (literal (string-append (param "HOME_DIR") "/.docker/config.json"))
-      (literal (string-append (param "HOME_DIR") "/.docker/run/docker.sock")))
+    ${lib.concatMapStringsSep "\n" mkLiteral unixSocketPaths}
+    )
     (allow network-outbound
-      (literal (string-append (param "HOME_DIR") "/.docker/run/docker.sock")))
+    ${lib.concatMapStringsSep "\n" mkLiteral unixSocketPaths}
+    )
   '';
 
   fragment = writeText "sagent-claude-sandbox-extras.sb" (
     officialInstallerFragment
     + extraReadsFragment
     + extraWritesFragment
-    + dockerSocketFragment
+    + networkFragment
+    + unixSocketsFragment
     + configDenyFragment
   );
 in

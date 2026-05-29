@@ -110,7 +110,11 @@
             "~/github/catgrep/nixos-config"
             "~/.docker"
           ];
-          allowDockerSocket = true;
+          unixSocketPaths = [
+            "/nix/var/nix/daemon-socket/socket"
+            "/var/run/docker.sock"
+            "~/.docker/run/docker.sock"
+          ];
           extraEnv = {
             AST_OUTLINE_MODEL_DIR = "~/.cache/ast-outline/models";
             AST_OUTLINE_TLS_STRICT = "1";

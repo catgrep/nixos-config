@@ -21,19 +21,16 @@ let
       pkgs ? pkgsFor system,
       extraReadPaths ? [ ],
       extraWritePaths ? [ ],
-      claudeExtraReadPaths ? extraReadPaths,
-      claudeExtraWritePaths ? extraWritePaths,
-      codexExtraWritePaths ? extraWritePaths,
       extraEnv ? { },
       denyClaudeConfigWrites ? true,
-      allowDockerSocket ? false,
       claudeBin ? "~/.local/bin/claude",
       codexBin ? null,
       codexFallbackBins ? [
         "/opt/homebrew/bin/codex"
         "/usr/local/bin/codex"
       ],
-      codexNetworkAccess ? false,
+      networkAccess ? false,
+      unixSocketPaths ? [ ],
       claudeArgs ? [ ],
       claudeYoloArgs ? [ ],
       codexArgs ? [ ],
@@ -42,11 +39,12 @@ let
     let
       claude-sandbox = pkgs.callPackage ./claude-sandbox.nix {
         claude-code-sandbox-src = claude-code-sandbox.packages.${system}.default;
-        extraReadPaths = claudeExtraReadPaths;
-        extraWritePaths = claudeExtraWritePaths;
         inherit
+          extraReadPaths
+          extraWritePaths
           denyClaudeConfigWrites
-          allowDockerSocket
+          networkAccess
+          unixSocketPaths
           ;
       };
     in
@@ -57,13 +55,14 @@ let
         claudeBin
         codexBin
         codexFallbackBins
-        codexNetworkAccess
+        networkAccess
+        unixSocketPaths
         claudeArgs
         claudeYoloArgs
         codexArgs
         codexYoloArgs
         ;
-      extraWritePaths = codexExtraWritePaths;
+      inherit extraWritePaths;
     };
 in
 {

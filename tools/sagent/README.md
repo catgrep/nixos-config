@@ -34,12 +34,13 @@ the approval policy to `never`. It does not use Codex's unsandboxed
 
 Important override knobs:
 
-- `extraWritePaths`: common writable roots; used by Codex and, by default, the
-  Claude sandbox.
-- `claudeExtraReadPaths`, `claudeExtraWritePaths`, `codexExtraWritePaths`:
-  per-agent path overrides when the common defaults are not right.
+- `extraReadPaths`: common read-only roots added to the Claude sandbox.
+- `extraWritePaths`: common writable roots added to the Claude sandbox and to
+  Codex with `--add-dir`. Codex also gets `<root>/.git` when it exists so it
+  can update repository metadata for writable roots.
+- `unixSocketPaths`: Unix sockets each launcher may connect to, such as
+  `/nix/var/nix/daemon-socket/socket` for local Nix daemon evaluation or
+  `/var/run/docker.sock` for Docker.
+- `networkAccess`: opt-in unrestricted outbound network access.
 - `extraEnv`: runtime environment variables. Use `~/...` for HOME-relative
   paths; do not put secrets in Nix values.
-- `allowDockerSocket`: opt-in Docker Desktop socket access for Claude's outer
-  macOS sandbox.
-- `codexNetworkAccess`: opt-in Codex sandbox network access.

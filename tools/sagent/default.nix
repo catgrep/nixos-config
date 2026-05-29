@@ -4,7 +4,6 @@
   lib,
   writeShellApplication,
   claude-sandbox,
-  extraWritePaths ? [ ],
   extraEnv ? { },
   claudeBin ? "~/.local/bin/claude",
   codexBin ? null,
@@ -12,8 +11,6 @@
     "/opt/homebrew/bin/codex"
     "/usr/local/bin/codex"
   ],
-  networkAccess ? false,
-  unixSocketPaths ? [ ],
   claudeArgs ? [ ],
   claudeYoloArgs ? [ ],
   codexArgs ? [ ],
@@ -60,9 +57,6 @@ writeShellApplication {
 
     SAGENT_DEFAULT_CLAUDE_BIN=${mkShellWord claudeBin}
     SAGENT_DEFAULT_CODEX_BIN=${mkShellWord (if codexBin == null then "" else codexBin)}
-    SAGENT_NETWORK_ACCESS=${if networkAccess then "1" else "0"}
-    ${mkShellArray "SAGENT_EXTRA_WRITE_PATHS" extraWritePaths}
-    ${mkShellArray "SAGENT_UNIX_SOCKET_PATHS" unixSocketPaths}
     ${mkShellArray "SAGENT_CODEX_FALLBACK_BINS" codexFallbackBins}
     ${mkShellArray "SAGENT_CLAUDE_ARGS" claudeArgs}
     ${mkShellArray "SAGENT_CLAUDE_YOLO_ARGS" claudeYoloArgs}
@@ -90,30 +84,6 @@ writeShellApplication {
           printf '%s\n' "$path"
           ;;
       esac
-    }
-
-    toml_escape_string() {
-      local value="$1"
-      value="''${value//\\/\\\\}"
-      value="''${value//\"/\\\"}"
-      printf '"%s"' "$value"
-    }
-
-    toml_array() {
-      local first=1
-      local path
-      local expanded
-
-      printf '['
-      for path in "$@"; do
-        expanded="$(expand_path "$path")"
-        if [ "$first" = "0" ]; then
-          printf ','
-        fi
-        toml_escape_string "$expanded"
-        first=0
-      done
-      printf ']'
     }
 
     resolve_executable() {
@@ -209,44 +179,24 @@ writeShellApplication {
     }
 
     run_codex() {
-      local approval_policy="$1"
+      local yolo="$1"
       shift
 
       local codex_bin
       codex_bin="$(find_executable codex SAGENT_CODEX_BIN "$SAGENT_DEFAULT_CODEX_BIN" "''${SAGENT_CODEX_FALLBACK_BINS[@]}")"
 
+      # Codex is sandboxed by the outer SBPL profile from claude-sandbox.
       local args=(
-        --sandbox workspace-write
-        --ask-for-approval "$approval_policy"
+        --dangerously-bypass-approvals-and-sandbox
       )
 
-      if [ "$SAGENT_NETWORK_ACCESS" = "1" ]; then
-        args+=(-c sandbox_workspace_write.network_access=true)
-      fi
-
-      if [ "''${#SAGENT_UNIX_SOCKET_PATHS[@]}" -gt 0 ]; then
-        local unix_socket_config
-        unix_socket_config="$(toml_array "''${SAGENT_UNIX_SOCKET_PATHS[@]}")"
-        args+=(-c "network.allow_unix_sockets=$unix_socket_config")
-      fi
-
-      local dir
-      local expanded_dir
-      for dir in "''${SAGENT_EXTRA_WRITE_PATHS[@]}"; do
-        expanded_dir="$(expand_path "$dir")"
-        args+=(--add-dir "$expanded_dir")
-        if [ -d "$expanded_dir/.git" ]; then
-          args+=(--add-dir "$expanded_dir/.git")
-        fi
-      done
-
-      if [ "$approval_policy" = "never" ]; then
+      if [ "$yolo" = "1" ]; then
         args+=("''${SAGENT_CODEX_YOLO_ARGS[@]}")
       else
         args+=("''${SAGENT_CODEX_ARGS[@]}")
       fi
 
-      exec "$codex_bin" "''${args[@]}" "$@"
+      exec claude-sandbox -- "$codex_bin" "''${args[@]}" "$@"
     }
 
     if [ "$#" -lt 1 ]; then
@@ -268,10 +218,10 @@ writeShellApplication {
         run_claude 1 "$@"
         ;;
       codex)
-        run_codex on-request "$@"
+        run_codex 0 "$@"
         ;;
       codex-yolo)
-        run_codex never "$@"
+        run_codex 1 "$@"
         ;;
       -h|--help|help)
         usage

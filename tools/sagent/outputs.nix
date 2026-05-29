@@ -37,15 +37,25 @@ let
       codexYoloArgs ? [ ],
     }:
     let
+      # Keep both agent profiles on the same writable state roots. Codex runs
+      # inside this shared seatbelt profile instead of using its internal
+      # per-command workspace-write sandbox.
+      defaultWritePaths = [
+        "~/.cache"
+        "~/.codex"
+        "~/.nix-defexpr"
+      ];
+      sharedWritePaths = defaultWritePaths ++ extraWritePaths;
+
       claude-sandbox = pkgs.callPackage ./claude-sandbox.nix {
         claude-code-sandbox-src = claude-code-sandbox.packages.${system}.default;
         inherit
           extraReadPaths
-          extraWritePaths
           denyClaudeConfigWrites
           networkAccess
           unixSocketPaths
           ;
+        extraWritePaths = sharedWritePaths;
       };
     in
     pkgs.callPackage ./. {
@@ -55,14 +65,11 @@ let
         claudeBin
         codexBin
         codexFallbackBins
-        networkAccess
-        unixSocketPaths
         claudeArgs
         claudeYoloArgs
         codexArgs
         codexYoloArgs
         ;
-      inherit extraWritePaths;
     };
 in
 {

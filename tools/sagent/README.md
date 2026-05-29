@@ -28,19 +28,24 @@ The wrapper exposes:
 - `sagent claude [...]`
 - `sagent claude-yolo [...]`
 
-`codex-yolo` keeps Codex in `workspace-write` sandbox mode and changes only
-the approval policy to `never`. It does not use Codex's unsandboxed
-`--dangerously-bypass-approvals-and-sandbox` mode.
+Both Codex profiles run inside the same macOS seatbelt profile as Claude via
+`claude-sandbox`. Codex is started with
+`--dangerously-bypass-approvals-and-sandbox`, so the SBPL profile is the
+sandbox boundary instead of Codex's internal per-command sandbox.
+`codex-yolo` is kept as a compatibility profile for `codexYoloArgs`.
 
 Important override knobs:
 
-- `extraReadPaths`: common read-only roots added to the Claude sandbox.
-- `extraWritePaths`: common writable roots added to the Claude sandbox and to
-  Codex with `--add-dir`. Codex also gets `<root>/.git` when it exists so it
-  can update repository metadata for writable roots.
+- `extraReadPaths`: common read-only roots added to the shared sandbox.
+- `extraWritePaths`: additional common writable roots added to the Claude
+  sandbox used by both launchers. Both launchers also get shared default
+  writable roots for agent and Nix state: `~/.cache`, `~/.codex`, and
+  `~/.nix-defexpr`.
 - `unixSocketPaths`: Unix sockets each launcher may connect to, such as
   `/nix/var/nix/daemon-socket/socket` for local Nix daemon evaluation or
   `/var/run/docker.sock` for Docker.
-- `networkAccess`: opt-in unrestricted outbound network access.
+- `networkAccess`: compatibility knob for adding explicit outbound network
+  access to the shared profile. The upstream Claude sandbox profile already
+  permits network so the native agent CLIs can reach their APIs.
 - `extraEnv`: runtime environment variables. Use `~/...` for HOME-relative
   paths; do not put secrets in Nix values.

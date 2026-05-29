@@ -112,6 +112,8 @@
           ];
           unixSocketPaths = [
             "/nix/var/nix/daemon-socket/socket"
+            "/var/run/nix-daemon.socket"
+            "/private/var/run/nix-daemon.socket"
             "/var/run/docker.sock"
             "~/.docker/run/docker.sock"
           ];

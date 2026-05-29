@@ -20,6 +20,8 @@
         "root"
         "@wheel"
       ];
+      # Nix rejects explicit build roots that are world-writable, such as /tmp.
+      build-dir = lib.mkDefault "/nix-builds";
     };
 
     # Automatic garbage collection
@@ -32,6 +34,10 @@
     # Add unstable channel
     registry.nixpkgs-unstable.flake = inputs.nixpkgs-unstable;
   };
+
+  systemd.tmpfiles.rules = [
+    "d /nix-builds 0755 root root -"
+  ];
 
   nixpkgs.config.allowUnfree = true;
 

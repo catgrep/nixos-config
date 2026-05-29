@@ -84,6 +84,10 @@ nixos_rebuild() {
         user="$NIXBUILD_USER"
     fi
 
+    local remote_build_dir="/nix-builds"
+    info "Ensuring remote Nix build directory '${remote_build_dir}' exists..."
+    ssh "${user}@${ip}" -- "sudo mkdir -p '${remote_build_dir}' && sudo chown root:root '${remote_build_dir}' && sudo chmod 0755 '${remote_build_dir}'"
+
     info "Running 'nixos-rebuild ${action}' on '${user}@${ip}'..."
 
     # base args
@@ -94,6 +98,7 @@ nixos_rebuild() {
         --target-host "${user}@${ip}"
         --use-remote-sudo
         --verbose
+        --option build-dir "${remote_build_dir}"
         # add '--fast' to bypass 'Exec format error'
         # See https://discourse.nixos.org/t/deploy-nixos-configurations-on-other-machines/22940/32
         --fast

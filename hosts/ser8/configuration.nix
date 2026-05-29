@@ -150,20 +150,28 @@
     ];
   };
 
-  # NixOS build optimization - use fast NVMe for builds
+  # NixOS build optimization
   nix.settings = {
     max-jobs = "auto";
     cores = 0; # Use all available cores
-    # Keep build directories on fast storage
-    build-dir = "/tmp";
   };
 
-  # Set up a large /tmp on tmpfs for builds
+  # Keep general temporary files on tmpfs.
   fileSystems."/tmp" = {
     device = "tmpfs";
     fsType = "tmpfs";
     options = [
       "mode=1777"
+      "size=32G"
+    ];
+  };
+
+  # Dedicated root-owned tmpfs for the shared Nix build-dir.
+  fileSystems."/nix-builds" = {
+    device = "tmpfs";
+    fsType = "tmpfs";
+    options = [
+      "mode=0755"
       "size=32G"
     ];
   };

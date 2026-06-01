@@ -215,10 +215,12 @@
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/driveway_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
                 path = "rtsp://127.0.0.1:8554/driveway_sub";
+                input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
             ];
@@ -264,10 +266,12 @@
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/front_door_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
                 path = "rtsp://127.0.0.1:8554/front_door_sub";
+                input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
             ];
@@ -315,14 +319,15 @@
         garage = {
           enabled = true;
           ffmpeg = {
-            # go2rtc handles the camera connection; preset-rtsp-restream no longer needed
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/garage_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
                 path = "rtsp://127.0.0.1:8554/garage_sub";
+                input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
             ];
@@ -375,10 +380,12 @@
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/side_gate_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
                 path = "rtsp://127.0.0.1:8554/side_gate_sub";
+                input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
             ];
@@ -408,6 +415,7 @@
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/living_room_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
             ];
@@ -429,6 +437,7 @@
             inputs = [
               {
                 path = "rtsp://127.0.0.1:8554/basement_main";
+                input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
             ];

@@ -23,10 +23,13 @@ let
     cameras = [
       {
         camera_entity = "camera.${cameraName}";
-        live_provider = "auto";
+        live_provider = "go2rtc";
         title = displayName;
         frigate = {
           camera_name = cameraName;
+        };
+        go2rtc = {
+          stream = "${cameraName}_main";
         };
       }
     ];

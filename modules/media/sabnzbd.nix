@@ -4,6 +4,7 @@
   config,
   lib,
   pkgs,
+  unstable,
   ...
 }:
 
@@ -66,7 +67,8 @@ in
         );
         path = final.lib.makeBinPath [
           final.coreutils
-          final.par2cmdline-turbo
+          # SABnzbd 5.x release builds use par2cmdline-turbo 1.4; stable 25.11 has 1.3.
+          unstable.par2cmdline-turbo
           final.unrar
           final.unzip
           final.p7zip

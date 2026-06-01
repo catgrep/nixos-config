@@ -299,7 +299,7 @@
           direct_unpack = 0
           no_penalties = 0
           par_option = 1
-          pre_check = 0
+          pre_check = 1
           nice =
           ionice =
           win_process_prio = 3

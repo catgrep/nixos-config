@@ -25,17 +25,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1779520728,
-        "narHash": "sha256-vgOzJTMiA/uSa6BZVN2VPh6JEPvSCer9BVmjm3UrDj4=",
+        "lastModified": 1781364872,
+        "narHash": "sha256-mv0wzDzd20/0AxYewscuIUSBfR5GMxjDK5CviI8wzbE=",
         "owner": "aeroxy",
         "repo": "ast-bro",
-        "rev": "92a5559b5364587386666f54307e65985ac040ce",
+        "rev": "9466139f09cc9fac36b64ca6177bdf76840d9738",
         "type": "github"
       },
       "original": {
         "owner": "aeroxy",
         "repo": "ast-bro",
-        "rev": "92a5559b5364587386666f54307e65985ac040ce",
+        "rev": "9466139f09cc9fac36b64ca6177bdf76840d9738",
         "type": "github"
       }
     },

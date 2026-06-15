@@ -145,6 +145,7 @@
               "http://192.168.68.65:9696" # Prowlarr (ser8)
               "http://192.168.68.65:8080" # qBittorrent via nginx (ser8)
               "http://192.168.68.65:8085" # SABnzbd (ser8)
+              "http://192.168.68.65:6789" # NZBGet (ser8)
               "http://192.168.68.65:80" # Frigate via nginx (ser8)
               "http://192.168.68.65:8123" # Home Assistant (ser8)
             ];
@@ -213,6 +214,7 @@
               "https://radarr.shad-bangus.ts.net"
               "https://prowlarr.shad-bangus.ts.net"
               "https://sabnzbd.shad-bangus.ts.net"
+              "https://nzbget.shad-bangus.ts.net"
               "https://frigate.shad-bangus.ts.net"
               "https://hass.shad-bangus.ts.net"
               "https://grafana.shad-bangus.ts.net"

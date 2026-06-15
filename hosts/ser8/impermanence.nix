@@ -55,6 +55,7 @@
       "/var/lib/prowlarr"
       "/var/lib/qbittorrent"
       "/var/lib/sabnzbd"
+      "/var/lib/nzbget"
       "/var/lib/postgresql"
       {
         directory = "/var/lib/docker";
@@ -135,6 +136,7 @@
     "d /mnt/media/downloads/usenet/complete 2775 media media -"
     "d /mnt/media/downloads/usenet/complete/tv 2775 media media -"
     "d /mnt/media/downloads/usenet/complete/movies 2775 media media -"
+    "d /mnt/media/downloads/usenet/complete/prowlarr 2775 media media -"
     "d /mnt/media/downloads/usenet/complete/default 2775 media media -"
 
     # qBittorrent config directories
@@ -149,6 +151,7 @@
     "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
     "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /persist/var/lib/sabnzbd 0755 sabnzbd sabnzbd -"
+    "d /persist/var/lib/nzbget 0755 nzbget nzbget -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 

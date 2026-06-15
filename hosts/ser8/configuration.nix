@@ -220,6 +220,7 @@
       useVpnNamespace = true; # Route through VPN
     };
     sabnzbd.enable = true;
+    nzbget.enable = true;
     flaresolverr.enable = true;
 
     # Home automation services

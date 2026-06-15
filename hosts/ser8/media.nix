@@ -101,7 +101,7 @@
         mode = "0600";
       };
 
-      # SABnzbd authentication and Usenet provider
+      # SABnzbd/NZBGet authentication and Usenet provider
       "sabnzbd_api_key" = {
         owner = "root";
         group = "root";
@@ -416,6 +416,74 @@
         group = "sabnzbd";
         mode = "0600";
       };
+
+      "nzbget.conf" = {
+        content = ''
+          MainDir=/var/lib/nzbget
+          DestDir=/mnt/media/downloads/usenet/complete/default
+          InterDir=/mnt/media/downloads/usenet/incomplete
+          NzbDir=/var/lib/nzbget/nzb
+          QueueDir=/var/lib/nzbget/queue
+          TempDir=/var/lib/nzbget/tmp
+          ScriptDir=/var/lib/nzbget/scripts
+          LogFile=/var/lib/nzbget/nzbget.log
+
+          ControlIP=0.0.0.0
+          ControlPort=6789
+          ControlUsername=admin
+          ControlPassword=${config.sops.placeholder."sabnzbd_admin_password"}
+          SecureControl=no
+          AuthorizedIP=
+          UMask=0002
+
+          CertStore=/etc/ssl/certs/ca-certificates.crt
+          CertCheck=yes
+
+          Server1.Active=yes
+          Server1.Name=${config.sops.placeholder."sabnzbd_usenet_provider"}
+          Server1.Level=0
+          Server1.Optional=no
+          Server1.Group=0
+          Server1.Host=${config.sops.placeholder."sabnzbd_usenet_provider"}
+          Server1.Encryption=yes
+          Server1.Port=563
+          Server1.Username=${config.sops.placeholder."sabnzbd_usenet_username"}
+          Server1.Password=${config.sops.placeholder."sabnzbd_usenet_password"}
+          Server1.JoinGroup=no
+          Server1.Cipher=
+          Server1.Connections=100
+          Server1.Retention=0
+          Server1.CertVerification=strict
+          Server1.IpVersion=auto
+
+          Category1.Name=tv
+          Category1.DestDir=/mnt/media/downloads/usenet/complete/tv
+          Category1.Unpack=yes
+          Category1.Extensions=
+          Category1.Aliases=
+
+          Category2.Name=movies
+          Category2.DestDir=/mnt/media/downloads/usenet/complete/movies
+          Category2.Unpack=yes
+          Category2.Extensions=
+          Category2.Aliases=
+
+          Category3.Name=prowlarr
+          Category3.DestDir=/mnt/media/downloads/usenet/complete/prowlarr
+          Category3.Unpack=yes
+          Category3.Extensions=
+          Category3.Aliases=
+
+          Category4.Name=default
+          Category4.DestDir=/mnt/media/downloads/usenet/complete/default
+          Category4.Unpack=yes
+          Category4.Extensions=
+          Category4.Aliases=
+        '';
+        owner = "nzbget";
+        group = "nzbget";
+        mode = "0600";
+      };
     };
   };
 
@@ -439,7 +507,7 @@
   # 1. media-config.service (Phase 1: Configuration)
   #    - Deploys all service configurations from SOPS templates
   #    - Runs before any media services start
-  #    - Configures: Sonarr, Radarr, Prowlarr, SABnzbd, qBittorrent
+  #    - Configures: Sonarr, Radarr, Prowlarr, NZBGet, SABnzbd, qBittorrent
   #
   # 2. servarrs-setup.service (Phase 2: Indexer Management)
   #    - Connects Prowlarr to Sonarr and Radarr for indexer synchronization
@@ -447,7 +515,7 @@
   #    - Runs in parallel with download-clients-setup
   #
   # 3. download-clients-setup.service (Phase 2: Download Client Integration)
-  #    - Connects download clients (qBittorrent, SABnzbd) to all arr services
+  #    - Connects download clients (qBittorrent, NZBGet, SABnzbd) to all arr services
   #    - Configures categories for automatic media organization
   #    - Depends on: media-config + all services running
   #    - Runs in parallel with servarrs-setup
@@ -470,6 +538,7 @@
         "radarr.service"
         "prowlarr.service"
         "qbittorrent-nox.service"
+        "nzbget.service"
         "sabnzbd.service"
       ];
       wantedBy = [ "multi-user.target" ];
@@ -485,12 +554,13 @@
         source ${./systemd_helpers.sh}
         set -euo pipefail
 
-        echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd)..."
+        echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
 
         # Deploy arr service configurations
         configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
         configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
         configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
+        configure_arr nzbget ${config.sops.templates."nzbget.conf".path}
         configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
 
         # Deploy qBittorrent configuration
@@ -561,10 +631,11 @@
     };
 
     download-clients-setup = {
-      description = "Configure download clients (qBittorrent, SABnzbd) for all Servarr services";
+      description = "Configure download clients (qBittorrent, NZBGet, SABnzbd) for all Servarr services";
       after = [
         "media-config.service"
         "qbittorrent-nox.service"
+        "nzbget.service"
         "sabnzbd.service"
         "sonarr.service"
         "radarr.service"
@@ -581,12 +652,16 @@
 
       script = ''
         export CURL_BIN="${pkgs.curl}/bin/curl"
+        export JQ_BIN="${pkgs.jq}/bin/jq"
         source ${./systemd_helpers.sh}
         set -euo pipefail
 
         echo "Starting download client connections..."
 
         # Wait for all APIs to be ready
+        wait_for_api_basic_auth "NZBGet" "http://localhost:6789/" 60 "admin" "${
+          config.sops.secrets."sabnzbd_admin_password".path
+        }"
         wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
         })" 60
@@ -613,19 +688,32 @@
           echo "⚠ Warning: SABnzbd categories may not be configured correctly"
         fi
 
-        # Configure SABnzbd for arr services
-        setup_sabnzbd_client "Sonarr" "8989" "${config.sops.secrets."sonarr_api_key".path}" "tv" "${
-          config.sops.secrets."sabnzbd_api_key".path
-        }"
+        # Configure NZBGet as the default Usenet client for arr services
+        setup_nzbget_client "Sonarr" "8989" "${
+          config.sops.secrets."sonarr_api_key".path
+        }" "tvCategory" "tv" "${config.sops.secrets."sabnzbd_admin_password".path}" 1
 
-        setup_sabnzbd_client "Radarr" "7878" "${config.sops.secrets."radarr_api_key".path}" "movies" "${
-          config.sops.secrets."sabnzbd_api_key".path
-        }"
+        setup_nzbget_client "Radarr" "7878" "${
+          config.sops.secrets."radarr_api_key".path
+        }" "movieCategory" "movies" "${config.sops.secrets."sabnzbd_admin_password".path}" 1
 
-        # Add SABnzbd to Prowlarr as download client
+        # Keep SABnzbd available as a lower-priority Usenet fallback
+        setup_sabnzbd_client "Sonarr" "8989" "${
+          config.sops.secrets."sonarr_api_key".path
+        }" "tvCategory" "tv" "${config.sops.secrets."sabnzbd_api_key".path}" 2
+
+        setup_sabnzbd_client "Radarr" "7878" "${
+          config.sops.secrets."radarr_api_key".path
+        }" "movieCategory" "movies" "${config.sops.secrets."sabnzbd_api_key".path}" 2
+
+        # Add Usenet clients to Prowlarr with NZBGet as the default
+        add_nzbget_to_prowlarr "${config.sops.secrets."sabnzbd_admin_password".path}" "${
+          config.sops.secrets."prowlarr_api_key".path
+        }" 1
+
         add_sabnzbd_to_prowlarr "${config.sops.secrets."sabnzbd_api_key".path}" "${
           config.sops.secrets."prowlarr_api_key".path
-        }"
+        }" 2
 
         echo "✓ Completed download client connections"
       '';

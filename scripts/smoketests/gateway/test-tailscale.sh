@@ -27,6 +27,7 @@ TS_DOMAIN="shad-bangus.ts.net"
 EXPECTED_NODES=(
     "jellyfin"
     "sabnzbd"
+    "nzbget"
     "radarr"
     "sonarr"
     "prowlarr"

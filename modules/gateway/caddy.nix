@@ -18,11 +18,12 @@ let
   };
 in
 {
-  # SOPS secret for Tailscale auth key (Caddy's copy with caddy ownership)
-  # This references the same yaml key as tailscale.nix but with different permissions
+  # SOPS secret for Caddy's tsnet auth key.
+  # Existing tsnet nodes use saved state; this key is used when Caddy registers
+  # new tailscale/* listeners such as nzbget.
   sops.secrets."tailscale_authkey_caddy" = {
     sopsFile = ../../secrets/shared.yaml;
-    key = "tailscale_authkey"; # Reference same key in yaml
+    key = "tailscale_authkey_nzbget";
     owner = "caddy";
     group = "caddy";
     mode = "0400";

@@ -16,6 +16,7 @@ let
     "radarr.service"
     "prowlarr.service"
     "sabnzbd.service"
+    "nzbget.service"
     "qbittorrent-nox.service"
     "frigate.service"
     "home-assistant.service"
@@ -88,6 +89,10 @@ in
           "SABnzbd.py"
           "sabnzbd"
         ];
+      }
+      {
+        name = "nzbget";
+        comm = [ "nzbget" ];
       }
       {
         name = "qbittorrent";

@@ -1,6 +1,7 @@
 # use caddy's local CA until we're ready to make 'vofi.app' public
 {
 	local_certs
+	skip_install_trust
 
 	# Enable Prometheus metrics on admin API
 	servers {
@@ -35,6 +36,10 @@ prowlarr.vofi {
 
 sabnzbd.vofi {
 	reverse_proxy ser8.local:8085
+}
+
+nzbget.vofi {
+	reverse_proxy ser8.local:6789
 }
 
 frigate.vofi {
@@ -108,6 +113,14 @@ https://sabnzbd.shad-bangus.ts.net {
 	}
 	bind tailscale/sabnzbd
 	reverse_proxy 192.168.68.65:8085
+}
+
+https://nzbget.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/nzbget
+	reverse_proxy 192.168.68.65:6789
 }
 
 https://radarr.shad-bangus.ts.net {

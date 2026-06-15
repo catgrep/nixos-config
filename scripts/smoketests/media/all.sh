@@ -25,6 +25,7 @@ MEDIA_SERVICES=(
     "qBittorrent:torrent.vofi:8080:qbittorrent"
     "Prowlarr:prowlarr.vofi:9696:prowlarr"
     "SABnzbd:sabnzbd.vofi:8085:sabnzbd"
+    "NZBGet:nzbget.vofi:6789:nzbget"
 )
 
 # test each media service

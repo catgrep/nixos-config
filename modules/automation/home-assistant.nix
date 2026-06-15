@@ -17,7 +17,6 @@ let
 
   # Helper: advanced-camera-card (formerly frigate-hass-card) for live camera view
   # Per user decision: live video stream default, click to fullscreen, no bounding boxes
-  # Includes conditional "Detection Off" badge overlay when detection switch is off
   cameraCard = cameraName: displayName: {
     type = "custom:advanced-camera-card";
     cameras = [
@@ -51,31 +50,6 @@ let
     view = {
       default = "live";
     };
-    # "Detection Off" overlay badge when detection is disabled (per user decision)
-    elements = [
-      {
-        type = "conditional";
-        conditions = [
-          {
-            entity = "switch.${cameraName}_detect";
-            state = "off";
-          }
-        ];
-        elements = [
-          {
-            type = "state-badge";
-            entity = "switch.${cameraName}_detect";
-            style = {
-              top = "8%";
-              right = "8%";
-              left = "auto";
-              color = "red";
-              opacity = "0.8";
-            };
-          }
-        ];
-      }
-    ];
   };
 
   advancedCameraCard = pkgs.home-assistant-custom-lovelace-modules.advanced-camera-card;
@@ -267,6 +241,10 @@ in
       # Core (includes frontend, onboarding, config, etc.)
       "default_config"
 
+      # Text-to-speech entries created in the UI still need their Python
+      # dependencies included in the Nix-built Home Assistant environment.
+      "google_translate"
+
       # Device tracking
       "mobile_app"
 
@@ -281,6 +259,9 @@ in
       "automation"
       "script"
       "scene"
+
+      # tplink camera integration
+      "tplink"
     ];
 
     # Extra Python packages for integrations

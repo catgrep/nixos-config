@@ -67,8 +67,36 @@ writeShellApplication {
 
     usage() {
       cat >&2 <<'EOF'
-    usage: sagent <codex|codex-yolo|claude|claude-yolo> [agent args...]
+    usage: sagent [sagent flags...] <debug|codex|claude> [args...]
+
+    sagent flags:
+      --yolo       run the selected agent with its yolo permissions flag
+      -h, --help   show this help
     EOF
+    }
+
+    debug_usage() {
+      cat >&2 <<'EOF'
+    usage: sagent debug [debug flags...] [--probe path...]
+
+    debug flags:
+      --target-dir <dir>   directory used for TARGET_DIR rules (default: current directory)
+      --output <file>      write the generated sandbox profile to a file
+      --base               dump the built-in base profile instead of the generated profile
+      --no-workaround      omit generated parent-directory read rules
+      --probe              probe path readability inside the generated sandbox
+      -h, --help           show this help
+    EOF
+    }
+
+    require_arg() {
+      local flag="$1"
+      local value="''${2:-}"
+
+      if [ -z "$value" ]; then
+        echo "error: $flag requires an argument" >&2
+        exit 2
+      fi
     }
 
     expand_path() {
@@ -137,6 +165,148 @@ writeShellApplication {
       return 1
     }
 
+    run_debug_probe() {
+      local target_dir="$1"
+      local no_workaround="$2"
+      shift 2
+
+      local sandbox_args=(--target-dir "$target_dir")
+      if [ "$no_workaround" = "1" ]; then
+        sandbox_args+=(--no-workaround)
+      fi
+
+      # shellcheck disable=SC2016
+      exec claude-sandbox "''${sandbox_args[@]}" -- /bin/sh -c '
+    for path do
+      printf "\n== %s ==\n" "$path"
+
+      if [ -e "$path" ]; then
+        echo "exists: yes"
+      else
+        echo "exists: no or denied"
+      fi
+
+      if /usr/bin/stat "$path" >/dev/null 2>&1; then
+        echo "metadata: ok"
+      else
+        echo "metadata: denied"
+      fi
+
+      if [ -d "$path" ]; then
+        if /bin/ls "$path" >/dev/null 2>&1; then
+          echo "list: ok"
+        else
+          echo "list: denied"
+        fi
+      else
+        echo "list: skipped"
+      fi
+
+      if [ -f "$path" ]; then
+        if /bin/cat "$path" >/dev/null 2>&1; then
+          echo "read: ok"
+        else
+          echo "read: denied"
+        fi
+      else
+        echo "read: skipped"
+      fi
+    done
+    ' sagent-debug "$@"
+    }
+
+    run_debug() {
+      local debug_base=0
+      local debug_no_workaround=0
+      local debug_output=""
+      local debug_probe=0
+      local debug_target_dir="$PWD"
+      local debug_paths=()
+
+      while [ "$#" -gt 0 ]; do
+        case "$1" in
+          --target-dir)
+            require_arg "$1" "''${2:-}"
+            debug_target_dir="$2"
+            shift 2
+            ;;
+          --output)
+            require_arg "$1" "''${2:-}"
+            debug_output="$2"
+            shift 2
+            ;;
+          --base)
+            debug_base=1
+            shift
+            ;;
+          --no-workaround)
+            debug_no_workaround=1
+            shift
+            ;;
+          --probe)
+            debug_probe=1
+            shift
+            ;;
+          -h|--help)
+            debug_usage
+            exit 0
+            ;;
+          --)
+            shift
+            while [ "$#" -gt 0 ]; do
+              debug_paths+=("$1")
+              shift
+            done
+            ;;
+          -*)
+            echo "error: unknown debug flag: $1" >&2
+            debug_usage
+            exit 2
+            ;;
+          *)
+            debug_paths+=("$1")
+            shift
+            ;;
+        esac
+      done
+
+      if [ "$debug_probe" = "0" ] && [ "''${#debug_paths[@]}" -gt 0 ]; then
+        echo "error: debug path arguments require --probe" >&2
+        debug_usage
+        exit 2
+      fi
+
+      if [ "$debug_probe" = "1" ]; then
+        if [ "''${#debug_paths[@]}" -eq 0 ]; then
+          echo "error: --probe requires at least one path" >&2
+          debug_usage
+          exit 2
+        fi
+        if [ "$debug_base" = "1" ] || [ -n "$debug_output" ]; then
+          echo "error: --probe cannot be combined with --base or --output" >&2
+          exit 2
+        fi
+
+        run_debug_probe "$debug_target_dir" "$debug_no_workaround" "''${debug_paths[@]}"
+      fi
+
+      local output_path="/dev/stdout"
+      if [ -n "$debug_output" ]; then
+        output_path="$debug_output"
+      fi
+
+      if [ "$debug_base" = "1" ]; then
+        exec claude-sandbox --write-base-profile "$output_path"
+      fi
+
+      local sandbox_args=(--target-dir "$debug_target_dir")
+      if [ "$debug_no_workaround" = "1" ]; then
+        sandbox_args+=(--no-workaround)
+      fi
+
+      exec claude-sandbox "''${sandbox_args[@]}" --write-profile "$output_path"
+    }
+
     run_claude() {
       local yolo="$1"
       shift
@@ -199,35 +369,63 @@ writeShellApplication {
       exec claude-sandbox -- "$codex_bin" "''${args[@]}" "$@"
     }
 
+    yolo=0
+
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --yolo)
+          yolo=1
+          shift
+          ;;
+        -h|--help)
+          usage
+          exit 0
+          ;;
+        --)
+          shift
+          break
+          ;;
+        -*)
+          echo "error: unknown sagent flag: $1" >&2
+          usage
+          exit 2
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
+
     if [ "$#" -lt 1 ]; then
       usage
       exit 2
     fi
 
-    profile="$1"
+    subcommand="$1"
     shift
     if [ "''${1:-}" = "--" ]; then
       shift
     fi
 
-    case "$profile" in
+    case "$subcommand" in
       claude)
-        run_claude 0 "$@"
-        ;;
-      claude-yolo)
-        run_claude 1 "$@"
+        run_claude "$yolo" "$@"
         ;;
       codex)
-        run_codex 0 "$@"
+        run_codex "$yolo" "$@"
         ;;
-      codex-yolo)
-        run_codex 1 "$@"
+      debug)
+        if [ "$yolo" = "1" ]; then
+          echo "error: --yolo only applies to claude or codex" >&2
+          exit 2
+        fi
+        run_debug "$@"
         ;;
-      -h|--help|help)
+      help)
         usage
         ;;
       *)
-        echo "error: unknown sagent profile: $profile" >&2
+        echo "error: unknown sagent command: $subcommand" >&2
         usage
         exit 2
         ;;

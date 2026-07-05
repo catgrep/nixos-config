@@ -23,16 +23,27 @@ sagent.lib.mkSagent {
 
 The wrapper exposes:
 
-- `sagent codex [...]`
-- `sagent codex-yolo [...]`
 - `sagent claude [...]`
-- `sagent claude-yolo [...]`
+- `sagent codex [...]`
+- `sagent --yolo claude [...]`
+- `sagent --yolo codex [...]`
+- `sagent debug [...]`
 
-Both Codex profiles run inside the same macOS seatbelt profile as Claude via
-`claude-sandbox`. Codex is started with
-`--dangerously-bypass-approvals-and-sandbox`, so the SBPL profile is the
-sandbox boundary instead of Codex's internal per-command sandbox.
-`codex-yolo` is kept as a compatibility profile for `codexYoloArgs`.
+Codex runs inside the same macOS seatbelt profile as Claude via `claude-sandbox`.
+Codex is started with `--dangerously-bypass-approvals-and-sandbox`, so the SBPL profile is the sandbox boundary instead of Codex's internal per-command sandbox.
+`--yolo` selects the agent-specific yolo arguments.
+For Claude it also adds `--dangerously-skip-permissions`.
+
+Use `debug` to inspect the shared sandbox profile:
+
+```sh
+sagent debug > /tmp/sagent.sb
+sagent debug --output /tmp/sagent.sb
+sagent debug --target-dir "$PWD" --probe "$PWD/flake.nix" "$HOME/.ssh"
+```
+
+The debug command is not agent-specific because Claude and Codex run inside the same generated SBPL profile.
+Path probes execute inside that profile and report whether each path has metadata, directory listing, or file read access.
 
 Important override knobs:
 

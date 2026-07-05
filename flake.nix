@@ -41,11 +41,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # alldebrid-proxy = {
-    #   url = "path:/Users/bobby/github/catgrep/alldebrid-rs";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
-
     home-manager = {
       url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -54,7 +49,6 @@
     # Caddy with plugins support (cleaner than withPlugins)
     caddy-nix = {
       url = "github:vincentbernat/caddy-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     sagent = {
@@ -105,9 +99,12 @@
           inherit system pkgs;
           extraReadPaths = [
             "~/.npm-global"
+            "~/Library/Application Support"
+            "~/AGENTS.md"
           ];
           extraWritePaths = [
             "~/github/catgrep/nixos-config"
+            "~/Library/Application Support"
             "~/.docker"
           ];
           unixSocketPaths = [
@@ -278,7 +275,7 @@
         "provisioning-pi5" = self.nixosConfigurations.pi5;
       };
 
-      lib = sagent.lib;
+      inherit (sagent) lib;
 
       packages = sagentPackages;
 

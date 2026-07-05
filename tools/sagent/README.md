@@ -45,6 +45,9 @@ sagent debug --target-dir "$PWD" --probe "$PWD/flake.nix" "$HOME/.ssh"
 The debug command is not agent-specific because Claude and Codex run inside the same generated SBPL profile.
 Path probes execute inside that profile and report whether each path has metadata, directory listing, or file read access.
 
+When `sagent` starts inside a Git worktree, it detects the worktree's `.git` pointer before entering the sandbox.
+It then grants narrow access to the referenced gitdir and common `.git` directory so commands like `git status` work in Treehouse checkouts without granting access to the whole source checkout.
+
 Important override knobs:
 
 - `extraReadPaths`: common read-only roots added to the shared sandbox.

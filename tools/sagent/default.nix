@@ -165,18 +165,202 @@ writeShellApplication {
       return 1
     }
 
+    realpath_or_echo() {
+      local path="$1"
+
+      realpath -m "$path" 2>/dev/null || realpath "$path" 2>/dev/null || printf '%s\n' "$path"
+    }
+
+    resolve_path() {
+      local base="$1"
+      local path="$2"
+
+      case "$path" in
+        /*)
+          realpath_or_echo "$path"
+          ;;
+        *)
+          realpath_or_echo "$base/$path"
+          ;;
+      esac
+    }
+
+    escape_for_sandbox() {
+      local path="$1"
+
+      path="''${path//\\/\\\\}"
+      path="''${path//\"/\\\"}"
+      printf '%s' "$path"
+    }
+
+    find_git_node() {
+      local dir
+
+      dir="$(realpath_or_echo "$1")"
+      while [ "$dir" != "/" ]; do
+        if [ -e "$dir/.git" ]; then
+          printf '%s\n' "$dir/.git"
+          return 0
+        fi
+        dir="$(dirname "$dir")"
+      done
+
+      return 1
+    }
+
+    emit_ancestor_read_literals() {
+      local path="$1"
+      local current_path=""
+      local component
+      local escaped_path
+      local components=()
+
+      path="$(realpath_or_echo "$path")"
+      IFS='/' read -ra components <<<"$path"
+
+      for component in "''${components[@]}"; do
+        if [ -z "$component" ]; then
+          if [ -z "$current_path" ]; then
+            current_path="/"
+          fi
+          continue
+        fi
+
+        if [ "$current_path" = "/" ]; then
+          current_path="/$component"
+        else
+          current_path="$current_path/$component"
+        fi
+
+        escaped_path="$(escape_for_sandbox "$current_path")"
+        printf '  (literal "%s")\n' "$escaped_path"
+      done
+    }
+
+    emit_subpath() {
+      local path="$1"
+      local escaped_path
+
+      path="$(realpath_or_echo "$path")"
+      escaped_path="$(escape_for_sandbox "$path")"
+      printf '  (subpath "%s")\n' "$escaped_path"
+    }
+
+    generate_git_profile_fragment() {
+      local target_dir="$1"
+      local git_node
+      local gitdir
+      local gitdir_line
+      local gitdir_base
+      local commondir
+      local commondir_line
+
+      if ! git_node="$(find_git_node "$target_dir")"; then
+        return 0
+      fi
+
+      if [ -f "$git_node" ]; then
+        gitdir_line="$(sed -n 's/^gitdir: //p' "$git_node" | head -n 1)"
+        [ -n "$gitdir_line" ] || return 0
+        gitdir_base="$(dirname "$git_node")"
+        gitdir="$(resolve_path "$gitdir_base" "$gitdir_line")"
+      elif [ -d "$git_node" ]; then
+        gitdir="$(realpath_or_echo "$git_node")"
+      else
+        return 0
+      fi
+
+      commondir="$gitdir"
+      if [ -f "$gitdir/commondir" ]; then
+        IFS= read -r commondir_line <"$gitdir/commondir" || true
+        if [ -n "$commondir_line" ]; then
+          commondir="$(resolve_path "$gitdir" "$commondir_line")"
+        fi
+      fi
+
+      cat <<EOF
+
+    ;; sagent: Git metadata access for target $(escape_for_sandbox "$target_dir")
+    ;; gitdir: $(escape_for_sandbox "$gitdir")
+    ;; commondir: $(escape_for_sandbox "$commondir")
+    (allow file-read*
+    $(emit_ancestor_read_literals "$git_node")
+    $(emit_ancestor_read_literals "$gitdir")
+    $(emit_ancestor_read_literals "$commondir")
+    )
+    (allow file-read* file-write* file-write-create file-read-metadata file-ioctl
+    $(emit_subpath "$gitdir")
+    $(emit_subpath "$commondir")
+    )
+    EOF
+    }
+
+    write_git_profile() {
+      local target_dir="$1"
+      local fragment
+      local profile
+
+      fragment="$(generate_git_profile_fragment "$target_dir")"
+      [ -n "$fragment" ] || return 1
+
+      profile="$(mktemp "''${TMPDIR:-/tmp}/sagent-profile.XXXXXXXXXX")"
+      claude-sandbox --write-base-profile "$profile"
+      printf '%s\n' "$fragment" >>"$profile"
+      printf '%s\n' "$profile"
+    }
+
+    run_with_sandbox() {
+      local target_dir="$1"
+      local no_workaround="$2"
+      shift 2
+
+      local profile
+      local sandbox_args=(--target-dir "$target_dir")
+      local status
+
+      if [ "$no_workaround" = "1" ]; then
+        sandbox_args+=(--no-workaround)
+      fi
+
+      if profile="$(write_git_profile "$target_dir")"; then
+        claude-sandbox "''${sandbox_args[@]}" --use-profile "$profile" -- "$@"
+        status="$?"
+        rm -f "$profile"
+        exit "$status"
+      fi
+
+      exec claude-sandbox "''${sandbox_args[@]}" -- "$@"
+    }
+
+    write_debug_profile() {
+      local target_dir="$1"
+      local no_workaround="$2"
+      local output_path="$3"
+      local profile
+      local sandbox_args=(--target-dir "$target_dir")
+      local status
+
+      if [ "$no_workaround" = "1" ]; then
+        sandbox_args+=(--no-workaround)
+      fi
+
+      if profile="$(write_git_profile "$target_dir")"; then
+        claude-sandbox "''${sandbox_args[@]}" --use-profile "$profile" --write-profile "$output_path"
+        status="$?"
+        rm -f "$profile"
+        exit "$status"
+      fi
+
+      exec claude-sandbox "''${sandbox_args[@]}" --write-profile "$output_path"
+    }
+
     run_debug_probe() {
       local target_dir="$1"
       local no_workaround="$2"
       shift 2
 
-      local sandbox_args=(--target-dir "$target_dir")
-      if [ "$no_workaround" = "1" ]; then
-        sandbox_args+=(--no-workaround)
-      fi
-
       # shellcheck disable=SC2016
-      exec claude-sandbox "''${sandbox_args[@]}" -- /bin/sh -c '
+      run_with_sandbox "$target_dir" "$no_workaround" /bin/sh -c '
     for path do
       printf "\n== %s ==\n" "$path"
 
@@ -299,12 +483,7 @@ writeShellApplication {
         exec claude-sandbox --write-base-profile "$output_path"
       fi
 
-      local sandbox_args=(--target-dir "$debug_target_dir")
-      if [ "$debug_no_workaround" = "1" ]; then
-        sandbox_args+=(--no-workaround)
-      fi
-
-      exec claude-sandbox "''${sandbox_args[@]}" --write-profile "$output_path"
+      write_debug_profile "$debug_target_dir" "$debug_no_workaround" "$output_path"
     }
 
     run_claude() {
@@ -345,7 +524,7 @@ writeShellApplication {
         args+=("''${SAGENT_CLAUDE_ARGS[@]}")
       fi
 
-      exec claude-sandbox -- "$claude_bin" "''${args[@]}" "$@"
+      run_with_sandbox "$PWD" 0 "$claude_bin" "''${args[@]}" "$@"
     }
 
     run_codex() {
@@ -366,7 +545,7 @@ writeShellApplication {
         args+=("''${SAGENT_CODEX_ARGS[@]}")
       fi
 
-      exec claude-sandbox -- "$codex_bin" "''${args[@]}" "$@"
+      run_with_sandbox "$PWD" 0 "$codex_bin" "''${args[@]}" "$@"
     }
 
     yolo=0

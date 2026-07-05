@@ -74,6 +74,13 @@ let
       (subpath (string-append (param "HOME_DIR") "/.local/state/claude")))
   '';
 
+  gitUserFilesFragment = ''
+
+    ;; sagent: common Git user files
+    (allow file-read*
+      (literal (string-append (param "HOME_DIR") "/.gitignore_global")))
+  '';
+
   networkFragment = lib.optionalString networkAccess ''
 
     ;; sagent: unrestricted outbound network access
@@ -93,6 +100,7 @@ let
 
   fragment = writeText "sagent-claude-sandbox-extras.sb" (
     officialInstallerFragment
+    + gitUserFilesFragment
     + extraReadsFragment
     + extraWritesFragment
     + networkFragment

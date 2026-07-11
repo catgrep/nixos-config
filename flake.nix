@@ -55,11 +55,6 @@
       url = "path:./tools/sagent";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
-
-    ast-bro = {
-      url = "github:aeroxy/ast-bro/9466139f09cc9fac36b64ca6177bdf76840d9738"; # v3.0.0
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   nixConfig = {
@@ -86,7 +81,6 @@
       home-manager,
       caddy-nix,
       sagent,
-      ast-bro,
       ...
     }@inputs:
     let
@@ -339,12 +333,10 @@
                   statix
                   nurl
                   wireguard-tools
-                  # Crane's cleanCargoSource strips .md files but ast-bro
-                  # needs skills/ast-bro/SKILL.md at compile time (include_str!).
-                  # TODO: remove this override once upstream fixes their source filter.
-                  (ast-bro.packages.${system}.default.overrideAttrs {
-                    src = ast-bro;
-                  })
+                  # ast-bro and treehouse (with the ast-bro source override)
+                  # are owned and exported by the sagent subflake.
+                  sagent.packages.${system}.ast-bro
+                  sagent.packages.${system}.treehouse
                 ]
                 ++ lib.optionals pkgs.stdenv.isDarwin [
                   (sagentFor system)

@@ -49,10 +49,14 @@ let
     )
   '';
 
+  # file-write* does NOT imply file-write-create in SBPL, so creating a new
+  # file or directory under an extra write path needs the stronger grant that
+  # the target-directory rules already use. Without this, trash and treehouse
+  # fail to create files under ~/.Trash / ~/.treehouse.
   extraWritesFragment = lib.optionalString (extraWritePaths != [ ]) ''
 
-    ;; sagent: extra read-write paths
-    (allow file-read* file-write*
+    ;; sagent: extra read-write paths (create-capable)
+    (allow file-read* file-write* file-write-create file-read-metadata file-ioctl
     ${lib.concatMapStringsSep "\n" mkSubpath extraWritePaths}
     )
   '';

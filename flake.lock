@@ -39,6 +39,30 @@
         "type": "github"
       }
     },
+    "ast-bro_2": {
+      "inputs": {
+        "crane": "crane_2",
+        "flake-parts": "flake-parts_3",
+        "nixpkgs": [
+          "sagent",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781364872,
+        "narHash": "sha256-mv0wzDzd20/0AxYewscuIUSBfR5GMxjDK5CviI8wzbE=",
+        "owner": "aeroxy",
+        "repo": "ast-bro",
+        "rev": "9466139f09cc9fac36b64ca6177bdf76840d9738",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aeroxy",
+        "repo": "ast-bro",
+        "rev": "9466139f09cc9fac36b64ca6177bdf76840d9738",
+        "type": "github"
+      }
+    },
     "caddy-nix": {
       "locked": {
         "lastModified": 1759295910,
@@ -78,6 +102,21 @@
       }
     },
     "crane": {
+      "locked": {
+        "lastModified": 1777242778,
+        "narHash": "sha256-VWTeqWeb8Sel/QiWyaPvCa9luAbcGawR+Rw09FJoHz0=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "ad8b31ad0ba8448bd958d7a5d50d811dc5d271c0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "crane_2": {
       "locked": {
         "lastModified": 1777242778,
         "narHash": "sha256-VWTeqWeb8Sel/QiWyaPvCa9luAbcGawR+Rw09FJoHz0=",
@@ -175,6 +214,24 @@
           "nix-fast-build",
           "nixpkgs"
         ]
+      },
+      "locked": {
+        "lastModified": 1775087534,
+        "narHash": "sha256-91qqW8lhL7TLwgQWijoGBbiD4t7/q75KTi8NxjVmSmA=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "3107b77cd68437b9a76194f0f7f9c55f2329ca5b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_3": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib_2"
       },
       "locked": {
         "lastModified": 1775087534,
@@ -441,6 +498,21 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib_2": {
+      "locked": {
+        "lastModified": 1774748309,
+        "narHash": "sha256-+U7gF3qxzwD5TZuANzZPeJTZRHS29OFQgkQ2kiTJBIQ=",
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "rev": "333c4e0545a6da976206c74db8773a1645b5870a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1778869304,
@@ -508,10 +580,12 @@
     },
     "sagent": {
       "inputs": {
+        "ast-bro": "ast-bro_2",
         "claude-code-sandbox": "claude-code-sandbox",
         "nixpkgs": [
           "nixpkgs-unstable"
-        ]
+        ],
+        "treehouse": "treehouse"
       },
       "locked": {
         "path": "./tools/sagent",
@@ -612,6 +686,28 @@
       "original": {
         "owner": "numtide",
         "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treehouse": {
+      "inputs": {
+        "nixpkgs": [
+          "sagent",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782318452,
+        "narHash": "sha256-G9NqwTzwqgr8rt+HlhXAFtR6ajYjZ6LfHdNKhaPfEls=",
+        "owner": "kunchenguid",
+        "repo": "treehouse",
+        "rev": "68fa3d2556542add76bf80255787b8625a5041a6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kunchenguid",
+        "repo": "treehouse",
+        "rev": "68fa3d2556542add76bf80255787b8625a5041a6",
         "type": "github"
       }
     }

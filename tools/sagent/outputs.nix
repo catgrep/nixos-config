@@ -4,6 +4,8 @@
   lib,
   pkgsFor,
   claude-code-sandbox,
+  ast-bro,
+  treehouse,
 }:
 
 let
@@ -14,6 +16,12 @@ let
     "aarch64-darwin"
   ];
   forAllSystems = f: lib.genAttrs supportedSystems f;
+
+  # Crane's cleanCargoSource strips .md files, but ast-bro embeds
+  # skills/ast-bro/SKILL.md at compile time (include_str!). Overriding `src`
+  # with the full flake source restores it. Owned here so no consumer repeats it.
+  fixedAstBroFor = system: ast-bro.packages.${system}.default.overrideAttrs { src = ast-bro; };
+  treehouseFor = system: treehouse.packages.${system}.default;
 
   mkSagent =
     {
@@ -39,11 +47,14 @@ let
     let
       # Keep both agent profiles on the same writable state roots. Codex runs
       # inside this shared seatbelt profile instead of using its internal
-      # per-command workspace-write sandbox.
+      # per-command workspace-write sandbox. ~/.Trash and ~/.treehouse let
+      # `trash` and `treehouse` create files from inside the sandbox.
       defaultWritePaths = [
         "~/.cache"
         "~/.codex"
         "~/.nix-defexpr"
+        "~/.Trash"
+        "~/.treehouse"
       ];
       sharedWritePaths = defaultWritePaths ++ extraWritePaths;
 
@@ -70,6 +81,10 @@ let
         codexArgs
         codexYoloArgs
         ;
+      # Internal wiring, not consumer-facing mkSagent knobs.
+      tmux = pkgs.tmux;
+      astBro = fixedAstBroFor system;
+      treehouse = treehouseFor system;
     };
 in
 {
@@ -83,7 +98,11 @@ in
       pkgs = pkgsFor system;
       sagent = mkSagent { inherit system pkgs; };
     in
-    pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+    {
+      ast-bro = fixedAstBroFor system;
+      treehouse = treehouseFor system;
+    }
+    // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
       inherit sagent;
       default = sagent;
     }

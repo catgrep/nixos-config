@@ -64,6 +64,11 @@ Each launch creates a fresh session with two windows:
 
 A launch focuses the `agent` window.
 `C-b d` detaches; the server keeps both windows running.
+The bundled tmux config forwards modified keys like Shift+Enter to agent prompts.
+It keeps tmux mouse mode on so wheel scrollback works.
+In Ghostty, use Option+Shift+Enter for prompt newlines.
+Use Shift-drag for normal native text selection.
+Use Option+Shift-drag for rectangular native text selection.
 Recover with:
 
 ```sh

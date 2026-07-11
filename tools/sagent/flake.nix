@@ -31,7 +31,7 @@
       ...
     }:
     import ./outputs.nix {
-      lib = nixpkgs.lib;
+      inherit (nixpkgs) lib;
       pkgsFor = system: nixpkgs.legacyPackages.${system};
       inherit claude-code-sandbox ast-bro treehouse;
     };

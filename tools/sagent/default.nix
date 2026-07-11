@@ -56,6 +56,10 @@ let
   # server; an already-running server keeps its own config, so all targeting
   # is by session/window name rather than index.
   tmuxConf = writeText "sagent-tmux.conf" ''
+    set -s extended-keys always
+    set -s extended-keys-format csi-u
+    set -s 'terminal-features[90]' 'xterm*:extkeys'
+    set -s set-clipboard external
     set -g mouse on
     set -g history-limit 50000
     set -g base-index 0
@@ -237,9 +241,16 @@ writeShellApplication {
       printf '%s' "$name"
     }
 
+    apply_tmux_config() {
+      tmux -L "$SAGENT_TMUX_SOCKET" list-sessions >/dev/null 2>&1 || return 0
+      tmux -L "$SAGENT_TMUX_SOCKET" source-file "${tmuxConf}"
+    }
+
     launch_tmux_session() {
       local session="$1" auto_prefix="$2" leased_dir="$3" kind="$4"
       shift 4
+
+      apply_tmux_config
 
       local reexec=()
       [ "$yolo" = 1 ] && reexec+=(--yolo)
@@ -316,6 +327,7 @@ writeShellApplication {
           run_ls >&2
           exit 1
         }
+      apply_tmux_config
       tmux -L "$SAGENT_TMUX_SOCKET" select-window -t "=$name:shell" 2>/dev/null || true
       exec tmux -L "$SAGENT_TMUX_SOCKET" attach -t "=$name"
     }

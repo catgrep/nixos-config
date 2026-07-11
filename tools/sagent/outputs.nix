@@ -82,7 +82,7 @@ let
         codexYoloArgs
         ;
       # Internal wiring, not consumer-facing mkSagent knobs.
-      tmux = pkgs.tmux;
+      inherit (pkgs) tmux;
       astBro = fixedAstBroFor system;
       treehouse = treehouseFor system;
     };

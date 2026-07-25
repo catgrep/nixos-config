@@ -28,7 +28,19 @@ nixos-config/
 │   │   ├── hardware-configuration.nix  # Hardware-specific (CPU, memory, storage)
 │   │   ├── disko-config.nix      # ZFS/disk partitioning and layout
 │   │   ├── impermanence.nix      # Persistent directories (SOPS, media, etc)
-│   │   ├── media.nix             # Media server configuration
+│   │   ├── media/                # Host-owned media policy and orchestration
+│   │   │   ├── default.nix       # Import-only media entry point
+│   │   │   ├── sops.nix          # Shared media SOPS defaults
+│   │   │   ├── jellyfin.nix      # Jellyfin host policy and identities
+│   │   │   ├── sonarr.nix        # Sonarr host policy and deployment
+│   │   │   ├── radarr.nix        # Radarr host policy and deployment
+│   │   │   ├── prowlarr.nix      # Prowlarr host policy and deployment
+│   │   │   ├── qbittorrent.nix   # qBittorrent host policy and deployment
+│   │   │   ├── nzbget.nix        # NZBGet host policy and deployment
+│   │   │   ├── sabnzbd.nix       # SABnzbd host policy and deployment
+│   │   │   ├── orchestration.nix # Cross-service media units and target
+│   │   │   ├── deployment-helpers.sh
+│   │   │   └── orchestration-helpers.sh
 │   │   └── samba.nix             # SMB file sharing for media drive
 │   │
 │   ├── firebat/                  # Gateway/reverse proxy (x86_64)
@@ -172,6 +184,11 @@ nixos-config/
   - `*.nix`: Individual service or feature modules
 - Pattern: Each module is self-contained; can be added to any host via flake.nix
 
+**hosts/ser8/media/:**
+- Purpose: ser8-specific media service policy, secrets, deployment fragments, and cross-service orchestration
+- Structure: `default.nix` imports shared SOPS defaults, seven complete service slices, and `orchestration.nix`
+- Shell boundary: `deployment-helpers.sh` deploys rendered configuration files, while `orchestration-helpers.sh` performs sanitized API registration
+
 **modules/common/:**
 - Purpose: Shared base layer applied to ALL hosts
 - Contains: Fundamental settings (users, networking, SSH, boot, locale, packages)
@@ -198,6 +215,7 @@ nixos-config/
 **Entry Points:**
 - `flake.nix`: Root flake defining all nixosConfigurations
 - `hosts/ser8/configuration.nix`: Media server entry
+- `hosts/ser8/media/default.nix`: Import-only ser8 media policy entry
 - `hosts/firebat/configuration.nix`: Gateway entry
 - `hosts/pi4/configuration.nix`: DNS server entry
 - `hosts/pi5/configuration.nix`: Experimental Pi entry

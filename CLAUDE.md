@@ -1,222 +1,165 @@
-# CLAUDE.md
+# Repository Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides agent-agnostic guidance for working in this repository.
+`AGENTS.md` is a symlink to this file so tools that recognize either filename receive the same instructions.
 
 ## Repository Overview
 
-This is a NixOS homelab configuration using flakes that manages multiple hosts including x86_64 systems (ser8, firebat) and ARM Raspberry Pi devices (pi4, pi5). The configuration uses a modular architecture with shared common modules and host-specific configurations.
+This repository is a NixOS homelab flake built around NixOS 25.11.
+It manages two x86_64 systems and two Raspberry Pi systems through shared modules and host-specific configuration.
+The root flake also exports development shells, Raspberry Pi installers, service metadata, package inspection data, and the local `sagent` tool.
 
-## Key Architecture
+## Host Architecture
 
-### Host Architecture
-- **ser8** (192.168.68.65): Main media server with Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, FlareSolverr, AllDebrid-proxy, Frigate NVR, Home Assistant
-  - Uses ZFS for storage with automatic snapshots and scrubbing
-  - MergerFS for unified media view across multiple disks
-  - NordVPN integration for anonymized torrenting
-  - SABnzbd for Usenet downloads with category-based organization
-  - Hardware acceleration for media transcoding (AMD VA-API with Radeon 780M)
-  - Frigate NVR for security cameras with CPU-based object detection
-  - Home Assistant for home automation with MQTT integration
-  - Media stack orchestration via 3 systemd services:
-    - `media-config.service`: Deploys all service configurations from SOPS templates
-    - `servarrs-setup.service`: Connects Prowlarr to Sonarr/Radarr for indexer sync
-    - `download-clients-setup.service`: Connects qBittorrent/SABnzbd to all arr services
-  - API key sanitization in all systemd logs prevents secrets exposure
-- **firebat** (192.168.68.63): Gateway/reverse proxy with Caddy, Grafana, Prometheus
-  - Caddy with Tailscale plugin for reverse proxy and automatic HTTPS via Let's Encrypt
-  - Prometheus monitoring with node-exporter (all hosts) and zfs-exporter (ser8)
-  - Grafana with provisioned dashboards (Node Exporter Full, ZFS, Prometheus Stats)
-  - Grafana admin password managed via SOPS (`grafana_admin_password`)
-- **pi4** (192.168.68.56): DNS server with AdGuard Home
-  - Primary DNS server for the network
-- **pi5** (192.168.0.110): Additional Raspberry Pi for experiments
+| Host | Address | Role | Configuration |
+|------|---------|------|---------------|
+| `ser8` | `192.168.68.65` | Media, storage, and automation server | `hosts/ser8/` |
+| `firebat` | `192.168.68.63` | Gateway, reverse proxy, and monitoring server | `hosts/firebat/` |
+| `pi4` | `192.168.68.56` | AdGuard Home DNS and DHCP server | `hosts/pi4/` |
+| `pi5` | `192.168.0.110` | General-purpose Raspberry Pi 5 | `hosts/pi5/` |
 
-### Module System
-- `modules/common/`: Shared configuration (networking, SSH, users, packages, neovim, tmux, banner)
-- `modules/servers/`: Server-specific modules (backup, monitoring, security)
-- `modules/media/`: Media services (Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, Transmission, AllDebrid-proxy)
-- `modules/gateway/`: Reverse proxy and monitoring (Caddy, Grafana, Prometheus)
-- `modules/dns/`: DNS services (AdGuard Home, users management)
-- `modules/raspberrypi/`: Raspberry Pi specific configurations (base, installer, usb-installer)
-- `modules/nordvpn/`: NordVPN WireGuard integration with network namespace isolation
-- `modules/automation/`: Home automation services (Home Assistant, Frigate NVR)
-- `modules/development/`: Development tools (Gerrit - planned)
+`deploy.yaml` is the source of truth for deployment addresses, users, tags, and smoketest commands.
+The `ser8` and `firebat` hosts use disko and impermanence.
+The Pi hosts use the pinned `nixos-raspberrypi` input, and `pi5` also uses disko.
 
-Host configurations are located in `hosts/HOSTNAME/` with each containing:
-- `configuration.nix`: Main host configuration
-- `hardware-configuration.nix`: Hardware-specific settings
-- `disko-config.nix`: Disk partitioning (where applicable)
-- `impermanence.nix`: Impermanence configuration (where applicable)
+### ser8
 
-### Secrets Management
-Uses SOPS for managing secrets with age encryption. Host keys are stored in `secrets/keys/hosts/` and user keys in `secrets/keys/users/`.
+The media host imports `modules/media/`, `modules/nordvpn/`, and `modules/automation/`.
+It runs Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, NZBGet, FlareSolverr, Frigate, Home Assistant, Mosquitto, and related exporters.
+qBittorrent runs in the NordVPN network namespace and is exposed locally through nginx.
+The host uses ZFS for the system and backup pool, MergerFS for `/mnt/media`, Samba for file sharing, and AMD hardware acceleration for media workloads.
+Media configuration and service integration are coordinated by systemd units defined in `hosts/ser8/media.nix`.
 
-- `secrets/HOST.yaml`: Host-specific secrets (only that host can decrypt)
-- `secrets/shared.yaml`: Shared secrets readable by all hosts (e.g., `tailscale_authkey`)
+### firebat
 
-The dual secret declaration pattern allows the same yaml key to be decrypted with different file permissions (e.g., root:root for tailscale daemon, caddy:caddy for Caddy service).
+The gateway host imports `modules/gateway/`.
+It runs Caddy, Prometheus, Grafana, the Prometheus blackbox exporter, and Tailscale-related proxying.
+Grafana dashboards are stored as version-controlled JSON in `dashboards/` and provisioned by `modules/gateway/grafana.nix`.
+Reverse proxy routes are defined in `modules/gateway/Caddyfile`.
 
-## Essential Commands
+### pi4 and pi5
 
-### Development Environment
-```bash
-make dev                    # Enter Nix development shell
-make update                 # Update flake inputs
-make check                  # Validate flake and all host configurations
-make fmt                    # Format all Nix files with nixfmt
-```
+`pi4` imports `modules/dns/` and runs AdGuard Home plus its Prometheus exporter.
+`pi5` currently has base server configuration, Raspberry Pi boot configuration, and disk layout but no role-specific module group.
 
-### Host Management
-```bash
-make status                 # Check connectivity to all hosts
-make list-hosts            # Show all hosts with metadata
-make info-HOST             # Show specific host information
-make ssh-HOST              # SSH into host
-```
+## Repository Layout
 
-### Deployment
-```bash
-make build-HOST            # Build configuration without activation
-make test-HOST             # Build and temporarily activate (reverts on reboot)
-NO_CONFIRM=true make switch-HOST   # Build, activate, and make boot default
-NO_CONFIRM=true make reboot-HOST   # Reboot host and wait for it to come back
-make apply-HOST            # Full deployment: test + switch + reboot + smoketests
-make rollback-HOST         # Roll back to previous configuration
-```
+- `.claude/` contains repository-local agent configuration and historical planning artifacts.
+- `.planning/` contains GSD project planning state.
+- `dashboards/` contains provisioned Grafana dashboard JSON.
+- `etc/` contains repository-managed Nix daemon configuration.
+- `experimental/` contains work that is not part of the active host flake.
+- `home-manager/` contains the separate Home Manager flake.
+- `hosts/` contains host-specific NixOS configuration.
+- `modules/` contains reusable NixOS modules grouped by role.
+- `overlays/` contains package overrides.
+- `scripts/` contains operational and validation scripts.
+- `secrets/` contains SOPS-encrypted secrets and public key material.
+- `tools/` contains repository-local tooling and subflakes.
+- `users/` contains centralized user configuration.
 
-> **Note:** Deployment and reboot targets prompt for confirmation by default. Always pass
-> `NO_CONFIRM=true` to skip the interactive prompt when running non-interactively.
+Prefer small modules imported through the relevant directory's `default.nix`.
+Do not assume that every module file is active because some implementations remain unimported or commented out.
 
-### Raspberry Pi Management
-```bash
-make HOST-installer        # Build ARM64 SD card image using Docker
-make write-sd-HOST DEVICE=/dev/rdiskX  # Write image to SD card
-```
+## Development Commands
 
-### Secrets Management (SOPS)
-```bash
-make sops-init             # Initialize SOPS configuration
-make sops-add-user         # Add user to SOPS
-make sops-add-host-keys    # Add host keys to SOPS
-make sops-add-shared-secrets  # Add shared secrets rule for all hosts
-make sops-edit-HOST        # Edit secrets for specific host
-make sops-edit-shared      # Edit shared secrets (all hosts can read)
-make sops-status           # Check SOPS status
-```
-
-### Home Manager
-```bash
-make home-switch           # Apply home-manager configuration
-```
-
-## Build System Details
-
-The Makefile is the primary interface that wraps around:
-- `scripts/nixos-rebuild.sh`: Handles remote builds and deployments
-- Host metadata in `deploy.yaml`: Contains IP addresses, users, and deployment settings
-- Flake configuration in `flake.nix`: Defines all system configurations
-
-Build targets support "all" to operate on all hosts (e.g., `make switch-all`).
-
-## Important Files
-
-- `flake.nix`: Main flake configuration defining all hosts and modules
-- `deploy.yaml`: Host deployment metadata (IPs, users, build settings)
-- `Makefile`: Primary build and deployment interface
-- `scripts/nixos-rebuild.sh`: Remote deployment wrapper
-- `secrets/`: SOPS-encrypted secrets for hosts
-- `home-manager/`: Separate home-manager flake configuration
-
-## Development Notes
-
-- All Nix files should be formatted with `nixfmt-rfc-style`
-- The repository uses GPL-3.0-or-later licensing
-- Hosts are accessible via mDNS (e.g., `ser8.local`) and AdGuard rewrites (e.g., `ser8.internal`)
-- Prometheus uses `.local` mDNS for scraping (not `.internal` which requires AdGuard DNS)
-- ser8 uses ZFS with "Erase Your Darlings" pattern - root filesystem is rolled back on boot
-- Raspberry Pi hosts may require special handling for boot firmware mounting
-- Users are defined in `users/` directory with centralized management
-- Media services on ser8 use a shared `media` group for permissions
-- qBittorrent runs in NordVPN network namespace for anonymization
-- Transmission has been replaced by qBittorrent as the primary torrent client
-- All hosts auto-authenticate to Tailscale on boot using shared `tailscale_authkey`
-
-## Frigate NVR Configuration
-
-Frigate runs on ser8 for security camera management:
-- Camera credentials stored in SOPS (`frigate_cam_user`, `frigate_cam_pass`)
-- Uses Frigate's environment variable substitution: `{FRIGATE_CAM_USER}`, `{FRIGATE_CAM_PASS}` in RTSP URLs
-- TP-Link Tapo cameras require TCP transport (`preset-rtsp-restream`) for WiFi stability
-- Auth disabled since Frigate is behind Tailscale
-- Camera recordings stored on ZFS backup pool (`/mnt/cameras`)
-- Reference for Tapo camera stability: https://github.com/blakeblackshear/frigate/discussions/14888
-
-## Service Access
-
-Services are accessible through the Caddy reverse proxy on the firebat host:
-- `jellyfin.vofi.app`, `jellyfin.vofi` - Jellyfin media server
-- `sonarr.vofi` - Sonarr TV show management
-- `radarr.vofi` - Radarr movie management
-- `prowlarr.vofi` - Prowlarr indexer management
-- `torrent.vofi` - qBittorrent web UI
-- `sabnzbd.vofi` - SABnzbd Usenet download client
-- `frigate.vofi` - Frigate NVR security camera system
-- `hass.vofi` - Home Assistant automation
-- `grafana.vofi.app` - Grafana monitoring dashboards
-- `prometheus.vofi.app` - Prometheus metrics
-- `adguard.internal` - AdGuard Home DNS management (internal only)
-
-Note: `.vofi.app` and `.vofi` domains use Caddy's local CA (self-signed, will show as insecure).
-
-Services are also accessible via Tailscale MagicDNS with valid Let's Encrypt certificates:
-- `jellyfin.shad-bangus.ts.net`, `sonarr.shad-bangus.ts.net`, `radarr.shad-bangus.ts.net`
-- `prowlarr.shad-bangus.ts.net`, `sabnzbd.shad-bangus.ts.net`
-- `frigate.shad-bangus.ts.net`, `hass.shad-bangus.ts.net`
-- `grafana.shad-bangus.ts.net`, `prom.shad-bangus.ts.net`
-
-**Prefer Tailscale URLs for valid TLS certificates.**
-
-## Monitoring Stack
-
-Prometheus and Grafana run on firebat for homelab monitoring:
-
-### Prometheus Scrape Targets
-- `node-exporter`: System metrics from ser8, firebat, pi4 (port 9100)
-- `zfs-exporter`: ZFS pool metrics from ser8 (port 9134)
-- `prometheus`: Self-monitoring (localhost:9090)
-
-### Grafana Dashboards
-Dashboards are fetched from grafana.com at build time and processed to replace `${DS_*}` datasource template variables:
-- Node Exporter Full (ID 1860) - Comprehensive system metrics
-- ZFS Pool Status (ID 7845) - ZFS health and metrics
-- Prometheus Stats (ID 3662) - Prometheus self-monitoring
-
-### Prometheus Admin API
-Enabled for series management. To delete stale series:
-```bash
-ssh bdhill@firebat 'curl -X POST "http://localhost:9090/api/v1/admin/tsdb/delete_series" --data-urlencode "match[]={instance=~\".*pattern.*\"}"'
-ssh bdhill@firebat 'curl -X POST "http://localhost:9090/api/v1/admin/tsdb/clean_tombstones"'
-```
-
-## Testing
-
-Each host can have smoketests defined in `deploy.yaml`. Gateway, DNS, and media modules have comprehensive test suites in `scripts/smoketests/`.
-
-## Debugging Tips
-
-### Testing Packages on Remote Hosts
-
-Use `nix-shell` to try out packages or commands on a remote host before adding them to the configuration:
+Enter the development shell before running repository tooling:
 
 ```bash
-# Test a single command with a package
-ssh bdhill@ser8 nix-shell -p libva-utils --command vainfo
-
-# Interactive shell with multiple packages
-ssh bdhill@ser8 nix-shell -p htop iotop
-
-# Example: verify VA-API hardware acceleration
-ssh bdhill@ser8 nix-shell -p libva-utils --command "vainfo 2>&1 | grep -E 'Driver|profile'"
+make dev
 ```
 
-This avoids the full rebuild/switch cycle when debugging or verifying hardware capabilities.
+The shell includes `nixfmt-rfc-style`, `statix`, `shellcheck`, `sops`, `yq`, `caddy`, `nixos-anywhere`, `sb`, and `treehouse`.
+
+Use these commands for routine validation:
+
+```bash
+make fmt                    # Format all Nix files
+make fmt-caddy              # Format and validate the Caddyfile
+make check                  # Run flake checks, statix, and dry-run host builds
+make flake-info             # Show exported flake outputs
+```
+
+`make check` is the main repository-wide validation command.
+For focused work, validate the affected host or file first, then run broader checks when practical.
+
+## Host and Deployment Commands
+
+Targets use the host as a suffix:
+
+```bash
+make list-hosts
+make info-ser8
+make status
+make ssh-ser8
+make build-ser8
+make dry-activate-ser8
+make test-ser8
+make smoketests-ser8
+```
+
+`make test-HOST` activates a configuration temporarily and is safer than switching it into the boot default.
+`make switch-HOST`, `make reboot-HOST`, and `make apply-HOST` affect live systems and require explicit intent.
+Interactive deployment commands prompt by default, and `NO_CONFIRM=true` must only be used for intentional non-interactive operations.
+The `rollback-HOST` target is currently a placeholder and must not be presented as functional.
+
+Package and service metadata can be inspected without deploying:
+
+```bash
+make pkg-list-ser8
+make pkg-list-ser8 CATEGORY=services
+make pkg-version-ser8 PKG=jellyfin
+make pkg-eval-ser8 EXPR='config.services.jellyfin.enable'
+nix eval '.#enabledServices.ser8' --json
+nix eval '.#servicePackages.ser8' --json
+nix eval '.#packageInfo.ser8' --json
+```
+
+Build Raspberry Pi installer artifacts with `make pi4-installer` or `make pi5-installer`.
+Write an installer only with an explicit device, such as `make write-pi4 DEVICE=/dev/rdiskX`.
+
+## Coding Conventions
+
+Format Nix with `nixfmt-rfc-style` and do not hand-align against formatter output.
+Keep module filenames lowercase and kebab-case.
+Preserve `SPDX-License-Identifier: GPL-3.0-or-later` headers where present.
+Keep shell scripts compatible with their declared interpreter and start new Bash scripts with `set -euo pipefail`.
+Run `shellcheck` and `shfmt -d` for changed shell scripts.
+Use `sb` for structure-aware repository exploration before reading large files in full.
+Use `rg` and `fd` for text and filename searches.
+Use `treehouse get --lease` when isolated worktree execution is needed, and return the lease with `treehouse return <path>`.
+
+## Testing Expectations
+
+Test behavior at the narrowest relevant level before running repository-wide checks.
+Add or update smoketests when changing deployed services, networking, DNS, gateway behavior, monitoring, or media automation.
+Keep area entry points named `all.sh` when they are referenced by `deploy.yaml`.
+Use descriptive `test-*.sh` names for individual smoketests.
+Treat warnings from formatters, linters, evaluators, and tests as failures to resolve.
+
+## Secrets and Safety
+
+Never commit plaintext credentials, decrypted SOPS content, private keys, or generated access tokens.
+Use the provided targets instead of editing encrypted data through ad hoc commands:
+
+```bash
+make sops-status
+make sops-edit-ser8
+make sops-edit-shared
+make sops-gen-api-key
+make sops-gen-hash
+make sops-gen-hash-qbittorrent
+```
+
+Host-specific encrypted data lives in `secrets/<host>.yaml`, and shared encrypted data lives in `secrets/shared.yaml`.
+SOPS age identities come from SSH host keys, with persistent hosts reading keys from `/persist/etc/ssh/`.
+Do not expose secret values in logs, test output, documentation, or diffs.
+
+## Change and Review Guidance
+
+Use short, scoped commit subjects in imperative form, such as `media: enable exporter` or `flake: update input`.
+Keep each commit to one logical change and do not add an agent as a co-author.
+Before committing, review the diff, run relevant tests, and resolve all warnings.
+Do not push directly to `main`.
+Pull requests should identify affected hosts and modules, list validation performed, and call out required deployment or secret steps.
+Include dashboard screenshots or exported JSON diffs when Grafana assets change.

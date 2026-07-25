@@ -96,8 +96,8 @@ Recent decisions affecting current work:
 - [Phase 08]: Keep shared SOPS policy limited to file, format, and host age-key defaults while service modules own every active declaration. — This preserves one complete service owner for every secret and template.
 - [Phase 08]: Preserve stable media unit interfaces and explicit script priorities while sourcing deployment and orchestration helpers separately. — This keeps dependency and execution behavior stable across the ownership split.
 - [Phase 08]: Allow absent planned AllDebrid declarations only in the secret inventory projection while keeping all active contracts strict. — This verifies the approved cleanup without masking active configuration drift.
-- [Phase 08]: Delete drained provider modules only after active-owner, caller-absence, and parity proof. — This prevents dead-code cleanup from removing behavior still consumed by ser8.
-- [Phase 08]: Limit adjacent AllDebrid cleanup to the approved tmpfiles rule and stale flake comments. — This preserves every unrelated persistence path, flake input, and encrypted secret.
+- [Phase 08]: Delete drained provider modules only after active-owner, caller-absence, and parity proof. - This prevents dead-code cleanup from removing behavior still consumed by ser8.
+- [Phase 08]: Limit adjacent AllDebrid cleanup to the approved tmpfiles rule and stale flake comments. - This preserves every unrelated persistence path, flake input, and encrypted secret.
 
 ### Pending Todos
 

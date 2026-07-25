@@ -5,15 +5,15 @@ milestone_name: Monitoring & Alerting
 current_phase: 08
 current_phase_name: reorganize-ser8-media-nix-into-per-service-modules
 status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-07-25T22:21:26.272Z"
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-07-25T22:33:05.312Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 40
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 08 (reorganize-ser8-media-nix-into-per-service-modules) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-07-25 — Phase 08 execution started
 
@@ -63,6 +63,7 @@ Progress: [#######░░░] 71% (10/14 plans across both milestones)
 | Phase 08 P02 | 8min | 3 tasks | 7 files |
 | Phase 08 P03 | 9min | 3 tasks | 6 files |
 | Phase 08 P04 | 5min | 2 tasks | 6 files |
+| Phase 08 P05 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 08]: Use dependency priorities 450, 500, and 550 independently from deployment-script priorities 500, 600, and 700. — Preserves both evaluated unit ordering and deployment command ordering.
 - [Phase 08]: Keep all Jellyfin household identities, credentials, API key wiring, and enablement decisions in the ser8 host module. - This keeps concrete household authorization and secret ownership out of reusable modules.
 - [Phase 08]: Expose only enable and apiKeyFile as reusable Jellyfin exporter host inputs. - This is the minimum typed interface needed to preserve systemd credential delivery without host-specific references.
+- [Phase 08]: Keep shared SOPS policy limited to file, format, and host age-key defaults while service modules own every active declaration. — This preserves one complete service owner for every secret and template.
+- [Phase 08]: Preserve stable media unit interfaces and explicit script priorities while sourcing deployment and orchestration helpers separately. — This keeps dependency and execution behavior stable across the ownership split.
+- [Phase 08]: Allow absent planned AllDebrid declarations only in the secret inventory projection while keeping all active contracts strict. — This verifies the approved cleanup without masking active configuration drift.
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T22:21:26.267Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-07-25T22:32:44.842Z
+Stopped at: Completed 08-05-PLAN.md
 Resume file: None

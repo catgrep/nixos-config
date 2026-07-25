@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Monitoring & Alerting
 current_phase: 08
 current_phase_name: reorganize-ser8-media-nix-into-per-service-modules
-status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-07-25T22:40:31.409Z"
+status: verifying
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-07-25T22:56:58.496Z"
 last_activity: 2026-07-25
-last_activity_desc: Phase 08 execution started
+last_activity_desc: Phase 08 execution completed
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 40
+  completed_plans: 11
+  percent: 60
 ---
 
 # Project State
@@ -28,20 +28,20 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 08 (reorganize-ser8-media-nix-into-per-service-modules) — EXECUTING
+Phase: 08 (reorganize-ser8-media-nix-into-per-service-modules) — VERIFYING
 Plan: 7 of 7
-Status: Ready to execute
-Last activity: 2026-07-25 — Phase 08 execution started
+Status: Phase complete — ready for verification
+Last activity: 2026-07-25 — Phase 08 execution completed
 
-Progress: [#######░░░] 71% (10/14 plans across both milestones)
+Progress: [########░░] 79% (11/14 plans across both milestones)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10 (6 v1.0 + 4 v1.1)
+- Total plans completed: 11 (6 v1.0 + 5 v1.1)
 - Average duration: ~17 min
-- Total execution time: ~2.9 hours
+- Total execution time: ~3.1 hours
 
 **By Phase:**
 
@@ -65,6 +65,7 @@ Progress: [#######░░░] 71% (10/14 plans across both milestones)
 | Phase 08 P04 | 5min | 2 tasks | 6 files |
 | Phase 08 P05 | 8min | 3 tasks | 9 files |
 | Phase 08 P06 | 3 min | 2 tasks | 6 files |
+| Phase 08 P07 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 08]: Allow absent planned AllDebrid declarations only in the secret inventory projection while keeping all active contracts strict. — This verifies the approved cleanup without masking active configuration drift.
 - [Phase 08]: Delete drained provider modules only after active-owner, caller-absence, and parity proof. - This prevents dead-code cleanup from removing behavior still consumed by ser8.
 - [Phase 08]: Limit adjacent AllDebrid cleanup to the approved tmpfiles rule and stale flake comments. - This preserves every unrelated persistence path, flake input, and encrypted secret.
+- [Phase 08]: Accept only the user-approved pre-existing warning classes for repository-wide make check while leaving the Phase 8 parity warning baseline exact and unchanged.
 
 ### Pending Todos
 
@@ -116,6 +118,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T22:40:31.404Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-07-25T22:56:58.491Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None

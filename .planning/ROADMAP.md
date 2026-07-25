@@ -50,7 +50,7 @@ Plans:
 - [ ] **Phase 5: Hardware Alerts & Status Dashboard** - Hardware health alert rules, uptime dashboard showing service availability
 - [ ] **Phase 6: Log Aggregation** - Centralized searchable logs from all hosts with log-based alerting
 - [ ] **Phase 7: HA Monitoring** - HA automations for infrastructure alerts, HA dashboards for entity tracking
-- [ ] **Phase 8: Reorganize ser8 media.nix** - Split the ~750-line host media config into per-service modules (independent refactor)
+- [x] **Phase 8: Reorganize ser8 media.nix** - Split the ~750-line host media config into per-service modules (independent refactor) (completed 2026-07-25)
 
 ## Phase Details
 
@@ -147,7 +147,7 @@ Plans:
 
 **Out of scope (decide during planning)**: renaming the shared `sabnzbd_usenet_*` secrets to neutral `usenet_*` names, and giving NZBGet its own `nzbget_admin_password` instead of reusing `sabnzbd_admin_password`. These change deployed credentials and the system derivation, so they break criterion 5 and belong in a follow-up.
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -176,7 +176,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 08-07-PLAN.md -- Audit active reusable providers and run final no-activation acceptance gates
+- [x] 08-07-PLAN.md -- Audit active reusable providers and run final no-activation acceptance gates
 
 ## Progress
 
@@ -194,4 +194,4 @@ Phase 8 is an independent refactor with no dependencies and can be scheduled at 
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/2 | Planned | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |
-| 8. Reorganize ser8 media.nix | v1.1 | 6/7 | In Progress|  |
+| 8. Reorganize ser8 media.nix | v1.1 | 7/7 | Complete   | 2026-07-25 |

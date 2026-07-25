@@ -5,8 +5,8 @@ milestone_name: Monitoring & Alerting
 current_phase: 08
 current_phase_name: reorganize-ser8-media-nix-into-per-service-modules
 status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-07-25T22:21:02.341Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-07-25T22:21:26.272Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 08 execution started
 progress:
@@ -62,6 +62,7 @@ Progress: [#######░░░] 71% (10/14 plans across both milestones)
 | Phase 08 P01 | 14min | 2 tasks | 9 files |
 | Phase 08 P02 | 8min | 3 tasks | 7 files |
 | Phase 08 P03 | 9min | 3 tasks | 6 files |
+| Phase 08 P04 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase 08]: Preserve Arr deployment order with explicit priorities 200, 300, and 400 rather than import ordering. - Explicit priorities keep generated deployment behavior deterministic across module boundaries.
 - [Phase 08]: Keep SABnzbd as the single declaration owner for shared administrator and Usenet credentials consumed by NZBGet. — Preserves existing credential names and avoids duplicate SOPS declarations.
 - [Phase 08]: Use dependency priorities 450, 500, and 550 independently from deployment-script priorities 500, 600, and 700. — Preserves both evaluated unit ordering and deployment command ordering.
+- [Phase 08]: Keep all Jellyfin household identities, credentials, API key wiring, and enablement decisions in the ser8 host module. — This keeps concrete household authorization and secret ownership out of reusable modules.
+- [Phase 08]: Expose only enable and apiKeyFile as reusable Jellyfin exporter host inputs. — This is the minimum typed interface needed to preserve systemd credential delivery without host-specific references.
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T22:21:02.336Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-07-25T22:21:26.267Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None

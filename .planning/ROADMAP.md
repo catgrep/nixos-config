@@ -50,7 +50,7 @@ Plans:
 - [ ] **Phase 5: Hardware Alerts & Status Dashboard** - Hardware health alert rules, uptime dashboard showing service availability
 - [ ] **Phase 6: Log Aggregation** - Centralized searchable logs from all hosts with log-based alerting
 - [ ] **Phase 7: HA Monitoring** - HA automations for infrastructure alerts, HA dashboards for entity tracking
-- [x] **Phase 8: Reorganize ser8 media.nix** - Split the ~750-line host media config into per-service modules (independent refactor) (completed 2026-07-25)
+- [ ] **Phase 8: Reorganize ser8 media.nix** - Split the ~750-line host media config into per-service modules (independent refactor)
 
 ## Phase Details
 
@@ -194,4 +194,4 @@ Phase 8 is an independent refactor with no dependencies and can be scheduled at 
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/2 | Planned | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |
-| 8. Reorganize ser8 media.nix | v1.1 | 7/7 | Complete   | 2026-07-25 |
+| 8. Reorganize ser8 media.nix | v1.1 | 7/7 | Gaps found | - |

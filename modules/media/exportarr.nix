@@ -12,15 +12,6 @@
 
 {
   services.prometheus.exporters = {
-    # Sonarr exporter (TV shows)
-    exportarr-sonarr = {
-      enable = lib.mkDefault true;
-      port = 9707;
-      url = "http://localhost:8989";
-      apiKeyFile = config.sops.secrets.sonarr_api_key.path;
-      openFirewall = true;
-    };
-
     # Radarr exporter (Movies)
     exportarr-radarr = {
       enable = lib.mkDefault true;

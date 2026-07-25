@@ -3,5 +3,8 @@
 { ... }:
 
 {
-  imports = [ ../media.nix ];
+  imports = [
+    ../media.nix
+    ./sonarr.nix
+  ];
 }

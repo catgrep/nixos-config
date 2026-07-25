@@ -208,7 +208,6 @@
   services = {
     # Jellyfin is enabled by default in the media module
     # Enable additional services as needed
-    sonarr.enable = true;
     radarr.enable = true;
     prowlarr = {
       enable = true;

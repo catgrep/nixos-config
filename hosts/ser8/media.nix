@@ -36,13 +36,6 @@
         mode = "0600";
       };
 
-      # Sonarr authentication
-      "sonarr_admin_password" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       # Radarr authentication
       "radarr_admin_password" = {
         owner = "root";
@@ -64,12 +57,6 @@
       };
 
       # API keys for Sonarr, Radarr, and Prowlarr
-      "sonarr_api_key" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       "radarr_api_key" = {
         owner = "root";
         group = "root";
@@ -142,30 +129,6 @@
 
     # Templates for config files
     templates = {
-      "sonarr-config.xml" = {
-        content = ''
-          <Config>
-            <LogLevel>info</LogLevel>
-            <EnableSsl>False</EnableSsl>
-            <Port>8989</Port>
-            <SslPort>9898</SslPort>
-            <UrlBase></UrlBase>
-            <BindAddress>*</BindAddress>
-            <LaunchBrowser>False</LaunchBrowser>
-            <AuthenticationMethod>Forms</AuthenticationMethod>
-            <AuthenticationRequired>Enabled</AuthenticationRequired>
-            <Username>admin</Username>
-            <Password>${config.sops.placeholder."sonarr_admin_password"}</Password>
-            <ApiKey>${config.sops.placeholder."sonarr_api_key"}</ApiKey>
-            <Branch>main</Branch>
-            <InstanceName>Sonarr</InstanceName>
-          </Config>
-        '';
-        owner = "sonarr";
-        group = "sonarr";
-        mode = "0600";
-      };
-
       "radarr-config.xml" = {
         content = ''
           <Config>
@@ -535,7 +498,6 @@
     media-config = {
       description = "Deploy all media service configurations with secrets";
       before = [
-        "sonarr.service"
         "radarr.service"
         "prowlarr.service"
         "qbittorrent-nox.service"
@@ -558,12 +520,6 @@
 
           echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
         '')
-        (lib.mkOrder 200 (
-          lib.removeSuffix "\n" ''
-            # Deploy arr service configurations
-            configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
-          ''
-        ))
         (lib.mkOrder 300 (
           lib.removeSuffix "\n" ''
             configure_arr radarr ${config.sops.templates."radarr-config.xml".path}

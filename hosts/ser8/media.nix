@@ -36,13 +36,6 @@
         mode = "0600";
       };
 
-      # Radarr authentication
-      "radarr_admin_password" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       # qBittorrent authentication
       "qbittorrent_admin_password" = {
         owner = "root";
@@ -57,12 +50,6 @@
       };
 
       # API keys for Sonarr, Radarr, and Prowlarr
-      "radarr_api_key" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       "prowlarr_api_key" = {
         owner = "root";
         group = "root";
@@ -129,30 +116,6 @@
 
     # Templates for config files
     templates = {
-      "radarr-config.xml" = {
-        content = ''
-          <Config>
-            <LogLevel>info</LogLevel>
-            <EnableSsl>False</EnableSsl>
-            <Port>7878</Port>
-            <SslPort>9898</SslPort>
-            <UrlBase></UrlBase>
-            <BindAddress>*</BindAddress>
-            <LaunchBrowser>False</LaunchBrowser>
-            <AuthenticationMethod>Forms</AuthenticationMethod>
-            <AuthenticationRequired>Enabled</AuthenticationRequired>
-            <Username>admin</Username>
-            <Password>${config.sops.placeholder."radarr_admin_password"}</Password>
-            <ApiKey>${config.sops.placeholder."radarr_api_key"}</ApiKey>
-            <Branch>master</Branch>
-            <InstanceName>Radarr</InstanceName>
-          </Config>
-        '';
-        owner = "radarr";
-        group = "radarr";
-        mode = "0600";
-      };
-
       "prowlarr-config.xml" = {
         content = ''
           <Config>
@@ -498,7 +461,6 @@
     media-config = {
       description = "Deploy all media service configurations with secrets";
       before = [
-        "radarr.service"
         "prowlarr.service"
         "qbittorrent-nox.service"
         "nzbget.service"
@@ -520,11 +482,6 @@
 
           echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
         '')
-        (lib.mkOrder 300 (
-          lib.removeSuffix "\n" ''
-            configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
-          ''
-        ))
         (lib.mkOrder 400 (
           lib.removeSuffix "\n" ''
             configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}

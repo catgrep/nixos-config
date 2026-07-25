@@ -12,15 +12,6 @@
 
 {
   services.prometheus.exporters = {
-    # Radarr exporter (Movies)
-    exportarr-radarr = {
-      enable = lib.mkDefault true;
-      port = 9708;
-      url = "http://localhost:7878";
-      apiKeyFile = config.sops.secrets.radarr_api_key.path;
-      openFirewall = true;
-    };
-
     # Prowlarr exporter (Indexers)
     exportarr-prowlarr = {
       enable = lib.mkDefault true;

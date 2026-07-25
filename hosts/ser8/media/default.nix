@@ -4,7 +4,6 @@
 
 {
   imports = [
-    ../media.nix
     ./sops.nix
     ./jellyfin.nix
     ./sonarr.nix

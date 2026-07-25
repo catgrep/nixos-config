@@ -3,7 +3,13 @@
 config:
 
 let
-  inherit (builtins) listToAttrs map mapAttrs;
+  inherit (builtins)
+    filter
+    hasAttr
+    listToAttrs
+    map
+    mapAttrs
+    ;
 
   select =
     names: attrs:
@@ -13,6 +19,8 @@ let
         value = attrs.${name};
       }) names
     );
+
+  selectExisting = names: attrs: select (filter (name: hasAttr name attrs) names) attrs;
 
   mediaSecretNames = [
     "jellyfin_admin_password"
@@ -170,7 +178,7 @@ in
     ];
   };
 
-  secrets = mapAttrs (_: secretMetadata) (select mediaSecretNames config.sops.secrets);
+  secrets = mapAttrs (_: secretMetadata) (selectExisting mediaSecretNames config.sops.secrets);
   templates = mapAttrs (_: templateContract) (select mediaTemplateNames config.sops.templates);
 
   exporters = {

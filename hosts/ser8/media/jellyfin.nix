@@ -42,6 +42,11 @@ in
 {
   services.jellyfin.enable = true;
 
+  services.jellyfin-exporter = {
+    enable = true;
+    apiKeyFile = config.sops.secrets.jellyfin_api_key.path;
+  };
+
   services.declarative-jellyfin = {
     enable = lib.mkDefault true;
 

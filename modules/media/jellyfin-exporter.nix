@@ -12,6 +12,8 @@
 }:
 
 let
+  cfg = config.services.jellyfin-exporter;
+
   # Fetch pre-built Jellyfin exporter binary
   jellyfinExporterTarball = pkgs.fetchurl {
     url = "https://github.com/rebelcore/jellyfin_exporter/releases/download/v1.3.9/jellyfin_exporter-1.3.9.linux-amd64.tar.gz";
@@ -42,36 +44,44 @@ let
   '';
 in
 {
-  # SOPS secret for Jellyfin API key (already exists in ser8.yaml)
-  # config.sops.secrets.jellyfin_api_key is defined in hosts/ser8/media.nix
+  options.services.jellyfin-exporter = {
+    enable = lib.mkEnableOption "Prometheus exporter for Jellyfin Media Server";
 
-  systemd.services.jellyfin-exporter = {
-    description = "Prometheus exporter for Jellyfin Media Server";
-    wantedBy = [ "multi-user.target" ];
-    after = [
-      "network-online.target"
-      "jellyfin.service"
-    ];
-    wants = [ "network-online.target" ];
-
-    serviceConfig = {
-      Type = "simple";
-      DynamicUser = true;
-      ExecStart = "${jellyfinExporterWrapper}";
-      Restart = "on-failure";
-      RestartSec = "10s";
-
-      # Load SOPS secret as systemd credential (accessible at $CREDENTIALS_DIRECTORY/jellyfin-api-key)
-      LoadCredential = "jellyfin-api-key:${config.sops.secrets.jellyfin_api_key.path}";
-
-      # Security hardening
-      NoNewPrivileges = true;
-      PrivateTmp = true;
-      ProtectSystem = "strict";
-      ProtectHome = true;
+    apiKeyFile = lib.mkOption {
+      type = lib.types.path;
+      description = "Path to the file containing the Jellyfin API key";
     };
   };
 
-  # Open firewall for prometheus scraping
-  networking.firewall.allowedTCPPorts = [ 9711 ];
+  config = lib.mkIf cfg.enable {
+    systemd.services.jellyfin-exporter = {
+      description = "Prometheus exporter for Jellyfin Media Server";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "network-online.target"
+        "jellyfin.service"
+      ];
+      wants = [ "network-online.target" ];
+
+      serviceConfig = {
+        Type = "simple";
+        DynamicUser = true;
+        ExecStart = "${jellyfinExporterWrapper}";
+        Restart = "on-failure";
+        RestartSec = "10s";
+
+        # Expose the API key only through a systemd credential.
+        LoadCredential = "jellyfin-api-key:${cfg.apiKeyFile}";
+
+        # Security hardening
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+      };
+    };
+
+    # Open firewall for prometheus scraping
+    networking.firewall.allowedTCPPorts = [ 9711 ];
+  };
 }

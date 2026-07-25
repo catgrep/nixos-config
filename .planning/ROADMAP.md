@@ -147,7 +147,7 @@ Plans:
 
 **Out of scope (decide during planning)**: renaming the shared `sabnzbd_usenet_*` secrets to neutral `usenet_*` names, and giving NZBGet its own `nzbget_admin_password` instead of reusing `sabnzbd_admin_password`. These change deployed credentials and the system derivation, so they break criterion 5 and belong in a follow-up.
 
-**Plans**: 3/7 plans executed
+**Plans**: 4/7 plans executed
 
 Plans:
 **Wave 1**
@@ -164,7 +164,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 08-04-PLAN.md -- Move Jellyfin household policy to ser8 and genericize the exporter
+- [x] 08-04-PLAN.md -- Move Jellyfin household policy to ser8 and genericize the exporter
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -194,4 +194,4 @@ Phase 8 is an independent refactor with no dependencies and can be scheduled at 
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/2 | Planned | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |
-| 8. Reorganize ser8 media.nix | v1.1 | 3/7 | In Progress|  |
+| 8. Reorganize ser8 media.nix | v1.1 | 4/7 | In Progress|  |

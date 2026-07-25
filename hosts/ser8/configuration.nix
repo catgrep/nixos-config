@@ -11,7 +11,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko-config.nix
-    ./media.nix
+    ./media
   ];
 
   # Media server networking configuration

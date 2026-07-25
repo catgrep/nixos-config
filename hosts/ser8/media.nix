@@ -2,6 +2,7 @@
 
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -549,43 +550,64 @@
         User = "root";
       };
 
-      script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        source ${./systemd_helpers.sh}
-        set -euo pipefail
+      script = lib.mkMerge [
+        (lib.mkOrder 100 ''
+          export CURL_BIN="${pkgs.curl}/bin/curl"
+          source ${./systemd_helpers.sh}
+          set -euo pipefail
 
-        echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
+          echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
+        '')
+        (lib.mkOrder 200 (
+          lib.removeSuffix "\n" ''
+            # Deploy arr service configurations
+            configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
+          ''
+        ))
+        (lib.mkOrder 300 (
+          lib.removeSuffix "\n" ''
+            configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
+          ''
+        ))
+        (lib.mkOrder 400 (
+          lib.removeSuffix "\n" ''
+            configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
+          ''
+        ))
+        (lib.mkOrder 500 (
+          lib.removeSuffix "\n" ''
+            configure_arr nzbget ${config.sops.templates."nzbget.conf".path}
+          ''
+        ))
+        (lib.mkOrder 600 ''
+          configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
+        '')
+        (lib.mkOrder 700 ''
+          # Deploy qBittorrent configuration
+          echo "Configuring qBittorrent..."
+          CONFIG_DIR="/var/lib/qbittorrent/qBittorrent/config"
+          CONFIG_FILE="$CONFIG_DIR/qBittorrent.conf"
+          TEMP_FILE="$CONFIG_DIR/qBittorrent.conf.tmp"
 
-        # Deploy arr service configurations
-        configure_arr sonarr ${config.sops.templates."sonarr-config.xml".path}
-        configure_arr radarr ${config.sops.templates."radarr-config.xml".path}
-        configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
-        configure_arr nzbget ${config.sops.templates."nzbget.conf".path}
-        configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
+          mkdir -p "$CONFIG_DIR"
+          chown qbittorrent:qbittorrent "$CONFIG_DIR"
 
-        # Deploy qBittorrent configuration
-        echo "Configuring qBittorrent..."
-        CONFIG_DIR="/var/lib/qbittorrent/qBittorrent/config"
-        CONFIG_FILE="$CONFIG_DIR/qBittorrent.conf"
-        TEMP_FILE="$CONFIG_DIR/qBittorrent.conf.tmp"
+          # Remove existing config to avoid conflicts
+          if [ -f "$CONFIG_FILE" ]; then
+            rm -f "$CONFIG_FILE"
+          fi
 
-        mkdir -p "$CONFIG_DIR"
-        chown qbittorrent:qbittorrent "$CONFIG_DIR"
-
-        # Remove existing config to avoid conflicts
-        if [ -f "$CONFIG_FILE" ]; then
-          rm -f "$CONFIG_FILE"
-        fi
-
-        # Atomic deployment
-        cp ${config.sops.templates."qbittorrent.conf".path} "$TEMP_FILE"
-        chown qbittorrent:qbittorrent "$TEMP_FILE"
-        chmod 600 "$TEMP_FILE"
-        mv "$TEMP_FILE" "$CONFIG_FILE"
-        echo "✓ qBittorrent configuration deployed"
-
-        echo "✓ Completed media services configuration"
-      '';
+          # Atomic deployment
+          cp ${config.sops.templates."qbittorrent.conf".path} "$TEMP_FILE"
+          chown qbittorrent:qbittorrent "$TEMP_FILE"
+          chmod 600 "$TEMP_FILE"
+          mv "$TEMP_FILE" "$CONFIG_FILE"
+          echo "✓ qBittorrent configuration deployed"
+        '')
+        (lib.mkOrder 800 ''
+          echo "✓ Completed media services configuration"
+        '')
+      ];
     };
 
     servarrs-setup = {

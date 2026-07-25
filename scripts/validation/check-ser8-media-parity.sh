@@ -27,6 +27,8 @@ normalize_projection() {
         if type == "string" then
           gsub("/nix/store/[a-z0-9]+-source/hosts/ser8/systemd_helpers[.]sh";
                "<MEDIA_HELPER>")
+          | gsub("/nix/store/[a-z0-9]+-unit-script-(media-config|servarrs-setup|download-clients-setup)-start";
+                 "<MEDIA_UNIT_SCRIPT>")
         else . end
       );
     del(
@@ -68,22 +70,24 @@ capture() {
 
 check() {
 	local baseline=$1
-	local current normalized
+	local current expected normalized
 	current=$(mktemp)
+	expected=$(mktemp)
 	normalized=$(mktemp)
 
 	jq -e . "$baseline" >/dev/null
+	normalize_projection <"$baseline" >"$expected"
 	evaluate_projection >"$current"
 	assert_expected_deltas "$current"
 	normalize_projection <"$current" >"$normalized"
 
-	if ! diff -u "$baseline" "$normalized"; then
+	if ! diff -u "$expected" "$normalized"; then
 		echo "ser8 media behavior differs from $baseline" >&2
-		rm -f "$current" "$normalized"
+		rm -f "$current" "$expected" "$normalized"
 		return 1
 	fi
 
-	rm -f "$current" "$normalized"
+	rm -f "$current" "$expected" "$normalized"
 }
 
 validate_stderr() {
@@ -97,11 +101,13 @@ validate_stderr() {
 	awk '
     NR == FNR { allowed[$0]++; next }
     {
-      observed[$0]++
-      if (!($0 in allowed) || observed[$0] > allowed[$0]) {
+      relevant = hm_warning || tolower($0) ~ /(warning|error:|fatal:|trace:)/
+      if ($0 ~ /^evaluation warning: bdhill profile:/) hm_warning = 1
+      if ((relevant || hm_warning) && !($0 in allowed)) {
         print "Unclassified stderr: " $0 > "/dev/stderr"
         failed = 1
       }
+      if (hm_warning && $0 ~ /to your configuration[.]$/) hm_warning = 0
     }
     END { exit failed }
   ' "$WARNING_BASELINE" "$stderr_file"

@@ -61,7 +61,7 @@ in
 
       jordan = householdUser {
         isAdministrator = false;
-        enableRemoteAccess = false;
+        enableRemoteAccess = true;
         enableRemoteControlOfOtherUsers = false;
         hashedPasswordFile = config.sops.secrets.jellyfin_jordan_password.path;
         subtitleMode = "default";
@@ -69,7 +69,7 @@ in
 
       sawnia = householdUser {
         isAdministrator = false;
-        enableRemoteAccess = false;
+        enableRemoteAccess = true;
         enableRemoteControlOfOtherUsers = false;
         hashedPasswordFile = config.sops.secrets.jellyfin_sawnia_password.path;
         subtitleMode = "default";

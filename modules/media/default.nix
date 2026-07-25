@@ -12,7 +12,5 @@
     ./qbittorrent.nix
     ./sabnzbd.nix
     ./nzbget.nix
-    ./exportarr.nix
-    # ./alldebrid-proxy.nix
   ];
 }

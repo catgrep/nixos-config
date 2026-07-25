@@ -12,19 +12,15 @@
   # Base Network configuration
   networking = {
     useNetworkd = true;
-    # Enable mDNS
-    firewall.allowedUDPPorts = [ 5353 ];
   };
 
-  # mDNS configuration
+  # DHCP configuration
   systemd.network.networks = {
     "99-ethernet-default-dhcp" = {
-      networkConfig.MulticastDNS = "yes";
       matchConfig.Name = "en* eth*";
       networkConfig.DHCP = "yes";
     };
     "99-wireless-client-dhcp" = {
-      networkConfig.MulticastDNS = "yes";
       matchConfig.Name = "wlan*";
       networkConfig.DHCP = "yes";
     };

@@ -169,6 +169,8 @@ with lib;
                 "1.0.0.1"
                 "8.8.4.4"
               ];
+          # Avahi publishes .local names, while systemd-resolved resolves them for DNS-stub clients.
+          # Resolver-only mode must be enabled globally here and per link in networkd below.
           extraConfig =
             let
               dnsServers =
@@ -192,6 +194,7 @@ with lib;
               DNSStubListener=yes
               Cache=yes
               DNSOverTLS=no
+              MulticastDNS=resolve
             '';
         };
 
@@ -205,9 +208,17 @@ with lib;
 
         # networkd config: ignore DNS from DHCP when AdGuard is enabled
         # This prevents the router/ISP from pushing their DNS servers
-        systemd.network.networks."40-${cfg.interface}" =
-          mkIf (cfg.adguard.enabled && config.networking.useNetworkd)
+        systemd.network.networks = {
+          "40-${cfg.interface}" = mkIf config.networking.useNetworkd (mkMerge [
             {
+              # systemd-resolved is the mDNS resolver for applications using its DNS stub.
+              # Resolver-only mode prevents it from competing with Avahi to publish .local names.
+              networkConfig.MulticastDNS = "resolve";
+            }
+            (mkIf cfg.adguard.enabled {
+              # Ignore DNS servers supplied by DHCP when using the configured AdGuard servers.
+              # This link setting is separate from the global resolved configuration above.
+              # systemd-resolved requires mDNS resolution to be enabled at both levels.
               dhcpV4Config = {
                 UseDNS = false;
               };
@@ -223,7 +234,9 @@ with lib;
                     cfg.adguard.address
                     "192.168.68.1"
                   ];
-            };
+            })
+          ]);
+        };
 
         # Ensure systemd-resolved restarts when DNS config changes
         # This is needed because resolved caches DNS settings and won't pick up
@@ -237,6 +250,11 @@ with lib;
         # Enable mDNS for .local domain resolution
         services.avahi = {
           enable = true;
+          # Avahi is the sole publisher of this host's .local name.
+          # Restrict it to the stable LAN interface so transient VPN and veth interfaces
+          # cannot trigger hostname conflicts or publish unreachable addresses.
+          # systemd-resolved handles .local resolution only and does not publish names.
+          allowInterfaces = [ cfg.interface ];
           nssmdns4 = true;
           nssmdns6 = true;
           ipv4 = true;

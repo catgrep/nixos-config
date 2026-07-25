@@ -10,5 +10,6 @@
     ./prowlarr.nix
     ./nzbget.nix
     ./sabnzbd.nix
+    ./qbittorrent.nix
   ];
 }

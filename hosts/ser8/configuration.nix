@@ -208,56 +208,12 @@
   services = {
     # Jellyfin is enabled by default in the media module
     # Enable additional services as needed
-    qbittorrent-nox = {
-      enable = true;
-      openFirewall = false;
-      useVpnNamespace = true; # Route through VPN
-    };
     flaresolverr.enable = true;
 
     # Home automation services
     home-assistant.enable = true;
     frigate.enable = true;
     mosquitto.enable = true; # MQTT broker for Frigate <-> Home Assistant
-  };
-
-  # Add nginx proxy for accessing qBittorrent from host
-  services.nginx = {
-    enable = true;
-    virtualHosts."qbittorrent" =
-      let
-        uiWebPort = config.services.qbittorrent-nox.port;
-      in
-      {
-        listen = [
-          {
-            addr = "127.0.0.1";
-            port = uiWebPort;
-          }
-          {
-            addr = "0.0.0.0";
-            port = uiWebPort;
-          } # Also listen on all interfaces if needed
-        ];
-        # Forward UI port from wgnord network namespace to host
-        locations."/" = {
-          proxyPass = "http://${config.nordvpn.vethBridge.vpnIp}:${builtins.toString uiWebPort}";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
-            # qBittorrent specific headers
-            proxy_set_header Connection "";
-
-            # Disable buffering for the web UI
-            proxy_buffering off;
-            proxy_request_buffering off;
-          '';
-        };
-      };
   };
 
   # Host-specific monitoring - extends the server monitoring module

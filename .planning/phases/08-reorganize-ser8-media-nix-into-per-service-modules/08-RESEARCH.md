@@ -492,19 +492,16 @@ The final projection should also include template content/ownership, service ena
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | The new `sawnia` Jellyfin record should mirror Jordan's non-administrator permissions and preferences while using `jellyfin_sawnia_password`. [ASSUMED] | Open Questions / implementation | Wrong household permissions would be an unintended access-control change. |
+| A1 | The new `sawnia` Jellyfin record mirrors Jordan's non-administrator permissions and preferences while using `jellyfin_sawnia_password`. [RESOLVED: user decision 2026-07-25] | Implementation | None; the access policy is explicitly approved. |
 
-## Open Questions
+## Resolved Questions
 
-1. **What exact permissions and preferences should `sawnia` receive?**
-   - What we know: D-04 requires a complete `sawnia` record, and the working tree already declares its password secret, but current evaluated users are only `admin` and `jordan`. [VERIFIED: CONTEXT.md] [VERIFIED: git diff] [VERIFIED: nix eval]
-   - What's unclear: No existing source or history defines Sawnia's administrator flag, remote-access policy, deletion permission, subtitle mode, or autoplay preferences. [VERIFIED: codebase grep] [VERIFIED: git log]
-   - Recommendation: Use Jordan's record as the proposed household-user template only after a human confirmation checkpoint. [ASSUMED]
+1. **Sawnia permissions and preferences:** Mirror Jordan's complete non-administrator household-user record and use `jellyfin_sawnia_password`. [RESOLVED: user decision 2026-07-25]
+2. **Transmission cleanup:** Delete the unimported `modules/media/transmission.nix` under D-22. [RESOLVED: user decision 2026-07-25]
+3. **Adjacent AllDebrid cleanup:** Remove the obsolete AllDebrid persistence state from `hosts/ser8/impermanence.nix` and stale AllDebrid comments from `flake.nix`. [RESOLVED: user decision 2026-07-25]
+4. **Encrypted source boundary:** Leave encrypted keys in `secrets/ser8.yaml` untouched. [RESOLVED: user decision 2026-07-25]
 
-2. **How far should dead AllDebrid and Transmission cleanup extend outside `modules/media/`?**
-   - What we know: D-19 through D-21 name the host declarations/block and reusable module/import; codebase search also finds two commented `flake.nix` remnants, an active AllDebrid tmpfiles directory, and unimported Transmission code. [VERIFIED: CONTEXT.md] [VERIFIED: codebase grep]
-   - What's unclear: The locked decisions do not explicitly authorize deleting the encrypted YAML keys, `impermanence.nix` directory rule, `flake.nix` comments, or `modules/media/transmission.nix`.
-   - Recommendation: Remove `modules/media/transmission.nix` under D-22 and stale code comments under the no-phantom-features rule; leave encrypted YAML keys untouched unless the user explicitly authorizes SOPS editing, and make the `impermanence.nix` directory rule a planner checkpoint because it changes evaluated active configuration.
+No implementation question remains open for Phase 8.
 
 ## Environment Availability
 
@@ -529,7 +526,7 @@ The final projection should also include template content/ownership, service ena
 | Property | Value |
 |----------|-------|
 | Framework | Nix evaluator/build checks plus ShellCheck 0.11.0, shfmt 3.12.0, and statix [VERIFIED: local CLI] |
-| Config file | `flake.nix`, `Makefile`, and a Wave 0 phase-specific parity projection [VERIFIED: codebase grep] |
+| Config file | `flake.nix`, `Makefile`, and the Plan 01 Wave 1 phase-specific parity projection [VERIFIED: codebase grep] |
 | Quick run command | `nix eval --json --apply '<projection>' '.#nixosConfigurations.ser8.config'` [CITED: https://nix.dev/manual/nix/2.34/command-ref/new-cli/nix3-eval.html] |
 | Full suite command | `make check && make build-ser8` [VERIFIED: AGENTS.md] [VERIFIED: CONTEXT.md] |
 
@@ -539,11 +536,11 @@ No formal requirement IDs map to Phase 8. [VERIFIED: REQUIREMENTS.md]
 
 | Behavior | Test Type | Automated Command | File Exists? |
 |----------|-----------|-------------------|-------------|
-| Import-only `media/default.nix`, old file removed, and expected service files present | structural | Phase-specific `rg`/file assertions | No, Wave 0 |
-| Evaluated service settings and enablement preserved | evaluation regression | `nix eval --json` projection and JSON diff | No, Wave 0 |
-| SOPS declarations/templates preserved except locked removals | evaluation regression | Projection compares names, ownership, modes, paths, and template content | No, Wave 0 |
-| Unit dependencies and target relationships preserved | evaluation regression | Projection compares `before`, `after`, `requires`, `wantedBy`, and `wants` | No, Wave 0 |
-| Generated script behavior preserved with helper path normalization | evaluation regression | Normalize store helper paths, compare script line order, and compare moved function bodies | No, Wave 0 |
+| Import-only `media/default.nix`, old file removed, and expected service files present | structural | Phase-specific `rg`/file assertions | Planned in 08-01 |
+| Evaluated service settings and enablement preserved | evaluation regression | `nix eval --json` projection and JSON diff | Planned in 08-01 |
+| SOPS declarations/templates preserved except locked removals | evaluation regression | Projection compares names, ownership, modes, paths, and template content | Planned in 08-01 |
+| Unit dependencies and target relationships preserved | evaluation regression | Projection compares `before`, `after`, `requires`, `wantedBy`, and `wants` | Planned in 08-01 |
+| Generated script behavior preserved with helper path normalization | evaluation regression | Normalize store helper paths, compare script line order, and compare moved function bodies | Planned in 08-01 |
 | Split helpers are clean Bash | static | `shellcheck hosts/ser8/media/*.sh && shfmt -d hosts/ser8/media/*.sh` | Existing combined helper only |
 | Nix files are formatted and statically valid | static/evaluation | `nixfmt --check hosts/ser8/media/*.nix modules/media/*.nix && statix check hosts/ser8/media` | Framework exists |
 | ser8 system evaluates and builds | build | `make build-ser8` | Existing target |
@@ -555,7 +552,7 @@ No formal requirement IDs map to Phase 8. [VERIFIED: REQUIREMENTS.md]
 - **Per wave merge:** Run the full normalized parity comparison and `make build-ser8`.
 - **Phase gate:** Run `make check && make build-ser8` with no unresolved warnings before `$gsd-verify-work`. [VERIFIED: AGENTS.md] [VERIFIED: CONTEXT.md]
 
-### Wave 0 Gaps
+### Plan 01 Wave 1 Validation Bootstrap
 
 - [ ] Create a phase-specific Nix projection that serializes only the behavior contract and never secret contents.
 - [ ] Capture `/tmp/ser8-media-before.json` or a durable non-secret fixture before any refactor edit, including the current uncommitted Sawnia secret declaration.
@@ -585,7 +582,7 @@ The category names follow the ASVS 4 structure requested by the research templat
 | Secret content enters a generated Nix store script or test artifact | Information Disclosure | Interpolate only runtime secret paths/placeholders and inspect comparison fixtures for plaintext before commit. [CITED: https://github.com/Mic92/sops-nix] |
 | Shell argument or API payload changes during extraction | Tampering | Move function bodies mechanically, retain quoting, run ShellCheck, and compare normalized generated scripts. [VERIFIED: codebase grep] |
 | Unit dependency semantics change | Denial of Service | Compare `before`, `after`, `requires`, `wantedBy`, and target `wants` independently. [CITED: https://nixos.org/manual/nixos/stable/] |
-| Household user receives excessive permissions | Elevation of Privilege | Treat every Jellyfin permission field as an evaluated contract and require confirmation for the new Sawnia record. [VERIFIED: nix eval] [ASSUMED] |
+| Household user receives excessive permissions | Elevation of Privilege | Treat every Jellyfin permission field as an evaluated contract and enforce the user-approved Jordan-equivalent Sawnia record. [VERIFIED: nix eval] [RESOLVED: user decision 2026-07-25] |
 | Sanitized logging regresses | Information Disclosure | Keep `sanitize_api_key` and `curl_safe` in orchestration helpers and preserve all callers. [VERIFIED: codebase grep] |
 
 ## Sources

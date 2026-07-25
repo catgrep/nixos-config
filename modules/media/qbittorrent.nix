@@ -83,11 +83,8 @@ in
           RestartSec = "5s";
           TimeoutStopSec = "1800";
 
-          # Reduced sandboxing for namespace compatibility
           LockPersonality = true;
           NoNewPrivileges = true;
-          # Remove these restrictions that can cause issues in namespaces:
-          # PrivateDevices = true;  # Can interfere with namespace devices
           PrivateTmp = false; # Allow access to /tmp for downloads
           ProtectClock = true;
           ProtectControlGroups = true;
@@ -107,8 +104,6 @@ in
           RestrictRealtime = true;
           RestrictSUIDSGID = true;
           SystemCallArchitectures = "native";
-          # Remove SystemCallFilter to avoid blocking needed syscalls
-          # SystemCallFilter = [ "@system-service" "~@privileged" ];
 
           # Filesystem access
           ReadWritePaths = [

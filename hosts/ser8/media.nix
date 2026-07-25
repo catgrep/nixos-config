@@ -49,20 +49,6 @@
         mode = "0600";
       };
 
-      # API keys for Sonarr, Radarr, and Prowlarr
-      "prowlarr_api_key" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
-      # Prowlarr authentication
-      "prowlarr_admin_password" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       # AllDebrid-Proxy (only create secrets when service is enabled)
       "alldebrid_api_key" = {
         owner = "root";
@@ -116,30 +102,6 @@
 
     # Templates for config files
     templates = {
-      "prowlarr-config.xml" = {
-        content = ''
-          <Config>
-            <LogLevel>info</LogLevel>
-            <EnableSsl>False</EnableSsl>
-            <Port>9696</Port>
-            <SslPort>9898</SslPort>
-            <UrlBase></UrlBase>
-            <BindAddress>*</BindAddress>
-            <LaunchBrowser>False</LaunchBrowser>
-            <AuthenticationMethod>Forms</AuthenticationMethod>
-            <AuthenticationRequired>Enabled</AuthenticationRequired>
-            <ApiKey>${config.sops.placeholder."prowlarr_api_key"}</ApiKey>
-            <Branch>master</Branch>
-            <InstanceName>Prowlarr</InstanceName>
-            <SslCertPath></SslCertPath>
-            <SslCertPassword></SslCertPassword>
-          </Config>
-        '';
-        owner = "prowlarr";
-        group = "prowlarr";
-        mode = "0600";
-      };
-
       # Have qbittorrent bind to all interfaces so it will automatically
       # use the VPN 'wgnord' private network namespace interface, instead
       # of the standard hardware ones (like en0).
@@ -461,7 +423,6 @@
     media-config = {
       description = "Deploy all media service configurations with secrets";
       before = [
-        "prowlarr.service"
         "qbittorrent-nox.service"
         "nzbget.service"
         "sabnzbd.service"
@@ -482,11 +443,6 @@
 
           echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
         '')
-        (lib.mkOrder 400 (
-          lib.removeSuffix "\n" ''
-            configure_arr prowlarr ${config.sops.templates."prowlarr-config.xml".path}
-          ''
-        ))
         (lib.mkOrder 500 (
           lib.removeSuffix "\n" ''
             configure_arr nzbget ${config.sops.templates."nzbget.conf".path}

@@ -208,10 +208,6 @@
   services = {
     # Jellyfin is enabled by default in the media module
     # Enable additional services as needed
-    prowlarr = {
-      enable = true;
-      useVpnNamespace = false; # Keep on regular network to avoid tracker bans
-    };
     qbittorrent-nox = {
       enable = true;
       openFirewall = false;

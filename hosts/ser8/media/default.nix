@@ -7,5 +7,6 @@
     ../media.nix
     ./sonarr.nix
     ./radarr.nix
+    ./prowlarr.nix
   ];
 }

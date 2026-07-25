@@ -95,6 +95,7 @@
             "~/.npm-global"
             "~/Library/Application Support"
             "~/AGENTS.md"
+            "~/.ssh"
           ];
           extraWritePaths = [
             "~/github/catgrep/nixos-config"

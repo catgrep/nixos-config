@@ -5,15 +5,15 @@ milestone_name: Monitoring & Alerting
 current_phase: 08
 current_phase_name: reorganize-ser8-media-nix-into-per-service-modules
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-25T21:40:45.944Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-07-25T21:52:57.217Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 5
+  completed_plans: 6
   percent: 40
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 08 (reorganize-ser8-media-nix-into-per-service-modules) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-25 — Phase 08 execution started
 
@@ -60,6 +60,7 @@ Progress: [#######░░░] 71% (10/14 plans across both milestones)
 
 *Updated after each plan completion*
 | Phase 08 P01 | 14min | 2 tasks | 9 files |
+| Phase 08 P02 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 5]: Grafana field overrides for friendly display names in state-timeline panels
 - [Phase 08]: Permit only the exact user-approved Home Manager mismatch baseline — Continue without changing dependency pins or disabling release checks; reject changed or new warnings.
 - [Phase 08]: Normalize approved helper and generated unit-script store paths — Compare evaluated media behavior while allowing only documented structural derivation changes.
+- [Phase 08]: Keep each Arr service's enablement, secrets, template, exporter instance, and deployment contribution together in one host module. - This makes each service a complete discoverable host-policy slice.
+- [Phase 08]: Preserve Arr deployment order with explicit priorities 200, 300, and 400 rather than import ordering. - Explicit priorities keep generated deployment behavior deterministic across module boundaries.
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T21:40:45.939Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-07-25T21:52:57.211Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

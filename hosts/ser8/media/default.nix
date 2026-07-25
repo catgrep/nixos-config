@@ -9,5 +9,6 @@
     ./radarr.nix
     ./prowlarr.nix
     ./nzbget.nix
+    ./sabnzbd.nix
   ];
 }

@@ -127,9 +127,6 @@
     "d /mnt/media/downloads/complete 0775 media media -"
     "d /mnt/media/downloads/incomplete 0775 media media -"
 
-    # AllDebrid
-    "d /mnt/media/downloads/alldebrid 0775 media media -"
-
     # SABnzbd Usenet downloads (setgid bit ensures files inherit media group)
     "d /mnt/media/downloads/usenet 2775 media media -"
     "d /mnt/media/downloads/usenet/incomplete 2775 media media -"

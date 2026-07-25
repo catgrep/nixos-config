@@ -77,7 +77,6 @@
       nixos-raspberrypi,
       nixos-images,
       declarative-jellyfin,
-      # alldebrid-proxy,
       home-manager,
       caddy-nix,
       sagent,
@@ -152,7 +151,6 @@
         disko.nixosModules.disko
         impermanence.nixosModules.impermanence
         declarative-jellyfin.nixosModules.default
-        # alldebrid-proxy.nixosModules.default
       ];
 
       piModules = [

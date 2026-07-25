@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Monitoring & Alerting
-current_phase: 5
-current_phase_name: Hardware Alerts & Status Dashboard
+current_phase: 08
+current_phase_name: reorganize-ser8-media-nix-into-per-service-modules
 status: executing
-stopped_at: Phase 08 context gathered
-last_updated: "2026-07-25T21:17:38.289Z"
-last_activity: 2026-02-13
-last_activity_desc: Phase 5 complete (uptime dashboard + ZFS zed email alerts)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-07-25T21:40:45.944Z"
+last_activity: 2026-07-25
+last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 4
-  percent: 36
+  completed_plans: 5
+  percent: 40
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Phase 5 - Hardware Alerts & Status Dashboard
+**Current focus:** Phase 08 — reorganize-ser8-media-nix-into-per-service-modules
 
 ## Current Position
 
-Phase: 5 of 7 (Hardware Alerts & Status Dashboard) -- COMPLETE
-Plan: 2 of 2 complete
+Phase: 08 (reorganize-ser8-media-nix-into-per-service-modules) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-02-13 -- Phase 5 complete (uptime dashboard + ZFS zed email alerts)
+Last activity: 2026-07-25 — Phase 08 execution started
 
 Progress: [#######░░░] 71% (10/14 plans across both milestones)
 
@@ -59,6 +59,7 @@ Progress: [#######░░░] 71% (10/14 plans across both milestones)
 - Trend: Consistent (~11 min avg for Phase 5)
 
 *Updated after each plan completion*
+| Phase 08 P01 | 14min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 5]: rate() over irate() for alert PromQL expressions (smoother signal, fewer false positives)
 - [Phase 5]: msmtp as lightweight MTA on ser8 (not full Postfix); only zed needs email capability
 - [Phase 5]: Grafana field overrides for friendly display names in state-timeline panels
+- [Phase 08]: Permit only the exact user-approved Home Manager mismatch baseline — Continue without changing dependency pins or disabling release checks; reject changed or new warnings.
+- [Phase 08]: Normalize approved helper and generated unit-script store paths — Compare evaluated media behavior while allowing only documented structural derivation changes.
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T19:54:01.277Z
-Stopped at: Phase 08 context gathered
-Resume file: .planning/phases/08-reorganize-ser8-media-nix-into-per-service-modules/08-CONTEXT.md
+Last session: 2026-07-25T21:40:45.939Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None

@@ -147,12 +147,12 @@ Plans:
 
 **Out of scope (decide during planning)**: renaming the shared `sabnzbd_usenet_*` secrets to neutral `usenet_*` names, and giving NZBGet its own `nzbget_admin_password` instead of reusing `sabnzbd_admin_password`. These change deployed credentials and the system derivation, so they break criterion 5 and belong in a follow-up.
 
-**Plans**: 7 plans
+**Plans**: 1/7 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md -- Capture non-secret behavior baseline and establish the directory import seam
+- [x] 08-01-PLAN.md -- Capture non-secret behavior baseline and establish the directory import seam
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -194,4 +194,4 @@ Phase 8 is an independent refactor with no dependencies and can be scheduled at 
 | 5. Hardware Alerts & Status Dashboard | v1.1 | 0/2 | Planned | - |
 | 6. Log Aggregation | v1.1 | 0/TBD | Not started | - |
 | 7. HA Monitoring | v1.1 | 0/TBD | Not started | - |
-| 8. Reorganize ser8 media.nix | v1.1 | 0/7 | Planned | - |
+| 8. Reorganize ser8 media.nix | v1.1 | 1/7 | In Progress|  |

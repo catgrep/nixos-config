@@ -1,0 +1,682 @@
+{
+  "accounts": {
+    "jellyfin": {
+      "description": "Jellyfin",
+      "extraGroups": [
+        "media",
+        "render"
+      ],
+      "group": "jellyfin",
+      "home": "/var/empty",
+      "isSystemUser": true
+    },
+    "nzbget": {
+      "description": "",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "nzbget",
+      "home": "/var/lib/nzbget",
+      "isSystemUser": false
+    },
+    "prowlarr": {
+      "description": "Prowlarr",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "prowlarr",
+      "home": "/var/lib/prowlarr",
+      "isSystemUser": true
+    },
+    "qbittorrent": {
+      "description": "qBittorrent",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "qbittorrent",
+      "home": "/var/lib/qbittorrent",
+      "isSystemUser": true
+    },
+    "radarr": {
+      "description": "Radarr",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "radarr",
+      "home": "/var/lib/radarr/.config/Radarr",
+      "isSystemUser": true
+    },
+    "sabnzbd": {
+      "description": "sabnzbd user",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "sabnzbd",
+      "home": "/var/empty",
+      "isSystemUser": false
+    },
+    "sonarr": {
+      "description": "Sonarr",
+      "extraGroups": [
+        "media"
+      ],
+      "group": "sonarr",
+      "home": "/var/lib/sonarr/.config/NzbDrone",
+      "isSystemUser": true
+    }
+  },
+  "exporters": {
+    "jellyfin": {
+      "after": [
+        "network-online.target",
+        "jellyfin.service"
+      ],
+      "before": [],
+      "description": "Prometheus exporter for Jellyfin Media Server",
+      "requires": [],
+      "script": "",
+      "serviceConfig": {
+        "DynamicUser": true,
+        "ExecStart": "/nix/store/h05sb725ycmykfaa03jgkv3rpp0mfhyk-jellyfin-exporter-wrapper",
+        "LoadCredential": "jellyfin-api-key:/run/secrets/jellyfin_api_key",
+        "NoNewPrivileges": true,
+        "PrivateTmp": true,
+        "ProtectHome": true,
+        "ProtectSystem": "strict",
+        "Restart": "on-failure",
+        "RestartSec": "10s",
+        "Type": "simple"
+      },
+      "wantedBy": [
+        "multi-user.target"
+      ],
+      "wants": [
+        "network-online.target"
+      ]
+    },
+    "prowlarr": {
+      "apiKeyFile": "/run/secrets/prowlarr_api_key",
+      "enable": true,
+      "openFirewall": true,
+      "port": 9709,
+      "url": "http://localhost:9696"
+    },
+    "radarr": {
+      "apiKeyFile": "/run/secrets/radarr_api_key",
+      "enable": true,
+      "openFirewall": true,
+      "port": 9708,
+      "url": "http://localhost:7878"
+    },
+    "sonarr": {
+      "apiKeyFile": "/run/secrets/sonarr_api_key",
+      "enable": true,
+      "openFirewall": true,
+      "port": 9707,
+      "url": "http://localhost:8989"
+    }
+  },
+  "firewall": {
+    "allowedTCPPorts": [
+      22,
+      80,
+      139,
+      443,
+      445,
+      6789,
+      7878,
+      8080,
+      8085,
+      8096,
+      8123,
+      8554,
+      8555,
+      8989,
+      9100,
+      9134,
+      9696,
+      9710,
+      9711
+    ],
+    "allowedUDPPorts": [
+      137,
+      138,
+      1900,
+      5353,
+      7359,
+      41641
+    ]
+  },
+  "generatedScripts": {
+    "downloadClientsSetup": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nexport JQ_BIN=\"/nix/store/qq7kkpgsdfkq4xdgvwgdibvcqicwvd7a-jq-1.8.1-bin/bin/jq\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting download client connections...\"\n\n# Wait for all APIs to be ready\nwait_for_api_basic_auth \"NZBGet\" \"http://localhost:6789/\" 60 \"admin\" \"/run/secrets/sabnzbd_admin_password\"\nwait_for_api \"SABnzbd\" \"http://localhost:8085/api?mode=version&apikey=$(cat /run/secrets/sabnzbd_api_key)\" 60\n# wait_for_api \"qBittorrent\" \"http://localhost:8080/api/v2/app/version\" 30\n\n# Configure qBittorrent for arr services\nsetup_qbittorrent_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/qbittorrent_admin_password\"\n\nsetup_qbittorrent_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/qbittorrent_admin_password\"\n\n# Verify SABnzbd categories are configured\necho \"Verifying SABnzbd categories...\"\nCATEGORIES=$($CURL_BIN -s \"http://localhost:8085/api?mode=get_cats&apikey=$(cat /run/secrets/sabnzbd_api_key)\")\n\nif echo \"$CATEGORIES\" | grep -q '\"tv\"' && echo \"$CATEGORIES\" | grep -q '\"movies\"'; then\n  echo \"✓ SABnzbd categories configured correctly\"\nelse\n  echo \"⚠ Warning: SABnzbd categories may not be configured correctly\"\nfi\n\n# Configure NZBGet as the default Usenet client for arr services\nsetup_nzbget_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/sabnzbd_admin_password\" 1\n\nsetup_nzbget_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/sabnzbd_admin_password\" 1\n\n# Keep SABnzbd available as a lower-priority Usenet fallback\nsetup_sabnzbd_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/sabnzbd_api_key\" 2\n\nsetup_sabnzbd_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/sabnzbd_api_key\" 2\n\n# Add Usenet clients to Prowlarr with NZBGet as the default\nadd_nzbget_to_prowlarr \"/run/secrets/sabnzbd_admin_password\" \"/run/secrets/prowlarr_api_key\" 1\n\nadd_sabnzbd_to_prowlarr \"/run/secrets/sabnzbd_api_key\" \"/run/secrets/prowlarr_api_key\" 2\n\necho \"✓ Completed download client connections\"\n",
+    "jellyfinExporter": "/nix/store/h05sb725ycmykfaa03jgkv3rpp0mfhyk-jellyfin-exporter-wrapper",
+    "mediaConfig": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)...\"\n\n# Deploy arr service configurations\nconfigure_arr sonarr /run/secrets/rendered/sonarr-config.xml\nconfigure_arr radarr /run/secrets/rendered/radarr-config.xml\nconfigure_arr prowlarr /run/secrets/rendered/prowlarr-config.xml\nconfigure_arr nzbget /run/secrets/rendered/nzbget.conf\nconfigure_arr sabnzbd /run/secrets/rendered/sabnzbd.ini\n\n# Deploy qBittorrent configuration\necho \"Configuring qBittorrent...\"\nCONFIG_DIR=\"/var/lib/qbittorrent/qBittorrent/config\"\nCONFIG_FILE=\"$CONFIG_DIR/qBittorrent.conf\"\nTEMP_FILE=\"$CONFIG_DIR/qBittorrent.conf.tmp\"\n\nmkdir -p \"$CONFIG_DIR\"\nchown qbittorrent:qbittorrent \"$CONFIG_DIR\"\n\n# Remove existing config to avoid conflicts\nif [ -f \"$CONFIG_FILE\" ]; then\n  rm -f \"$CONFIG_FILE\"\nfi\n\n# Atomic deployment\ncp /run/secrets/rendered/qbittorrent.conf \"$TEMP_FILE\"\nchown qbittorrent:qbittorrent \"$TEMP_FILE\"\nchmod 600 \"$TEMP_FILE\"\nmv \"$TEMP_FILE\" \"$CONFIG_FILE\"\necho \"✓ qBittorrent configuration deployed\"\n\necho \"✓ Completed media services configuration\"\n",
+    "servarrsSetup": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting Prowlarr connections to Sonarr and Radarr...\"\n\n# Wait for APIs to be ready\nwait_for_api \"Prowlarr\" \"http://localhost:9696/ping\" 30\nwait_for_api \"Sonarr\" \"http://localhost:8989/ping\" 30\nwait_for_api \"Radarr\" \"http://localhost:7878/ping\" 30\n\n# Connect arr services to Prowlarr\nadd_arr_application \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"[5000,5030,5040]\" \"/run/secrets/prowlarr_api_key\"\n\nadd_arr_application \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"[2000,2010,2020,2030,2040,2045,2050,2060]\" \"/run/secrets/prowlarr_api_key\"\n\necho \"✓ Completed Prowlarr connections to Sonarr and Radarr\"\n"
+  },
+  "nginx": {
+    "qbittorrent": {
+      "enableACME": false,
+      "forceSSL": false,
+      "locations": {
+        "/": {
+          "extraConfig": "proxy_set_header Host $host;\nproxy_set_header X-Real-IP $remote_addr;\nproxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\nproxy_set_header X-Forwarded-Proto $scheme;\n\n# qBittorrent specific headers\nproxy_set_header Connection \"\";\n\n# Disable buffering for the web UI\nproxy_buffering off;\nproxy_request_buffering off;\n",
+          "proxyPass": "http://192.168.100.2:8080",
+          "proxyWebsockets": true
+        }
+      },
+      "serverName": null
+    }
+  },
+  "secrets": {
+    "jellyfin_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/jellyfin_admin_password"
+    },
+    "jellyfin_api_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/jellyfin_api_key"
+    },
+    "jellyfin_jordan_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/jellyfin_jordan_password"
+    },
+    "jellyfin_sawnia_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/jellyfin_sawnia_password"
+    },
+    "prowlarr_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/prowlarr_admin_password"
+    },
+    "prowlarr_api_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/prowlarr_api_key"
+    },
+    "qbittorrent_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/qbittorrent_admin_password"
+    },
+    "qbittorrent_admin_password_hash": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/qbittorrent_admin_password_hash"
+    },
+    "radarr_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/radarr_admin_password"
+    },
+    "radarr_api_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/radarr_api_key"
+    },
+    "sabnzbd_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_admin_password"
+    },
+    "sabnzbd_api_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_api_key"
+    },
+    "sabnzbd_nzb_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_nzb_key"
+    },
+    "sabnzbd_usenet_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_usenet_password"
+    },
+    "sabnzbd_usenet_provider": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_usenet_provider"
+    },
+    "sabnzbd_usenet_username": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sabnzbd_usenet_username"
+    },
+    "sonarr_admin_password": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sonarr_admin_password"
+    },
+    "sonarr_api_key": {
+      "group": "root",
+      "mode": "0600",
+      "owner": "root",
+      "path": "/run/secrets/sonarr_api_key"
+    }
+  },
+  "services": {
+    "declarativeJellyfin": {
+      "apikeys": {
+        "jellyfinarr": {
+          "key": null,
+          "keyPath": "/run/secrets/jellyfin_api_key"
+        }
+      },
+      "enable": true,
+      "group": "jellyfin",
+      "network": {
+        "autoDiscovery": true,
+        "baseUrl": "",
+        "certificatePassword": "",
+        "certificatePath": "",
+        "enableHttps": false,
+        "enableIPv4": true,
+        "enableIPv6": false,
+        "enablePublishedServerUriByRequest": false,
+        "enableRemoteAccess": true,
+        "enableUPnP": false,
+        "ignoreVirtualInterfaces": true,
+        "internalHttpPort": 8096,
+        "internalHttpsPort": 8920,
+        "isRemoteIPFilterBlacklist": false,
+        "knownProxies": [],
+        "localNetworkAddresses": [],
+        "localNetworkSubnets": [],
+        "publicHttpPort": 8096,
+        "publicHttpsPort": 8920,
+        "publishedServerUriBySubnet": [],
+        "remoteIpFilter": [],
+        "requireHttps": false,
+        "virtualInterfaceNames": [
+          "veth"
+        ]
+      },
+      "openFirewall": false,
+      "user": "jellyfin",
+      "users": {
+        "admin": {
+          "audioLanguagePreference": null,
+          "authenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+          "castReceiverId": "F007D354",
+          "displayCollectionsView": false,
+          "displayMissingEpisodes": false,
+          "enableAutoLogin": true,
+          "enableLocalPassword": true,
+          "enableNextEpisodeAutoPlay": true,
+          "enableUserPreferenceAccess": true,
+          "hashedPassword": null,
+          "hashedPasswordFile": "/run/secrets/jellyfin_admin_password",
+          "hidePlayedInLatest": true,
+          "id": null,
+          "internalId": null,
+          "invalidLoginAttemptCount": 0,
+          "lastActivityDate": null,
+          "lastLoginDate": null,
+          "loginAttemptsBeforeLockout": 3,
+          "maxActiveSessions": 0,
+          "maxParentalAgeRating": null,
+          "maxParentalRatingSubScore": null,
+          "mustUpdatePassword": 0,
+          "mutable": true,
+          "password": null,
+          "passwordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+          "permissions": {
+            "enableAllChannels": true,
+            "enableAllDevices": true,
+            "enableAllFolders": true,
+            "enableAudioPlaybackTranscoding": true,
+            "enableCollectionManagement": false,
+            "enableContentDeletion": true,
+            "enableContentDownloading": true,
+            "enableLiveTvAccess": true,
+            "enableLiveTvManagement": true,
+            "enableLyricManagement": false,
+            "enableMediaConversion": true,
+            "enableMediaPlayback": true,
+            "enablePlaybackRemuxing": true,
+            "enablePublicSharing": true,
+            "enableRemoteAccess": true,
+            "enableRemoteControlOfOtherUsers": true,
+            "enableSharedDeviceControl": true,
+            "enableSubtitleManagement": false,
+            "enableSyncTranscoding": true,
+            "enableVideoPlaybackTranscoding": true,
+            "forceRemoteSourceTranscoding": false,
+            "isAdministrator": true,
+            "isDisabled": false,
+            "isHidden": true
+          },
+          "playDefaultAudioTrack": true,
+          "preferences": {
+            "enabledLibraries": []
+          },
+          "rememberAudioSelections": true,
+          "rememberSubtitleSelections": true,
+          "remoteClientBitrateLimit": 0,
+          "rowVersion": 0,
+          "subtitleLanguagePreference": null,
+          "subtitleMode": "always",
+          "syncPlayAccess": false
+        },
+        "jordan": {
+          "audioLanguagePreference": null,
+          "authenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+          "castReceiverId": "F007D354",
+          "displayCollectionsView": false,
+          "displayMissingEpisodes": false,
+          "enableAutoLogin": true,
+          "enableLocalPassword": true,
+          "enableNextEpisodeAutoPlay": true,
+          "enableUserPreferenceAccess": true,
+          "hashedPassword": null,
+          "hashedPasswordFile": "/run/secrets/jellyfin_jordan_password",
+          "hidePlayedInLatest": true,
+          "id": null,
+          "internalId": null,
+          "invalidLoginAttemptCount": 0,
+          "lastActivityDate": null,
+          "lastLoginDate": null,
+          "loginAttemptsBeforeLockout": 3,
+          "maxActiveSessions": 0,
+          "maxParentalAgeRating": null,
+          "maxParentalRatingSubScore": null,
+          "mustUpdatePassword": 0,
+          "mutable": true,
+          "password": null,
+          "passwordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+          "permissions": {
+            "enableAllChannels": true,
+            "enableAllDevices": true,
+            "enableAllFolders": true,
+            "enableAudioPlaybackTranscoding": true,
+            "enableCollectionManagement": false,
+            "enableContentDeletion": true,
+            "enableContentDownloading": true,
+            "enableLiveTvAccess": true,
+            "enableLiveTvManagement": true,
+            "enableLyricManagement": false,
+            "enableMediaConversion": true,
+            "enableMediaPlayback": true,
+            "enablePlaybackRemuxing": true,
+            "enablePublicSharing": true,
+            "enableRemoteAccess": false,
+            "enableRemoteControlOfOtherUsers": false,
+            "enableSharedDeviceControl": true,
+            "enableSubtitleManagement": false,
+            "enableSyncTranscoding": true,
+            "enableVideoPlaybackTranscoding": true,
+            "forceRemoteSourceTranscoding": false,
+            "isAdministrator": false,
+            "isDisabled": false,
+            "isHidden": true
+          },
+          "playDefaultAudioTrack": true,
+          "preferences": {
+            "enabledLibraries": []
+          },
+          "rememberAudioSelections": true,
+          "rememberSubtitleSelections": true,
+          "remoteClientBitrateLimit": 0,
+          "rowVersion": 0,
+          "subtitleLanguagePreference": null,
+          "subtitleMode": "default",
+          "syncPlayAccess": false
+        }
+      }
+    },
+    "jellyfin": {
+      "enable": true,
+      "group": "jellyfin",
+      "openFirewall": false,
+      "user": "jellyfin"
+    },
+    "nzbget": {
+      "enable": true,
+      "group": "nzbget",
+      "settings": {
+        "ConfigTemplate": "/nix/store/80awsfsq6bj802l50h8crrcz43cs9yiy-nzbget-25.4/share/nzbget/nzbget.conf",
+        "DetailTarget": "screen",
+        "ErrorTarget": "screen",
+        "InfoTarget": "screen",
+        "OutputMode": "loggable",
+        "UpdateCheck": "none",
+        "WarningTarget": "screen",
+        "WebDir": "/nix/store/80awsfsq6bj802l50h8crrcz43cs9yiy-nzbget-25.4/share/nzbget/webui",
+        "WriteLog": "none"
+      },
+      "user": "nzbget"
+    },
+    "prowlarr": {
+      "dataDir": "/var/lib/prowlarr",
+      "enable": true,
+      "openFirewall": false,
+      "settings": {
+        "log": {
+          "analyticsEnabled": false
+        },
+        "server": {
+          "port": 9696
+        },
+        "update": {
+          "automatically": false,
+          "mechanism": "external"
+        }
+      },
+      "useVpnNamespace": false
+    },
+    "qbittorrent": {
+      "enable": false,
+      "extraArgs": [],
+      "group": "qbittorrent",
+      "openFirewall": false,
+      "profileDir": "/var/lib/qBittorrent/",
+      "serverConfig": {},
+      "torrentingPort": null,
+      "user": "qbittorrent",
+      "webuiPort": 8080
+    },
+    "radarr": {
+      "dataDir": "/var/lib/radarr/.config/Radarr",
+      "enable": true,
+      "group": "radarr",
+      "openFirewall": false,
+      "settings": {
+        "log": {
+          "analyticsEnabled": false
+        },
+        "server": {
+          "port": 7878
+        },
+        "update": {
+          "automatically": false,
+          "mechanism": "external"
+        }
+      },
+      "user": "radarr"
+    },
+    "sabnzbd": {
+      "configFile": "/var/lib/sabnzbd/sabnzbd.ini",
+      "enable": true,
+      "group": "sabnzbd",
+      "openFirewall": false,
+      "user": "sabnzbd"
+    },
+    "sonarr": {
+      "dataDir": "/var/lib/sonarr/.config/NzbDrone",
+      "enable": true,
+      "group": "sonarr",
+      "openFirewall": false,
+      "settings": {
+        "log": {
+          "analyticsEnabled": false
+        },
+        "server": {
+          "port": 8989
+        },
+        "update": {
+          "automatically": false,
+          "mechanism": "external"
+        }
+      },
+      "user": "sonarr"
+    }
+  },
+  "templates": {
+    "nzbget.conf": {
+      "content": "MainDir=/var/lib/nzbget\nDestDir=/mnt/media/downloads/usenet/complete/default\nInterDir=/mnt/media/downloads/usenet/incomplete\nNzbDir=/var/lib/nzbget/nzb\nQueueDir=/var/lib/nzbget/queue\nTempDir=/var/lib/nzbget/tmp\nScriptDir=/var/lib/nzbget/scripts\nLogFile=/var/lib/nzbget/nzbget.log\n\nControlIP=0.0.0.0\nControlPort=6789\nControlUsername=admin\nControlPassword=<SOPS:649e666b5e1df3124c341c20dae7c2757eafb8f65386505359c6a0f8d1b16cda:PLACEHOLDER>\nSecureControl=no\nAuthorizedIP=\nUMask=0002\n\nCertStore=/etc/ssl/certs/ca-certificates.crt\nCertCheck=yes\n\nServer1.Active=yes\nServer1.Name=<SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>\nServer1.Level=0\nServer1.Optional=no\nServer1.Group=0\nServer1.Host=<SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>\nServer1.Encryption=yes\nServer1.Port=563\nServer1.Username=<SOPS:79d9e1c90c7794286d20b5ac35aa1d72d9aab2adca69f104054629cb5c1a62fb:PLACEHOLDER>\nServer1.Password=<SOPS:6c9ecc7f598333b686fbbbcfb3a837fc413b2bcaeb0f2d4aff06fc4e218aec5b:PLACEHOLDER>\nServer1.JoinGroup=no\nServer1.Cipher=\nServer1.Connections=100\nServer1.Retention=0\nServer1.CertVerification=strict\nServer1.IpVersion=auto\n\nCategory1.Name=tv\nCategory1.DestDir=/mnt/media/downloads/usenet/complete/tv\nCategory1.Unpack=yes\nCategory1.Extensions=\nCategory1.Aliases=\n\nCategory2.Name=movies\nCategory2.DestDir=/mnt/media/downloads/usenet/complete/movies\nCategory2.Unpack=yes\nCategory2.Extensions=\nCategory2.Aliases=\n\nCategory3.Name=prowlarr\nCategory3.DestDir=/mnt/media/downloads/usenet/complete/prowlarr\nCategory3.Unpack=yes\nCategory3.Extensions=\nCategory3.Aliases=\n\nCategory4.Name=default\nCategory4.DestDir=/mnt/media/downloads/usenet/complete/default\nCategory4.Unpack=yes\nCategory4.Extensions=\nCategory4.Aliases=\n",
+      "group": "nzbget",
+      "mode": "0600",
+      "owner": "nzbget",
+      "path": "/run/secrets/rendered/nzbget.conf"
+    },
+    "prowlarr-config.xml": {
+      "content": "<Config>\n  <LogLevel>info</LogLevel>\n  <EnableSsl>False</EnableSsl>\n  <Port>9696</Port>\n  <SslPort>9898</SslPort>\n  <UrlBase></UrlBase>\n  <BindAddress>*</BindAddress>\n  <LaunchBrowser>False</LaunchBrowser>\n  <AuthenticationMethod>Forms</AuthenticationMethod>\n  <AuthenticationRequired>Enabled</AuthenticationRequired>\n  <ApiKey><SOPS:7a90775106969ea5b7feb517a90b09e1ed3a87bf9d83e49e107f9acdca112720:PLACEHOLDER></ApiKey>\n  <Branch>master</Branch>\n  <InstanceName>Prowlarr</InstanceName>\n  <SslCertPath></SslCertPath>\n  <SslCertPassword></SslCertPassword>\n</Config>\n",
+      "group": "prowlarr",
+      "mode": "0600",
+      "owner": "prowlarr",
+      "path": "/run/secrets/rendered/prowlarr-config.xml"
+    },
+    "qbittorrent.conf": {
+      "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nConnection\\PortRangeMin=6881\nConnection\\UPnP=false\nConnection\\GlobalDLLimit=0\nConnection\\GlobalUPLimit=0\nConnection\\Interface=wgnord\nConnection\\InterfaceName=wgnord\nDownloads\\SavePath=/mnt/media/downloads/complete/\nDownloads\\TempPath=/mnt/media/downloads/incomplete/\nDownloads\\TempPathEnabled=true\nDownloads\\UseIncompleteExtension=true\nDownloads\\PreAllocation=false\nGeneral\\Locale=en\nGeneral\\UseRandomPort=false\nQueueing\\QueueingEnabled=true\nQueueing\\MaxActiveDownloads=5\nQueueing\\MaxActiveTorrents=10\nQueueing\\MaxActiveUploads=5\nWebUI\\Enabled=true\nWebUI\\LocalHostAuth=false\nWebUI\\Port=8080\nWebUI\\Address=0.0.0.0\nWebUI\\Username=admin\nWebUI\\Password_PBKDF2=\"@ByteArray(<SOPS:8200f120f4a1b05c35ec9a9926d967c26415ae1b012e47b35f796e9fabdb6390:PLACEHOLDER>)\"\nWebUI\\CSRFProtection=false\nWebUI\\HostHeaderValidation=false\nWebUI\\UseUPnP=false\nBittorrent\\DHT=true\nBittorrent\\LSD=true\nBittorrent\\PeX=true\nBittorrent\\uTP_rate_limited=false\nBitTorrent\\Session\\DefaultSavePath=/mnt/media/downloads/complete/\nBitTorrent\\Session\\TempPath=/mnt/media/downloads/incomplete/\nBitTorrent\\Session\\TempPathEnabled=true\nBitTorrent\\Session\\DisableAutoTMMByDefault=false\nBitTorrent\\Session\\DisableAutoTMMTriggers\\CategoryChanged=false\nBitTorrent\\Session\\DisableAutoTMMTriggers\\CategorySavePathChanged=false\nBitTorrent\\Session\\DisableAutoTMMTriggers\\DefaultSavePathChanged=false\n",
+      "group": "qbittorrent",
+      "mode": "0600",
+      "owner": "qbittorrent",
+      "path": "/run/secrets/rendered/qbittorrent.conf"
+    },
+    "radarr-config.xml": {
+      "content": "<Config>\n  <LogLevel>info</LogLevel>\n  <EnableSsl>False</EnableSsl>\n  <Port>7878</Port>\n  <SslPort>9898</SslPort>\n  <UrlBase></UrlBase>\n  <BindAddress>*</BindAddress>\n  <LaunchBrowser>False</LaunchBrowser>\n  <AuthenticationMethod>Forms</AuthenticationMethod>\n  <AuthenticationRequired>Enabled</AuthenticationRequired>\n  <Username>admin</Username>\n  <Password><SOPS:8d5d4185587a71796380ef043175ce241f963b7a75f671830bb5749879a4efd9:PLACEHOLDER></Password>\n  <ApiKey><SOPS:a0bdc2d7cb207cc0a2cc6646f55760551261cdc0b6de4ff311469e6d8b307587:PLACEHOLDER></ApiKey>\n  <Branch>master</Branch>\n  <InstanceName>Radarr</InstanceName>\n</Config>\n",
+      "group": "radarr",
+      "mode": "0600",
+      "owner": "radarr",
+      "path": "/run/secrets/rendered/radarr-config.xml"
+    },
+    "sabnzbd.ini": {
+      "content": "[misc]\npermissions = 2775\numask = 002\nhost = 0.0.0.0\nport = 8085\napi_key = <SOPS:ea50f19e7579e5724aaa755e74e15b3e6917e8db43ed0414490e29e55581558a:PLACEHOLDER>\nnzb_key = <SOPS:9e1ef64e7cb139d223b33e4d5359d30646674f92709a45389cd9bbf93caf6fdf:PLACEHOLDER>\nusername = admin\npassword = <SOPS:649e666b5e1df3124c341c20dae7c2757eafb8f65386505359c6a0f8d1b16cda:PLACEHOLDER>\ndownload_dir = /mnt/media/downloads/usenet/incomplete\ncomplete_dir = /mnt/media/downloads/usenet/complete/default\nscript_dir =\nlog_dir = /var/lib/sabnzbd/logs\nadmin_dir = /var/lib/sabnzbd/admin\nnzb_backup_dir = /var/lib/sabnzbd/backup\ndirscan_dir =\nauto_browser = 0\nrating_enable = 0\nenable_https = 0\nhttps_port = 9090\nbandwidth_max =\nrefresh_rate = 0\ncache_limit = 1G\npause_on_post_processing = 0\nignore_samples = 0\ndeobfuscate_final_filenames = 1\nauto_sort = 0\npropagation_delay = 0\nfolder_rename = 1\ndirect_unpack = 0\nno_penalties = 0\npar_option = 1\npre_check = 1\nnice =\nionice =\nwin_process_prio = 3\nenable_all_par = 0\ntop_only = 0\nsafe_postproc = 1\npause_on_pwrar = 1\nenable_unrar = 1\nenable_7zip = 1\nenable_filejoin = 1\nenable_tsjoin = 1\noverwrite_files = 0\nignore_unrar_dates = 0\nbackup_for_duplicates = 1\nempty_postproc = 0\nwait_for_dfolder = 0\nrss_rate = 60\nampm = 0\nstart_paused = 0\npreserve_paused_state = 0\nenable_par_cleanup = 1\nprocess_unpacked_par2 = 1\nenable_recursive = 1\nflat_unpack = 0\nscript_can_fail = 0\nnew_nzb_on_failure = 0\nunwanted_extensions =\naction_on_unwanted_extensions = 0\nunwanted_extensions_mode = 0\nsanitize_safe = 0\nreplace_illegal = 1\nmax_art_tries = 3\nmax_art_opt = 1\nload_balancing = 2\nfail_hopeless_jobs = 1\nfast_fail = 1\nauto_disconnect = 1\npre_script =\nend_queue_script =\nno_dupes = 0\nno_series_dupes = 0\nseries_propercheck = 1\nno_smart_dupes = 0\nsmart_dupes_whitelist =\ndupes_propercheck = 1\npause_on_queue_finish = 0\nhistory_retention = 0\nenable_https_verification = 1\nquota_size =\nquota_day =\nquota_resume = 0\nquota_period = m\npre_check_opt = 1\n\n[servers]\n[[<SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>]]\nname = <SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>\ndisplayname = <SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>\nhost = <SOPS:5ee4b13de1109091c0ab1963fd57137c366c99cd7c4a189acabb49f0d901bbb2:PLACEHOLDER>\nport = 563\ntimeout = 120\nusername = <SOPS:79d9e1c90c7794286d20b5ac35aa1d72d9aab2adca69f104054629cb5c1a62fb:PLACEHOLDER>\npassword = <SOPS:6c9ecc7f598333b686fbbbcfb3a837fc413b2bcaeb0f2d4aff06fc4e218aec5b:PLACEHOLDER>\nconnections = 100\nssl = 1\nssl_verify = 2\nssl_ciphers =\nenable = 1\nrequired = 0\noptional = 0\nretention = 0\nsend_group = 0\npriority = 0\nnotes =\n\n[categories]\n[[tv]]\nname = tv\norder = 0\npp = 3\nscript = Default\ndir = /mnt/media/downloads/usenet/complete/tv\nnewzbin =\npriority = 0\n\n[[movies]]\nname = movies\norder = 1\npp = 3\nscript = Default\ndir = /mnt/media/downloads/usenet/complete/movies\nnewzbin =\npriority = 0\n\n[[prowlarr]]\nname = *\norder = 2\npp = 3\nscript = Default\ndir = /mnt/media/downloads/usenet/complete/prowlarr\nnewzbin =\npriority = 0\n\n[[*]]\nname = *\norder = 2\npp = 3\nscript = Default\ndir = /mnt/media/downloads/usenet/complete/default\nnewzbin =\npriority = 0\n",
+      "group": "sabnzbd",
+      "mode": "0600",
+      "owner": "sabnzbd",
+      "path": "/run/secrets/rendered/sabnzbd.ini"
+    },
+    "sonarr-config.xml": {
+      "content": "<Config>\n  <LogLevel>info</LogLevel>\n  <EnableSsl>False</EnableSsl>\n  <Port>8989</Port>\n  <SslPort>9898</SslPort>\n  <UrlBase></UrlBase>\n  <BindAddress>*</BindAddress>\n  <LaunchBrowser>False</LaunchBrowser>\n  <AuthenticationMethod>Forms</AuthenticationMethod>\n  <AuthenticationRequired>Enabled</AuthenticationRequired>\n  <Username>admin</Username>\n  <Password><SOPS:549f50adc8f03f9f3eb8a8ac91636b2e2760dc454015c18319c3c752cb33fa3f:PLACEHOLDER></Password>\n  <ApiKey><SOPS:64af96c2a9ab8f73f8bdcc00b41c9d81eb01f0261402d90b3dcf9b0f8f71ff43:PLACEHOLDER></ApiKey>\n  <Branch>main</Branch>\n  <InstanceName>Sonarr</InstanceName>\n</Config>\n",
+      "group": "sonarr",
+      "mode": "0600",
+      "owner": "sonarr",
+      "path": "/run/secrets/rendered/sonarr-config.xml"
+    }
+  },
+  "units": {
+    "downloadClientsSetup": {
+      "after": [
+        "media-config.service",
+        "qbittorrent-nox.service",
+        "nzbget.service",
+        "sabnzbd.service",
+        "sonarr.service",
+        "radarr.service",
+        "prowlarr.service"
+      ],
+      "before": [],
+      "description": "Configure download clients (qBittorrent, NZBGet, SABnzbd) for all Servarr services",
+      "requires": [
+        "media-config.service"
+      ],
+      "script": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nexport JQ_BIN=\"/nix/store/qq7kkpgsdfkq4xdgvwgdibvcqicwvd7a-jq-1.8.1-bin/bin/jq\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting download client connections...\"\n\n# Wait for all APIs to be ready\nwait_for_api_basic_auth \"NZBGet\" \"http://localhost:6789/\" 60 \"admin\" \"/run/secrets/sabnzbd_admin_password\"\nwait_for_api \"SABnzbd\" \"http://localhost:8085/api?mode=version&apikey=$(cat /run/secrets/sabnzbd_api_key)\" 60\n# wait_for_api \"qBittorrent\" \"http://localhost:8080/api/v2/app/version\" 30\n\n# Configure qBittorrent for arr services\nsetup_qbittorrent_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/qbittorrent_admin_password\"\n\nsetup_qbittorrent_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/qbittorrent_admin_password\"\n\n# Verify SABnzbd categories are configured\necho \"Verifying SABnzbd categories...\"\nCATEGORIES=$($CURL_BIN -s \"http://localhost:8085/api?mode=get_cats&apikey=$(cat /run/secrets/sabnzbd_api_key)\")\n\nif echo \"$CATEGORIES\" | grep -q '\"tv\"' && echo \"$CATEGORIES\" | grep -q '\"movies\"'; then\n  echo \"✓ SABnzbd categories configured correctly\"\nelse\n  echo \"⚠ Warning: SABnzbd categories may not be configured correctly\"\nfi\n\n# Configure NZBGet as the default Usenet client for arr services\nsetup_nzbget_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/sabnzbd_admin_password\" 1\n\nsetup_nzbget_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/sabnzbd_admin_password\" 1\n\n# Keep SABnzbd available as a lower-priority Usenet fallback\nsetup_sabnzbd_client \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"tvCategory\" \"tv\" \"/run/secrets/sabnzbd_api_key\" 2\n\nsetup_sabnzbd_client \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"movieCategory\" \"movies\" \"/run/secrets/sabnzbd_api_key\" 2\n\n# Add Usenet clients to Prowlarr with NZBGet as the default\nadd_nzbget_to_prowlarr \"/run/secrets/sabnzbd_admin_password\" \"/run/secrets/prowlarr_api_key\" 1\n\nadd_sabnzbd_to_prowlarr \"/run/secrets/sabnzbd_api_key\" \"/run/secrets/prowlarr_api_key\" 2\n\necho \"✓ Completed download client connections\"\n",
+      "serviceConfig": {
+        "ExecStart": "/nix/store/ry2df4vqcxq3ncj6dcbk3iavqbn7z4ms-unit-script-download-clients-setup-start/bin/download-clients-setup-start ",
+        "RemainAfterExit": true,
+        "Type": "oneshot",
+        "User": "root"
+      },
+      "wantedBy": [
+        "multi-user.target"
+      ],
+      "wants": []
+    },
+    "mediaConfig": {
+      "after": [],
+      "before": [
+        "sonarr.service",
+        "radarr.service",
+        "prowlarr.service",
+        "qbittorrent-nox.service",
+        "nzbget.service",
+        "sabnzbd.service"
+      ],
+      "description": "Deploy all media service configurations with secrets",
+      "requires": [],
+      "script": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)...\"\n\n# Deploy arr service configurations\nconfigure_arr sonarr /run/secrets/rendered/sonarr-config.xml\nconfigure_arr radarr /run/secrets/rendered/radarr-config.xml\nconfigure_arr prowlarr /run/secrets/rendered/prowlarr-config.xml\nconfigure_arr nzbget /run/secrets/rendered/nzbget.conf\nconfigure_arr sabnzbd /run/secrets/rendered/sabnzbd.ini\n\n# Deploy qBittorrent configuration\necho \"Configuring qBittorrent...\"\nCONFIG_DIR=\"/var/lib/qbittorrent/qBittorrent/config\"\nCONFIG_FILE=\"$CONFIG_DIR/qBittorrent.conf\"\nTEMP_FILE=\"$CONFIG_DIR/qBittorrent.conf.tmp\"\n\nmkdir -p \"$CONFIG_DIR\"\nchown qbittorrent:qbittorrent \"$CONFIG_DIR\"\n\n# Remove existing config to avoid conflicts\nif [ -f \"$CONFIG_FILE\" ]; then\n  rm -f \"$CONFIG_FILE\"\nfi\n\n# Atomic deployment\ncp /run/secrets/rendered/qbittorrent.conf \"$TEMP_FILE\"\nchown qbittorrent:qbittorrent \"$TEMP_FILE\"\nchmod 600 \"$TEMP_FILE\"\nmv \"$TEMP_FILE\" \"$CONFIG_FILE\"\necho \"✓ qBittorrent configuration deployed\"\n\necho \"✓ Completed media services configuration\"\n",
+      "serviceConfig": {
+        "ExecStart": "/nix/store/lakn65gzd9fpyqzfwxnwz8kz5vvfmhvy-unit-script-media-config-start/bin/media-config-start ",
+        "RemainAfterExit": true,
+        "Type": "oneshot",
+        "User": "root"
+      },
+      "wantedBy": [
+        "multi-user.target"
+      ],
+      "wants": []
+    },
+    "mediaTarget": {
+      "after": [],
+      "before": [],
+      "description": "Complete media stack setup orchestration",
+      "requires": [],
+      "wantedBy": [
+        "multi-user.target"
+      ],
+      "wants": [
+        "media-config.service",
+        "servarrs-setup.service",
+        "download-clients-setup.service"
+      ]
+    },
+    "servarrsSetup": {
+      "after": [
+        "media-config.service",
+        "prowlarr.service",
+        "sonarr.service",
+        "radarr.service"
+      ],
+      "before": [],
+      "description": "Configure Prowlarr connections to Sonarr and Radarr",
+      "requires": [
+        "media-config.service"
+      ],
+      "script": "export CURL_BIN=\"/nix/store/4vsdl8irmr0bcdm2bpdv22w5w088zf84-curl-8.19.0-bin/bin/curl\"\nsource /nix/store/rh0h60iiqsbj6i14zjqdar9drwgnj7h2-systemd_helpers.sh\nset -euo pipefail\n\necho \"Starting Prowlarr connections to Sonarr and Radarr...\"\n\n# Wait for APIs to be ready\nwait_for_api \"Prowlarr\" \"http://localhost:9696/ping\" 30\nwait_for_api \"Sonarr\" \"http://localhost:8989/ping\" 30\nwait_for_api \"Radarr\" \"http://localhost:7878/ping\" 30\n\n# Connect arr services to Prowlarr\nadd_arr_application \"Sonarr\" \"8989\" \"/run/secrets/sonarr_api_key\" \"[5000,5030,5040]\" \"/run/secrets/prowlarr_api_key\"\n\nadd_arr_application \"Radarr\" \"7878\" \"/run/secrets/radarr_api_key\" \"[2000,2010,2020,2030,2040,2045,2050,2060]\" \"/run/secrets/prowlarr_api_key\"\n\necho \"✓ Completed Prowlarr connections to Sonarr and Radarr\"\n",
+      "serviceConfig": {
+        "ExecStart": "/nix/store/xdy4b1c9063lk3q4hmxdychxzavnrdqq-unit-script-servarrs-setup-start/bin/servarrs-setup-start ",
+        "RemainAfterExit": true,
+        "Type": "oneshot",
+        "User": "root"
+      },
+      "wantedBy": [
+        "multi-user.target"
+      ],
+      "wants": []
+    }
+  }
+}

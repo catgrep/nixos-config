@@ -1,0 +1,1 @@
+/nix/store/kd4diqnrwwrfapkv0hp9imizcy8b6f6x-nixos-system-ser8-25.11.20260518.687f05a

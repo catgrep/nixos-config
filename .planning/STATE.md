@@ -89,8 +89,8 @@ Recent decisions affecting current work:
 - [Phase 08]: Preserve Arr deployment order with explicit priorities 200, 300, and 400 rather than import ordering. - Explicit priorities keep generated deployment behavior deterministic across module boundaries.
 - [Phase 08]: Keep SABnzbd as the single declaration owner for shared administrator and Usenet credentials consumed by NZBGet. — Preserves existing credential names and avoids duplicate SOPS declarations.
 - [Phase 08]: Use dependency priorities 450, 500, and 550 independently from deployment-script priorities 500, 600, and 700. — Preserves both evaluated unit ordering and deployment command ordering.
-- [Phase 08]: Keep all Jellyfin household identities, credentials, API key wiring, and enablement decisions in the ser8 host module. — This keeps concrete household authorization and secret ownership out of reusable modules.
-- [Phase 08]: Expose only enable and apiKeyFile as reusable Jellyfin exporter host inputs. — This is the minimum typed interface needed to preserve systemd credential delivery without host-specific references.
+- [Phase 08]: Keep all Jellyfin household identities, credentials, API key wiring, and enablement decisions in the ser8 host module. - This keeps concrete household authorization and secret ownership out of reusable modules.
+- [Phase 08]: Expose only enable and apiKeyFile as reusable Jellyfin exporter host inputs. - This is the minimum typed interface needed to preserve systemd credential delivery without host-specific references.
 
 ### Pending Todos
 

@@ -17,25 +17,6 @@
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
-      # Jellyfin authentication (pbkdf2-sha512 hash)
-      "jellyfin_admin_password" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
-      "jellyfin_jordan_password" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
-      "jellyfin_api_key" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
-
       # AllDebrid-Proxy (only create secrets when service is enabled)
       "alldebrid_api_key" = {
         owner = "root";
@@ -53,13 +34,6 @@
 
     # Templates for config files
     templates = {
-    };
-  };
-
-  # Jellyfin API key configuration
-  services.declarative-jellyfin.apikeys = {
-    jellyfinarr = {
-      keyPath = config.sops.secrets.jellyfin_api_key.path;
     };
   };
 

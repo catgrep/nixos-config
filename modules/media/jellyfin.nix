@@ -1,11 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+_:
 
 {
   users.users.jellyfin = {
@@ -20,15 +15,12 @@
   };
 
   services.jellyfin = {
-    enable = true;
     user = "jellyfin";
     group = "jellyfin";
   };
 
   # Declarative Jellyfin configuration
   services.declarative-jellyfin = {
-    enable = lib.mkDefault true;
-
     # Network settings
     network = {
       enableUPnP = false;
@@ -37,61 +29,6 @@
       requireHttps = false;
       enableRemoteAccess = true;
       autoDiscovery = true;
-    };
-
-    # Users configuration
-    users = {
-      admin = {
-        preferences = {
-          enabledLibraries = [ ];
-        };
-        permissions = {
-          isAdministrator = true;
-          enableRemoteAccess = true;
-          enableMediaPlayback = true;
-          enableAudioPlaybackTranscoding = true;
-          enableVideoPlaybackTranscoding = true;
-          enableContentDeletion = true;
-          enableContentDownloading = true;
-          enableRemoteControlOfOtherUsers = true;
-          enableSyncTranscoding = true;
-          enableMediaConversion = true;
-          enableAllFolders = true;
-          enableAllDevices = true;
-        };
-        # Hash generated before adding it to sops with './scripts/sops/genhash.py'
-        hashedPasswordFile = lib.mkIf (config ? sops) config.sops.secrets.jellyfin_admin_password.path;
-        enableAutoLogin = true;
-        enableLocalPassword = true;
-        subtitleMode = "always";
-        enableNextEpisodeAutoPlay = true;
-      };
-
-      jordan = {
-        preferences = {
-          enabledLibraries = [ ];
-        };
-        permissions = {
-          isAdministrator = false;
-          enableRemoteAccess = false;
-          enableMediaPlayback = true;
-          enableAudioPlaybackTranscoding = true;
-          enableVideoPlaybackTranscoding = true;
-          enableContentDeletion = true;
-          enableContentDownloading = true;
-          enableRemoteControlOfOtherUsers = false;
-          enableSyncTranscoding = true;
-          enableMediaConversion = true;
-          enableAllFolders = true;
-          enableAllDevices = true;
-        };
-        # Hash generated before adding it to sops with './scripts/sops/genhash.py'
-        hashedPasswordFile = lib.mkIf (config ? sops) config.sops.secrets.jellyfin_jordan_password.path;
-        enableAutoLogin = true;
-        enableLocalPassword = true;
-        subtitleMode = "default";
-        enableNextEpisodeAutoPlay = true;
-      };
     };
   };
 

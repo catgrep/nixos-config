@@ -44,14 +44,14 @@ assert_expected_deltas() {
 
 	jq -e '
     (.services.declarativeJellyfin.users.sawnia // null) as $sawnia
-    | if $sawnia == null then true
-      else
-        .services.declarativeJellyfin.users.jordan as $jordan
-        | ($sawnia | del(.hashedPasswordFile)) == ($jordan | del(.hashedPasswordFile))
-        and ($sawnia.hashedPasswordFile | endswith("jellyfin_sawnia_password"))
-      end
+    | .services.declarativeJellyfin.users.jordan as $jordan
+    | .services.jellyfin.enable == true
+    and .services.declarativeJellyfin.enable == true
+    and $sawnia != null
+    and ($sawnia | del(.hashedPasswordFile)) == ($jordan | del(.hashedPasswordFile))
+    and ($sawnia.hashedPasswordFile | endswith("jellyfin_sawnia_password"))
   ' "$current_file" >/dev/null || {
-		echo "Unexpected Sawnia user delta: it must mirror Jordan except for its password path." >&2
+		echo "Unexpected Jellyfin policy: enablement must be true and Sawnia must mirror Jordan except for her password path." >&2
 		return 1
 	}
 }

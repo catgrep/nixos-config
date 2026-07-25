@@ -5,6 +5,7 @@
 {
   imports = [
     ../media.nix
+    ./sops.nix
     ./jellyfin.nix
     ./sonarr.nix
     ./radarr.nix
@@ -12,5 +13,6 @@
     ./nzbget.nix
     ./sabnzbd.nix
     ./qbittorrent.nix
+    ./orchestration.nix
   ];
 }

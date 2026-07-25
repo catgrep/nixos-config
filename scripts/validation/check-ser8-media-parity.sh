@@ -25,7 +25,7 @@ normalize_projection() {
     def normalize_helpers:
       walk(
         if type == "string" then
-          gsub("/nix/store/[a-z0-9]+-source/hosts/ser8/systemd_helpers[.]sh";
+          gsub("/nix/store/[a-z0-9]+-(source/hosts/ser8/)?(systemd_helpers|deployment-helpers|orchestration-helpers)[.]sh";
                "<MEDIA_HELPER>")
           | gsub("/nix/store/[a-z0-9]+-unit-script-(media-config|servarrs-setup|download-clients-setup)-start";
                  "<MEDIA_UNIT_SCRIPT>")

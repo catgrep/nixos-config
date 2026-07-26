@@ -25,15 +25,34 @@ normalize_projection() {
     def normalize_helpers:
       walk(
         if type == "string" then
-          gsub("/nix/store/[a-z0-9]+-(source/hosts/ser8/)?(systemd_helpers|deployment-helpers|orchestration-helpers)[.]sh";
+          gsub(
+            "/nix/store/[a-z0-9]+-(source/hosts/ser8/)?"
+            + "(systemd_helpers|deployment-helpers|orchestration-helpers)[.]sh";
                "<MEDIA_HELPER>")
-          | gsub("/nix/store/[a-z0-9]+-unit-script-(media-config|servarrs-setup|download-clients-setup)-start";
+          | gsub(
+              "/nix/store/[a-z0-9]+-unit-script-"
+              + "(media-config|servarrs-setup|download-clients-setup)-start";
                  "<MEDIA_UNIT_SCRIPT>")
         else . end
       );
     del(
       .secrets.alldebrid_api_key,
       .secrets.alldebrid_transmission_admin_password,
+      .secrets.jellyfin_api_key.owner,
+      .secrets.jellyfin_api_key.group,
+      .secrets.jellyfin_api_key.mode,
+      .secrets.jellyfin_admin_password.owner,
+      .secrets.jellyfin_admin_password.group,
+      .secrets.jellyfin_admin_password.mode,
+      .secrets.jellyfin_jordan_password.owner,
+      .secrets.jellyfin_jordan_password.group,
+      .secrets.jellyfin_jordan_password.mode,
+      .secrets.jellyfin_sawnia_password.owner,
+      .secrets.jellyfin_sawnia_password.group,
+      .secrets.jellyfin_sawnia_password.mode,
+      .services.declarativeJellyfin.users.admin.mutable,
+      .services.declarativeJellyfin.users.jordan.mutable,
+      .services.declarativeJellyfin.users.jordan.permissions.enableRemoteAccess,
       .services.declarativeJellyfin.users.sawnia
     ) | normalize_helpers
   '
@@ -45,13 +64,32 @@ assert_expected_deltas() {
 	jq -e '
     (.services.declarativeJellyfin.users.sawnia // null) as $sawnia
     | .services.declarativeJellyfin.users.jordan as $jordan
+    | [
+        .services.declarativeJellyfin.users.admin,
+        $jordan,
+        $sawnia
+      ] as $household_users
+    | [
+        .secrets.jellyfin_admin_password,
+        .secrets.jellyfin_jordan_password,
+        .secrets.jellyfin_sawnia_password,
+        .secrets.jellyfin_api_key
+      ] as $credential_secrets
     | .services.jellyfin.enable == true
     and .services.declarativeJellyfin.enable == true
     and $sawnia != null
     and ($sawnia | del(.hashedPasswordFile)) == ($jordan | del(.hashedPasswordFile))
     and ($sawnia.hashedPasswordFile | endswith("jellyfin_sawnia_password"))
+    and $sawnia.permissions.enableRemoteAccess == true
+    and ($household_users | all(.mutable == false))
+    and ($credential_secrets | all(
+      .owner == "jellyfin"
+      and .group == "jellyfin"
+      and .mode == "0400"
+    ))
   ' "$current_file" >/dev/null || {
-		echo "Unexpected Jellyfin policy: enablement must be true and Sawnia must mirror Jordan except for her password path." >&2
+		echo "Unexpected Jellyfin policy:" \
+			"household users must be immutable with jellyfin-readable credentials." >&2
 		return 1
 	}
 }
@@ -143,13 +181,17 @@ run_clean() {
 
 structure() {
 	local entrypoint="$PROJECT_ROOT/hosts/ser8/media/default.nix"
+	local module_pattern
+	module_pattern='^[[:space:]]+[.]/'
+	module_pattern+='(sops|jellyfin|sonarr|radarr|prowlarr|qbittorrent|'
+	module_pattern+='nzbget|sabnzbd|orchestration)[.]nix'
 
 	[ -f "$entrypoint" ] || {
 		echo "Missing media directory entry point: $entrypoint" >&2
 		return 1
 	}
 	rg -q '[.][.]/media[.]nix' "$entrypoint" ||
-		rg -q '^[[:space:]]+[.]/(sops|jellyfin|sonarr|radarr|prowlarr|qbittorrent|nzbget|sabnzbd|orchestration)[.]nix' "$entrypoint"
+		rg -q "$module_pattern" "$entrypoint"
 	rg -q '^[[:space:]]+[.]/media$' "$PROJECT_ROOT/hosts/ser8/configuration.nix"
 	! rg -q '^[[:space:]]+[.]/media[.]nix$' "$PROJECT_ROOT/hosts/ser8/configuration.nix"
 }

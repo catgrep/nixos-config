@@ -3,10 +3,20 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
 let
+  jellyfinCredentialSecret = {
+    owner = config.services.jellyfin.user;
+    group = config.services.jellyfin.group;
+    mode = "0400";
+  };
+
+  jellyfinInitLog = "/var/log/jellyfin.txt";
+  jellyfinInitMarker = "/var/lib/jellyfin/init-done";
+
   householdUser =
     {
       isAdministrator,
@@ -16,6 +26,7 @@ let
       hashedPasswordFile,
     }:
     {
+      mutable = false;
       preferences.enabledLibraries = [ ];
       permissions = {
         inherit
@@ -80,25 +91,33 @@ in
   };
 
   sops.secrets = {
-    jellyfin_admin_password = {
-      owner = "root";
-      group = "root";
-      mode = "0600";
-    };
-    jellyfin_jordan_password = {
-      owner = "root";
-      group = "root";
-      mode = "0600";
-    };
-    jellyfin_sawnia_password = {
-      owner = "root";
-      group = "root";
-      mode = "0600";
-    };
-    jellyfin_api_key = {
-      owner = "root";
-      group = "root";
-      mode = "0600";
+    jellyfin_admin_password = jellyfinCredentialSecret;
+    jellyfin_jordan_password = jellyfinCredentialSecret;
+    jellyfin_sawnia_password = jellyfinCredentialSecret;
+    jellyfin_api_key = jellyfinCredentialSecret;
+  };
+
+  systemd = {
+    services.jellyfin = {
+      preStart = lib.mkBefore ''
+        ${pkgs.coreutils}/bin/chmod 0600 ${jellyfinInitLog}
+      '';
+
+      postStart = ''
+        set -euo pipefail
+
+        while [ -e ${jellyfinInitMarker} ]; do
+          ${pkgs.coreutils}/bin/sleep 0.1
+        done
+
+        attempts=0
+        while [ ! -e ${jellyfinInitMarker} ] && [ "$attempts" -lt 180 ]; do
+          ${pkgs.coreutils}/bin/sleep 1
+          attempts=$((attempts + 1))
+        done
+
+        : >${jellyfinInitLog}
+      '';
     };
   };
 }

@@ -18,12 +18,8 @@ let
   };
 in
 {
-  # SOPS secret for Caddy's tsnet auth key.
-  # Existing tsnet nodes use saved state; this key is used when Caddy registers
-  # new tailscale/* listeners such as nzbget.
-  sops.secrets."tailscale_authkey_caddy" = {
-    sopsFile = ../../secrets/shared.yaml;
-    key = "tailscale_authkey_nzbget";
+  # Allow Caddy to use the shared Tailscale key when registering new tsnet nodes.
+  sops.secrets.tailscale_authkey = {
     owner = "caddy";
     group = "caddy";
     mode = "0400";
@@ -52,8 +48,7 @@ in
       partOf = [ "systemd-resolved.service" ];
     }
 
-    # Configure Caddy to use Tailscale auth key from shared SOPS secret
-    # Uses tailscale_authkey_caddy which has caddy:caddy ownership
+    # Configure Caddy to use the shared Tailscale auth key.
     {
       serviceConfig = {
         # Increase startup timeout - Caddy needs time to establish all Tailscale connections
@@ -69,7 +64,7 @@ in
               caddyConfig = config.services.caddy.configFile;
             in
             pkgs.writeShellScript "caddy-start" ''
-              export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey_caddy.path})"
+              export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey.path})"
               exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
             ''
           )

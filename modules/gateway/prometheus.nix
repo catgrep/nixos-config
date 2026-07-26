@@ -212,6 +212,7 @@
               "https://jellyfin.shad-bangus.ts.net"
               "https://sonarr.shad-bangus.ts.net"
               "https://radarr.shad-bangus.ts.net"
+              "https://bazarr.shad-bangus.ts.net"
               "https://prowlarr.shad-bangus.ts.net"
               "https://sabnzbd.shad-bangus.ts.net"
               "https://nzbget.shad-bangus.ts.net"

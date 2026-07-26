@@ -8,6 +8,7 @@
     ./jellyfin-exporter.nix
     ./sonarr.nix
     ./radarr.nix
+    ./bazarr.nix
     ./prowlarr.nix
     ./qbittorrent.nix
     ./sabnzbd.nix

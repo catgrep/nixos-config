@@ -52,6 +52,7 @@
       "/var/lib/jellyfin"
       "/var/lib/sonarr"
       "/var/lib/radarr"
+      "/var/lib/bazarr"
       "/var/lib/prowlarr"
       "/var/lib/qbittorrent"
       "/var/lib/sabnzbd"
@@ -145,6 +146,7 @@
     # Service-specific directories with proper permissions
     "d /persist/var/lib/sonarr 0755 sonarr sonarr -"
     "d /persist/var/lib/radarr 0755 radarr radarr -"
+    "d /persist/var/lib/bazarr 0700 bazarr bazarr -"
     "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
     "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
     "d /persist/var/lib/sabnzbd 0755 sabnzbd sabnzbd -"

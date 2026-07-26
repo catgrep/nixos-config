@@ -4,9 +4,7 @@
 	skip_install_trust
 
 	# Enable Prometheus metrics on admin API
-	servers {
-		metrics
-	}
+	metrics
 	admin :2019
 }
 
@@ -24,6 +22,10 @@ sonarr.vofi {
 
 radarr.vofi {
 	reverse_proxy ser8.local:7878
+}
+
+bazarr.vofi {
+	reverse_proxy ser8.local:6767
 }
 
 torrent.vofi {
@@ -137,6 +139,14 @@ https://sonarr.shad-bangus.ts.net {
 	}
 	bind tailscale/sonarr
 	reverse_proxy 192.168.68.65:8989
+}
+
+https://bazarr.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/bazarr
+	reverse_proxy 192.168.68.65:6767
 }
 
 https://prowlarr.shad-bangus.ts.net {

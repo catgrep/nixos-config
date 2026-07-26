@@ -8,6 +8,7 @@
     ./jellyfin.nix
     ./sonarr.nix
     ./radarr.nix
+    ./bazarr.nix
     ./prowlarr.nix
     ./nzbget.nix
     ./sabnzbd.nix

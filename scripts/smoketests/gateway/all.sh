@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 TESTS=(
-    ./scripts/smoketests/gateway/test-caddy.sh
-    ./scripts/smoketests/gateway/test-tailscale.sh
+  ./scripts/smoketests/gateway/test-caddy.sh
+  ./scripts/smoketests/gateway/test-subgen.sh
+  ./scripts/smoketests/gateway/test-tailscale.sh
 )
 
 for test in "${TESTS[@]}"; do
-    "${test}" "$@"
+  "${test}" "$@"
 done

@@ -6,5 +6,6 @@
   imports = [
     ./configuration.nix
     ./impermanence.nix
+    ./subgen.nix
   ];
 }

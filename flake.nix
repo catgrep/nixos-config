@@ -127,6 +127,20 @@
         }
       ) sagent.packages;
 
+      subgenPackagesFor =
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          stableTsWhisperless = pkgs.python312Packages.callPackage (./packages/stable-ts-whisperless) { };
+        in
+        {
+          faster-whisper-medium = pkgs.callPackage ./packages/faster-whisper-medium { };
+          stable-ts-whisperless = stableTsWhisperless;
+          subgen = pkgs.callPackage ./packages/subgen {
+            stable-ts-whisperless = stableTsWhisperless;
+          };
+        };
+
       # Common module groups
       baseModules = [
         ./modules/common
@@ -151,6 +165,7 @@
         disko.nixosModules.disko
         impermanence.nixosModules.impermanence
         declarative-jellyfin.nixosModules.default
+        ./modules/subgen
       ];
 
       piModules = [
@@ -270,7 +285,9 @@
 
       inherit (sagent) lib;
 
-      packages = sagentPackages;
+      packages = nixpkgs.lib.recursiveUpdate sagentPackages {
+        x86_64-linux = subgenPackagesFor "x86_64-linux";
+      };
 
       # Add minimally configured SD card image builders
       # (these are pre-builts provided by nixos-raspberrypi)
@@ -310,7 +327,7 @@
               buildInputs =
                 with pkgs;
                 [
-                  nixfmt-rfc-style
+                  nixfmt
                   nixos-rebuild
                   git
                   jq

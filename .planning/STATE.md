@@ -100,10 +100,14 @@ Recent decisions affecting current work:
 - [Phase 08]: Delete drained provider modules only after active-owner, caller-absence, and parity proof. - This prevents dead-code cleanup from removing behavior still consumed by ser8.
 - [Phase 08]: Limit adjacent AllDebrid cleanup to the approved tmpfiles rule and stale flake comments. - This preserves every unrelated persistence path, flake input, and encrypted secret.
 - [Phase 08]: Accept only the user-approved pre-existing warning classes for repository-wide make check while leaving the Phase 8 parity warning baseline exact and unchanged.
+- [Subgen]: Run the pinned medium model on firebat with CPU int8 inference and one concurrent job.
+- [Subgen]: Treat generated English subtitles as a batch fallback when synchronized human subtitles are unavailable.
+- [Subgen]: Firebat measured a 0.630 median RTF and remained responsive with less than 4 GiB peak RSS.
 
 ### Pending Todos
 
-None.
+- Convert gateway, media, DNS, and NordVPN smoketest behavior into NixOS Python integration tests.
+- Retain deployment scripts only for checks that require live hardware or external services.
 
 ### Blockers/Concerns
 
@@ -118,6 +122,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-25T22:56:58.491Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-08-12
+Stopped at: Configured medium-model Subgen on firebat, awaiting test activation
 Resume file: None

@@ -3,7 +3,9 @@
 
 set -euo pipefail
 
+# shellcheck source=scripts/lib/all.sh
 . ./scripts/lib/all.sh
+# shellcheck source=scripts/smoketests/lib/services.sh
 . ./scripts/smoketests/lib/services.sh
 
 title "$0"
@@ -50,5 +52,19 @@ for service_config in "${MEDIA_SERVICES[@]}"; do
   fi
   echo
 done
+
+info "testing Bazarr write access to media directories"
+if unwritable_dir=$(ssh "$user@$ipaddr" \
+  'cd / && sudo -n -u bazarr find /mnt/media/tv /mnt/media/movies \
+    -type d ! -writable -print -quit'); then
+  if [ -n "$unwritable_dir" ]; then
+    fail "Bazarr cannot write to $unwritable_dir"
+    exit 1
+  fi
+else
+  fail "could not check Bazarr media directory permissions"
+  exit 1
+fi
+pass "Bazarr can write to all media directories"
 
 pass "All media services smoketests passed"

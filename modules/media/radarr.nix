@@ -24,6 +24,8 @@
     group = "radarr";
   };
 
+  systemd.services.radarr.serviceConfig.UMask = lib.mkIf config.services.radarr.enable "0002";
+
   # Open Radarr port when enabled
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.radarr.enable [ 7878 ];
 }

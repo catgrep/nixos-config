@@ -24,6 +24,8 @@
     group = "sonarr";
   };
 
+  systemd.services.sonarr.serviceConfig.UMask = lib.mkIf config.services.sonarr.enable "0002";
+
   # Open Sonarr port when enabled
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.sonarr.enable [ 8989 ];
 }

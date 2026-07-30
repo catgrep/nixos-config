@@ -113,8 +113,8 @@
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0775 media media -"
-    "d /mnt/media/movies 0775 media media -"
-    "d /mnt/media/tv 0775 media media -"
+    "d /mnt/media/movies 2775 media media -"
+    "d /mnt/media/tv 2775 media media -"
     "d /mnt/media/music 0775 media media -"
     "d /mnt/media/books 0775 media media -"
 

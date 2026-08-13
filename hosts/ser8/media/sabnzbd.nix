@@ -195,7 +195,7 @@
         priority = 0
       '';
       owner = "sabnzbd";
-      group = "sabnzbd";
+      group = config.services.sabnzbd.group;
       mode = "0600";
     };
   };

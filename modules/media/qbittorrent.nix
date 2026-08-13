@@ -23,7 +23,7 @@ in
 
     group = lib.mkOption {
       type = lib.types.str;
-      default = "qbittorrent";
+      default = "media";
       description = "Group under which qBittorrent runs";
     };
 
@@ -53,7 +53,6 @@ in
       inherit (cfg) group;
       home = "/var/lib/qbittorrent";
       description = "qBittorrent";
-      extraGroups = [ "media" ];
     };
 
     users.groups.${cfg.group} = { };

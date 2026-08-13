@@ -26,9 +26,6 @@
       # Note: Prowlarr uses /var/lib/prowlarr/config.xml as its config file
       home = "/var/lib/prowlarr";
       description = "Prowlarr";
-      extraGroups = [
-        "media"
-      ];
     };
 
     services.prowlarr = {

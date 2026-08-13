@@ -101,9 +101,10 @@ in
   ];
 
   config = {
-    # Add sabnzbd user to media group for shared file access
+    services.sabnzbd.group = lib.mkIf cfg.enable (lib.mkForce "media");
+
     users.users.sabnzbd = lib.mkIf cfg.enable {
-      extraGroups = [ "media" ];
+      group = lib.mkForce cfg.group;
     };
 
     systemd.services.sabnzbd = lib.mkIf cfg.enable {

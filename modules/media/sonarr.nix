@@ -10,18 +10,15 @@
   # Create dedicated sonarr system user
   users.users.sonarr = lib.mkIf config.services.sonarr.enable {
     isSystemUser = true;
-    group = "sonarr";
+    group = "media";
     home = "/var/lib/sonarr/.config/NzbDrone";
     description = "Sonarr";
-    extraGroups = [
-      "media"
-    ];
   };
 
   services.sonarr = {
     enable = lib.mkDefault false;
     user = "sonarr";
-    group = "sonarr";
+    group = lib.mkForce "media";
   };
 
   systemd.services.sonarr.serviceConfig.UMask = lib.mkIf config.services.sonarr.enable "0002";

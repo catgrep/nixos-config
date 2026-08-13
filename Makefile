@@ -141,6 +141,7 @@ update-nix-conf:
 check:
 	@nix flake check
 	@statix check
+	@./scripts/validation/test-nzbget-permissions.sh
 	@$(call success_msg,"✓ Flake check passed")
 	@$(call info_msg,"Testing host configurations..."); \
 	for host in $(HOSTS); do \

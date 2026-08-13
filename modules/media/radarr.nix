@@ -10,18 +10,15 @@
   # Create dedicated radarr system user
   users.users.radarr = lib.mkIf config.services.radarr.enable {
     isSystemUser = true;
-    group = "radarr";
+    group = "media";
     home = "/var/lib/radarr/.config/Radarr";
     description = "Radarr";
-    extraGroups = [
-      "media"
-    ];
   };
 
   services.radarr = {
     enable = lib.mkDefault false;
     user = "radarr";
-    group = "radarr";
+    group = lib.mkForce "media";
   };
 
   systemd.services.radarr.serviceConfig.UMask = lib.mkIf config.services.radarr.enable "0002";

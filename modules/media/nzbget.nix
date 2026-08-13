@@ -7,8 +7,10 @@ let
 in
 {
   config = lib.mkIf cfg.enable {
+    services.nzbget.group = lib.mkForce "media";
+
     users.users.nzbget = {
-      extraGroups = [ "media" ];
+      group = lib.mkForce cfg.group;
     };
 
     networking.firewall.allowedTCPPorts = [ 6789 ];

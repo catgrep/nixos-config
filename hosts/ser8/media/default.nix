@@ -5,6 +5,7 @@
 {
   imports = [
     ./sops.nix
+    ./permissions.nix
     ./jellyfin.nix
     ./sonarr.nix
     ./radarr.nix

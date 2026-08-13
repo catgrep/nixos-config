@@ -1,6 +1,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  permissionNormalizer = pkgs.writeShellApplication {
+    name = "nzbget-normalize-permissions";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+    ];
+    text = builtins.readFile ./nzbget-normalize-permissions.sh;
+  };
+in
 
 {
   services.nzbget.enable = true;
@@ -13,7 +29,7 @@
       NzbDir=/var/lib/nzbget/nzb
       QueueDir=/var/lib/nzbget/queue
       TempDir=/var/lib/nzbget/tmp
-      ScriptDir=/var/lib/nzbget/scripts
+      ScriptDir=${permissionNormalizer}/bin
       LogFile=/var/lib/nzbget/nzbget.log
 
       ControlIP=0.0.0.0
@@ -47,29 +63,29 @@
       Category1.Name=tv
       Category1.DestDir=/mnt/media/downloads/usenet/complete/tv
       Category1.Unpack=yes
-      Category1.Extensions=
+      Category1.Extensions=nzbget-normalize-permissions
       Category1.Aliases=
 
       Category2.Name=movies
       Category2.DestDir=/mnt/media/downloads/usenet/complete/movies
       Category2.Unpack=yes
-      Category2.Extensions=
+      Category2.Extensions=nzbget-normalize-permissions
       Category2.Aliases=
 
       Category3.Name=prowlarr
       Category3.DestDir=/mnt/media/downloads/usenet/complete/prowlarr
       Category3.Unpack=yes
-      Category3.Extensions=
+      Category3.Extensions=nzbget-normalize-permissions
       Category3.Aliases=
 
       Category4.Name=default
       Category4.DestDir=/mnt/media/downloads/usenet/complete/default
       Category4.Unpack=yes
-      Category4.Extensions=
+      Category4.Extensions=nzbget-normalize-permissions
       Category4.Aliases=
     '';
     owner = "nzbget";
-    group = "nzbget";
+    group = config.services.nzbget.group;
     mode = "0600";
   };
 

@@ -105,10 +105,10 @@
     "d /persist/var/lib/acme 0755 root root -"
 
     # Fix permissions for service directories after user creation
-    "d /persist/var/lib/jellyfin 0755 jellyfin jellyfin -"
-    "Z /persist/var/lib/jellyfin 0755 jellyfin jellyfin - -"
-    "d /var/lib/jellyfin 0755 jellyfin jellyfin -"
-    "Z /var/lib/jellyfin 0755 jellyfin jellyfin -"
+    "d /persist/var/lib/jellyfin 0755 jellyfin media -"
+    "Z /persist/var/lib/jellyfin 0755 jellyfin media - -"
+    "d /var/lib/jellyfin 0755 jellyfin media -"
+    "Z /var/lib/jellyfin 0755 jellyfin media -"
     # "d /persist/var/lib/postgresql 0700 postgres postgres -"
 
     # Ensure media directories have correct permissions
@@ -119,14 +119,14 @@
     "d /mnt/media/books 0775 media media -"
 
     # Ensure download directories exist with proper media group permissions
-    "d /mnt/media/downloads 0775 media media -"
-    "d /mnt/media/downloads/tv 0775 media media -"
-    "d /mnt/media/downloads/movies 0775 media media -"
+    "d /mnt/media/downloads 2775 media media -"
+    "d /mnt/media/downloads/tv 2775 media media -"
+    "d /mnt/media/downloads/movies 2775 media media -"
 
     # qBittorrent download directories in media filesystem
-    "d /mnt/media/downloads 0775 media media -"
-    "d /mnt/media/downloads/complete 0775 media media -"
-    "d /mnt/media/downloads/incomplete 0775 media media -"
+    "d /mnt/media/downloads 2775 media media -"
+    "d /mnt/media/downloads/complete 2775 media media -"
+    "d /mnt/media/downloads/incomplete 2775 media media -"
 
     # SABnzbd Usenet downloads (setgid bit ensures files inherit media group)
     "d /mnt/media/downloads/usenet 2775 media media -"
@@ -138,19 +138,19 @@
     "d /mnt/media/downloads/usenet/complete/default 2775 media media -"
 
     # qBittorrent config directories
-    "d /var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
-    "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent qbittorrent -"
-    "d /var/lib/qbittorrent/qBittorrent/config 0755 qbittorrent qbittorrent -"
-    "d /var/lib/qbittorrent/qBittorrent/data 0755 qbittorrent qbittorrent -"
+    "d /var/lib/qbittorrent 0755 qbittorrent media -"
+    "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent media -"
+    "d /var/lib/qbittorrent/qBittorrent/config 0755 qbittorrent media -"
+    "d /var/lib/qbittorrent/qBittorrent/data 0755 qbittorrent media -"
 
     # Service-specific directories with proper permissions
-    "d /persist/var/lib/sonarr 0755 sonarr sonarr -"
-    "d /persist/var/lib/radarr 0755 radarr radarr -"
-    "d /persist/var/lib/bazarr 0700 bazarr bazarr -"
+    "d /persist/var/lib/sonarr 0755 sonarr media -"
+    "d /persist/var/lib/radarr 0755 radarr media -"
+    "d /persist/var/lib/bazarr 0700 bazarr media -"
     "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
-    "d /persist/var/lib/qbittorrent 0755 qbittorrent qbittorrent -"
-    "d /persist/var/lib/sabnzbd 0755 sabnzbd sabnzbd -"
-    "d /persist/var/lib/nzbget 0755 nzbget nzbget -"
+    "d /persist/var/lib/qbittorrent 0755 qbittorrent media -"
+    "d /persist/var/lib/sabnzbd 0755 sabnzbd media -"
+    "d /persist/var/lib/nzbget 0755 nzbget media -"
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 

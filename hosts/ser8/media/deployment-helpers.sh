@@ -13,14 +13,14 @@ configure_arr() {
 		echo "Configuring Sonarr..."
 		mkdir -p /var/lib/sonarr/.config/NzbDrone
 		cp "$template_path" /var/lib/sonarr/.config/NzbDrone/config.xml
-		chown sonarr:sonarr /var/lib/sonarr/.config/NzbDrone/config.xml
+		chown sonarr:media /var/lib/sonarr/.config/NzbDrone/config.xml
 		chmod 600 /var/lib/sonarr/.config/NzbDrone/config.xml
 		;;
 	"radarr")
 		echo "Configuring Radarr..."
 		mkdir -p /var/lib/radarr/.config/Radarr
 		cp "$template_path" /var/lib/radarr/.config/Radarr/config.xml
-		chown radarr:radarr /var/lib/radarr/.config/Radarr/config.xml
+		chown radarr:media /var/lib/radarr/.config/Radarr/config.xml
 		chmod 600 /var/lib/radarr/.config/Radarr/config.xml
 		;;
 	"prowlarr")
@@ -34,14 +34,14 @@ configure_arr() {
 		echo "Configuring SABnzbd..."
 		mkdir -p /var/lib/sabnzbd
 		cp "$template_path" /var/lib/sabnzbd/sabnzbd.ini
-		chown sabnzbd:sabnzbd /var/lib/sabnzbd/sabnzbd.ini
+		chown sabnzbd:media /var/lib/sabnzbd/sabnzbd.ini
 		chmod 600 /var/lib/sabnzbd/sabnzbd.ini
 		;;
 	"nzbget")
 		echo "Configuring NZBGet..."
 		mkdir -p /var/lib/nzbget
 		cp "$template_path" /var/lib/nzbget/nzbget.conf
-		chown nzbget:nzbget /var/lib/nzbget/nzbget.conf
+		chown nzbget:media /var/lib/nzbget/nzbget.conf
 		chmod 600 /var/lib/nzbget/nzbget.conf
 		;;
 	*)

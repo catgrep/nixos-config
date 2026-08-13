@@ -43,7 +43,7 @@
       </Config>
     '';
     owner = "radarr";
-    group = "radarr";
+    group = config.services.radarr.group;
     mode = "0600";
   };
 

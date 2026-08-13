@@ -43,7 +43,7 @@
       </Config>
     '';
     owner = "sonarr";
-    group = "sonarr";
+    group = config.services.sonarr.group;
     mode = "0600";
   };
 

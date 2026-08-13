@@ -1,22 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-_:
+{ lib, ... }:
 
 {
   users.users.jellyfin = {
     isSystemUser = true;
-    group = "jellyfin";
+    group = "media";
     home = "/var/empty";
     description = "Jellyfin";
-    extraGroups = [
-      "media"
-      "render"
-    ];
+    extraGroups = [ "render" ];
   };
 
   services.jellyfin = {
     user = "jellyfin";
-    group = "jellyfin";
+    group = lib.mkForce "media";
   };
 
   # Declarative Jellyfin configuration

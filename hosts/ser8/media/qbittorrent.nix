@@ -110,7 +110,7 @@
         BitTorrent\Session\DisableAutoTMMTriggers\DefaultSavePathChanged=false
       '';
       owner = "qbittorrent";
-      group = "qbittorrent";
+      group = config.services.qbittorrent-nox.group;
       mode = "0600";
     };
   };
@@ -125,7 +125,7 @@
       TEMP_FILE="$CONFIG_DIR/qBittorrent.conf.tmp"
 
       mkdir -p "$CONFIG_DIR"
-      chown qbittorrent:qbittorrent "$CONFIG_DIR"
+      chown qbittorrent:media "$CONFIG_DIR"
 
       # Remove existing config to avoid conflicts
       if [ -f "$CONFIG_FILE" ]; then
@@ -134,7 +134,7 @@
 
       # Atomic deployment
       cp ${config.sops.templates."qbittorrent.conf".path} "$TEMP_FILE"
-      chown qbittorrent:qbittorrent "$TEMP_FILE"
+      chown qbittorrent:media "$TEMP_FILE"
       chmod 600 "$TEMP_FILE"
       mv "$TEMP_FILE" "$CONFIG_FILE"
       echo "✓ qBittorrent configuration deployed"

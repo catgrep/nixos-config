@@ -10,12 +10,12 @@
   services.bazarr = {
     enable = lib.mkDefault false;
     user = "bazarr";
-    group = "bazarr";
+    group = lib.mkForce "media";
   };
 
   users.users.bazarr = lib.mkIf config.services.bazarr.enable {
     description = "Bazarr";
-    extraGroups = [ "media" ];
+    group = "media";
   };
 
   systemd.services.bazarr.serviceConfig.UMask = lib.mkIf config.services.bazarr.enable "0002";

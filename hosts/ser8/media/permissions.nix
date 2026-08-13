@@ -26,6 +26,11 @@ let
     "sabnzbd.service"
     "sonarr.service"
   ];
+  mediaRoots = [
+    "/mnt/media/downloads"
+    "/mnt/media/movies"
+    "/mnt/media/tv"
+  ];
 in
 {
   assertions = [
@@ -35,8 +40,8 @@ in
     }
   ];
 
-  systemd.services.media-download-permissions = {
-    description = "Normalize shared media download permissions";
+  systemd.services.media-permissions = {
+    description = "Normalize shared media permissions";
     before = mediaServices;
     requiredBy = mediaServices;
 
@@ -48,13 +53,14 @@ in
     };
 
     script = ''
-      download_root=/mnt/media/downloads
-      ${pkgs.findutils}/bin/find "$download_root" -xdev ! -group media \
-        -exec ${pkgs.coreutils}/bin/chgrp media {} +
-      ${pkgs.findutils}/bin/find "$download_root" -xdev -type d ! -perm 2775 \
-        -exec ${pkgs.coreutils}/bin/chmod 2775 {} +
-      ${pkgs.findutils}/bin/find "$download_root" -xdev -type f ! -perm 0664 \
-        -exec ${pkgs.coreutils}/bin/chmod 0664 {} +
+      for media_root in ${lib.escapeShellArgs mediaRoots}; do
+        ${pkgs.findutils}/bin/find "$media_root" -xdev ! -group media \
+          -exec ${pkgs.coreutils}/bin/chgrp --no-dereference media {} +
+        ${pkgs.findutils}/bin/find "$media_root" -xdev -type d ! -perm 2775 \
+          -exec ${pkgs.coreutils}/bin/chmod 2775 {} +
+        ${pkgs.findutils}/bin/find "$media_root" -xdev -type f ! -perm 0664 \
+          -exec ${pkgs.coreutils}/bin/chmod 0664 {} +
+      done
     '';
   };
 }

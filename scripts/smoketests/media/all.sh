@@ -89,18 +89,34 @@ else
 fi
 pass "Completed downloads have shared media permissions"
 
-info "testing Bazarr write access to media directories"
-if unwritable_dir=$(ssh "$user@$ipaddr" \
-	'cd / && sudo -n -u bazarr find /mnt/media/tv /mnt/media/movies \
-    -type d ! -writable -print -quit'); then
-	if [ -n "$unwritable_dir" ]; then
-		fail "Bazarr cannot write to $unwritable_dir"
+info "testing media library permissions"
+if bad_path=$(ssh "$user@$ipaddr" \
+	'find /mnt/media/tv /mnt/media/movies -xdev \
+    \( -type d \( ! -group media -o ! -perm 2775 \) \
+    -o -type f \( ! -group media -o ! -perm 0664 \) \) \
+    -print -quit'); then
+	if [ -n "$bad_path" ]; then
+		fail "Media library path has invalid shared permissions: $bad_path"
 		exit 1
 	fi
 else
-	fail "could not check Bazarr media directory permissions"
+	fail "could not check media library permissions"
 	exit 1
 fi
-pass "Bazarr can write to all media directories"
+pass "Media libraries have shared media permissions"
+
+info "testing Bazarr access to media libraries"
+if inaccessible_path=$(ssh "$user@$ipaddr" \
+	'cd / && sudo -n -u bazarr find /mnt/media/tv /mnt/media/movies -xdev \
+    \( -type d ! -writable -o -type f ! -readable \) -print -quit'); then
+	if [ -n "$inaccessible_path" ]; then
+		fail "Bazarr cannot access $inaccessible_path"
+		exit 1
+	fi
+else
+	fail "could not check Bazarr media library access"
+	exit 1
+fi
+pass "Bazarr can read files and write directories in media libraries"
 
 pass "All media services smoketests passed"

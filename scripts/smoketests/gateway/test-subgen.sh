@@ -26,7 +26,7 @@ pass "Subgen service is active"
 info "checking Subgen status endpoint from ser8"
 # shellcheck disable=SC2029
 status=$(ssh "$client_user@$client_ipaddr" \
-  'curl --fail --silent "http://$1:9000/status"' _ "$ipaddr")
+  "curl --fail --silent --show-error 'http://$ipaddr:9000/status'")
 if ! jq -e '.version | startswith("Subgen ")' <<<"$status" >/dev/null; then
   fail "Subgen status response is invalid"
   exit 1

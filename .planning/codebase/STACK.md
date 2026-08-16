@@ -1,147 +1,89 @@
 # Technology Stack
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## Languages
 
 **Primary:**
-- Nix - System configuration language, used throughout flake.nix and all modules
-- Bash/Zsh - Shell scripting for build and deployment scripts in `scripts/`
+- Nix - all host/module configuration (`flake.nix`, `hosts/*/`, `modules/*/`)
 
 **Secondary:**
-- Python - Home Assistant components, Frigate exporter scripts
-- Go - Tools like Caddy, Prometheus, related utilities
+- Bash - operational scripts and inline `writeShellApplication` blocks (`scripts/`, `modules/nordvpn/service.nix`, `modules/servers/backup.nix`)
+- Python - packaged transcription tooling (`packages/subgen`, `packages/faster-whisper-medium`, `packages/stable-ts-whisperless`)
 
 ## Runtime
 
 **Environment:**
-- NixOS 25.05 (stable channel) - Primary OS for x86_64 systems (ser8, firebat)
-- NixOS unstable - Used selectively for packages with known issues in stable (Jellyfin stack, Tailscale, Caddy)
-- Raspberry Pi OS via nixos-raspberrypi - ARM64 systems (pi4, pi5)
+- NixOS 25.11 host systems (x86_64: `ser8`, `firebat`; arm: `pi4`, `pi5`)
+- Nix flakes as the sole entry point (`flake.nix`); no legacy `default.nix`/channels
 
 **Package Manager:**
-- Nix (flake-based) - `flake.nix` as primary manifest
-- Lockfile: `flake.lock` (present, locked inputs)
+- Nix flakes with pinned inputs
+- Lockfile: `flake.lock` (present, committed)
 
 ## Frameworks
 
-**Core Infrastructure:**
-- NixOS with flake system - Declarative system configuration across multiple hosts
-- home-manager 25.05 - User environment and dotfile management
+**Core:**
+- NixOS module system - declarative host configuration composed from `modules/` groups imported per host
+- `disko` - declarative disk partitioning for `ser8`, `firebat`, `pi5`
+- `impermanence` - ephemeral root filesystem with persisted state under `/persist` on `ser8` and `firebat`
+- `home-manager` (release-26.05) - user-level (`bdhill`) dotfile/package management, wired through `baseModules` in `flake.nix`
+- `sops-nix` - secrets decryption at activation time, keyed on SSH host keys
 
-**Deployment:**
-- Disko - Declarative disk partitioning (`modules/` configurations)
-- Impermanence - Ephemeral root filesystem with Erase Your Darlings pattern (ser8)
-- sops-nix - Secrets management with age encryption (`modules/servers/`)
+**Testing/Validation:**
+- `statix` - Nix anti-pattern linter (`statix.toml`, `make check`)
+- `nixfmt-rfc-style` - canonical Nix formatter (`make fmt`)
+- Flake checks (`make check`) plus dry-run host builds (`make dry-activate-<host>`)
+- Custom smoketest scripts per host area (`scripts/smoketests/<area>/all.sh`, referenced from `deploy.yaml`)
 
 **Build/Dev:**
-- nixos-rebuild - System configuration rebuild and activation
-- nixos-anywhere - Remote NixOS provisioning
-- nixos-raspberrypi - Raspberry Pi OS builders and installers
+- `make dev` - enters a Nix dev shell providing `nixfmt-rfc-style`, `statix`, `shellcheck`, `sops`, `yq`, `caddy`, `nixos-anywhere`, `sb` (ast-bro), `treehouse`
+- `nix-fast-build` (flake input) - parallel flake build tooling
+- `nixos-anywhere` - remote install/kexec provisioning
 
-## Key Dependencies
+## Key Dependencies (flake inputs)
 
-**Critical (All Hosts):**
-- nixpkgs (NixOS 25.05) - Standard package collection
-- nixpkgs-unstable - Security and compatibility fixes for select services
-- caddy-nix - Caddy reverse proxy with plugin support overlay
+**Critical:**
+- `nixpkgs` (`nixos-26.05`) - primary package/module set for hosts
+- `nixpkgs-unstable` (`nixos-unstable`) - used for `sagent`/ast-bro tooling packages
+- `nixos-hardware` - pinned commit (`ff17823245ab9ff7bcae6acf950bd89cba82c38c`) for Raspberry Pi board support; deliberately not tracking `master`
+- `disko` - disk layout declarations (follows root `nixpkgs`)
+- `impermanence` - impermanent root + `/persist` pattern
+- `sops-nix` - SOPS secret decryption module (follows root `nixpkgs`)
+- `home-manager` (`release-26.05`) - follows root `nixpkgs`
 
-**Media & Streaming (ser8):**
-- Jellyfin (8.11.x from unstable) - Media server with declarative-jellyfin module
-- Sonarr - TV show management
-- Radarr - Movie management
-- Prowlarr - Indexer management
-- qBittorrent-nox - Torrent client (runs in NordVPN namespace)
-- SABnzbd - Usenet download client
-- FFmpeg - Media transcoding (hardware acceleration via VA-API with Radeon 780M)
+**Service-specific:**
+- `declarative-jellyfin` - declarative Jellyfin server config, used in `modules/media/jellyfin.nix`
+- `caddy-nix` - Caddy build with plugin support (used for Caddy + Tailscale plugin), consumed in `modules/gateway/caddy.nix`
+- `nixos-images` - kexec/installer image generation (aarch64 kexec target)
 
-**Automation (ser8):**
-- Frigate 0.15.2 - NVR with AI object detection via CPU
-- Home Assistant - Home automation platform
-- Mosquitto - MQTT broker for Frigate <-> Home Assistant communication
-
-**Gateway (firebat):**
-- Caddy 2.10.2+ (with Tailscale plugin) - Reverse proxy with auto HTTPS via Let's Encrypt
-- Prometheus - Metrics collection and time-series database
-- Grafana - Monitoring dashboards with provisioned configs
-- node-exporter - System metrics from all hosts (port 9100)
-- systemd-exporter - Service state metrics (port 9558)
-- process-exporter - Per-service CPU/memory/IO metrics (port 9256)
-- zfs-exporter - ZFS pool metrics (ser8 only, port 9134)
-
-**DNS (pi4):**
-- AdGuard Home - DNS filtering and ad blocking
-- adguard-exporter - Prometheus metrics for AdGuard (port 9618)
-
-**VPN & Network:**
-- Tailscale - VPN mesh network for remote access (all hosts)
-- NordVPN WireGuard - Anonymized tunnel via network namespace (ser8)
-- wgnord - NordVPN WireGuard config manager
-
-**Monitoring Exporters:**
-- prometheus-frigate-exporter - Frigate NVR metrics scraper (port 9710)
-- jellyfin-exporter - Jellyfin media server metrics (port 9711)
-- exportarr - Sonarr/Radarr/Prowlarr metrics (ports 9707-9709)
+**Local/path inputs:**
+- `sagent` (`path:./tools/sagent`) - repo-local sandboxing tool, built against `nixpkgs-unstable`
 
 ## Configuration
 
 **Environment:**
-- Configuration via Nix module system in `modules/`
-- Host-specific overrides in `hosts/HOSTNAME/configuration.nix`
-- Secrets via SOPS (age encryption) in `secrets/` directory
-- Environment variables for service configuration injected via systemd units
-- Firewall rules per-service module with conditional opening based on role
+- Per-host configuration lives in `hosts/<host>/`; shared behavior lives in `modules/<role>/default.nix`
+- `deploy.yaml` is the single source of truth for target IPs, SSH users, deployment tags, and smoketest entry points
+- Secrets are never plaintext; SOPS-encrypted YAML per host (`secrets/<host>.yaml`) and shared (`secrets/shared.yaml`), decrypted via age identities derived from SSH host keys (persistent hosts read from `/persist/etc/ssh/`)
 
 **Build:**
-- `flake.nix` - Main flake configuration with module composition
-- `deploy.yaml` - Host metadata (IPs, users, tags, smoketests)
-- Makefile wrapper around nixos-rebuild for consistent deployments
-- scripts/nixos-rebuild.sh - Remote build and switch execution
+- `flake.nix` - defines inputs, `nixosConfigurations`, dev shells, and exported flake outputs (`enabledServices`, `servicePackages`, `packageInfo`)
+- `Makefile` - primary developer-facing command surface (`make check`, `make build-<host>`, `make switch-<host>`, `make sops-*`)
+- `statix.toml` - lint configuration for `statix`
+- `.claude/`, `.planning/` - agent/planning tooling, not part of the deployed system
 
 ## Platform Requirements
 
 **Development:**
-- NixOS 25.05 or compatible with flakes support
-- SSH key access to target hosts
-- sops, age, ssh-to-age tools (provided in devShell)
-- mkcert for local CA (optional, for certificate testing)
+- macOS or Linux with Nix + flakes enabled
+- `make dev` shell provides all required CLIs; no host-level tool installation needed
 
-**Production (ser8 - Media Server):**
-- Beelink SER8 (x86_64, 12-core CPU, Radeon 780M iGPU)
-- ZFS storage pool(s) for media library
-- Backup pool for camera recordings (`/mnt/cameras`)
-- MergerFS for unified media view across multiple disks
-- Hardware acceleration: AMD VA-API (Radeon 780M)
-- Network: Static IP 192.168.68.65 (eth0), Tailscale tunnel
-
-**Production (firebat - Gateway):**
-- x86_64 system, acts as reverse proxy/monitoring hub
-- Network: Static IP 192.168.68.63, Tailscale tunnel
-- Must resolve DNS locally via AdGuard on pi4
-
-**Production (pi4 - DNS Server):**
-- Raspberry Pi 4 Model B
-- Network: Static IP 192.168.68.56
-- Powers all network DNS queries (1.1.1.1, 8.8.8.8 as fallback)
-
-**Production (pi5 - Experimental):**
-- Raspberry Pi 5
-- Network: Static IP 192.168.0.110
-- Reserved for experiments, minimal configuration
-
-## Development Shell
-
-**Tools Provided:**
-- nixfmt-rfc-style - Nix code formatter
-- nixos-rebuild - System rebuild command
-- sops, age, ssh-to-age - Secrets management
-- yq-go - YAML parsing
-- jq - JSON parsing
-- python3 - Build scripting
-- wireguard-tools - VPN testing
-- caddy - Reverse proxy testing
-- shellcheck - Shell script linting
+**Production:**
+- x86_64 bare-metal/VM hosts (`ser8`, `firebat`) using ZFS + disko + impermanence
+- Raspberry Pi 4/5 (`pi4`, `pi5`) built from upstream `nixpkgs` with `nixos-hardware` board modules; `pi5` also uses disko
+- Deployment via `nixos-anywhere`/remote build (`buildOnTarget: true` in `deploy.yaml`), reached over Tailscale (`shad-bangus.ts.net`) and LAN static IPs
 
 ---
 
-*Stack analysis: 2026-02-09*
+*Stack analysis: 2026-08-17*

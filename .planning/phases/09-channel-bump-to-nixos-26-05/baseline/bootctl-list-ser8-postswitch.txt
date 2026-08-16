@@ -1,0 +1,157 @@
+# ser8 'sudo bootctl list' after 'make switch-ser8' (plan 09-05 Task 5)
+# captured 2026-08-17T18:34:05Z; ser8 has NOT been rebooted
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 268 NixOS Yarara 26.05.20260817.0dd31db (Linux 6.18.44), built on 2026-08-17) (default) (not reported/new)
+           id: nixos-generation-268.conf
+       source: /boot//loader/entries/nixos-generation-268.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 268 NixOS Yarara 26.05.20260817.0dd31db (Linux 6.18.44), built on 2026-08-17
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/dadq563gcxdn44731bnr5fz0k6rz9v5j-linux-6.18.44-bzImage.efi
+       initrd: /boot//EFI/nixos/2q55pms15rk8rbmapj8086v0x47r7b28-initrd-linux-6.18.44-initrd.efi
+      options: init=/nix/store/wxpn95cb5bhr66x81ny24jvs738jhnzl-nixos-system-ser8-26.05.20260817.0dd31db/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate root=fstab loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 267 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-08-13) (not reported/new)
+           id: nixos-generation-267.conf
+       source: /boot//loader/entries/nixos-generation-267.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 267 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-08-13
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/2lbmwjbdzs3p9ifx52w5pzlcsihwabah-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 266 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-08-12) (not reported/new)
+           id: nixos-generation-266.conf
+       source: /boot//loader/entries/nixos-generation-266.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 266 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-08-12
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/zy5yhsnwrvmqw8xn1v71hq8nkp36b6nn-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 265 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-29) (not reported/new)
+           id: nixos-generation-265.conf
+       source: /boot//loader/entries/nixos-generation-265.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 265 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-29
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/3x9zlvp46lcaypp8mqkf8maczcqy71fq-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 264 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-26) (not reported/new)
+           id: nixos-generation-264.conf
+       source: /boot//loader/entries/nixos-generation-264.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 264 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-26
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/6lglxdb3zm9l3md5p4c2k7jijbilzn0a-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 263 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25) (not reported/new)
+           id: nixos-generation-263.conf
+       source: /boot//loader/entries/nixos-generation-263.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 263 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/gnrqxmp05ghfcjsz3vsplrk3yy6pjw4m-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 262 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25) (not reported/new)
+           id: nixos-generation-262.conf
+       source: /boot//loader/entries/nixos-generation-262.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 262 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/9fwalaaim2brkxkc67x2z4qiybmp6iys-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 261 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25) (not reported/new)
+           id: nixos-generation-261.conf
+       source: /boot//loader/entries/nixos-generation-261.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 261 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/pv3zjmhpialypmb5clclkvy0mav0mhjg-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 260 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25) (not reported/new)
+           id: nixos-generation-260.conf
+       source: /boot//loader/entries/nixos-generation-260.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 260 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-07-25
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/nnys54w6w85jwmpirj2v4lf8kbgdm07c-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Boot Loader Specification Type #1 (.conf)
+        title: NixOS (Generation 259 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-06-14) (not reported/new)
+           id: nixos-generation-259.conf
+       source: /boot//loader/entries/nixos-generation-259.conf (on the EFI System Partition)
+     sort-key: nixos
+      version: Generation 259 NixOS Xantusia 25.11.20260518.687f05a (Linux 6.12.90), built on 2026-06-14
+   machine-id: 641e52f98db44a22b730b498f4309e01
+        linux: /boot//EFI/nixos/jb4hy7pal9zx0r417y8bkb5lhhj8fml0-linux-6.12.90-bzImage.efi
+       initrd: /boot//EFI/nixos/62vagdlfrjdvdb7chcw5vq8chdflwxhb-initrd-linux-6.12.90-initrd.efi
+      options: init=/nix/store/9n65lkkly5zyrx0nk5k0xng6ybvcqc5y-nixos-system-ser8-25.11.20260518.687f05a/init quiet loglevel=3 zfs.zfs_arc_max=8589934592 amdgpu.cwsr_enable=0 nohibernate loglevel=4 lsm=landlock,yama,bpf
+
+         type: Reported by Boot Loader
+        title: nixos-generation-254.conf (selected) (reported/absent)
+           id: nixos-generation-254.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-253.conf (reported/absent)
+           id: nixos-generation-253.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-252.conf (reported/absent)
+           id: nixos-generation-252.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-251.conf (reported/absent)
+           id: nixos-generation-251.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-250.conf (reported/absent)
+           id: nixos-generation-250.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-249.conf (reported/absent)
+           id: nixos-generation-249.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-248.conf (reported/absent)
+           id: nixos-generation-248.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Reported by Boot Loader
+        title: nixos-generation-247.conf (reported/absent)
+           id: nixos-generation-247.conf
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)
+
+         type: Automatic
+        title: Reboot Into Firmware Interface
+           id: auto-reboot-to-firmware-setup
+       source: /sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f (on the EFI System Partition)

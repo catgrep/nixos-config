@@ -1,347 +1,218 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## Directory Layout
 
 ```
 nixos-config/
-├── .planning/                    # GSD planning documents and analyses
-├── .git/                         # Git repository metadata
-├── dashboards/                   # Grafana dashboard JSON files (pre-built from grafana.com)
-├── etc/                          # Example configuration files for local nix config
-├── experimental/                 # Experimental features (not yet integrated)
-├── flake.nix                     # Main flake configuration and entry point
-├── flake.lock                    # Flake lock file with pinned versions
-├── Makefile                      # Build and deployment command interface
-├── deploy.yaml                   # Host metadata (IPs, users, deployment settings)
-├── README.md                     # Project overview and quick start
-├── CLAUDE.md                     # Claude AI instructions for this codebase
-├── TODO.md                       # Project roadmap and task tracking
-├── SPDX-License-Identifier: GPL-3.0-or-later (in file headers)
-├── LICENSE                       # GPL-3.0-or-later license text
-│
-├── hosts/                        # Per-host configurations
-│   ├── ser8/                     # Media server (Beelink SER8)
-│   │   ├── default.nix           # Import barrel - aggregates host configuration
-│   │   ├── configuration.nix     # Main host config (service enables, overrides)
-│   │   ├── hardware-configuration.nix  # Hardware-specific (CPU, memory, storage)
-│   │   ├── disko-config.nix      # ZFS/disk partitioning and layout
-│   │   ├── impermanence.nix      # Persistent directories (SOPS, media, etc)
-│   │   ├── media/                # Host-owned media policy and orchestration
-│   │   │   ├── default.nix       # Import-only media entry point
-│   │   │   ├── sops.nix          # Shared media SOPS defaults
-│   │   │   ├── jellyfin.nix      # Jellyfin host policy and identities
-│   │   │   ├── sonarr.nix        # Sonarr host policy and deployment
-│   │   │   ├── radarr.nix        # Radarr host policy and deployment
-│   │   │   ├── prowlarr.nix      # Prowlarr host policy and deployment
-│   │   │   ├── qbittorrent.nix   # qBittorrent host policy and deployment
-│   │   │   ├── nzbget.nix        # NZBGet host policy and deployment
-│   │   │   ├── sabnzbd.nix       # SABnzbd host policy and deployment
-│   │   │   ├── orchestration.nix # Cross-service media units and target
-│   │   │   ├── deployment-helpers.sh
-│   │   │   └── orchestration-helpers.sh
-│   │   └── samba.nix             # SMB file sharing for media drive
-│   │
-│   ├── firebat/                  # Gateway/reverse proxy (x86_64)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── configuration.nix     # Main host config
+├── flake.nix              # Root flake: inputs, mkSystem, nixosConfigurations, devShells
+├── flake.lock
+├── Makefile                # Command surface for build/deploy/check/sops/pkg-inspection
+├── deploy.yaml              # Host deployment metadata (IPs, users, tags, smoketest paths)
+├── statix.toml               # Nix linter config
+├── AGENTS.md -> CLAUDE.md    # Symlink so both filenames resolve to the same guide
+├── CLAUDE.md                  # Repository guide (agent-agnostic instructions)
+├── hosts/                      # Host-specific NixOS configuration (one dir per machine)
+│   ├── ser8/                     # Media/storage/automation server
+│   │   ├── default.nix              # Import list (configuration, impermanence, samba)
+│   │   ├── configuration.nix        # Host networking, boot, firewall, ZFS hostId
+│   │   ├── disko-config.nix         # Declarative disk/ZFS layout
 │   │   ├── hardware-configuration.nix
-│   │   ├── disko-config.nix
-│   │   └── impermanence.nix
-│   │
-│   ├── pi4/                      # DNS server (Raspberry Pi 4)
-│   │   ├── configuration.nix     # Main host config (AdGuard Home)
-│   │   └── hardware-configuration.nix
-│   │
-│   └── pi5/                      # Experimental Raspberry Pi 5
-│       ├── configuration.nix
-│       ├── hardware-configuration.nix
-│       ├── disko-config.nix
-│       └── configtxt.nix         # Pi-specific boot config
-│
-├── modules/                      # Reusable NixOS modules
-│   ├── common/                   # Shared configuration for all hosts
-│   │   ├── default.nix           # Import barrel aggregating all common modules
-│   │   ├── boot.nix              # Bootloader, kernel params (server optimizations)
-│   │   ├── networking.nix        # Network options API (interface, DNS, forwarding)
-│   │   ├── users.nix             # User definitions and groups
-│   │   ├── ssh.nix               # SSH server configuration
-│   │   ├── locale.nix            # Time zone and locale settings
-│   │   ├── nix.nix               # Nix daemon configuration (flakes, auto-optimise)
-│   │   ├── packages.nix           # Common system packages (git, git-lfs, htop, etc)
-│   │   ├── tmux.nix              # Tmux user configuration
-│   │   ├── neovim.nix            # Neovim user configuration
-│   │   └── banner.nix            # Login banner for all hosts
-│   │
-│   ├── servers/                  # Server-specific (applied to ser8, firebat)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── monitoring.nix        # Prometheus exporters (node, zfs, systemd, process)
-│   │   ├── security.nix          # SSH hardening, firewall baseline
-│   │   ├── backup.nix            # Backup configuration
-│   │   └── tailscale.nix         # Tailscale VPN daemon
-│   │
-│   ├── gateway/                  # Reverse proxy and monitoring (firebat only)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── caddy.nix             # Reverse proxy with Tailscale plugin
-│   │   ├── Caddyfile             # External Caddy configuration file
-│   │   ├── prometheus.nix        # Prometheus scrape configs and alerting rules
-│   │   ├── grafana.nix           # Grafana with provisioned dashboards
-│   │   └── tailscale.nix         # Tailscale daemon specific config
-│   │
-│   ├── media/                    # Media services (ser8 only)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── jellyfin.nix          # Media streaming server
-│   │   ├── jellyfin-exporter.nix # Prometheus exporter for Jellyfin
-│   │   ├── sonarr.nix            # TV show management
-│   │   ├── radarr.nix            # Movie management
-│   │   ├── prowlarr.nix          # Indexer manager
-│   │   ├── qbittorrent.nix       # Torrent client (VPN namespace support)
-│   │   ├── sabnzbd.nix           # Usenet download client
-│   │   ├── exportarr.nix         # Prometheus exporter for arr stack
-│   │   ├── alldebrid-proxy.nix   # AllDebrid integration (commented out)
-│   │   └── transmission.nix      # Transmission torrent client (backup)
-│   │
-│   ├── automation/               # Home automation (ser8 only)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── home-assistant.nix    # Home automation platform
-│   │   ├── frigate.nix           # NVR security camera system
-│   │   ├── frigate-exporter.nix  # Prometheus exporter for Frigate
-│   │   └── README.md             # Frigate-specific documentation
-│   │
-│   ├── nordvpn/                  # VPN namespace isolation (ser8)
-│   │   ├── default.nix           # Options definition and base config
-│   │   └── service.nix           # VPN namespace systemd service
-│   │
-│   ├── dns/                      # DNS server (pi4 only)
-│   │   ├── default.nix           # Import barrel
-│   │   ├── adguard-home.nix      # AdGuard Home DNS blocking
-│   │   ├── adguard-exporter.nix  # Prometheus metrics
-│   │   └── users.nix             # AdGuard-specific user configuration
-│   │
-│   ├── raspberrypi/              # ARM-specific configuration
-│   │   ├── base.nix              # Base Pi configuration
-│   │   ├── installer.nix         # SD card installer for Pi 4
-│   │   └── usb-installer.nix     # USB installer for Pi 5
-│   │
-│   └── development/              # Development tools (future)
-│       ├── default.nix
-│       └── gerrit.nix            # Gerrit code review (planned)
-│
-├── users/                        # User configurations
-│   └── bdhill.nix                # Home-manager configuration for primary user
-│
-├── home-manager/                 # Separate home-manager flake
-│   ├── flake.nix                 # Home-manager flake definition
-│   └── ...                       # Home-manager specific configs
-│
-├── secrets/                      # SOPS-encrypted secrets (age encryption)
-│   ├── .sops.yaml                # SOPS configuration (hosts, users, rules)
-│   ├── ser8.yaml                 # ser8-specific secrets (NordVPN token, etc)
-│   ├── firebat.yaml              # firebat-specific secrets (currently empty)
-│   ├── shared.yaml               # Shared secrets for all hosts (Tailscale auth key)
-│   └── keys/                     # Encryption keys
-│       ├── hosts/                # Host SSH public keys for age encryption
-│       │   ├── ser8.pub
-│       │   ├── firebat.pub
-│       │   └── ...
-│       └── users/                # User SSH public keys
-│           └── ...
-│
-├── scripts/                      # Automation and deployment scripts
-│   ├── nixos-rebuild.sh          # Main deployment wrapper script
-│   ├── lib/                      # Script utility libraries
-│   ├── sops/                     # SOPS helper scripts
-│   ├── provision/                # Host provisioning scripts
-│   ├── smoketests/               # Post-deployment validation
-│   │   ├── media/                # Media services smoke tests
-│   │   ├── gateway/              # Gateway services smoke tests
-│   │   └── dns/                  # DNS services smoke tests
-│   └── license/                  # License header injection scripts
-│
-└── logs/                         # Build logs from deployments
-    └── ... (various per-host logs)
+│   │   ├── impermanence.nix         # Persisted paths for ephemeral root
+│   │   ├── samba.nix                # File-sharing config
+│   │   └── media/                    # ser8-specific media stack overrides + orchestration
+│   ├── firebat/                    # Gateway/reverse-proxy/monitoring server
+│   ├── pi4/                        # AdGuard DNS/DHCP Raspberry Pi
+│   └── pi5/                        # General-purpose Raspberry Pi 5
+├── modules/                    # Reusable NixOS modules grouped by role
+│   ├── common/                    # Always-applied base config (boot, ssh, users, packages)
+│   ├── servers/                    # Server-role config (monitoring, backup, security, tailscale)
+│   ├── media/                      # Jellyfin, *arr apps, download clients
+│   ├── gateway/                    # Caddy, Prometheus, Grafana, blackbox, Tailscale
+│   ├── dns/                        # AdGuard Home + exporter
+│   ├── nordvpn/                    # WireGuard VPN network namespace
+│   ├── automation/                 # Frigate, Home Assistant, Mosquitto
+│   ├── subgen/                     # Subtitle generation service
+│   ├── development/                # Gerrit and dev-role config
+│   └── raspberrypi/                # Shared Pi base module
+├── users/
+│   └── bdhill.nix               # Combined NixOS systemConfig + Home Manager homeConfig
+├── home-manager/                # Separate standalone Home Manager flake
+├── overlays/                    # Package overrides (nixpkgs overlay functions)
+├── packages/                    # Custom package derivations (subgen, faster-whisper, etc.)
+├── secrets/                     # SOPS-encrypted secrets
+│   ├── <host>.yaml                 # Per-host encrypted secrets
+│   ├── shared.yaml                  # Cross-host encrypted secrets
+│   └── keys/                        # Public key material
+├── scripts/                    # Operational and validation scripts
+│   ├── nixos-rebuild.sh            # Core deploy driver invoked by Makefile
+│   ├── lib/                        # Shared shell helpers (host resolution, ssh, logging, yq)
+│   ├── sops/                        # Secret management helpers (edit, gen-hash, gen-api-key)
+│   ├── provision/                   # nixos-anywhere bootstrap variants per arch
+│   ├── smoketests/                  # Post-deploy validation, one dir per role/host
+│   │   ├── <role>/all.sh               # Entry point referenced by deploy.yaml
+│   │   └── <role>/test-*.sh            # Individual smoketests
+│   ├── validation/                  # Pre-deploy parity/permission/config checks
+│   ├── license/                     # GPL header tooling
+│   └── lutron/                      # Lutron-specific setup script
+├── dashboards/                  # Version-controlled Grafana dashboard JSON
+├── tools/
+│   └── sagent/                    # Local subflake exporting `sagent`, `ast-bro`, `treehouse`
+├── tests/                       # Nix test fixtures and NixOS VM tests
+│   ├── fixtures/
+│   └── nixos/
+├── etc/
+│   └── nix/                        # Repository-managed Nix daemon config
+├── experimental/                # Work not part of the active host flake (docker-compose, etc.)
+├── .planning/                    # GSD project planning state (not deployed code)
+└── logs/                        # Timestamped nixos-rebuild logs (generated, not curated)
 ```
 
 ## Directory Purposes
 
-**hosts/HOSTNAME/:**
-- Purpose: Host-specific configuration entry points
-- Contains: One directory per host (ser8, firebat, pi4, pi5)
-- Each host must have: `configuration.nix`, `hardware-configuration.nix`
-- Key files:
-  - `default.nix`: Barrel file that imports all host-specific modules
-  - `configuration.nix`: Main entry - service enable flags and host overrides
-  - `hardware-configuration.nix`: Generated by NixOS installer; CPU, RAM, storage layout
-  - `disko-config.nix`: Declarative disk partitioning (if using Disko)
-  - `impermanence.nix`: Lists persistent directories (if using Impermanence)
+**`hosts/<host>/`:**
+- Purpose: Machine-specific identity — hardware, disks, host-scoped service overrides
+- Contains: `default.nix` import list, `configuration.nix`, `disko-config.nix`, `hardware-configuration.nix`, optional `impermanence.nix`, host-only glue directories (e.g. `ser8/media/`)
+- Key files: `hosts/ser8/media/orchestration.nix` (systemd sequencing for the *arr stack), `hosts/ser8/media/sops.nix` (SOPS template wiring)
 
-**modules/MODULENAME/:**
-- Purpose: Reusable NixOS module groups
-- Contains: Related service configurations and options
-- Structure:
-  - `default.nix`: Barrel file importing all sub-modules
-  - `*.nix`: Individual service or feature modules
-- Pattern: Each module is self-contained; can be added to any host via flake.nix
+**`modules/<role>/`:**
+- Purpose: Reusable, host-agnostic feature bundles selected per host in `flake.nix`
+- Contains: `default.nix` (imports only), one `.nix` file per service with `options`/`config`
+- Key files: `modules/common/default.nix`, `modules/servers/default.nix` (always applied via `baseModules`); `modules/media/default.nix`, `modules/gateway/default.nix`, `modules/dns/default.nix`, `modules/nordvpn/default.nix`, `modules/automation/default.nix` (role-specific, opted in per host)
 
-**hosts/ser8/media/:**
-- Purpose: ser8-specific media service policy, secrets, deployment fragments, and cross-service orchestration
-- Structure: `default.nix` imports shared SOPS defaults, seven complete service slices, and `orchestration.nix`
-- Shell boundary: `deployment-helpers.sh` deploys rendered configuration files, while `orchestration-helpers.sh` performs sanitized API registration
+**`users/`:**
+- Purpose: Centralized user account + Home Manager configuration, single source per person
+- Key files: `users/bdhill.nix` (exports `systemConfig` and `homeConfig` attrsets consumed by `flake.nix`)
 
-**modules/common/:**
-- Purpose: Shared base layer applied to ALL hosts
-- Contains: Fundamental settings (users, networking, SSH, boot, locale, packages)
-- Key abstraction: `networking.internal.*` options (interface, DNS, forwarding)
+**`secrets/`:**
+- Purpose: SOPS-encrypted credentials, decrypted at activation via age identities from SSH host keys
+- Contains: `<host>.yaml` per host, `shared.yaml` for cross-host secrets, `keys/` for public key material
+- Generated: No (hand-edited via `make sops-edit-<host>`)
+- Committed: Yes (ciphertext only)
 
-**secrets/:**
-- Purpose: SOPS-encrypted configuration secrets
-- Contains: YAML files with encrypted values
-- Pattern:
-  - `secrets/HOSTNAME.yaml`: Host-specific secrets (only that host decrypts)
-  - `secrets/shared.yaml`: Shared secrets readable by all hosts (Tailscale auth key)
-- Encryption: Age keys derived from host SSH keys
+**`scripts/`:**
+- Purpose: All operational tooling invoked by `Makefile` — deploy, provision, validate, manage secrets
+- Contains: `nixos-rebuild.sh` (core deploy wrapper), `lib/` (shared bash helpers), `sops/`, `provision/`, `smoketests/`, `validation/`, `license/`, `lutron/`
+- Key files: `scripts/lib/resolve-host.sh` (smart IP/Tailscale resolution), `scripts/lib/all.sh` (shared script bootstrap)
 
-**scripts/:**
-- Purpose: Operational and deployment automation
-- Key file: `scripts/nixos-rebuild.sh` - Main deployment wrapper called by Makefile
-- Subdirectories:
-  - `smoketests/`: Post-deployment validation scripts
-  - `sops/`: Secret key management scripts
-  - `provision/`: Initial provisioning and bootstrapping
+**`scripts/smoketests/`:**
+- Purpose: Post-deploy live validation, organized by role/host, each with an `all.sh` entry point
+- Contains: `gateway/`, `media/`, `nordvpn/`, `ser8/`, `subgen/`, plus `lib/` (fanout + service helpers)
+- Key files: `<role>/all.sh` — referenced directly by `deploy.yaml`'s `smoketests` field per host
+
+**`dashboards/`:**
+- Purpose: Version-controlled Grafana dashboard definitions provisioned by `modules/gateway/grafana.nix`
+- Generated: No (hand-maintained/exported JSON)
+- Committed: Yes
+
+**`packages/`:**
+- Purpose: Custom Nix package derivations not available in nixpkgs (subgen stack: faster-whisper, stable-ts-whisperless, subgen itself, subgen-benchmark)
+- Key files: `packages/subgen/default.nix` (built via `pkgs.callPackage` in `flake.nix`)
+
+**`tools/sagent/`:**
+- Purpose: Local subflake providing the sandboxed `sagent` CLI and exporting `ast-bro`/`treehouse` packages consumed by the dev shell
+- Contains: Its own `flake.nix`/`flake.lock` (input `nixpkgs-unstable`), referenced as a flake input `sagent` from the root `flake.nix`
+
+**`tests/`:**
+- Purpose: NixOS module/VM tests and supporting fixtures
+- Contains: `tests/nixos/` (VM test definitions), `tests/fixtures/` (test input data)
+
+**`.planning/`:**
+- Purpose: GSD workflow state — roadmap, requirements, phase plans, codebase maps
+- Generated: Partially (codebase docs, STATE.md are agent-maintained; PROJECT.md/ROADMAP.md are curated)
+- Committed: Yes
+
+**`logs/`:**
+- Purpose: Timestamped output of `scripts/nixos-rebuild.sh` runs
+- Generated: Yes (one file per rebuild invocation)
+- Committed: Currently tracked in git status as untracked/generated churn — treat as ephemeral, not a place to add hand-written content
+
+**`experimental/`:**
+- Purpose: Holds work-in-progress configuration (e.g. `docker-compose/`) not wired into the active host flake
+- Generated: No
+- Committed: Yes, but explicitly out of the deployed system — do not assume anything here is live
 
 ## Key File Locations
 
 **Entry Points:**
-- `flake.nix`: Root flake defining all nixosConfigurations
-- `hosts/ser8/configuration.nix`: Media server entry
-- `hosts/ser8/media/default.nix`: Import-only ser8 media policy entry
-- `hosts/firebat/configuration.nix`: Gateway entry
-- `hosts/pi4/configuration.nix`: DNS server entry
-- `hosts/pi5/configuration.nix`: Experimental Pi entry
+- `flake.nix`: Root composition — `nixosConfigurations`, `devShells`, package/service introspection outputs
+- `Makefile`: Developer/agent command surface for build, deploy, check, sops, package inspection
 
 **Configuration:**
-- `deploy.yaml`: Host metadata (IPs, users, deployment tags)
-- `.sops.yaml`: SOPS encryption rules and key paths
-- `modules/common/networking.nix`: Shared networking options API
-- `modules/gateway/Caddyfile`: Caddy reverse proxy routes
+- `deploy.yaml`: Deployment target metadata (IP, user, tags, smoketest path) per host
+- `hosts/<host>/configuration.nix`: Per-host runtime settings (networking, boot, firewall)
+- `secrets/<host>.yaml`, `secrets/shared.yaml`: Encrypted secrets
 
 **Core Logic:**
-- `modules/servers/monitoring.nix`: Prometheus exporter configuration
-- `modules/gateway/prometheus.nix`: Scrape configs and alerting rules
-- `modules/gateway/caddy.nix`: Reverse proxy with Tailscale plugin
-- `modules/media/jellyfin.nix`: Media streaming server
-- `modules/automation/frigate.nix`: NVR security camera system
-- `modules/nordvpn/default.nix`: VPN namespace options
+- `modules/<role>/default.nix` + per-service `.nix` files: Feature implementation
+- `hosts/ser8/media/orchestration.nix`: Cross-service systemd sequencing for the media stack
 
 **Testing:**
-- `scripts/smoketests/media/all.sh`: Media stack validation
-- `scripts/smoketests/gateway/all.sh`: Gateway services validation
-- `scripts/smoketests/dns/all.sh`: DNS services validation
-
-**Build/Deployment:**
-- `Makefile`: Primary command interface
-- `scripts/nixos-rebuild.sh`: Deployment wrapper
+- `tests/nixos/`: NixOS VM tests
+- `scripts/smoketests/<role>/all.sh` and `test-*.sh`: Live post-deploy validation
+- `scripts/validation/*.sh`: Pre-deploy config/parity checks
 
 ## Naming Conventions
 
 **Files:**
-- Pattern: `kebab-case.nix` (e.g., `hardware-configuration.nix`, `media.nix`)
-- Exceptions: Capital letters for special files (`Makefile`, `Caddyfile`, `README.md`, `CLAUDE.md`, `LICENSE`)
+- Lowercase, kebab-case Nix files (`disko-config.nix`, `jellyfin-exporter.nix`, `hardware-configuration.nix`) per `CLAUDE.md`
+- Every module group directory has a `default.nix` that is import-only
+- Shell scripts use descriptive `test-*.sh` names inside `smoketests/`, and area entry points are always named `all.sh` (required by `deploy.yaml` references)
 
 **Directories:**
-- Pattern: `lowercase` for module directories (e.g., `modules/common/`, `hosts/ser8/`)
-- Special: `UPPERCASE` for documentation (e.g., `.planning/codebase/ARCHITECTURE.md`)
-
-**Nix Option Names:**
-- Pattern: `snake_case` for service options (e.g., `services.jellyfin.enable`)
-- Custom options: `networking.internal.adguard`, `nordvpn.accessTokenFile`
-
-**Variables/Let-bindings:**
-- Pattern: `camelCase` for local variables (e.g., `caddyWithTailscale`, `monitoredUnits`)
-
-**NixOS Users/Groups:**
-- Pattern: `lowercase` (e.g., `jellyfin`, `caddy`, `mosquitto`, `bdhill`)
+- `modules/<role>/` names match the functional domain (`media`, `gateway`, `dns`, `nordvpn`, `automation`, `subgen`)
+- `hosts/<hostname>/` names match the actual machine hostname used in `deploy.yaml` and `flake.nix`
+- `scripts/<area>/` groups scripts by operational concern (`sops`, `provision`, `smoketests`, `validation`, `license`)
 
 ## Where to Add New Code
 
-**New Service/Feature:**
-1. **Create module directory:** `modules/CATEGORY/SERVICENAME.nix`
-2. **Add to module default.nix:** Update `modules/CATEGORY/default.nix` imports
-3. **Implement service config:** Follow existing patterns in `modules/media/jellyfin.nix`, `modules/gateway/caddy.nix`
-4. **Enable on host:** Add to appropriate `hosts/HOSTNAME/configuration.nix`
-
-Example for new media service:
-- Create: `modules/media/newsvc.nix` with `services.newsvc` config
-- Update: `modules/media/default.nix` to import `./newsvc.nix`
-- Enable: In `hosts/ser8/configuration.nix`, set `services.newsvc.enable = true`
+**New Service on an Existing Host Role (e.g. new media-stack app):**
+- Module: add `modules/media/<service>.nix` declaring `options.services.<service>`/`config`, then add it to `modules/media/default.nix`'s `imports` list
+- Host override (if ser8-specific): add corresponding file under `hosts/ser8/media/`
+- Secrets: add entries to `secrets/ser8.yaml` via `make sops-edit-ser8`, referenced through `config.sops.secrets.*`
+- Smoketest: add `scripts/smoketests/media/test-<service>.sh` (or the relevant role dir) and wire it into that dir's `all.sh`
 
 **New Host:**
-1. Create directory: `hosts/NEWHOSTNAME/`
-2. Create required files:
-   - `configuration.nix` (imports hardware, service enables)
-   - `hardware-configuration.nix` (generated by installer)
-   - `disko-config.nix` (if using declarative disk layout)
-3. Add to `flake.nix`:
-   ```nix
-   newhostname = mkSystem {
-     hostname = "newhostname";
-     modules = [ ./modules/dns ]; # Add appropriate modules
-   };
-   ```
-4. Add to `deploy.yaml` with IP and user metadata
-5. Create secrets file: `secrets/newhostname.yaml`
+- Create `hosts/<newhost>/` with `default.nix`, `configuration.nix`, `hardware-configuration.nix`, and `disko-config.nix` if using disko
+- Register it in `flake.nix` `nixosConfigurations` via `mkSystem`
+- Add an entry to `deploy.yaml` with `targetHost`, `targetUser`, `tags`, and `smoketests` path
+- Add a `scripts/smoketests/<newhost>/all.sh` (or reuse a role-based one)
 
-**New Module (Shared Functionality):**
-1. Create: `modules/CATEGORY/` directory
-2. Create: `modules/CATEGORY/default.nix` barrel
-3. Create: `modules/CATEGORY/feature.nix` implementation files
-4. Follow pattern:
-   - Use `lib.mkOption` for custom options
-   - Use `lib.mkIf config.MODULE.enable` for conditional config
-   - Define `options.MODULE.*` for all configuration knobs
-5. Reference in flake.nix or host configuration
+**New Reusable Module Group:**
+- Create `modules/<role>/` with a `default.nix` import list and per-service files
+- Wire it into `flake.nix`'s `x86Modules`/`piModules`, or pass it directly in a host's `mkSystem` call
 
-**New Prometheus Metric/Dashboard:**
-1. **For exporter:** Update `modules/servers/monitoring.nix` to enable new exporter
-2. **For scrape config:** Add job to `modules/gateway/prometheus.nix` scrapeConfigs
-3. **For dashboard:** Add JSON to `dashboards/` directory and reference in `modules/gateway/grafana.nix`
+**New Deployment/Operations Script:**
+- Place under the matching `scripts/<area>/` directory (`sops/`, `provision/`, `smoketests/`, `validation/`)
+- Start with `set -euo pipefail`, source `scripts/lib/*.sh` helpers as needed, and add a `Makefile` target if it should be user-facing
 
-**New Firewall Rule:**
-- Add to host's `configuration.nix` in `networking.firewall.allowedTCPPorts` or `.allowedUDPPorts`
-- Or in service module's `networking.firewall.allowedTCPPorts` (opens by default if `openFirewall = true`)
+**Utilities:**
+- Shared shell helpers: `scripts/lib/`
+- Package derivations: `packages/<name>/default.nix`, wired via `subgenPackagesFor` or `pkgs.callPackage` in `flake.nix`
 
 ## Special Directories
 
-**.planning/codebase/:**
-- Purpose: GSD-generated analysis documents
-- Generated: Via `/gsd:map-codebase` tool
-- Committed: Yes, used by `/gsd:plan-phase` and `/gsd:execute-phase`
-- Contents: ARCHITECTURE.md, STRUCTURE.md, CONVENTIONS.md, TESTING.md, CONCERNS.md, STACK.md, INTEGRATIONS.md
+**`secrets/`:**
+- Purpose: SOPS-encrypted credential storage
+- Generated: No
+- Committed: Yes (ciphertext only — never decrypt into this directory)
 
-**dashboards/:**
-- Purpose: Grafana dashboard JSON files
-- Generated: Pre-built from grafana.com (IDs 1860, 7845, 3662)
-- Committed: Yes
-- Processing: Dashboard `${DS_*}` variables replaced at deploy time in `modules/gateway/grafana.nix`
+**`logs/`:**
+- Purpose: Rebuild run output
+- Generated: Yes
+- Committed: Currently present in the tree but should be treated as disposable operational output, not source
 
-**logs/:**
-- Purpose: Build and deployment logs
-- Generated: Via `scripts/nixos-rebuild.sh` during deployments
-- Committed: Yes (for audit/debugging)
+**`.ast-bro/`, `.jj/`, `.gsd/`:**
+- Purpose: Tool-local caches/state (ast-bro search index, jj VCS metadata, GSD dispatch state)
+- Generated: Yes
+- Committed: No (tool-managed runtime state)
 
-**secrets/:**
-- Purpose: SOPS-encrypted credentials
-- Generated: Via `make sops-*` commands for new keys/secrets
-- Committed: Yes (SOPS encryption keeps values safe)
-- Contents: `.yaml` files with encrypted values; never contains plaintext secrets
-
-**experimental/:**
-- Purpose: Work-in-progress features not yet integrated
-- Generated: Ad-hoc during development
-- Committed: Yes
-- Status: Not included in any host configuration (not loaded by flake.nix)
+**`result` (repo root symlink):**
+- Purpose: Standard Nix build output symlink created by `nix build`
+- Generated: Yes
+- Committed: No — regenerated per build, should be gitignored
 
 ---
 
-*Structure analysis: 2026-02-09*
+*Structure analysis: 2026-08-17*

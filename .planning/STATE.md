@@ -2,44 +2,43 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Household Stack
-current_phase: 09
-current_phase_name: channel-bump-to-nixos-26-05
-status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-08-17T08:27:44.113Z"
-last_activity: 2026-08-17
-last_activity_desc: 09-02 complete — both Pi hosts migrated off the nvmd fork onto upstream nixpkgs + pinned nixos-hardware
+current_phase: 11
+status: completed
+stopped_at: Completed 11-06-PLAN.md (real ser8 reboot proved Homebox/Actual/Donetick persistence; household suite 8/8 post-reboot; pre-existing NordVPN gap logged, not fixed)
+last_updated: "2026-08-22T08:14:58.628Z"
+last_activity: 2026-08-22
+last_activity_desc: "Completed 11-05 (Donetick: gateway vhost, household bootstrap, signup closed -- Phase 11 app trio complete)"
 progress:
-  total_phases: 6
-  completed_phases: 0
-  total_plans: 7
-  completed_plans: 4
-  percent: 0
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 23
+  completed_plans: 18
+  percent: 33
+current_phase_name: homebox-actual-budget-and-donetick
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-16)
+See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Phase 09 — channel-bump-to-nixos-26-05
+**Current focus:** Phase 11 — homebox-actual-budget-and-donetick
 
 ## Current Position
 
-Phase: 09 (channel-bump-to-nixos-26-05) — EXECUTING
-Plan: 5 of 7
-Status: Ready to execute
-Last activity: 2026-08-17 — 09-02 finished all 3 tasks; Pi fork removed, cachix trust grant still installed
+Phase: 11
+Status: All phases complete
+Last activity: 2026-08-22 — Phase 11 complete
 
-Progress: [██████░░░░] 57%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 18 (6 v1.0 + 12 v1.1)
+- Total plans completed: 23 (6 v1.0 + 12 v1.1)
 - Average duration: ~15 min
 - Total execution time: ~4.1 hours
 
@@ -53,6 +52,7 @@ Progress: [██████░░░░] 57%
 | 4. Alert Delivery & Service Probes | 2 | ~45 min | ~23 min |
 | 5. Hardware Alerts & Status Dashboard | 2 | ~21 min | ~11 min |
 | 8. Reorganize ser8 media.nix | 7 | ~59 min | ~8 min |
+| 11 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -68,6 +68,20 @@ Progress: [██████░░░░] 57%
 | Phase 09 P02 | ~25 min | 3 tasks | 14 files |
 | Phase 09 P06 | 35m | 3 tasks | 13 files |
 | Phase 09 P03 | ~50 min | 3 tasks | 8 files |
+| Phase 09 P04 | ~50 min | 4 tasks | 15 files |
+| Phase 09 P05 | ~1h | 5 tasks | 12 files |
+| Phase 09 P07 | ~2h15m | 3 tasks | 8 files |
+| Phase 10 P01 | 9 min | 3 tasks | 11 files |
+| Phase 10 P03 | 8 min | 3 tasks | 5 files |
+| Phase 10 P04 | 35min | 2 tasks | 6 files |
+| Phase 10 P05 | 55min | 3 tasks | 13 files |
+| Phase 10 P06 | 3 sessions | 3 tasks | 6 files |
+| Phase 11 P01 | 55min | 3 tasks | 11 files |
+| Phase 11 P02 | 25min | 2 tasks | 7 files |
+| Phase 11 P03 | 20min | 2 tasks | 3 files |
+| Phase 11 P04 | ~65min (2 sessions) | 2 tasks | 12 files |
+| Phase 11 P05 | ~24min | 3 tasks | 5 files |
+| Phase 11 P06 | 16min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,17 +133,54 @@ Recent decisions affecting current work:
 - [Phase ?]: Confinement check treats an unobtainable egress address as a failure, never a skip
 - [Phase ?]: [Phase 09]: ZFS feature-flag check inverted: assert pools are NOT upgraded, so the previous generation can still import them. Plan 05 must not run 'zpool upgrade'.
 - [Phase ?]: [Phase 09]: ser8 pre-bump smoketest baseline stored at .planning/phases/09-.../baseline/smoketests-ser8-2511.txt; plan 05 compares per-area, not top-level exit status.
+- [Phase ?]: [Phase 09]: Delete overlays/frigate-tflite-optional.nix — a real build proved its guard aborts, because nixpkgs 26.05 applies its own ai-edge-litert.patch that rewrites the tensorflow.lite import the overlay grepped for. Keep the PYTHONPATH tensorflow filter in frigate.nix: tensorflow is still in Frigate's closure.
+- [Phase ?]: [Phase 09]: Delete the SABnzbd package-version overlay — it had inverted (pinned 5.0.3, stable now ships 5.0.4) and stable's derivation is byte-for-byte identical, including the sabctools 9.4.0 override and par2cmdline-turbo on the wrapper PATH.
+- [Phase ?]: [Phase 09]: Force UMask 0002 on radarr and sonarr — 26.05's servarr module sets 0022 itself, which conflicts and would strip the shared media group's write bit.
+- [Phase ?]: [Phase 09]: Remove the declarative lovelace-resources workaround entirely — 26.05 selects resource_mode: yaml automatically when custom lovelace modules are present and lists advanced-camera-card.js?7.27.4 in the generated configuration.yaml, while the declarative storage copy had gone stale at 7.6.5. Deleting the Nix rule is not enough: /var/lib/hass is persisted through /persist, so the file was backed up on ser8 to /persist/backups/09-05/ and deleted explicitly.
+- [Phase ?]: [Phase 09]: The Frigate live-stream 403 is PRE-EXISTING, not bump-caused — go2rtc rejects the cross-origin WebSocket upgrade Home Assistant's frigate proxy forwards, with identical 403s in ser8's journal on 2026-08-14, three days before the first 26.05 activation. The remedy (go2rtc api.origin) is verified but deliberately NOT applied: it trades away a CSRF protection and belongs in its own plan against modules/automation/frigate.nix.
+- [Phase ?]: [Phase 09]: ser8's post-switch smoketest result is identical to the temporary-activation runs, and that equality is the pass condition, not a staleness signal — proven fresh by diffing the transcripts, which differ only in the live frigate/stats MQTT payload size (55101 vs 55112 bytes).
+- [Phase ?]: [Phase 09]: The Grafana secret_key pin from 09-01 is CONFIRMED CORRECT by evidence, not inference — a real test notification sent from the reversibly-activated firebat arrived at catgrep@sudomail.com before 'make switch-firebat' ran. Zero 'failed to decrypt'/'invalid key' entries and zero notify failures since the 26.05 activation. No SOPS re-provisioning was needed.
+- [Phase ?]: [Phase 09]: Back up a live SQLite database with sqlite3 '.backup', never cp/rsync. firebat's grafana.db was captured this way to /var/backups/09-07/ and copied to ser8:/mnt/backups/firebat/grafana/ (sha256 8243ea3e..., PRAGMA integrity_check ok on the durable copy). firebat is ext4 with no snapshot mechanism, so ser8's backup pool is the only durable target in the fleet.
+- [Phase ?]: [Phase 09]: firebat is SWITCHED to 26.05 (generation 73 is the boot default; generation 72 remains a selectable 25.11 entry). NEITHER x86 host was rebooted in this phase — both are activated and selected as boot default only, so no early-boot or bootloader path has been exercised.
+- [Phase ?]: [Phase 09]: The 09-07 Home Manager warning-baseline backstop did NOT fire — plan 09-04 had already replaced the stale Phase 08 entry, and STATE.md carries exactly one entry on that baseline.
+- [Phase 10]: Mealie runs as a static mealie system user with DynamicUser forced off (PD-01), so state lands at a real persisted /var/lib/mealie the Phase 11 backup job can address
+- [Phase 10]: services.postgresql.package pinned to postgresql_17 by plain assignment, not mkDefault — ser8's stateVersion 24.11 would otherwise have silently selected major 16
+- [Phase 10]: Every services.mealie.settings value written as a Nix string: the module stringifies with toString, and toString false is the empty string, which would silently reopen registration
+- [Phase 10]: modules/household/postgresql.nix deliberately not created (PD-02) — the version pin is host policy and an empty reusable module is worse than none
+- [Phase 10]: Household smoketests assert both Mealie state stores (Postgres rows AND the persisted image tree); a row-count-only check is green while every thumbnail is broken
+- [Phase 10]: Seeded-data and persistence assertions are on by default; MEALIE_ALLOW_UNSEEDED=1 is a command-line-only escape hatch for the single pre-bootstrap run in plan 10-04 and is set by no committed file
+- [Phase 10]: Mealie table names (ingredient_foods, ingredient_units, recipes) are resolved through to_regclass before querying, so an unconfirmed RESEARCH.md A3 guess reports a named failure rather than a psql error
+- [Phase 10]: Plan 10-04 checkpoint resolved 'proceed': both one-way thresholds crossed on ser8 (PostgreSQL 17 initdb, Mealie 3.22.0 Alembic migrations). Boot default is now generation 269; recovery path is generation 268.
+- [Phase 10]: RESEARCH.md Assumption A3 confirmed against the live Mealie 3.22.0 schema: ingredient_foods, ingredient_units, recipes all resolve. PostgreSQL is 17.11, matching CONTEXT.md D-08 rather than RESEARCH.md's 17.7 'correction'.
+- [Phase 10]: make switch-ser8 was run despite the household area exiting 1: the three remaining endpoint failures are owned by plans 10-05 (tsnet) and 10-06 (default admin credentials), and the tests were left failing rather than relaxed.
+- [Phase ?]: Phase 10: RESEARCH.md Pitfall 8 corrected — Mealie 3.22.0 shopping_lists carries no household_id column; household is an association proxy through the creator's user_id, and there is no per-user ownership filter on reads
+- [Phase ?]: Phase 10: Mealie 3.22.0 auto-creates no shopping list on bootstrap — the empty-input edge is zero lists, not one empty list
+- [Phase ?]: Phase 10: RESEARCH.md Open Question 4 answered — administrator-created accounts work with ALLOW_SIGNUP=false; inferred from the database and request log, not operator-attested. Phase 12 Homebox inherits with that caveat
+- [Phase ?]: Phase 10: the mealie_recipe_images_present gate was not weakened to close plan 10-06; it is red because the fact it asserts is false
+- [Phase ?]: [Phase 11] Homebox needs no sops secret at all -- HBOX_AUTH_API_KEY_PEPPER is not a real 0.25.0 config variable (verified against pinned source); the plan's phantom secret wiring was dropped
+- [Phase ?]: [Phase 11] nixpkgs 26.05's homebox module now defaults HBOX_OPTIONS_ALLOW_REGISTRATION to closed via mkDefault (opposite of the app's own default and opposite of the plan's assumption); must be set explicitly open during bootstrap, then closed after
+- [Phase 11]: ACT-02 kept Pending in REQUIREMENTS.md after 11-02 -- only the server-password half is done; budget-file creation (11-03) completes it
+- [Phase ?]: [Phase 11]: journalctl --invocation=0 scopes no-startup-error smoketests to a unit's current start rather than -b, avoiding false failures from earlier activations within the same uptime
+- [Phase 11]: Donetick's UI is NOT in the donetick/donetick backend repo -- it lives in a separate donetick/frontend Vite/npm repository; the backend's own frontend/dist is committed only as an 88-byte placeholder. Packaged both from source (buildGoModule + buildNpmPackage, this repo's first Go and first npm packages), pinning frontend/frontend to the exact commit the real v0.1.79 release build used (traced via the GitHub API against the release workflow's run timestamp)
+- [Phase 11]: donetick/frontend's committed package-lock.json is missing resolved/integrity for 909/1382 packages (npm/cli#6301) and is never used as-is by upstream's own build either; vendored a regenerated, fully-resolved lockfile into packages/donetick/ instead
+- [Phase 11]: buildGoModule's checkPhase silently scopes go test to subPackages when that attribute is set -- donetick's checkPhase was overridden to run the real, unscoped go test ./... (all 14 internal/*_test.go files), matching upstream's own CI
+- [Phase 11]: StateDirectoryMode forced to 0750 for Donetick from the start (proactively applying the 11-01/Homebox lesson that systemd's real default is 0755, not 0750) -- pattern now applies to Mealie(DATA_DIR via Postgres), Homebox, and Donetick; Actual's upstream module already hardcodes 0700
+- [Phase 11]: The dev machine's Nix remote-builder config for x86_64-linux is broken (root SSH known_hosts mismatch + macOS Native Linux Builder auth failure); worked around per the 09-04 note's suggested pattern (nix copy --derivation + ssh nix-store --realise as bdhill, not root) to iterate on Donetick's package hashes. make switch-ser8 itself is unaffected (buildOnTarget: true builds on ser8 directly over SSH)
+- [Phase 11]: nix eval --json against environment.persistence."/persist".directories fails repo-wide (pre-existing, unrelated to any specific service) on a dead `method` suboption the pinned impermanence input removed upstream; use `nix eval --json --apply` plucking only `.directory` per entry instead. Logged in 11-04's deferred-items.md
+- [Phase ?]: [Phase 11]: Donetick is live at https://donetick.shad-bangus.ts.net, jordan and sawnia share one circle, public signup closed. sops.templates.<name>.restartUnits must be set explicitly for any template whose content can change post-deploy -- sops-install-secrets only restarts a unit on a raw content diff for units named in restartUnits at diff time, silently leaving the running process on stale env vars otherwise (discovered live: DT_IS_USER_CREATION_DISABLED flipped to true on disk but signup stayed open until a manual restart).
+- [Phase ?]: [Phase 11]: A real ser8 reboot proves Homebox group, Actual's single budget file, and Donetick circle membership are bit-for-bit identical pre/post; the household smoketest suite is 8/8 post-reboot. The literal make reboot-test-ser8 exits 0 criterion stays unmet only because of the pre-existing, already-documented NordVPN suite failure (predates Phase 9), logged to deferred-items.md, not fixed.
 
 ### Pending Todos
 
 - Convert gateway, media, DNS, and NordVPN smoketest behavior into NixOS Python integration tests.
 - Retain deployment scripts only for checks that require live hardware or external services.
 - Request the Google Takeout Tasks export during Phase 10 (long-lead, hours-to-days; Phase 13 depends on it).
+- Migrate `.vofi` hostnames to the public `vofi.dev` domain with real TLS (`.planning/todos/pending/2026-08-17-migrate-vofi-hostnames-to-public-vofi-dev-domain.md`).
 
 ### Blockers/Concerns
 
 - `nixos-26.05` x pinned `nixos-raspberrypi` interaction is untested (LOW confidence) — resolve inside Phase 9 with `make dry-activate-pi4`
-- Donetick packaging approach (local `buildGoModule` vs digest-pinned OCI container) must be decided before Phase 13 planning
+- RESOLVED 2026-08-22: Donetick packaging approach decided and implemented in 11-04 -- local `buildGoModule` (backend) + `buildNpmPackage` (frontend, a separate upstream repo, not an OCI container extraction). See 11-04-SUMMARY.md.
 - Homebox registration flag may not be safely re-enablable after being disabled — test on a scratch instance before Phase 12 bootstrap
 - Google Takeout `Tasks.json` envelope is undocumented — inspect the real archive before writing any import code
 - v1.1 leftovers: Alloy HCL config format unverified; firebat impermanence status unclear (both shelved with phases 5-7)
@@ -143,6 +194,25 @@ Recent decisions affecting current work:
 - 09-02: make check still red — only remaining failure is ser8's declarative-jellyfin vs Jellyfin 10.11.11 (09-04 owns it). statix, all three validation scripts, and firebat/pi4/pi5 dry-run builds are green.
 - ser8 NordVPN tunnel down (0-byte handshake, wgnord-monitor restart-looping qBittorrent); confinement check and nordvpn suite cannot be observed green until restored
 - make smoketests-ser8 exits 1 pre-bump: NordVPN tunnel down (pre-existing) and nordvpn/test-forwarding.sh still queries the retired pi4 resolver 192.168.68.56
+- 09-04: RESEARCH.md Pitfall 5 is falsified — it claimed the Frigate overlay's guard lines were present at 26.05's version; a real build proved they are not. Treat that pitfall as superseded.
+- 09-04: x86 remote builds from the dev machine need a workaround — the nix daemon cannot ssh to ser8 (root known_hosts, needs sudo) and the local Native Linux Builder returns 'Authentication token is invalid'. Use 'nix copy --derivation' + 'ssh nix-store --realise'. Fix before 09-07.
+- 09-05: ser8 is SWITCHED to 26.05 (generation 268 is the boot default) but has NOT been rebooted. TWO PROOFS ARE OUTSTANDING and belong to 09-07 or phase verification: (1) IMPERMANENCE — the marker /IMPERMANENCE-MARKER-09-05 is planted on rpool/local/root and confirmed still present; it MUST NOT survive the first 26.05 boot, or the stage-1 systemd rollback migrated in 09-01 did not fire and impermanence is silently broken. (2) ZFS SKEW — userland is zfs-2.4.3-1 against zfs-kmod-2.3.7-1 from the booted 25.11 kernel, so zfs scrub is rejected; the failed unit state was reset by the switch but the skew is unchanged and zfs-scrub.timer next fires 2026-08-24. Recovery if the reboot goes badly: select generation 267 in the systemd-boot menu (confirmed present in bootctl list). 'make rollback-HOST' prints TODO and is NOT a recovery path.
+- 09-05: the switch updated systemd-boot on ser8's ESP from 258.7 to 260.2, so the EFI boot manager binary is already 26.05's while the booted kernel is still 25.11's. Normal for a switch and both generations' BLS entries remain valid, but it is a bootloader-level change made with no reboot to confirm it.
+- 09-05: ser8 media UID/GID drift is a year-old pre-existing issue, NOT bump-caused — activation warns it will not apply group media 992->1100 and user media 1002->1100 (declared in modules/common/users.nix since 2025-08-18). Refusing the renumber is the protective behaviour; applying it would orphan every file under /mnt/media. Needs its own plan with a deliberate re-chown.
+- 09-07 PHASE-EXIT OUTSTANDING (4 items, block plan completion, all must be visible to phase verification): (1) ser8 first-26.05-boot proofs — /IMPERMANENCE-MARKER-09-05 must NOT survive the first 26.05 boot, and the zfs userland 2.4.3-1 vs kmod 2.3.7-1 skew clears only on reboot (zfs-scrub.timer next fires 2026-08-24); ser8 is NOT rebooted. (2) User must run 'sudo make update-nix-conf' locally and confirm 'grep -c cachix /etc/nix/nix.custom.conf' outputs 0 — threat T-09-06 stays open until then. (3) go2rtc origin 403 on Frigate live streams is pre-existing (identical 403s on 2026-08-14) and deliberately deferred; the api.origin remedy trades away a CSRF protection and is a user decision. (4) pi5's deploy.yaml entry (192.168.0.110, targetUser nixos) is stale and must be corrected before any plan tries to reach that board.
+- Plan 10-02 (IMP-01 Google Takeout artifact) has no SUMMARY yet; STATE plan counter reads 3 while plan 03 is complete and 02 is outstanding
+- Mealie is LAN-reachable on ser8 0.0.0.0:9000 with the shipped default administrator credentials still authenticating (HTTP 200 from the workstation). ALLOW_SIGNUP=false limits it to that one account. Plan 10-06 closes this and should run promptly.
+- sabnzbd.service and download-clients-setup.service fail on ser8 (uid drift 38:194 under /var/lib/sabnzbd/admin). Pre-existing since the generation 268 boot, not caused by Phase 10; makes make test-ser8 and make switch-ser8 return exit 4.
+- RESOLVED 2026-08-18: firebat caddy.service outage (shared Tailscale auth key rejected, `invalid key: API key does not exist`). The key was rotated to a reusable non-ephemeral one and committed as `11e0fda`; firebat is switched to generation 74, caddy is active with zero error-priority journal entries, and all thirteen tsnet nodes including `mealie` registered. Outage window 2026-08-18 ~12:05 to 12:52 PDT, latent for the preceding 64 days. Full record: `.planning/phases/10-household-foundation-and-mealie/baseline/incident-firebat-caddy-authkey-2026-08-18.md`.
+- 10-05: the shared `tailscale_authkey` has now gone bad three times and takes the ENTIRE gateway down when it does, because a long-lived Caddy masks the dead key until something restarts it. Phases 12 and 13 each add three more tsnet nodes and must treat a valid reusable non-ephemeral key as an explicit PRECONDITION, verified by restarting Caddy on purpose. Consider disabling key expiry on the long-lived service nodes in the Tailscale admin console.
+- 10-05: RESEARCH assumption A5 splits in two. TRUE — a new tsnet node needs no ACL edit and no console approval; `mealie` claimed its name unaided. FALSE — the shared key could not be assumed valid just because eleven nodes already used it, and that is the half that caused the outage.
+- 10-05: the `mealie` tsnet node is runtime Tailscale state, NOT repository state. Reverting this phase or rolling firebat back will not remove it; it must be deleted by hand in the Tailscale admin console or the name stays claimed.
+- 10-05: the gateway suite's eight `tls_*` subtests assert NOTHING — `openssl` is absent from firebat, so each one skips and is then counted as a pass. No certificate chain is inspected by the suite on any node. Logged to deferred-items.md.
+- 10-05 CARRIED TO 10-06: the base URL is correct in the deployed unit environment and the endpoint answers there, but no link COMPOSED by the application has been asserted against it. Mealie's three composers (invitation, password reset, shared recipe) all need authentication or seeded data. Not proven via the shipped default administrator on purpose. Close it in 10-06 with a real share link from a real account.
+- MEAL-04 half-open: the shared shopping list is proven bidirectionally at the API layer (Mealie's own page_all returns both lists to both members), but the end-user two-profile UI rendering confirmation was deferred by the operator. Remaining probe documented in 10-06-SUMMARY.md — loopback curl as vodh, service-worker unregister, two-profile retest. MEAL-04 left Pending.
+- Plan 10-07 has no persistence subject: the only Mealie recipe is named 'test' with a null image and /persist/var/lib/mealie/recipes holds zero files. mealie_recipe_images_present is known-red. A real recipe with an uploaded image must exist before 10-07's two-reboot drill is meaningful.
+- Both Mealie accounts carry admin=true. Unplanned privilege, recorded not changed in plan 10-06. Resolve before Phase 14 SEC-02 audits privilege.
+- 11-06: make reboot-test-ser8 does not exit 0 post-reboot -- only failing area is nordvpn (2/4), confirmed pre-existing and already documented in this same Blockers list before Phase 9 (tunnel down, test-forwarding.sh queries retired pi4 resolver 192.168.68.56). All Phase 11 acceptance criteria (Homebox/Actual/Donetick pre/post snapshot equality, household suite 8/8) are met; a human should confirm this known, unrelated gap is acceptable before treating ROADMAP.md Success Criterion 3 as fully closed. See .planning/phases/11-homebox-actual-budget-and-donetick/baseline/reboot-2026-08-22.md.
 
 ### Roadmap Evolution
 
@@ -151,6 +221,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-17T08:27:44.105Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-08-22T07:59:33.246Z
+Stopped at: Completed 11-06-PLAN.md (real ser8 reboot proved Homebox/Actual/Donetick persistence; household suite 8/8 post-reboot; pre-existing NordVPN gap logged, not fixed)
 Resume file: None

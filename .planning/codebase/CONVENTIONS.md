@@ -1,259 +1,131 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## Naming Patterns
 
 **Files:**
-- Nix modules follow lowercase with hyphens: `caddy.nix`, `frigate.nix`, `qbittorrent.nix`
-- Module directories follow lowercase: `modules/common/`, `modules/media/`, `modules/gateway/`
-- Bash scripts follow lowercase with hyphens: `test-caddy.sh`, `test-dns.sh`
-- Configuration files: `configuration.nix`, `hardware-configuration.nix`, `disko-config.nix`, `impermanence.nix`
-- Dashboard files: `node-exporter.json`, `zfs.json` (from Grafana)
-- SOPS secret files: `ser8.yaml`, `shared.yaml`
+- Nix module files use lowercase kebab-case: `modules/media/jellyfin-exporter.nix`, `modules/gateway/blackbox-exporter.nix`.
+- Every directory of related modules has a `default.nix` that aggregates `imports`, e.g. `modules/media/default.nix`.
+- Shell scripts use lowercase kebab-case with a `.sh` extension and a `test-` prefix for individual smoketests/validation checks: `scripts/smoketests/ser8/test-vaapi.sh`, `scripts/validation/test-nzbget-permissions.sh`.
+- Suite entry points that fan out to multiple test scripts are always named `all.sh` (required because `deploy.yaml` references this exact filename per host/tag): `scripts/smoketests/ser8/all.sh`, `scripts/smoketests/media/all.sh`.
+- Shared shell helpers live under `scripts/lib/` (repo-wide) and `scripts/smoketests/lib/` (smoketest-only), named after their responsibility: `logging.sh`, `cleanup.sh`, `fanout.sh`, `services.sh`.
 
-**Functions:**
-- Nix: Function arguments use lowercase with underscores: `config`, `lib`, `pkgs`, `unstable`
-- Bash: Function names use lowercase with underscores: `get_ip()`, `get_user()`, `resolve_ssh_host()`, `test_media_service()`
-- No camelCase used in either Nix or Bash
+**Nix attributes/options:**
+- Standard NixOS option paths (`services.<name>.*`, `users.users.<name>.*`, `networking.firewall.*`) — no custom naming scheme; matches upstream nixpkgs conventions.
 
-**Variables:**
-- Nix local variables in `let` bindings use camelCase for descriptive names: `caddyWithTailscale`, `dashboards`, `cfg`
-- Nix configuration uses dot-notation: `config.services.caddy`, `config.sops.secrets`
-- Bash global variables use UPPERCASE: `TESTS`, `MEDIA_SERVICES`, `LABEL_INFO`, `BOLD`, `RED`, `GREEN`
-- Bash local variables use lowercase: `host`, `ipaddr`, `user`, `domain`, `response`
-
-**Types:**
-- Nix types use full names: `lib.types.str`, `lib.types.path`, `lib.types.port`, `lib.types.bool`
-- lib.mk* helpers distinguish between merge strategies: `lib.mkDefault`, `lib.mkForce`, `lib.mkIf`, `lib.mkMerge`
+**Shell functions/variables:**
+- Local shell variables are `lower_snake_case` (`remote_command`, `service_user`, `tests_run`).
+- Constants and array names that stay fixed for a script's lifetime are `UPPER_SNAKE_CASE` (`RENDER_NODE`, `VAAPI_ENCODER`, `SERVICE_USERS`, `TESTS`, `SUITE_NAME`).
+- Test predicate functions are prefixed `test_`: `test_render_node_present`, `test_vaapi_encode`, `test_unit_active` (`scripts/smoketests/ser8/test-vaapi.sh`).
+- Private/internal helper functions inside a shared lib file are prefixed with an underscore: `_try_host_header`, `_try_resolved_address` (`scripts/smoketests/lib/services.sh`).
 
 ## Code Style
 
-**Formatting:**
-- Tool: `nixfmt` with RFC style (`nixfmt-rfc-style`)
-- Run before commit: `make fmt`
-- Indentation: 2 spaces in Nix
-- Indentation: 2 spaces in Bash for continuations
+**Nix formatting:**
+- Format with `nixfmt-rfc-style` via `make fmt` (`find . -name "*.nix" -exec nixfmt {} \;`). Do not hand-align against formatter output (per project CLAUDE.md).
+- `statix check` runs as part of `make check` for lint-level Nix issues.
 
-**Linting:**
-- Nix files validated via flake check: `make check` runs `nix flake check`
-- Bash scripts enforce strict mode: `set -euo pipefail` at top of each test script
-- No specific linter used for Bash, but scripts use shell best practices
-
-## Import Organization
-
-**Nix Module Order:**
-1. SPDX license header (always first)
-2. Module function signature with `{config, lib, pkgs, ...}:`
-3. `let` bindings for local definitions (if needed)
-4. `in` keyword followed by configuration
-5. `{ imports = [...]; ... }` structure for aggregation modules
-
-**Nix Let Bindings:**
-- Define intermediate computations before configuration block
-- Example from `modules/gateway/caddy.nix`: Define `caddyWithTailscale` in `let`, use in `in { ... }`
-- Example from `modules/gateway/grafana.nix`: Define `dashboards` let-binding with source paths
-
-**Bash Script Order:**
-1. SPDX license header
-2. Source includes: `. ./scripts/lib/all.sh`
-3. `set -euo pipefail` for strict error handling
-4. Title output: `title "$0"`
-5. Parameter validation
-6. Variable assignment
-7. Function definitions
-8. Main logic
-
-**Path Aliases:**
-- Nix uses relative paths with `./`: `./modules/`, `../../secrets/`
-- No import aliases defined; always use relative paths
-- Bash scripts source from relative paths: `./scripts/lib/all.sh`
-
-## Error Handling
-
-**Patterns in Nix:**
-- Conditional configuration via `lib.mkIf`: Wrap entire sections or merge strategies when feature is disabled
-- SOPS secret declarations use `lib.mkIf` to only create when service is enabled
-- Example from `modules/automation/frigate.nix`:
-  ```nix
-  sops.secrets = lib.mkIf config.services.frigate.enable { ... };
-  ```
-- Dependency ordering via `systemd.services.<name>.after` and `requires` for service startup
-- Example from `modules/automation/frigate.nix`:
-  ```nix
-  systemd.services.frigate = lib.mkIf config.services.frigate.enable {
-    after = [ "zfs-mount.service" "network-online.target" "sops-nix.service" ];
-    requires = [ "zfs-mount.service" ];
-  };
-  ```
-
-**Patterns in Bash:**
-- Return codes: `0` on success, `1` on failure
-- Non-fatal issues trigger warning: `warn "message"` to stderr
-- Fatal issues trigger failure: `fail "message"` to stderr and `exit 1`
-- Example from `scripts/smoketests/dns/test-dns.sh`:
+**Shell formatting:**
+- All scripts start with `#!/usr/bin/env bash` followed immediately by `# SPDX-License-Identifier: GPL-3.0-or-later`, then `set -euo pipefail`.
+- Indentation uses tabs (visible in `scripts/smoketests/ser8/test-vaapi.sh` and others), consistent with `shfmt` defaults for bash.
+- Run `shellcheck script.sh` and `shfmt -d script.sh` on changed scripts before committing.
+- `# shellcheck disable=SC<code>` is used sparingly and only with an explanatory comment directly above it, e.g. in `scripts/smoketests/ser8/test-vaapi.sh`:
   ```bash
-  if ! resolves google.com "$ipaddr"; then
-      exit 1
-  fi
-  ```
-- Fallback behavior on DNS failure: Try Host header, then HTTP instead of HTTPS
-- Example from `scripts/smoketests/lib/services.sh`: Multiple curl attempts with different strategies
-
-**Systemd Service Error Handling:**
-- `Restart = "on-failure"` with `RestartSec = "5s"` for auto-recovery
-- `Type = "exec"` for straightforward services
-- Timeouts specified: `TimeoutStartSec = "5min"` for long-startup services like Caddy
-- Example from `modules/gateway/caddy.nix`:
-  ```nix
-  serviceConfig = {
-    TimeoutStartSec = "5min";
-    ...
-  };
+  # remote_command is intentionally expanded after printf %q shell escaping.
+  # shellcheck disable=SC2029
+  if ssh "$user@$ipaddr" "$remote_command" 2>/dev/null; then
   ```
 
-## Logging
+## Import Organization (Nix)
 
-**Framework:** `printf` for Bash (custom logging library in `scripts/lib/logging.sh`)
-
-**Patterns:**
-- Color-coded output with functions: `info()`, `warn()`, `pass()`, `fail()`
-- Example from `scripts/lib/logging.sh`:
-  ```bash
-  info() { printf "${BOLD}${YELLOW}%-6s${RESET} %b\n" "${LABEL_INFO}" "$1"; }
-  pass() { printf "${BOLD}${GREEN}%-6s${RESET} %b\n" "${LABEL_DONE}" "$1"; }
-  fail() { printf "${BOLD}${RED}%-6s${RESET} %b\n" "${LABEL_FAIL}" "$1" >&2; }
-  ```
-- Test progress output: `title()` for section headers
-- Structured format: `[info]`, `[WARN]`, `[FAIL]`, `[done]` labels with colored output
-
-**Nix Logging:**
-- No explicit logging; relies on systemd journal via `systemctl status`
-- Service debugging: SSH into host and check logs with `journalctl -u <service> -n 50`
-- API key sanitization documented in service configs to prevent secrets exposure
-
-## Comments
-
-**When to Comment:**
-- Explain the "why" not the "what" - code structure is self-explanatory from reading
-- Document security decisions: "Allow insecure Frigate packages (has known CVE, but we're behind firewall/Tailscale)"
-- Reference external issues/discussions: "See: https://github.com/blakeblackshear/frigate/discussions/14888"
-- Mark deprecated or conditionally-used code with comments
-- Explain non-obvious configuration requirements: "Note: hostname must be set unconditionally as the NixOS module requires it"
-
-**Example from `modules/automation/frigate.nix` (lines 16-18):**
-```nix
-# Allow insecure Frigate packages (has known CVE, but we're behind firewall/Tailscale)
-# See: https://github.com/blakeblackshear/frigate/security/advisories/GHSA-vg28-83rp-8xx4
-nixpkgs.config.permittedInsecurePackages = lib.mkIf config.services.frigate.enable [
-```
-
-**Example from `modules/gateway/caddy.nix` (lines 50-54):**
-```nix
-# Ensure Caddy restarts when systemd-resolved restarts
-# This is needed because Caddy caches DNS lookups and won't pick up
-# new DNS config until restarted
-{
-  after = [ "systemd-resolved.service" ];
-```
-
-**JSDoc/TSDoc:**
-- Not used; this is Nix/Bash, not TypeScript
-- Internal documentation uses inline comments in Nix modules
-
-## Function Design
-
-**Size:**
-- Bash test functions typically 20-50 lines (e.g., `test_media_service()` is 40 lines)
-- Bash library functions are utility-focused and small (5-15 lines)
-- Nix modules define service config in single file per service (30-150 lines)
-
-**Parameters:**
-- Bash: Use positional parameters with validation: `if [ $# -lt 1 ]; then exit 1; fi`
-- Bash: Extract and name early: `host="$1"`, `ipaddr="$2"`, `user="$3"`
-- Nix: Always accept `{ config, lib, pkgs, ... }` in module function signature
-- Nix: Use `let cfg = config.services.<name>;` for DRY access to service config
-
-**Return Values:**
-- Bash: Functions return status codes (0 = pass, 1 = fail)
-- Bash: Output to stdout with `echo`, logging to stderr with `printf "..." >&2`
-- Nix: No explicit returns; all files are attribute sets or function applications
-
-## Module Design
-
-**Exports:**
-- Nix modules always export a single attribute set: `{ imports = [...]; options = {}; config = {}; }`
-- No module explicitly "exports" - all are imported in parent modules via `imports = [ ./file.nix ]`
-- Example from `modules/common/default.nix`:
-  ```nix
-  {
-    imports = [
-      ./banner.nix
-      ./boot.nix
-      ./networking.nix
-      ...
-    ];
-  }
-  ```
-
-**Barrel Files (Index Files):**
-- `modules/*/default.nix` acts as aggregation point
-- Collects sub-modules via `imports` list
-- No re-exports or complex barrel logic
-- Example from `modules/media/default.nix`:
+**Module aggregation:**
+- Each module group directory has a `default.nix` whose entire body is an `imports` list of sibling files, in the order they are referenced elsewhere (roughly deployment/dependency order), e.g. `modules/media/default.nix`:
   ```nix
   { ... }:
   {
     imports = [
       ./jellyfin.nix
+      ./jellyfin-exporter.nix
       ./sonarr.nix
       ./radarr.nix
-      ...
+      ./bazarr.nix
+      ./prowlarr.nix
+      ./qbittorrent.nix
+      ./sabnzbd.nix
+      ./nzbget.nix
     ];
   }
   ```
+- Host configs (`hosts/<host>/`) import module-group `default.nix` files, never individual submodules directly, keeping the module group's internal composition private to the group.
 
-## License and Headers
-
-**All files start with:**
-```nix
-# SPDX-License-Identifier: GPL-3.0-or-later
-```
-
-**Applied to:**
-- `.nix` files: Nix modules, flake.nix
-- `.sh` files: Bash scripts in `scripts/`
-- `Makefile`: Build automation
-- YAML files: deploy.yaml, .sops.yaml
-
-## Secrets Management
-
-**Pattern:**
-- Secrets declared in `sops.secrets` block at top of module
-- Key format: `"secret_name"` maps to YAML key in `secrets/<host>.yaml` or `secrets/shared.yaml`
-- Ownership specified: `owner = "service"`, `group = "service"`, `mode = "0600"`
-- Template substitution: Use `sops.templates` to inject secrets into service environment files
-- Example from `modules/automation/frigate.nix`:
-  ```nix
-  sops.secrets."frigate_cam_user" = {
-    owner = "root";
-    group = "root";
-    mode = "0600";
-  };
-
-  sops.templates."frigate.env" = {
-    content = ''
-      FRIGATE_CAM_USER=${config.sops.placeholder."frigate_cam_user"}
-      FRIGATE_CAM_PASS=${config.sops.placeholder."frigate_cam_pass"}
-    '';
-  };
+**Shell sourcing:**
+- Shared shell libraries are sourced with a leading `. ./scripts/lib/...` (dot syntax, not `source`), always with a `# shellcheck source=<path>` directive immediately above when the source path is dynamic or otherwise non-obvious to shellcheck:
+  ```bash
+  # shellcheck source=scripts/lib/all.sh
+  . ./scripts/lib/all.sh
+  # shellcheck source=scripts/smoketests/lib/fanout.sh
+  . ./scripts/smoketests/lib/fanout.sh
   ```
+- `scripts/lib/all.sh` acts as a barrel file that sources the other `scripts/lib/*.sh` helpers (`logging.sh`, `cleanup.sh`, `yq.sh`, `ssh.sh`, `prompt.sh`) so consumers only need one source line.
 
-**Never:**
-- Hardcode credentials in `.nix` files
-- Commit `.env` or secrets files
-- Include actual secret values in comments or examples
+## Error Handling
+
+**Shell scripts:**
+- Every script sets `set -euo pipefail` unconditionally — no exceptions found in `scripts/`.
+- Assertion helpers accumulate failures into a counter and `exit 1` at the end rather than failing fast mid-script, so every check runs and reports (`scripts/validation/test-actual-module.sh`, `scripts/smoketests/ser8/test-vaapi.sh`). This mirrors the "run everything, then report" pattern used at the suite level (`run_suite` in `scripts/smoketests/lib/fanout.sh`).
+- Individual `run_test`/check invocations are explicitly allowed to fail without aborting the whole script via `|| true`, since the script's own summary logic (not `set -e`) determines the exit code:
+  ```bash
+  run_test "render_node_present" test_render_node_present || true
+  ```
+- Diagnostic-only steps that should never affect pass/fail are explicitly commented as such and also use `|| true`, e.g. `report_vaapi_driver || true` in `scripts/smoketests/ser8/test-vaapi.sh`.
+- Validation scripts that assert against `nix eval` output deliberately do NOT wrap the eval call in a fallback — evaluation failures are allowed to propagate so the gate can't silently pass on a masked error (documented explicitly in `scripts/validation/test-actual-module.sh`).
+
+**Nix:**
+- `lib.mkForce` is used sparingly and only where a documented conflict with an upstream module default requires it, e.g. `services.jellyfin.group = lib.mkForce "media";` in `modules/media/jellyfin.nix`.
+
+## Comments
+
+**Rationale-first commenting:** Scripts consistently open with a prose block explaining *why* the script exists and *why* it is built the way it is, not just what it does. Example header pattern from `scripts/smoketests/ser8/all.sh`:
+```bash
+# ser8 smoketest entry point.
+#
+# deploy.yaml names exactly one script per host, so this is the only path
+# `make smoketests-ser8` reaches. Before it existed the entry pointed straight
+# at the media suite, which left the NordVPN checks unreachable...
+```
+This pattern recurs in `scripts/smoketests/lib/fanout.sh`, `scripts/smoketests/ser8/test-vaapi.sh`, `scripts/validation/test-actual-module.sh`, and `scripts/smoketests/lib/services.sh`. Follow it for any new script: explain the failure mode the script prevents, not just its mechanics.
+
+**Inline comments:** Used to justify non-obvious choices (timeouts, magic numbers, disabled lint rules), not to restate the code. E.g. "One second of 320x240 keeps the check fast" above `test_vaapi_encode`.
+
+**TODO/FIXME:** Rare and explicit about their own status. Existing instances:
+- `scripts/sops/status.sh:6` and `scripts/sops/add-user.sh:8`: `# FIXME: commenting these out for now since its easier for me to use my gpg key`
+- `modules/common/tmux.nix:3`: `# TODO - host variable for status-bg color`
+
+New TODO/FIXME comments should follow this style — short, specific, and tied to a concrete follow-up, not vague markers.
+
+**License headers:** Every `.nix` and `.sh` file in this repo carries `# SPDX-License-Identifier: GPL-3.0-or-later` as the first (or second, after shebang) line. Preserve this on all new and edited files.
+
+## Function Design
+
+**Shell:**
+- Test predicate functions take explicit positional arguments (`local test_name="$1"`) rather than relying on globals where avoidable, and return `0`/`1` for pass/fail rather than printing ad hoc.
+- Remote command construction consistently uses an array + `printf -v remote_command '%q ' "${remote_args[@]}"` pattern before shipping the command over `ssh`, to avoid quoting bugs:
+  ```bash
+  local remote_args=(sudo -n -u "$service_user" ffmpeg -hide_banner ...)
+  printf -v remote_command '%q ' "${remote_args[@]}"
+  ```
+- HTTP-connectivity helper functions accept `domain`/`service_name` and try HTTPS then HTTP, returning on first success (`_try_host_header`, `_try_resolved_address` in `scripts/smoketests/lib/services.sh`).
+
+**Nix modules:**
+- Modules are small and single-service-scoped (one file per service: `jellyfin.nix`, `sonarr.nix`, `qbittorrent.nix`), aggregated by a group `default.nix`. New services should follow the same one-file-per-service pattern rather than growing an existing file.
+
+## Module Design (Nix)
+
+**Exports:** Nix modules export via the standard `{ config, lib, pkgs, ... }: { ... }` module function signature; no custom export mechanism.
+
+**Grouping:** Related services that form one logical subsystem are grouped under a shared directory imported as a unit by the host (`modules/media/`, `modules/gateway/`, `modules/nordvpn/`, `modules/automation/`, `modules/dns/`). Do not assume every file under `modules/` is active — some remain unimported or commented out; always check the relevant `default.nix` (per project CLAUDE.md).
 
 ---
 
-*Convention analysis: 2026-02-09*
+*Convention analysis: 2026-08-17*

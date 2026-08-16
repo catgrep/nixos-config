@@ -1,634 +1,781 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Monitoring, Alerting, and Log Aggregation on NixOS Homelab
-**Researched:** 2026-02-10
+**Domain:** Self-hosted household web services (Mealie, Donetick, Homebox, Actual Budget) added to an existing NixOS 25.11 host using disko + ZFS root rollback impermanence, sops-nix, and a firebat Caddy local-CA gateway
+**Researched:** 2026-08-16
+**Confidence:** HIGH for nixpkgs module behaviour and repo facts (read directly from pinned `nixos-25.11` sources and this repo), MEDIUM for upstream app behaviour and community-reported issues, LOW-to-MEDIUM for Google Takeout export fidelity
+
+## Repo Facts This Research Is Grounded In
+
+These were verified by reading the repository, not assumed.
+
+| Fact | Location | Why it matters |
+|------|----------|----------------|
+| `nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11"` | `flake.nix:7` | All module behaviour below is read from that exact branch |
+| `system.stateVersion = "24.11"` on ser8 | `hosts/ser8/configuration.nix:276` | Silently selects `postgresql_16`, not 17 |
+| `zfs rollback -r rpool/local/root@blank` in `initrd.postDeviceCommands` | `hosts/ser8/configuration.nix:88-89` | Root wipes every boot before any service starts |
+| `/var/lib/private` persisted with `mode = "0700"` | `hosts/ser8/impermanence.nix` | Already the correct pattern for `DynamicUser` services |
+| `/var/lib/postgresql` persisted with no user/group | `hosts/ser8/impermanence.nix` | Lands as `root:root 0755`; postgres needs `0700 postgres:postgres` on `$PGDATA` |
+| `services.postgresql` is **not enabled anywhere** | verified by `rg` | Mealie will be the first Postgres consumer on this host |
+| `backup/backups` dataset has `dedup = "on"`, mounted at `/mnt/backups` | `hosts/ser8/disko-config.nix:256-261` | The intended backup target has ZFS dedup enabled |
+| Caddyfile global block sets `local_certs` and `skip_install_trust` | `modules/gateway/Caddyfile:1-9` | The local root CA is never auto-installed on any client |
+| Existing vhosts hand-roll `header_up Upgrade` / `Connection "Upgrade"` | `modules/gateway/Caddyfile` (frigate, hass) | A pattern that is wrong to copy for the four new services |
+| Ports already claimed on ser8: 1883, 5000, 6767, 6789, 7878, 8080, 8085, 8096, 8123, 8554, 8555, 8989, 9090, 9134, 9696, 9707-9711 | `rg` across `hosts/ser8`, `modules/media`, `modules/automation` | Collision surface for the four new default ports |
+
+---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data loss, or major issues.
+### Pitfall 1: Persisting `/var/lib/<service>` for a `DynamicUser` service breaks the service
 
-### Pitfall 1: Loki State Lost on ser8 Reboot (Impermanence) -- But Loki Runs on firebat
+**What goes wrong:**
+`services.mealie` and `services.actual` in nixpkgs 25.11 both set `DynamicUser = true` with `StateDirectory`.
+systemd therefore creates the real state directory at `/var/lib/private/mealie` and `/var/lib/private/actual`, and leaves `/var/lib/mealie` and `/var/lib/actual` as symlinks into `private/`.
+The instinctive impermanence entry is `"/var/lib/mealie"`, which bind-mounts a real directory onto the path where systemd needs to place a symlink.
+The unit then fails at state-directory setup, or systemd silently writes state somewhere the persistence layer is not watching.
 
-**What goes wrong:** You instinctively deploy Loki on ser8 (where most services live) and forget that ser8 rolls back root on every boot. Loki's index, chunks, WAL, and compactor state all live under `/var/lib/loki/` by default. After reboot, every log ever ingested is gone. Promtail's positions file on ser8 is also wiped, causing it to re-send all journald logs on next boot, creating massive duplicates in Loki.
+**Why it happens:**
+Every other service in this repo's persistence list (`jellyfin`, `sonarr`, `radarr`, `frigate`, `hass`) uses a static user, so `/var/lib/<name>` is the correct entry for them.
+Mealie and Actual break that symmetry and nothing in the option docs flags it.
+This is [impermanence issue #93](https://github.com/nix-community/impermanence/issues/93), which the maintainers describe as possibly unfixable.
 
-**Why it happens:** ser8 uses ZFS "Erase Your Darlings" (`zfs rollback -r rpool/local/root@blank` in `initrd.postDeviceCommands`). Only directories explicitly listed in `environment.persistence."/persist".directories` survive. firebat has a standard ext4 root with no rollback -- state naturally persists there.
+**How to avoid:**
+Do **not** add `/var/lib/mealie` or `/var/lib/actual` to `environment.persistence`.
+This repo already persists `{ directory = "/var/lib/private"; mode = "0700"; }`, which covers both services correctly: systemd creates the per-service subdirectory inside the bind mount at runtime with the right ownership.
+Add a comment in `hosts/ser8/impermanence.nix` recording *why* those two paths are deliberately absent, otherwise a future edit will "helpfully" add them.
+If `/var/lib/private` ever ends up `0755`, DynamicUser services refuse to start ([impermanence issue #254](https://github.com/nix-community/impermanence/issues/254)); keep the explicit `mode = "0700"`.
 
-**Consequences:** Complete log data loss on every ser8 reboot. If Loki is on firebat (correct) but Promtail runs on ser8 without persisting its positions file, you get duplicate log ingestion after every reboot -- potentially millions of duplicate entries flooding Loki.
+**Warning signs:**
+`systemctl status mealie` reporting `Failed to set up special execution directory in /var/lib`.
+`ls -l /var/lib/mealie` showing a symlink to `private/mealie` is **normal** and not a fault; `/var/lib/private` is `0700` root-only, so it only resolves for root or the service itself.
+The real fault signal is the unit failing to start, or `/persist/var/lib/private/` being empty after a successful run.
 
-**Prevention:**
-1. Deploy Loki on firebat (where Prometheus and Grafana already run). firebat has persistent ext4 storage with no rollback.
-2. Deploy Promtail on ALL hosts (ser8, firebat, pi4) to ship their local journald logs to Loki on firebat.
-3. On ser8, persist Promtail's positions file through impermanence:
-   ```nix
-   # In hosts/ser8/impermanence.nix
-   environment.persistence."/persist".directories = [
-     # ... existing entries ...
-     "/var/lib/promtail"  # Promtail positions file
-   ];
-   ```
-4. Configure Promtail to store positions in a persistent path:
-   ```nix
-   services.promtail.configuration.positions.filename = "/var/lib/promtail/positions.yaml";
-   ```
-5. Do NOT use `/tmp/positions.yaml` (default in many examples) -- this is wiped on every boot even without impermanence.
-
-**Detection:** After ser8 reboot, check `wc -l /var/lib/promtail/positions.yaml`. If empty or missing, positions were not persisted. Check Loki for duplicate timestamps from ser8 after reboot.
-
-**Phase:** Phase 1 (Loki + Promtail infrastructure). This is the single most impactful decision -- wrong host = data loss on every reboot.
-
-**Confidence:** HIGH -- confirmed from examining `hosts/ser8/impermanence.nix` and `hosts/ser8/configuration.nix` (ZFS rollback at line 86). The positions file behavior is documented in [Grafana Loki troubleshooting docs](https://grafana.com/docs/loki/latest/send-data/promtail/troubleshooting/).
+**Phase to address:**
+The impermanence/persistence foundation phase, before any of the four services is enabled.
 
 ---
 
-### Pitfall 2: Loki 3.x Requires TSDB + v13 Schema or Refuses to Start
+### Pitfall 2: Homebox uses a static user, so `/var/lib/homebox` is NOT covered by `/var/lib/private`
 
-**What goes wrong:** You copy a Loki configuration from an older blog post or the NixOS wiki that uses `boltdb-shipper` index type and `v11` or `v12` schema. Loki 3.x (which is what nixpkgs 25.05 ships) starts up but immediately fails with a configuration error because structured metadata is enabled by default in Loki 3.x and requires TSDB index with v13 schema.
+**What goes wrong:**
+`services.homebox` in nixpkgs 25.11 does **not** use `DynamicUser`.
+It declares `users.users.homebox` as a normal system user and uses `StateDirectory = "homebox"`, so its SQLite database, uploaded attachments, and item photos live in a real `/var/lib/homebox`.
+If persistence is written by pattern-matching on "these are the new services, and Mealie/Actual are covered by `/var/lib/private`", Homebox is silently missed.
+On the next reboot the root dataset rolls back, Homebox finds no database, runs its migrations against an empty file, and comes up as a brand-new instance.
 
-**Why it happens:** Loki 3.0 made breaking changes: structured metadata is enabled by default, `boltdb-shipper` is deprecated, and the `shared_store` config was removed from shipper configuration. Most NixOS Loki examples online were written for Loki 2.x and use the old schema. The [NixOS wiki Grafana Loki page](https://wiki.nixos.org/wiki/Grafana_Loki) may still show v11/boltdb-shipper examples.
+**Why it happens:**
+The four services look interchangeable from the outside but the four nixpkgs modules make three different lifecycle choices (Mealie/Actual `DynamicUser`, Homebox static user, Donetick not packaged at all).
+The failure is silent: the service starts fine and returns HTTP 200.
 
-**Consequences:** Loki refuses to start entirely. The error message is somewhat opaque -- it mentions structured metadata configuration requirements without clearly stating "use TSDB + v13." You can spend hours debugging a configuration that simply needs a schema version bump.
+**How to avoid:**
+Add `/var/lib/homebox` explicitly to `environment.persistence."/persist".directories` with `user = "homebox"; group = "homebox"; mode = "0700";` (the module sets `UMask = "0077"`).
+Verify by reading `serviceConfig.DynamicUser` for every new service before writing its persistence entry, rather than assuming.
+Cross-check on the deployed host with `systemctl show <unit> -p DynamicUser,StateDirectory`.
 
-**Prevention:**
-1. For any new Loki deployment on nixpkgs 25.05+, use this schema config:
-   ```nix
-   services.loki.configuration = {
-     schema_config.configs = [{
-       from = "2024-01-01";
-       store = "tsdb";
-       object_store = "filesystem";
-       schema = "v13";
-       index = {
-         prefix = "index_";
-         period = "24h";
-       };
-     }];
-   };
-   ```
-2. Do NOT copy `boltdb-shipper` configurations from older guides.
-3. If you must disable structured metadata (not recommended), set `limits_config.allow_structured_metadata = false`.
-4. Always check the Loki version in nixpkgs before choosing a config template: `nix eval nixpkgs#loki.version`.
+**Warning signs:**
+Homebox login page shows the first-run/registration state after a reboot.
+`/persist/var/lib/homebox` does not exist while `/var/lib/homebox` does.
+Item count resets to zero.
 
-**Detection:** Loki service fails to start. `journalctl -u loki` shows errors mentioning structured metadata, schema version, or TSDB requirements.
-
-**Phase:** Phase 1 (Loki deployment). Wrong schema config = Loki will not start at all.
-
-**Confidence:** HIGH -- confirmed via [Loki 3.0 release notes](https://grafana.com/docs/loki/latest/release-notes/v3-0/) and [Loki upgrade guide](https://grafana.com/docs/loki/latest/setup/upgrade/).
+**Phase to address:**
+The Homebox deployment phase; verification must include a real reboot, not just a `systemctl restart`.
 
 ---
 
-### Pitfall 3: Grafana SMTP Password in Nix Store is World-Readable
+### Pitfall 3: Homebox registration default locks you out of your own instance
 
-**What goes wrong:** You configure Grafana's SMTP settings for Gmail alerting using `services.grafana.settings.smtp.password = "your-app-password"`. This works, but the password is written in plaintext to `/nix/store/...grafana.ini` which is world-readable by every user on the system and persisted forever in the Nix store.
+**What goes wrong:**
+The nixpkgs module sets `HBOX_OPTIONS_ALLOW_REGISTRATION = "false"` as a `mkDefault`.
+That is the correct end state, but it means a fresh instance has no way to create the first account.
+The common recovery is to flip it to `"true"`, rebuild, register, flip it back, and rebuild again.
+That window is a live open-signup window on a service already published at `homebox.vofi`.
 
-**Why it happens:** The NixOS Grafana module renders all `services.grafana.settings` into a Grafana configuration file in the Nix store. The Nix store is readable by all users by design. The `services.grafana.settings.smtp.password` option even has a documentation warning: "The contents of this option will end up in a world-readable Nix store."
+**Why it happens:**
+The requirement reads as "registration disabled after initial accounts", which sounds like one-step configuration but is actually a two-state deployment.
 
-**Consequences:** Your Gmail App Password is exposed to any user on firebat and in every Nix store garbage collection snapshot. If the server is ever compromised, the attacker gets SMTP credentials trivially.
+**How to avoid:**
+Sequence deliberately: enable Homebox with registration allowed but **before** adding the Caddy vhost and the AdGuard DNS rewrite, create both household accounts over the Tailscale address or an SSH port-forward, then set registration false, rebuild, and only then publish the vhost.
+Add a smoketest that asserts `HBOX_OPTIONS_ALLOW_REGISTRATION` is `false` in the running unit's environment so a later refactor cannot silently reopen it.
 
-**Prevention:**
-1. Use Grafana's `$__file{/path}` provider to read the password from a file at runtime:
-   ```nix
-   sops.secrets.grafana_smtp_password = {
-     owner = "grafana";
-     group = "grafana";
-     mode = "0400";
-   };
+**Warning signs:**
+The registration form is reachable at `homebox.vofi/register` after the phase is called done.
+`systemctl show homebox -p Environment | grep ALLOW_REGISTRATION` returns `true`.
 
-   services.grafana.settings.smtp = {
-     enabled = true;
-     host = "smtp.gmail.com:587";
-     user = "your-email@gmail.com";
-     password = "$__file{${config.sops.secrets.grafana_smtp_password.path}}";
-     from_address = "your-email@gmail.com";
-     startTLS_policy = "MandatoryStartTLS";
-   };
-   ```
-2. This follows the same pattern already used for `grafana_admin_password` in the existing config (line 60 of `modules/gateway/grafana.nix`).
-3. Add the Gmail App Password to `secrets/firebat.yaml` via `make sops-edit-firebat`.
-
-**Detection:** Run `grep -r 'smtp' /nix/store/*grafana*` -- if you see a plaintext password, you have the problem. With `$__file{}`, you will see only the file path.
-
-**Phase:** Phase 2 (Grafana alerting setup). Must be done before configuring email contact points.
-
-**Confidence:** HIGH -- confirmed by [MyNixOS documentation](https://mynixos.com/nixpkgs/option/services.grafana.settings.smtp.password) which explicitly warns about world-readable Nix store.
+**Phase to address:**
+The Homebox deployment phase, with the ordering encoded in the plan steps, not left to execution improvisation.
 
 ---
 
-### Pitfall 4: Promtail Cannot Read journald Without systemd-journal Group Membership
+### Pitfall 4: Donetick is not in nixpkgs at all
 
-**What goes wrong:** Promtail starts on all hosts, connects to Loki, but sends zero log entries. No errors in Promtail logs -- it silently produces nothing. The journal scrape config looks correct but no logs flow.
+**What goes wrong:**
+There is no `pkgs.donetick` and no `services.donetick` module in `nixos-25.11` or in `master`.
+Verified: `pkgs/by-name/do/donetick/package.nix` returns 404, and `donetick` does not appear in `nixos/modules/module-list.nix` on either branch (Mealie, Actual, and Homebox all do).
+A roadmap that treats all four services as "enable the module, add persistence, add a vhost" will underestimate the Donetick phase by an order of magnitude.
 
-**Why it happens:** On NixOS, the systemd journal files under `/var/log/journal/` (or `/run/log/journal/` for volatile storage) are owned by `root:systemd-journal`. The Promtail service runs as the `promtail` user, which by default is NOT a member of the `systemd-journal` group. Promtail [fails silently](https://github.com/grafana/loki/issues/7836) when it cannot read journal files -- it does not log an error, it just produces no output.
+**Why it happens:**
+The other three are packaged, so the fourth is assumed to be.
+Searches for "donetick nixos" return generic Nix documentation, which is easy to skim past.
 
-**Consequences:** You think the logging pipeline is working (Promtail running, Loki running, Grafana datasource connected) but Loki is completely empty. You waste hours debugging Loki configuration when the problem is a simple Unix permission issue on Promtail.
+**How to avoid:**
+Budget Donetick as its own phase with an explicit packaging decision recorded up front.
+Two viable paths:
 
-**Prevention:**
-1. Add the promtail user to the `systemd-journal` group:
-   ```nix
-   users.users.promtail.extraGroups = [ "systemd-journal" ];
-   ```
-2. Apply this on EVERY host running Promtail (ser8, firebat, pi4).
-3. Alternatively, configure the Promtail systemd service to run with supplementary groups:
-   ```nix
-   systemd.services.promtail.serviceConfig.SupplementaryGroups = [ "systemd-journal" ];
-   ```
-4. Verify journal path: on NixOS with persistent journal (which ser8 has via `/var/log` bind mount to `/persist/var/log`), journals are in `/var/log/journal/`. On hosts with volatile journal, they are in `/run/log/journal/`.
+1. `virtualisation.oci-containers.containers.donetick` using the upstream `donetick/donetick` image on port 2021. Docker is already enabled and `/var/lib/docker` is already persisted on ser8, so this is the lower-risk path. The container's data volume still needs its own persisted host path.
+2. A `buildGoModule` derivation plus a hand-written module. Upstream requires the frontend to be built separately before the server binary embeds it, so this also needs a `buildNpmPackage` stage. Higher maintenance, better fit with the repo's declarative-everything constraint.
 
-**Detection:** Run as promtail user: `sudo -u promtail journalctl --no-pager -n 1`. If "Permission denied" or empty, the group is missing. Also check `id promtail` for group membership.
+Whichever is chosen, record it in PROJECT.md Key Decisions so the choice is not relitigated mid-phase.
 
-**Phase:** Phase 1 (Promtail deployment). Without this, no logs are collected at all.
+**Warning signs:**
+A plan step that says "enable `services.donetick`".
+`nix eval` failing with `The option 'services.donetick' does not exist`.
 
-**Confidence:** HIGH -- confirmed via [Grafana Loki issue #7836](https://github.com/grafana/loki/issues/7836) (silent failure on permission denied) and [NixOS journal permissions discussion](https://github.com/NixOS/nixpkgs/issues/2865).
-
----
-
-## Moderate Pitfalls
-
-### Pitfall 5: Blackbox Exporter Requires Unintuitive Prometheus Relabeling Config
-
-**What goes wrong:** You add `services.prometheus.exporters.blackbox` and a simple scrape job to Prometheus. Prometheus scrapes the blackbox exporter itself instead of using it to probe your target URLs. All probes show the blackbox exporter as healthy, but you have no data about your actual services.
-
-**Why it happens:** The blackbox exporter uses the "multi-target exporter pattern." It does not scrape targets itself -- Prometheus must pass the target URL as a `?target=` parameter. This requires a specific relabel_configs sequence that is not intuitive: (1) copy `__address__` to `__param_target`, (2) copy `__param_target` to `instance`, (3) replace `__address__` with the blackbox exporter's address. Getting any step wrong results in either scraping the exporter itself or broken target resolution.
-
-**Consequences:** Your "uptime monitoring" shows everything as up (because it is only probing the blackbox exporter, which is running). You have no actual HTTP health data for any services. You discover this during an outage when the monitoring was supposed to alert you.
-
-**Prevention:**
-1. Use the exact relabeling pattern from the [Prometheus multi-target exporter guide](https://prometheus.io/docs/guides/multi-target-exporter/):
-   ```nix
-   services.prometheus.scrapeConfigs = [{
-     job_name = "blackbox-http";
-     metrics_path = "/probe";
-     params.module = [ "http_2xx" ];
-     static_configs = [{
-       targets = [
-         "http://ser8.local:8096"  # Jellyfin
-         "http://ser8.local:8989"  # Sonarr
-         # ... more targets
-       ];
-     }];
-     relabel_configs = [
-       {
-         source_labels = [ "__address__" ];
-         target_label = "__param_target";
-       }
-       {
-         source_labels = [ "__param_target" ];
-         target_label = "instance";
-       }
-       {
-         target_label = "__address__";
-         replacement = "localhost:9115";  # blackbox exporter address
-       }
-     ];
-   }];
-   ```
-2. After deploying, verify with `curl 'http://localhost:9115/probe?target=http://ser8.local:8096&module=http_2xx'` -- you should see `probe_success 1`.
-3. Do NOT just add the blackbox exporter to `static_configs.targets` as you would a normal exporter -- this is the #1 mistake.
-
-**Detection:** In Grafana, query `probe_success`. If the metric does not exist, the relabeling is wrong. If the `instance` label shows `localhost:9115` instead of your service URLs, the relabeling is wrong.
-
-**Phase:** Phase 2 (blackbox exporter setup). The relabeling config is correct-or-broken, no middle ground.
-
-**Confidence:** HIGH -- confirmed via [Prometheus official guide](https://prometheus.io/docs/guides/multi-target-exporter/) and [blackbox exporter README](https://github.com/prometheus/blackbox_exporter/blob/master/README.md).
+**Phase to address:**
+A dedicated Donetick packaging phase, ordered before the Google Tasks import phase.
 
 ---
 
-### Pitfall 6: Grafana File-Provisioned Alert Rules Cannot Be Edited in the UI
+### Pitfall 5: Mealie regenerates its session secret and stores images on disk
 
-**What goes wrong:** You declaratively provision Grafana alert rules, notification policies, and contact points via NixOS `services.grafana.provision.alerting`. The rules deploy successfully. Later, you need to tweak an alert threshold or add a label matcher. You open Grafana's UI to edit -- but every provisioned resource is locked and shows "This resource is provisioned and cannot be edited."
+**What goes wrong:**
+Two separate but related failures, both of which pass a naive "does it work?" check.
+First, Mealie generates a token-signing secret inside `DATA_DIR` on first run.
+If `DATA_DIR` is not persisted, the secret is regenerated after every root rollback and every user is logged out on every reboot with no error anywhere.
+Second, recipe images, scraped photos, and user assets are written to disk under `DATA_DIR`, not into PostgreSQL.
+A backup strategy of "pg_dump nightly" therefore restores every recipe with every image broken.
 
-**Why it happens:** Grafana intentionally locks file-provisioned alerting resources to prevent the UI from making changes that would be overwritten on next restart. This is by design in Grafana's [file provisioning system](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/). Unlike dashboards (which have an `allowUiUpdates` option), alerting resources have no such escape hatch when provisioned via files.
+**Why it happens:**
+"Mealie with PostgreSQL" reads as "the state is in Postgres".
+The database restore succeeds, so the backup looks verified until someone opens a recipe.
 
-**Consequences:** Every alert rule change requires a NixOS rebuild and deployment. This is fine for mature, stable rules but terrible during the initial tuning phase where you are adjusting thresholds, silence windows, and notification routing daily. The iteration cycle goes from "click save" to "edit nix, rebuild, deploy, wait for restart."
+**How to avoid:**
+Treat Mealie as having two state stores that must both be backed up and both be persisted: the Postgres database and `DATA_DIR` (`/var/lib/mealie`, physically `/var/lib/private/mealie`).
+The restore test must open a recipe with an uploaded image, not just count rows.
 
-**Prevention:**
-1. **Phase the approach:** Start with alert rules defined ONLY in the Grafana UI during the initial tuning period. Once rules are stable, migrate them to NixOS provisioning for version control.
-2. **Keep Prometheus alert rules in Prometheus** (as already done in `prometheus.nix` lines 142-194). Prometheus `ruleFiles` are hot-reloaded and not subject to this UI-locking issue.
-3. **For Grafana-specific alerts** (Loki log queries, multi-datasource alerts), provision only the contact points and notification policies via NixOS. Create the actual alert rules via the UI until they stabilize.
-4. **If you must provision everything:** Accept that iteration requires rebuilds, and use `make test-firebat` for rapid testing.
+**Warning signs:**
+Users report being logged out after a ser8 reboot.
+Recipe thumbnails render as broken images after a restore drill.
+`/persist/var/lib/private/mealie/recipes/` is empty or absent.
 
-**Detection:** Try editing a provisioned alert rule in Grafana UI. If you see "provisioned" badge and edit is disabled, this is working as designed. Plan your workflow accordingly.
-
-**Phase:** Phase 2 (alerting setup). Decide the provisioning strategy before writing any rules.
-
-**Confidence:** HIGH -- confirmed by [Grafana provisioning docs](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/) and [Grafana blog post](https://grafana.com/blog/2023/09/11/how-to-provision-a-notification-policy-in-grafana-alerting-and-keep-it-editable-in-the-ui/) which documents the API-only workaround.
-
----
-
-### Pitfall 7: Loki Retention Does Not Work Without Compactor Configuration
-
-**What goes wrong:** You set `limits_config.retention_period = "30d"` in Loki and expect old logs to be deleted after 30 days. Months later, Loki's storage directory has grown to fill the disk. Retention never ran.
-
-**Why it happens:** Loki's retention is handled by the compactor component, and by default `compactor.retention_enabled` is `false`. Setting `retention_period` without enabling the compactor's retention does nothing -- the config value is ignored. This is a [well-documented surprise](https://grafana.com/docs/loki/latest/operations/storage/retention/) that catches many users.
-
-**Consequences:** Unbounded disk growth on firebat. Eventually firebat's 512GB NVMe fills up, Loki crashes, and potentially takes Grafana and Prometheus down with it (shared filesystem). A homelab with 4 hosts generating continuous journald logs can produce 1-5 GB/day of compressed log data.
-
-**Prevention:**
-1. Always configure the compactor alongside retention:
-   ```nix
-   services.loki.configuration = {
-     compactor = {
-       working_directory = "/var/lib/loki/compactor";
-       compaction_interval = "10m";
-       retention_enabled = true;
-       retention_delete_delay = "2h";
-       retention_delete_worker_count = 150;
-       delete_request_store = "filesystem";
-     };
-     limits_config = {
-       retention_period = "30d";
-     };
-   };
-   ```
-2. Monitor disk usage with the existing node-exporter filesystem metrics. Add an alert for Loki's data directory.
-3. Start with a conservative retention period (14d) and adjust based on actual disk usage.
-4. Set `storage_config.filesystem.directory` explicitly to a known location so you can monitor it.
-
-**Detection:** Check `du -sh /var/lib/loki/chunks/` periodically. If it grows without bound, retention is not running. Check `journalctl -u loki | grep compactor` for compaction activity.
-
-**Phase:** Phase 1 (Loki deployment). Configure retention from day one -- retrofitting is harder.
-
-**Confidence:** HIGH -- confirmed by [Loki retention documentation](https://grafana.com/docs/loki/latest/operations/storage/retention/) and multiple [community forum posts](https://community.grafana.com/t/loki-k8s-single-binary-log-retention-configuration-not-deleting-logs/78734).
+**Phase to address:**
+Split across the Mealie deployment phase (persistence) and the backup/restore phase (restore drill criteria must name image assets explicitly).
 
 ---
 
-### Pitfall 8: Home Assistant Prometheus Integration Requires Manual configuration.yaml Entry on ser8
+### Pitfall 6: Mealie's `BASE_URL` defaults to `http://localhost:9000` and forwarded headers are ignored
 
-**What goes wrong:** You add a Prometheus scrape job on firebat targeting `http://ser8.local:8123/api/prometheus`. Prometheus gets 404 errors. The `/api/prometheus` endpoint does not exist.
+**What goes wrong:**
+The nixpkgs module hardcodes `BASE_URL = "http://localhost:${toString cfg.port}"` in the unit environment.
+Mealie derives notification links, share links, and OIDC redirect URIs from `BASE_URL`.
+Behind Caddy this produces links that point at localhost and are unusable from any other device.
+Separately, Mealie's server ignores `X-Forwarded-Proto` unless started with `--forwarded-allow-ips`, so even with a corrected `BASE_URL` it can generate `http://` URLs for an `https://` site.
 
-**Why it happens:** Home Assistant's Prometheus integration must be explicitly enabled by adding `prometheus:` to `configuration.yaml`. Unlike many HA integrations, this one IS configured via YAML (not the UI config flow). However, on NixOS, `configuration.yaml` is managed by `services.home-assistant.config`. You must add the `prometheus` key to the Nix config. Additionally, the endpoint requires a Long-Lived Access Token for authentication from external scrapers.
+**Why it happens:**
+The module default is a sensible standalone default and there is no assertion or warning when a reverse proxy is in play.
+The `settings` attrset is freeform, so a typo in `BASE_URL` produces no evaluation error.
 
-**Consequences:** No Home Assistant metrics in Prometheus. You cannot monitor entity states, automation execution counts, or HA internal performance. The scrape job silently fails with 401/404 errors.
+**How to avoid:**
+Set `services.mealie.settings.BASE_URL = "https://mealie.vofi";` and pass the proxy address through `services.mealie.extraOptions = [ "--forwarded-allow-ips" "<firebat-ip>" ]`.
+Confirm the Caddy vhost forwards `X-Forwarded-Proto` (Caddy v2 sets it on `reverse_proxy` by default; verify rather than assume if any `header_up` overrides are added).
+Verify by triggering a password-reset email or copying a share link, not by loading the homepage.
 
-**Prevention:**
-1. Add the Prometheus integration to the HA NixOS config:
-   ```nix
-   services.home-assistant.config.prometheus = {
-     namespace = "hass";
-     filter = {
-       include_domains = [
-         "sensor"
-         "binary_sensor"
-         "switch"
-         "automation"
-         "camera"
-       ];
-     };
-   };
-   ```
-2. Include `"prometheus"` in `extraComponents`:
-   ```nix
-   services.home-assistant.extraComponents = [
-     # ... existing ...
-     "prometheus"
-   ];
-   ```
-3. For Prometheus scraping from firebat, create a Long-Lived Access Token in HA (user profile > Security > Long-Lived Access Tokens) and configure the scrape job with bearer auth:
-   ```nix
-   {
-     job_name = "home-assistant";
-     bearer_token_file = config.sops.secrets.hass_prometheus_token.path;
-     static_configs = [{
-       targets = [ "ser8.local:8123" ];
-     }];
-     metrics_path = "/api/prometheus";
-     scheme = "http";
-   }
-   ```
-4. Store the token in SOPS for the firebat host.
+**Warning signs:**
+Share links or invite links contain `localhost:9000`.
+Any future OIDC integration returns a redirect-URI mismatch.
 
-**Detection:** `curl -H "Authorization: Bearer <token>" http://ser8.local:8123/api/prometheus` -- if 404, the integration is not enabled. If 401, the token is wrong.
-
-**Phase:** Phase 3 (HA monitoring integration). Not blocking for core logging/alerting but needed for complete monitoring.
-
-**Confidence:** HIGH -- confirmed via [Home Assistant Prometheus integration docs](https://www.home-assistant.io/integrations/prometheus/).
+**Phase to address:**
+The Mealie deployment phase; the Caddy vhost step and the `BASE_URL` step belong in the same plan so they cannot drift.
 
 ---
 
-### Pitfall 9: Grafana Unified Alerting vs Prometheus Alertmanager Confusion
+### Pitfall 7: Actual Budget needs a genuinely trusted certificate, and this Caddyfile installs trust nowhere
 
-**What goes wrong:** You have existing Prometheus alert rules in `prometheus.nix` (HostDown, HighDiskUsage, ZFSPoolUnhealthy, etc.). You add Grafana unified alerting. Now you have two separate alerting systems that do not talk to each other. Prometheus fires alerts to nowhere (no alertmanager configured), and Grafana evaluates its own rules independently. You get duplicate alerts for some conditions and no alerts for others.
+**What goes wrong:**
+Actual's web client uses `crypto.subtle` for end-to-end encryption and `SharedArrayBuffer` for its in-browser SQLite engine.
+Both require a secure context: `https://` with a certificate the browser actually trusts, or `http://localhost`.
+The existing Caddy global block sets `local_certs` **and** `skip_install_trust`, so the local root CA is never installed on any client.
+Clicking through the browser interstitial is not sufficient: Chrome refuses to register service workers on an origin with a certificate error, which breaks Actual's PWA and offline behaviour, and the official mobile apps reject a server URL they cannot validate.
+The failure is confusing because the login page renders fine before the crypto paths are exercised.
 
-**Why it happens:** The existing Prometheus config defines `ruleFiles` with alert rules but does NOT configure an alertmanager to send them to. Grafana's unified alerting includes its own built-in Alertmanager. These are separate systems. Adding Grafana alerting does not automatically pick up Prometheus alert rules -- you have to connect them explicitly or choose one approach.
+**Why it happens:**
+Every existing `.vofi` service in this repo tolerates a click-through certificate warning, so nobody has needed to install the CA.
+Actual is the first service on this stack where an untrusted certificate is a hard functional blocker rather than cosmetic.
 
-**Consequences:** Alert rules fire in Prometheus but nobody is notified (no alertmanager). Grafana alerts fire separately. Confusion about which system is authoritative. Potential for "alert fatigue" from duplicates or "alert blind spots" from gaps.
+**How to avoid:**
+Make root-CA distribution an explicit deliverable, not an afterthought.
+The root lives in Caddy's data directory at `pki/authorities/local/root.crt` on firebat.
+Install it on every household laptop and phone that needs Actual.
+On iOS this is two steps and the second is routinely missed: install the profile under Settings > General > VPN & Device Management, **then** enable it under Settings > General > About > Certificate Trust Settings.
+On Android, user-installed CAs are trusted by browsers but not by apps by default on Android 7+, which affects the Actual mobile app specifically.
+Firefox uses its own trust store and needs a separate import.
+Consider replacing Caddy's auto-generated root with a long-lived CA you control via a `pki { ca ... }` block, so the root does not change if Caddy's data directory is ever lost and every device does not need re-enrolling.
 
-**Prevention:**
-1. **Choose one approach for notifications.** Recommended: Use Grafana's built-in Alertmanager for ALL notifications. Configure Prometheus to forward its alerts to Grafana's Alertmanager.
-   ```nix
-   services.prometheus.alertmanagers = [{
-     static_configs = [{
-       targets = [ "localhost:9093" ];  # Grafana's built-in Alertmanager
-     }];
-   }];
-   ```
-   Note: Grafana's internal Alertmanager listens on port 9093 when unified alerting is enabled.
-2. **Alternatively**, keep Prometheus rules as the source of truth for metric-based alerts, and use Grafana alerting ONLY for Loki log-based alerts. This avoids duplication but requires configuring a separate Alertmanager for Prometheus.
-3. **Migrate gradually**: Keep existing Prometheus rules during the transition. Add Grafana alerting for NEW alert types (log-based, multi-datasource). Once Grafana alerting is proven, consider migrating Prometheus rules into Grafana.
-4. The key question to decide upfront: "Where do alert notifications originate?" Pick one answer.
+Also: Caddy's internally issued **leaf** certificates default to a 12h lifetime.
+That is fine while Caddy is running and renewing, but a firebat outage longer than 12h means every `.vofi` service starts serving expired certificates.
 
-**Detection:** Check `http://localhost:9090/alerts` (Prometheus) -- if alerts are firing but nobody is notified, alertmanager is not configured. Check `Grafana > Alerting > Alert Rules` -- if Grafana rules exist for the same conditions as Prometheus rules, you have duplication.
+**Warning signs:**
+Actual shows a blank screen or a `SharedArrayBufferMissing` fatal error after login.
+The Actual mobile app refuses the server URL.
+Browser console reports `crypto.subtle is undefined`.
 
-**Phase:** Phase 2 (alerting strategy). Must be decided before writing any alert rules.
-
-**Confidence:** HIGH -- confirmed via [Grafana alerting architecture docs](https://grafana.com/docs/grafana/latest/alerting/set-up/configure-alertmanager/) and examination of current `prometheus.nix` (alert rules defined but no alertmanager configured).
-
----
-
-### Pitfall 10: Loki Datasource Must Be Provisioned Separately in Grafana
-
-**What goes wrong:** You deploy Loki, confirm it is receiving logs, but when you go to Grafana to query logs, Loki does not appear as a datasource. You can only query Prometheus (the existing provisioned datasource).
-
-**Why it happens:** The current Grafana provisioning in `modules/gateway/grafana.nix` only provisions a Prometheus datasource (lines 72-84). Adding Loki as a service does not automatically add it as a Grafana datasource. You must explicitly provision it.
-
-**Consequences:** Loki is collecting logs but you cannot visualize or search them in Grafana. The entire logging pipeline is invisible.
-
-**Prevention:**
-1. Add Loki to the existing datasource provisioning:
-   ```nix
-   services.grafana.provision.datasources.settings.datasources = [
-     {
-       name = "Prometheus";
-       type = "prometheus";
-       access = "proxy";
-       url = "http://localhost:9090";
-       isDefault = true;
-     }
-     {
-       name = "Loki";
-       type = "loki";
-       access = "proxy";
-       url = "http://localhost:3100";
-       jsonData = {
-         maxLines = 1000;
-       };
-     }
-   ];
-   ```
-2. Since both Loki and Grafana run on firebat, use `localhost:3100` (Loki's default port).
-3. Open the firewall for Loki only if Promtail on remote hosts needs to reach it (port 3100). For firebat-local Grafana access, no firewall rule needed.
-
-**Detection:** In Grafana, go to Connections > Data Sources. If Loki is not listed, it was not provisioned.
-
-**Phase:** Phase 1 (Loki deployment). Without this, you deploy the logging stack but cannot use it.
-
-**Confidence:** HIGH -- confirmed by examining existing `modules/gateway/grafana.nix` which only provisions Prometheus.
+**Phase to address:**
+A gateway/TLS-trust phase that precedes the Actual deployment phase.
+This pitfall alone justifies ordering Actual last among the four.
 
 ---
 
-### Pitfall 11: Promtail on Remote Hosts Needs Network Access to Loki on firebat
+### Pitfall 8: Duplicated COOP/COEP headers and subpath hosting break Actual
 
-**What goes wrong:** Promtail starts on ser8 and pi4 but cannot push logs to Loki. Connection refused or timeout errors. Logs accumulate in Promtail's WAL but never reach Loki.
+**What goes wrong:**
+Actual's server sets `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` itself.
+If the reverse proxy also sets them, browsers see duplicate values (`require-corp, require-corp`), invalidate the policy, and `SharedArrayBuffer` becomes unavailable, producing a fatal error.
+Separately, Actual does not support being served from a subpath: it must live at the root of a hostname.
 
-**Why it happens:** Loki on firebat listens on a port (default 3100) but firebat's firewall does not allow incoming connections on that port. The current `modules/gateway` config only opens ports 80, 443, 2019 (Caddy), 9090 (Prometheus), and 3000 (Grafana). Port 3100 is not exposed. Additionally, Promtail on remote hosts must be configured with `http://firebat.local:3100` (or the IP), not `http://localhost:3100`.
+**Why it happens:**
+"Add the security headers" is generic reverse-proxy advice that is actively harmful here.
 
-**Consequences:** Logs from ser8 (media stack, Frigate, HA) and pi4 (AdGuard) never reach Loki. Only firebat's own logs are ingested. You think the system works because Grafana shows some logs (firebat's), but you are missing the most important ones (ser8 services).
+**How to avoid:**
+The `actual.vofi` Caddy vhost should be a bare `reverse_proxy ser8.local:<port>` with no header manipulation.
+If any global Caddy header snippet exists or is added later, exclude this vhost from it.
+Keep Actual at `actual.vofi`, never at `something.vofi/actual`.
 
-**Prevention:**
-1. Open port 3100 on firebat's firewall:
-   ```nix
-   networking.firewall.allowedTCPPorts = [ 3100 ];
-   ```
-2. Configure Promtail on ser8 and pi4 to push to firebat:
-   ```nix
-   services.promtail.configuration.clients = [{
-     url = "http://firebat.local:3100/loki/api/v1/push";
-   }];
-   ```
-3. Use `firebat.local` (mDNS) rather than static IP -- the existing Prometheus scrape configs already use `.local` names successfully (line 30-33 of `prometheus.nix`).
-4. Verify connectivity from ser8: `curl http://firebat.local:3100/ready` should return "ready".
+**Warning signs:**
+`curl -sI https://actual.vofi | grep -i cross-origin` returning two values for either header.
 
-**Detection:** On ser8, `journalctl -u promtail | grep -i error` will show connection failures. On firebat, `curl http://localhost:3100/loki/api/v1/tail` should stream incoming logs when Promtail is pushing.
-
-**Phase:** Phase 1 (Promtail deployment). This is a multi-host networking concern.
-
-**Confidence:** HIGH -- confirmed by examining `modules/gateway/caddy.nix` firewall rules and the existing pattern of cross-host communication via `.local` mDNS.
+**Phase to address:**
+The Actual deployment phase.
 
 ---
 
-## Minor Pitfalls
+### Pitfall 9: PostgreSQL major version is chosen silently by `stateVersion`
 
-### Pitfall 12: Gmail App Password Has 16-Character Format and TLS Requirements
+**What goes wrong:**
+ser8 sets `system.stateVersion = "24.11"`.
+The NixOS `postgresql` module picks its default package from `stateVersion`, so enabling Postgres for the first time on this host yields **PostgreSQL 16**, not the 25.11 default of 17.
+That is not itself wrong, but it is invisible, and it becomes a trap the first time someone "cleans up" by pinning `postgresql_17` or bumping `stateVersion`: the server refuses to start against an existing 16 data directory with `database files are incompatible with server`, and recovery requires an explicit `pg_upgrade` while the data directory lives on an impermanence-managed path.
 
-**What goes wrong:** You configure Grafana SMTP with your regular Gmail password. Authentication fails. Or you use an App Password but set the wrong TLS policy, and emails silently fail to send.
+**Why it happens:**
+`services.postgresql.enable = true` arrives implicitly via `services.mealie.database.createLocally = true`, so Postgres gets enabled without anyone consciously choosing a version.
 
-**Why it happens:** Gmail requires App Passwords (not regular passwords) when accessed by third-party SMTP clients. App Passwords are 16 characters with spaces (format: `xxxx xxxx xxxx xxxx`). Additionally, Gmail requires STARTTLS on port 587 -- using port 465 (implicit TLS) or port 25 (no TLS) will not work.
+**How to avoid:**
+Pin `services.postgresql.package = pkgs.postgresql_17;` explicitly from the very first deploy, before any data exists, and record the pin in PROJECT.md Key Decisions with a note that changing it later requires `pg_upgrade` plus a fresh restore test.
+Choosing the pin on day one costs nothing; choosing it after data exists costs a migration.
 
-**Prevention:**
-1. Generate an App Password: Google Account > Security > 2-Step Verification > App Passwords.
-2. Use the exact SMTP config:
-   - Host: `smtp.gmail.com:587`
-   - `startTLS_policy = "MandatoryStartTLS"`
-   - `skip_verify = false`
-3. Store the App Password in SOPS, not in Nix config (see Pitfall 3).
-4. If the App Password contains special characters (`#`, `;`), ensure Grafana's config file handles quoting correctly. The `$__file{}` provider avoids this issue entirely since it reads raw file content.
+**Warning signs:**
+`SHOW server_version;` returning a version nobody chose.
+`/persist/var/lib/postgresql/` containing more than one version subdirectory.
 
-**Detection:** After configuring SMTP, use Grafana's "Test" button on the email contact point. If it fails, check `journalctl -u grafana` for SMTP errors (auth failure, TLS handshake failure, connection refused).
-
-**Phase:** Phase 2 (alerting contact points).
-
-**Confidence:** HIGH -- confirmed via [Grafana community forums](https://community.grafana.com/t/setup-smtp-with-gmail/85815) and [Grafana email alerting docs](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-email/).
+**Phase to address:**
+The Mealie/PostgreSQL foundation phase, as the first configuration written.
 
 ---
 
-### Pitfall 13: Loki WAL Disk Full Causes Silent Log Loss (No Error, No Crash)
+### Pitfall 10: PostgreSQL data directory ownership race on first boot under impermanence
 
-**What goes wrong:** firebat's disk fills up. Loki does not crash -- it keeps running and accepting writes. But the WAL (Write Ahead Log) cannot persist incoming data. If Loki restarts while in this state, all unwritten logs are lost permanently. There is no visible error in the Loki API -- incoming push requests still return 200 OK.
+**What goes wrong:**
+`/var/lib/postgresql` is already in this repo's persistence list with no `user`/`group`, so impermanence creates it as `root:root 0755`.
+PostgreSQL requires `$PGDATA` (`/var/lib/postgresql/<major>`) to be `0700` owned by `postgres`, and refuses to start otherwise.
+Impermanence's declared permissions and ownership **override** what `config.users.*` and later tmpfiles rules want, and impermanence's directory creation runs very early, potentially before the `postgres` user exists.
+The result is either a first-boot failure that appears to resolve itself on the second rebuild (masking the real ordering problem), or a persistent `data directory has invalid permissions` refusal.
 
-**Why it happens:** Loki's WAL has an explicit design decision: "When the underlying WAL disk is full, Loki will not fail incoming writes, but neither will it log them to the WAL." This means Promtail thinks delivery was successful, but the data was silently dropped.
+**Why it happens:**
+This repo's own impermanence file carries the comment "Don't specify user/group for services that might not exist yet", which is the correct instinct for the media services but leaves Postgres with wrong ownership.
+The commented-out line `# "d /persist/var/lib/postgresql 0700 postgres postgres -"` in `hosts/ser8/impermanence.nix` shows this was already noticed once and left unresolved.
 
-**Prevention:**
-1. Monitor firebat's disk usage and set an aggressive threshold. Add a Prometheus alert:
-   ```yaml
-   - alert: LokiStorageHigh
-     expr: (node_filesystem_avail_bytes{instance=~"firebat.*",mountpoint="/"} / node_filesystem_size_bytes{instance=~"firebat.*",mountpoint="/"}) * 100 < 20
-     for: 10m
-     labels:
-       severity: warning
-     annotations:
-       summary: "firebat disk is above 80% - Loki data at risk"
-   ```
-2. Set Loki's data directory to a known location and configure conservative retention (see Pitfall 7).
-3. Monitor the Prometheus metric `loki_ingester_wal_disk_full_failures_total` -- any non-zero value means data was silently dropped.
-4. firebat has a 512GB NVMe with ext4. With Prometheus (30d retention, ~10GB), Grafana, and Caddy already on this disk, budget Loki's storage carefully. Start with 14d retention and 50GB cap.
+**How to avoid:**
+`/var/lib/nixos` is already persisted, so UID/GID assignments are stable across rollbacks; that removes the worst of the race but does not fix initial creation on a host that has never run Postgres.
+Set the persistence entry explicitly to `{ directory = "/var/lib/postgresql"; user = "postgres"; group = "postgres"; mode = "0750"; }` and let the NixOS postgresql module's own tmpfiles rule create the `0700` version subdirectory inside it.
+Test the very first Postgres boot with `make test-ser8` (temporary activation) plus a real reboot, so an ordering bug surfaces before it is baked into the boot default.
 
-**Detection:** The ONLY way to detect this is via the `loki_ingester_wal_disk_full_failures_total` metric. Check it periodically or set an alert on it.
+**Warning signs:**
+`FATAL: data directory "/var/lib/postgresql/16" has invalid permissions`.
+`postgresql.service` failing on first boot but succeeding after a manual `chown`.
+A manual `chown` being needed at all: that is the tell that the declarative path is wrong.
 
-**Phase:** Phase 1 (Loki deployment). Set retention and monitoring from day one.
-
-**Confidence:** HIGH -- confirmed via [Loki WAL documentation](https://grafana.com/docs/loki/latest/operations/storage/wal/).
+**Phase to address:**
+The impermanence/persistence foundation phase, verified by a cold boot.
 
 ---
 
-### Pitfall 14: Blackbox Exporter TLS Verification Fails on Self-Signed Caddy Certificates
+### Pitfall 11: `cp` of a live SQLite database
 
-**What goes wrong:** You configure the blackbox exporter to probe HTTPS endpoints like `https://jellyfin.vofi.app`. The probes fail because Caddy uses `local_certs` (self-signed certificates from Caddy's local CA). The blackbox exporter does not trust this CA.
+**What goes wrong:**
+Three of the four services are SQLite-backed, and at least Homebox is explicitly in WAL mode: the nixpkgs module hardcodes `HBOX_DATABASE_SQLITE_PATH = ".../homebox.db?_pragma=busy_timeout=999&_pragma=journal_mode=WAL&_fk=1"`.
+A backup script that does `cp homebox.db /mnt/backups/` copies the main file without `-wal` and `-shm`, so recent committed transactions are silently missing, and a copy taken mid-write is corrupt on open.
+The backup job exits 0 either way.
 
-**Why it happens:** The current Caddyfile (line 3) uses `local_certs`, meaning Caddy generates certificates signed by its own CA. These are not trusted by the system's certificate store. The blackbox exporter's `http_2xx` module verifies TLS by default.
+**Why it happens:**
+`cp` is the obvious thing and it produces a file of plausible size.
+Corruption is only discovered at restore time, which is exactly when it matters.
 
-**Consequences:** All HTTPS probes show as failed, making the uptime dashboard useless for local services.
+**How to avoid:**
+Use `sqlite3 <src> ".backup '<dst>'"` (online backup API, safe against concurrent writers) or `sqlite3 <src> "VACUUM INTO '<dst>'"` (single-transaction snapshot, compacted).
+Follow every backup with `sqlite3 <dst> "PRAGMA integrity_check;"` and fail the unit if the result is not `ok`.
+`VACUUM INTO` gotchas to encode in the script: the destination must not already exist, the output reverts to DELETE journal mode regardless of the source, and it can transiently need roughly double the database size in free space.
 
-**Prevention:**
-1. Configure blackbox probes against the HTTP (non-TLS) endpoints directly:
-   ```
-   http://ser8.local:8096     # Jellyfin (skip Caddy entirely)
-   http://ser8.local:8989     # Sonarr
-   ```
-2. Or add a blackbox module that disables TLS verification:
-   ```nix
-   services.prometheus.exporters.blackbox.configFile = pkgs.writeText "blackbox.yml" ''
-     modules:
-       http_2xx:
-         prober: http
-         timeout: 10s
-       http_2xx_insecure:
-         prober: http
-         timeout: 10s
-         http:
-           tls_config:
-             insecure_skip_verify: true
-   '';
-   ```
-3. For Tailscale endpoints (`*.shad-bangus.ts.net`), TLS verification WILL work because these use real Let's Encrypt certificates. Probe these endpoints to verify external accessibility.
-4. Best approach: probe the direct service ports (HTTP) for health, and probe Tailscale HTTPS URLs for external accessibility.
+**Warning signs:**
+A backup script containing `cp`, `rsync`, or `tar` pointed at a `.db` file while the service is running.
+Backup file sizes that never change even though the app is being used, which means you are copying a stale main file while all writes sit in the WAL.
 
-**Detection:** `probe_success{instance=~".*vofi.*"} == 0` with `probe_http_status_code == 0` (connection failed, not a 4xx/5xx).
-
-**Phase:** Phase 2 (blackbox exporter configuration).
-
-**Confidence:** HIGH -- confirmed by examining `modules/gateway/Caddyfile` line 3 (`local_certs`) and standard TLS verification behavior.
+**Phase to address:**
+The backup/restore phase, with `PRAGMA integrity_check` as a hard acceptance criterion.
 
 ---
 
-### Pitfall 15: NixOS Promtail Module Has Limited Configuration Options
+### Pitfall 12: Actual Budget's state is not a single SQLite file
 
-**What goes wrong:** You try to use NixOS `services.promtail` options for fine-grained control (setting the user, configuring systemd service properties, adding supplementary groups). The module is minimal -- it only provides `enable`, `configuration`, `configFile`, and `extraFlags`. There is no `user`, `group`, or `serviceConfig` override.
+**What goes wrong:**
+Actual splits its state: `serverFiles` holds `account.sqlite` and session data, and `userFiles` holds each budget as an opaque binary blob.
+The nixpkgs module defaults both under `/var/lib/actual`.
+A backup that finds and dumps every `*.sqlite` under the data directory captures accounts and sessions but **not** the budgets, which are the actual data.
+The restore produces a working login with zero budgets.
 
-**Why it happens:** The NixOS Promtail module at `nixos/modules/services/monitoring/promtail.nix` is intentionally minimal. It creates a systemd service that runs as a DynamicUser (or the promtail user) with hardcoded service settings. Customizing beyond what the module exposes requires systemd service overrides.
+**Why it happens:**
+"SQLite service" implies one file to back up.
+The `.sqlite` glob strategy that works for Homebox and Donetick fails here.
 
-**Consequences:** You cannot simply set `services.promtail.user = "root"` or add group memberships through the module. You must use `systemd.services.promtail.serviceConfig` overrides and `users.users.promtail` to customize the runtime environment.
+**How to avoid:**
+Back up the whole `/var/lib/actual` tree: `serverFiles` via the SQLite backup API and `userFiles` as a file copy (the blobs are written atomically on sync, not held open).
+The restore drill must open a budget and confirm transactions are present, not just confirm login works.
 
-**Prevention:**
-1. Use `systemd.services.promtail.serviceConfig` for service-level customizations:
-   ```nix
-   systemd.services.promtail.serviceConfig = {
-     SupplementaryGroups = [ "systemd-journal" ];
-   };
-   ```
-2. Define the user explicitly if needed:
-   ```nix
-   users.users.promtail = {
-     isSystemUser = true;
-     group = "promtail";
-     extraGroups = [ "systemd-journal" ];
-   };
-   users.groups.promtail = {};
-   ```
-3. Check if the NixOS module creates a DynamicUser (which complicates group membership). If so, you may need to disable DynamicUser and manage the user yourself.
+**Warning signs:**
+Backup archive for Actual is a few hundred KB.
+Restore drill checklist stops at "logged in successfully".
 
-**Detection:** After deployment, `systemctl show promtail | grep -i user` reveals how the service runs. `id promtail` shows group memberships.
-
-**Phase:** Phase 1 (Promtail deployment on all hosts).
-
-**Confidence:** MEDIUM -- based on NixOS module structure patterns. The exact module behavior should be verified at deployment time by checking `nixpkgs/nixos/modules/services/monitoring/promtail.nix`.
+**Phase to address:**
+The backup/restore phase; write the Actual restore criterion as "a named budget opens with its transactions".
 
 ---
 
-### Pitfall 16: Existing Prometheus Alert Rules Fire But Nobody Is Notified
+### Pitfall 13: `pg_dump` inside a hardened systemd unit fails on peer auth or cannot write its output
 
-**What goes wrong:** Your existing Prometheus config (`modules/gateway/prometheus.nix`) already defines alert rules (HostDown, HighDiskUsage, HighMemoryUsage, ZFSPoolUnhealthy, HighCPUTemperature, CameraStorageHigh). These rules ARE being evaluated. They ARE firing (visible at `http://localhost:9090/alerts`). But nobody receives any notification because there is no alertmanager configured.
+**What goes wrong:**
+Three overlapping systemd hardening traps, each producing a different confusing error:
 
-**Why it happens:** Prometheus alert rules define WHEN to alert. An Alertmanager defines HOW to notify. The current config has rules but no `alertmanagers` configuration pointing to any notification system. The rules are decorative.
+1. `PrivateUsers=true` remaps UIDs inside a user namespace, so the UID PostgreSQL reads from `SO_PEERCRED` on the unix socket does not match the expected role. Result: `FATAL: Peer authentication failed for user "postgres"` even though `User=postgres` is set. Note that the nixpkgs `actual` and `homebox` modules both set `PrivateUsers = true`; if a backup unit is written by copying one of their hardening blocks, this is inherited.
+2. `ProtectSystem=strict` makes the whole filesystem read-only, so the dump cannot be written to `/mnt/backups` without an explicit `ReadWritePaths`.
+3. `ProtectHome=true` hides `~/.pgpass`, so any password-based fallback silently fails.
 
-**Consequences:** You already have monitoring blind spots. If ser8's ZFS pool becomes unhealthy TODAY, the alert fires in Prometheus, but you will not know until you happen to check the Prometheus UI.
+**Why it happens:**
+Hardening directives are copied wholesale from an existing service or a hardening blog post, and each of these three is individually reasonable.
 
-**Prevention:**
-1. This is not a new pitfall -- it is a pre-existing gap that this milestone addresses.
-2. The first priority of this milestone should be connecting the existing Prometheus rules to a notification path (Gmail via Grafana alerting).
-3. See Pitfall 9 for the decision about Grafana vs Prometheus Alertmanager.
+**How to avoid:**
+For the Postgres dump unit: `Type=oneshot`, `User=postgres`, **no** `PrivateUsers`, `ProtectSystem=strict` with `ReadWritePaths=/mnt/backups`, and use the unix socket with peer auth so no password exists anywhere.
+Add hardening in phases and treat `PrivateUsers` as the last and most likely to break.
+For the SQLite dumps, the unit needs read access to each service's state directory: under `DynamicUser` those live in `/var/lib/private/<svc>` which is `0700` root-only, so the backup unit must run as root or be granted the specific paths. Simply setting `User=backup` will fail with permission denied.
 
-**Detection:** Visit `http://firebat.local:9090/alerts`. If any alerts show as "firing" or "pending," they have been detected but not notified.
+**Warning signs:**
+`FATAL: Peer authentication failed`.
+`Read-only file system` on the dump path.
+A backup unit that works when run by hand as root but fails as a timer.
 
-**Phase:** Phase 2 (alerting infrastructure). This should be one of the first things configured.
-
-**Confidence:** HIGH -- confirmed by examining `modules/gateway/prometheus.nix` lines 140-196 (rules defined) with no `alertmanagers` configuration anywhere in the file.
-
----
-
-### Pitfall 17: Promtail Sends Massive Backlog After ser8 Reboot If Journal Is Large
-
-**What goes wrong:** After a ser8 reboot, Promtail starts and reads from the beginning of its configured `max_age` window in the journal. If `max_age` is set to a large value (or not set at all, defaulting to 7 years), Promtail reads and sends the ENTIRE persisted journal history to Loki. Since ser8 persists `/var/log` via bind mount (line 176-179 in impermanence.nix), the journal can be substantial.
-
-**Why it happens:** On a fresh Promtail start with no positions file (or a stale one), `max_age` determines how far back to read. The journal at `/persist/var/log/journal/` accumulates continuously. ser8's journald config keeps up to 1GB of journal data (`SystemMaxUse=1G` in monitoring.nix line 160).
-
-**Consequences:** After reboot, Promtail floods Loki with up to 1GB of log data, which may include logs that were already ingested before the reboot. This causes duplicate entries and a spike in Loki resource usage. On a small homelab, this can temporarily overwhelm Loki.
-
-**Prevention:**
-1. Set a conservative `max_age` in Promtail's journal scrape config:
-   ```nix
-   services.promtail.configuration.scrape_configs = [{
-     job_name = "journal";
-     journal = {
-       max_age = "12h";  # Only send logs from last 12 hours on fresh start
-       labels.job = "systemd-journal";
-     };
-   }];
-   ```
-2. Persist the positions file on ser8 (see Pitfall 1). This is the primary prevention.
-3. Consider `services.journald.extraConfig = "SystemMaxUse=500M"` to limit journal size.
-4. With the positions file persisted, Promtail resumes from where it left off -- no backlog.
-
-**Detection:** After reboot, check `journalctl -u promtail --since "5min ago"` for rapid log shipping activity. Check Loki ingestion rate metric `loki_distributor_bytes_received_total` for a spike.
-
-**Phase:** Phase 1 (Promtail on ser8). Directly related to Pitfall 1.
-
-**Confidence:** HIGH -- confirmed by examining impermanence config (journal is persisted) and [Promtail journal configuration docs](https://grafana.com/docs/loki/latest/send-data/promtail/configuration/).
+**Phase to address:**
+The backup/restore phase.
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 14: The intended backup target has ZFS dedup enabled
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Phase 1: Loki Deployment | Wrong host (ser8 vs firebat) | Deploy on firebat where state naturally persists (Pitfall 1) |
-| Phase 1: Loki Deployment | boltdb-shipper schema in old examples | Use TSDB + v13 schema for Loki 3.x (Pitfall 2) |
-| Phase 1: Loki Deployment | No retention configured | Enable compactor + retention from day one (Pitfall 7) |
-| Phase 1: Loki Deployment | WAL silent data loss on disk full | Monitor disk, set retention caps (Pitfall 13) |
-| Phase 1: Promtail Deployment | Journal permission denied (silent) | Add promtail to systemd-journal group on all hosts (Pitfall 4) |
-| Phase 1: Promtail Deployment | Positions file lost on ser8 reboot | Persist `/var/lib/promtail` via impermanence (Pitfall 1) |
-| Phase 1: Promtail Deployment | Massive backlog after reboot | Set max_age + persist positions file (Pitfall 17) |
-| Phase 1: Promtail Deployment | Cannot reach Loki on firebat | Open port 3100 on firebat firewall (Pitfall 11) |
-| Phase 1: Grafana Datasource | Loki not visible in Grafana | Provision Loki as datasource alongside Prometheus (Pitfall 10) |
-| Phase 2: SMTP Setup | Password in Nix store | Use $__file{} with SOPS secret (Pitfall 3) |
-| Phase 2: Gmail Config | Wrong TLS settings or regular password | Use App Password + STARTTLS on port 587 (Pitfall 12) |
-| Phase 2: Alert Strategy | Prometheus + Grafana alerting confusion | Choose one notification path, decide before writing rules (Pitfall 9) |
-| Phase 2: Alert Rules | File-provisioned rules locked in UI | Start with UI rules, provision after stabilizing (Pitfall 6) |
-| Phase 2: Blackbox Exporter | Wrong relabeling pattern | Use exact multi-target pattern from Prometheus docs (Pitfall 5) |
-| Phase 2: Blackbox Exporter | TLS failures on self-signed certs | Probe HTTP ports directly or skip TLS verify (Pitfall 14) |
-| Phase 2: Existing Rules | Current Prometheus rules fire silently | Connect to Grafana Alertmanager as first priority (Pitfall 16) |
-| Phase 3: HA Monitoring | Prometheus endpoint not enabled | Add prometheus integration to HA NixOS config (Pitfall 8) |
-| Phase 3: HA Monitoring | Auth token needed for external scraping | Create Long-Lived Access Token, store in SOPS (Pitfall 8) |
+**What goes wrong:**
+`backup/backups`, mounted at `/mnt/backups`, is declared with `dedup = "on"` in `hosts/ser8/disko-config.nix`.
+Writing nightly `pg_dump` output and SQLite snapshots there feeds a dataset whose deduplication table grows with every unique block written and lives in ARC.
+Compressed or `VACUUM INTO`-compacted dumps deduplicate poorly, because near-identical logical content produces entirely different blocks, so the RAM cost buys almost nothing.
+The property cannot be meaningfully undone after the fact: turning dedup off stops new blocks from being deduplicated but existing DDT entries persist until every deduplicated block is rewritten, which in practice means recreating the dataset.
+
+**Why it happens:**
+The dataset was created for NAS-style backups where dedup made more sense, and the comment in `disko-config.nix` says exactly that.
+Nobody re-evaluates a pool property when adding a new consumer.
+
+**How to avoid:**
+Decide the target dataset before writing the first backup unit.
+Preferred: create a dedicated child dataset for service dumps with `dedup = "off"`, `compression = "zstd"`, and a smaller `recordsize` than the inherited `1M`, and use ZFS snapshots of that dataset for retention rather than dated files.
+If the existing dataset is kept, at minimum measure `zpool status -D backup` after a week and confirm the dedup ratio justifies the ARC cost.
+
+**Warning signs:**
+`zpool status -D backup` showing a large DDT with a dedup ratio near 1.00x.
+ARC pressure or memory alerts on ser8 after backups begin.
+
+**Phase to address:**
+The backup/restore phase, as the first design decision in it.
+
+---
+
+### Pitfall 15: Copying this repo's existing WebSocket header pattern into the new vhosts
+
+**What goes wrong:**
+The Frigate and Home Assistant vhosts in `modules/gateway/Caddyfile` hand-roll `header_up Upgrade {http.request.header.Upgrade}` and `header_up Connection "Upgrade"`.
+That is nginx idiom and it is unnecessary in Caddy v2, which handles HTTP/1.1 upgrades natively.
+Worse, `header_up Connection "Upgrade"` is unconditional: it stamps every ordinary page load, XHR, and asset request as a WebSocket upgrade, which backends answer with 400 or 426.
+Under HTTP/2 the `Connection` and `Upgrade` headers are forbidden entirely and Caddy logs `http2: invalid Upgrade request header`.
+Actual Budget's sync engine uses WebSockets, so it is the most likely service to attract this "fix".
+
+**Why it happens:**
+The pattern is already in the file with a comment saying it is required, so it reads as house style.
+
+**How to avoid:**
+Write each new vhost as a bare `reverse_proxy ser8.local:<port>` with no `header_up`.
+Verify WebSocket-dependent features work before adding anything.
+Separately, flag the existing Frigate/HASS blocks for cleanup: they are likely masking rather than solving whatever originally motivated them.
+
+**Warning signs:**
+Intermittent 400/426 responses on ordinary page loads.
+`http2: invalid Upgrade request header` in Caddy logs.
+
+**Phase to address:**
+The gateway/vhost phase.
+
+---
+
+### Pitfall 16: Donetick's signup is open by default and its JWT secret is a placeholder
+
+**What goes wrong:**
+Donetick's `selfhosted.yaml` ships `is_user_creation_disabled: false`, so a freshly deployed instance accepts registrations from anyone who can reach it.
+The same file ships `jwt.secret` set to the literal string `change_this_to_a_secure_random_string_32_characters_long`.
+A secret shorter than 32 characters, or left at the placeholder, produces `token contains an invalid number of segments` 401s on login and account creation ([donetick issue #254](https://github.com/donetick/donetick/issues/254)), which is easy to misdiagnose as a proxy problem.
+Rotating the secret later invalidates every session and every mobile-app login.
+
+**Why it happens:**
+The config key is top-level (`is_user_creation_disabled`) while the JWT key is nested (`jwt.secret`), so a partial config translation misses one or the other.
+The env-var override prefix is `DT_`, not `DONETICK_`, so a guessed variable name is silently ignored and the placeholder default stays in force.
+
+**How to avoid:**
+Set `is_user_creation_disabled: true` (or `DT_IS_USER_CREATION_DISABLED=true`) as part of the initial deploy, using the same create-accounts-then-close sequence described for Homebox.
+Generate the JWT secret with `openssl rand -hex 32` and deliver it via sops-nix as an `EnvironmentFile` containing `DT_JWT_SECRET=...`.
+Never render `selfhosted.yaml` with the secret inline through Nix: everything in `/nix/store` is world-readable, which would violate the milestone's "nothing secret in the Nix store" requirement.
+Also set `server.public_host` to `https://donetick.vofi` and add that origin to `server.cors_allow_origins`, whose defaults are localhost-only; without both, the web UI can work while the mobile app fails ([donetick issue #619](https://github.com/donetick/donetick/issues/619)).
+
+**Warning signs:**
+`grep -r change_this_to_a_secure /nix/store` returning anything.
+401s with `invalid number of segments` in Donetick logs.
+Web UI works but the mobile app cannot connect.
+
+**Phase to address:**
+The Donetick deployment phase.
+
+---
+
+### Pitfall 17: sops-nix secrets versus `DynamicUser`
+
+**What goes wrong:**
+`EnvironmentFile=` is read by PID 1 as root before privileges are dropped, so `services.mealie.credentialsFile = config.sops.secrets.mealie_postgres_password.path` works.
+But any secret the **application process itself** opens will fail, because a `DynamicUser` UID is allocated at runtime and cannot be named in `sops.secrets.<name>.owner`.
+This is exactly nixpkgs [issue #321623](https://github.com/NixOS/nixpkgs/issues/321623): Mealie 1.9.0 started reading `/run/secrets` during pydantic settings initialisation and crashed with `PermissionError: [Errno 13] Permission denied: '/run/secrets'` on any host using sops-nix, even with no Mealie-specific configuration.
+The confirmed workaround at the time was `systemd.services.mealie.serviceConfig.DynamicUser = lib.mkForce false;`.
+
+**Why it happens:**
+The interaction is invisible in the option surface: `credentialsFile` is documented and works, so the whole secrets path looks fine until the app touches `/run/secrets` for an unrelated reason.
+
+**How to avoid:**
+Prefer `credentialsFile`/`EnvironmentFile` for every secret so nothing is read by the app directly.
+Do not set `SECRETS_DIR`-style options that point Mealie at `/run/secrets`.
+If `DynamicUser` must be disabled for any reason, that decision cascades: the state directory moves from `/var/lib/private/mealie` to `/var/lib/mealie` and the impermanence entry must move with it (see Pitfall 1). Do not disable `DynamicUser` and forget the persistence half.
+Keep `sops.secrets.<name>.mode` at `0400` with an explicit `owner` for any static-user service (Homebox, Donetick under a static user).
+
+**Warning signs:**
+`PermissionError: [Errno 13] Permission denied: '/run/secrets'` in `journalctl -u mealie`.
+Any secret path appearing in a service's own config file rather than in an `EnvironmentFile`.
+
+**Phase to address:**
+The secrets/sops phase, or the Mealie deployment phase if secrets are handled per-service.
+
+---
+
+### Pitfall 18: Port collisions and default all-interface binding
+
+**What goes wrong:**
+Default ports for the four services are Mealie 9000, Homebox 7745, Donetick 2021, and Actual **3000** (the nixpkgs module overrides upstream's 5006 with 3000).
+ser8 already occupies a dense range including 5000, 8080, 8085, 8096, 8123, 8989, 9090, 9134, 9696, and 9707-9711.
+9000 and 3000 are both common defaults elsewhere, and 3000 in particular is already used by Grafana on firebat and AdGuard on pi4, so it reads as "taken" during review even though it is free on ser8.
+Separately, `services.mealie.listenAddress` defaults to `0.0.0.0` and `services.actual.settings.hostname` defaults to `::`, so all four bind every interface.
+
+**Why it happens:**
+Port assignment gets decided during execution rather than during planning, and each service is added in isolation.
+
+**How to avoid:**
+Allocate all four ports in one place during the roadmap phase and record them alongside the existing map.
+Do **not** set `openFirewall = true` on any of them, and do not add them to `networking.firewall.allowedTCPPorts`, which is the prevailing habit in `modules/media/`.
+Access must arrive through Caddy on firebat over the LAN/Tailscale path only; if the milestone requires strict Tailscale-only reachability, bind to the Tailscale interface address or loopback and let Caddy reach it over Tailscale rather than relying on firewall rules alone.
+
+**Warning signs:**
+`ss -tlnp` on ser8 showing the new services on `0.0.0.0`.
+Two units failing with `address already in use` after a rebuild.
+`curl http://ser8.local:3000` succeeding from an untrusted LAN device.
+
+**Phase to address:**
+Roadmap/design, then verified in the gateway phase with a smoketest that asserts the ports are not reachable off-Tailscale.
+
+---
+
+### Pitfall 19: Google Takeout Tasks does not export usable recurrence
+
+**What goes wrong:**
+Google's own field list for the Tasks archive claims to include task recurrence and a schedule of recurrences.
+In practice, exported JSON does not contain usable repeat information: recurrence is stored as generated instances rather than an RRULE-equivalent, and third-party migration tools report that repetition on recurring tasks is not recoverable from either the Takeout archive or the Tasks API.
+Since recurring chores are explicitly half the scope of this import ("one-off todos + recurring chores"), an import script built purely on Takeout data will produce a pile of one-off tasks and zero recurring chores, and the gap will only be noticed after the fact.
+
+**Why it happens:**
+The documented field list contradicts the actual export contents, and the discrepancy is only visible by opening a real archive and searching for recurrence keys on a task known to repeat.
+
+**How to avoid:**
+Make "inspect a real Takeout archive and enumerate what is actually present" the first step of the import phase, before any script is written.
+Plan for recurring chores to be re-entered by hand in Donetick, driven by a list extracted from the Takeout data, rather than translated automatically.
+That is a small number of items, and hand-entry is more reliable than a heuristic that infers recurrence from repeated instances.
+
+Other Takeout quirks to expect:
+
+- **Completed-task history**: completion status and completion timestamps are exported, and long-lived lists carry years of completed items. Importing them all into Donetick pollutes the new instance. Filter by status and by a cutoff date.
+- **Deleted/hidden items**: deleted data is not exported, but hidden items may appear; decide explicitly whether to skip them.
+- **Timezone**: due dates are effectively date-only values anchored at UTC midnight. Rendering them in a local timezone west of UTC shifts every due date back by one day. Normalise to a date, not a timestamp.
+- **Structure**: one array of lists, each containing a nested array of tasks with `parent` IDs for subtasks. Parent/child order is not guaranteed, so a single pass that creates children before parents will fail.
+
+**Warning signs:**
+An import script with a code path for RRULE parsing that never fires.
+Every imported task landing on the day before its real due date.
+Donetick showing hundreds of already-completed items after import.
+
+**Phase to address:**
+The Google Tasks import phase, with archive inspection as an explicit gate before scripting.
+
+---
+
+### Pitfall 20: A one-time import that is not idempotent, or that is wired into activation
+
+**What goes wrong:**
+Two failure modes that compound.
+First, an import script with no deduplication key produces a full duplicate set on any re-run, and re-runs are near-certain because the first attempt will get something wrong.
+Second, wiring the import into a `systemd.services.*` unit with `wantedBy = [ "multi-user.target" ]` (the pattern used by this repo's `media-config` orchestration unit) means it re-executes on every rebuild and every boot.
+Donetick also applies a server-side rate limit of 300 requests per 60 seconds by default (`server.rate_limit` / `server.rate_period`), so a naive loop over a few hundred tasks will start getting throttled part-way through and leave a partial import behind.
+
+**Why it happens:**
+The repo's established pattern for "configure a service via its API" is exactly such a systemd unit, so it is the natural thing to copy.
+That pattern is right for convergent configuration and wrong for a one-shot data migration.
+
+**How to avoid:**
+Ship the import as a standalone script in `scripts/` invoked by hand once, not as a systemd unit.
+Make it idempotent: record an external ID (the Google task ID) in the Donetick item's description or a dedicated field, and skip anything already present.
+Rate-limit the client to well under 300/60s and handle 429 with backoff.
+Take a SQLite backup of Donetick immediately before running it, so recovery from a bad import is a restore rather than a manual cleanup.
+Delete or clearly quarantine the script once the import is verified, per the repo's "replace, don't deprecate" rule.
+
+**Warning signs:**
+Duplicate chores appearing after a rebuild.
+HTTP 429 in the import script's output.
+The import script surviving in `modules/` after the milestone closes.
+
+**Phase to address:**
+The Google Tasks import phase.
+
+---
+
+### Pitfall 21: AdGuard DNS rewrites pointed at the wrong host
+
+**What goes wrong:**
+The `<service>.vofi` names must resolve to **firebat** (the Caddy host), not to ser8 (where the services actually run).
+Pointing them at ser8 means the browser talks to the application directly over plain HTTP on a non-standard port, or gets nothing at all.
+For Mealie and Homebox this degrades quietly; for Actual it is a hard break, because plain HTTP on a non-localhost hostname is not a secure context.
+
+**Why it happens:**
+The mental model is "the service lives on ser8", and the existing `<service>.vofi` entries are added rarely enough that the pattern is not muscle memory.
+
+**How to avoid:**
+Add all four DNS rewrites in one change, pointed at firebat, and verify with `dig +short mealie.vofi @192.168.68.56` before touching the browser.
+Add the four names to the existing blackbox exporter probe targets so a regression is caught by monitoring rather than by a person.
+
+**Warning signs:**
+`dig` returning ser8's address for a `.vofi` name.
+A `.vofi` URL that only works with an explicit `:port` suffix.
+
+**Phase to address:**
+The gateway/DNS phase.
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Run Donetick as an OCI container instead of packaging it | Working service in hours instead of days; no Go/npm build to maintain | Container image is opaque to `make pkg-list-ser8` and `nix eval '.#packageInfo.ser8'`; version pinning is by tag not by hash; weakens the "all config in Nix" constraint | Acceptable for v1.2 if the decision and its cost are recorded and a follow-up item is filed. Pin by digest, not by `:latest` |
+| Leave `skip_install_trust` and click through certificate warnings | No CA distribution work | Actual Budget does not function; PWA/service workers blocked; every new household device hits the same wall | Never, once Actual is in scope |
+| Back up to `/mnt/backups` without changing `dedup=on` | No dataset work | DDT grows permanently in ARC for near-zero dedup ratio; cannot be undone without recreating the dataset | Only if measured and the ratio justifies it |
+| `cp` the SQLite files with the service stopped, instead of using the backup API | Simple script | Requires stopping four services nightly; a missed stop silently produces a corrupt backup with no error | Acceptable only as a stopgap; the backup API is not meaningfully harder |
+| Skip the restore drill and declare backups done | Phase closes faster | The failure mode is discovered during an actual incident, which is the worst possible time | Never. The milestone explicitly requires a demonstrated restore |
+| Set `is_user_creation_disabled` / `ALLOW_REGISTRATION` by editing the running config instead of in Nix | Fast | Wiped on the next rebuild or root rollback; the service silently reopens signup | Never on this host |
+| Add the new ports to `networking.firewall.allowedTCPPorts` "for testing" | Immediate direct access during debugging | Violates the Tailscale-only requirement and nobody remembers to remove it | Never; use an SSH port-forward instead |
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Mealie to PostgreSQL | Hand-rolling `POSTGRES_*` env vars and a TCP connection with a password | Use `services.mealie.database.createLocally = true`, which sets `POSTGRES_URL_OVERRIDE` to a unix-socket peer-auth URL and wires `ensureDatabases`/`ensureUsers`. Pin `services.postgresql.package` explicitly |
+| Mealie service ordering | Ordering on `postgresql.service` | Order on `postgresql.target`, new in 25.11, which guarantees read-write mode and that ensure-scripts have run. The nixpkgs module already does this; do not override it |
+| Any service to Caddy | Copying the Frigate/HASS `header_up Upgrade` block | Bare `reverse_proxy host:port`; Caddy v2 upgrades natively |
+| Actual to Caddy | Adding COOP/COEP headers at the proxy | Let Actual set them; the proxy must add nothing |
+| Actual to clients | Assuming a click-through certificate is enough | Install the Caddy root CA on every client, including the second iOS trust-settings step |
+| Donetick to Caddy | Leaving `public_host` empty and `cors_allow_origins` at localhost defaults | Set `public_host = https://donetick.vofi` and add that origin to CORS; otherwise the web UI works and the mobile app does not |
+| Backups to PostgreSQL | `pg_dump` from a unit with `PrivateUsers=true` | `User=postgres`, no `PrivateUsers`, unix socket, `ReadWritePaths` for the dump target |
+| Backups to DynamicUser state dirs | `User=backup` on the backup unit | `/var/lib/private` is `0700` root-only; the unit must run as root or be given the specific paths |
+| `.vofi` names to AdGuard | Rewrite pointed at ser8 | Rewrite points at firebat; Caddy routes onward |
+| Google Tasks to Donetick | Bulk loop over the API | Rate limit under 300 req/60s, back off on 429, key on the Google task ID for idempotence |
+| sops-nix to DynamicUser services | Setting `sops.secrets.<n>.owner = "mealie"` | Dynamic UIDs cannot be named; deliver secrets exclusively via `EnvironmentFile`/`credentialsFile` |
+
+## Performance Traps
+
+Household scale here is roughly 2-5 users, so most classic scaling traps do not apply.
+The ones that do are storage and memory, not request throughput.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| ZFS dedup on the backup dataset | ARC pressure on ser8, slow writes to `/mnt/backups`, memory alerts | Dedicated child dataset with `dedup=off`, `compression=zstd` | Noticeable within weeks of nightly dumps; DDT cost scales with total unique blocks written, not with dedup benefit |
+| Dated backup files instead of ZFS snapshots | `/mnt/backups` grows without bound; no retention policy exists so nobody prunes | Snapshot the backup dataset and let snapshot retention handle pruning | Months, but the cleanup is manual and error-prone once it happens |
+| `VACUUM INTO` transiently doubling database size | Backup job fails with "database or disk is full" | Check free space before vacuuming; use `.backup` for the routine path and `VACUUM INTO` weekly | Only if the pool is near full; low risk here given RAID-Z2 capacity |
+| Mealie recipe-image growth under `DATA_DIR` | `/persist` (on `rpool`) grows; the root pool is smaller than the backup pool | Monitor `/persist` usage; consider a dedicated dataset if image volume becomes significant | Low risk at household scale, but `/persist` on the root pool is the constrained resource |
+| Four more scrape targets and four more blackbox probes | Prometheus on firebat picks up marginal load | Negligible; add them, do not over-think it | Not a real threshold at this scale |
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Leaving Donetick's `is_user_creation_disabled: false` | Anyone reaching `donetick.vofi` (including anything on the LAN, not just Tailscale) can create an account and see household chores | Set it true in Nix; assert it in a smoketest |
+| Leaving Homebox registration true after account creation | Same, for the household inventory, which is a list of valuables and their locations | Two-stage deploy; assert `HBOX_OPTIONS_ALLOW_REGISTRATION=false` in a smoketest |
+| Rendering Donetick's `selfhosted.yaml` through Nix with the JWT secret inline | `/nix/store` is world-readable; the secret is exposed to every local user and every `nix copy` | Secret via sops-nix `EnvironmentFile` with `DT_JWT_SECRET` |
+| Using the shipped placeholder JWT secret | Tokens forgeable by anyone who has read the upstream repo | `openssl rand -hex 32`, delivered from sops |
+| `openFirewall = true` or manual `allowedTCPPorts` for the new services | Direct plain-HTTP access from the LAN, bypassing Caddy and TLS entirely; violates the Tailscale-only requirement | Never open these ports; reach them only through Caddy |
+| Reusing one sops secret across all four services | One compromised service's environment leaks the others' credentials | One secret per service, `mode = "0400"` |
+| Trusting Caddy's auto-generated root CA on phones without controlling the key | If firebat's `pki/authorities/local` is ever exfiltrated, the holder can MITM any hostname for every enrolled device | Understand the blast radius; if a custom `pki { ca }` root is used instead, protect that key at least as carefully as an SSH host key and keep it out of git |
+| Backup files world-readable on `/mnt/backups` | Full database dumps, including password hashes and session data, readable by any local account | `UMask=0077` on the backup unit; service-dump subdirectory `0700 root root` |
+| Actual Budget over plain HTTP "just for now" | Budget data transmitted unencrypted; end-to-end encryption silently unavailable so the user believes data is encrypted when it is not | HTTPS with a trusted CA is a hard prerequisite, not a polish item |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Logged out on every ser8 reboot (Mealie secret not persisted, or Donetick JWT secret regenerated) | Household stops trusting the service and stops using it | Persist `DATA_DIR`; pin the Donetick JWT secret in sops so it is stable across rebuilds |
+| Certificate warning on every phone visit | Nobody uses the service on mobile, which is where chores and shopping lists actually get used | Install the root CA on household devices as part of the milestone, not as a follow-up |
+| Importing years of completed Google Tasks into Donetick | The new chores app opens onto a wall of noise on day one | Filter completed items by a cutoff date, or skip them entirely |
+| Every imported task due one day early | Silent, systematic wrongness that erodes trust in the whole import | Normalise Takeout due values as dates, not UTC timestamps |
+| Four separate logins with four separate passwords | Household members use one weak password everywhere, or give up | Accept it for v1.2 (no SSO is in scope) but document the accounts somewhere the household can find; do not half-build an OIDC path |
+| Services reachable only when the person is on Tailscale, with no explanation | "It's broken" reports that are actually "I'm on cellular" | Document the access model in household-facing notes; check Tailscale first when troubleshooting |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Persistence:** service runs fine after `systemctl restart` — verify after a real `reboot`, because only a reboot triggers the root rollback
+- [ ] **Mealie:** database restores cleanly — verify a recipe with an uploaded image renders, since images live on disk not in Postgres
+- [ ] **Mealie:** homepage loads through Caddy — verify a share link or invite link does not contain `localhost:9000`
+- [ ] **Actual:** login page renders — verify a budget opens, transactions load, and the browser console shows no `crypto.subtle`/`SharedArrayBuffer` errors
+- [ ] **Actual:** works on the laptop where the CA was installed — verify on a phone that has never seen the CA
+- [ ] **Homebox:** service is up — verify `/var/lib/homebox` is under `/persist` and registration is `false`
+- [ ] **Donetick:** web UI works — verify the mobile app connects, which requires `public_host` and CORS
+- [ ] **Donetick:** signup closed — verify by loading the registration URL, not by reading the config
+- [ ] **Backups:** the timer runs green — verify `PRAGMA integrity_check` returns `ok` and `pg_restore --list` parses the dump
+- [ ] **Backups:** a dump file exists — verify a full restore into a scratch database/directory and confirm row counts and one real record
+- [ ] **Backups:** Actual is backed up — verify `userFiles` blobs are included, not just `account.sqlite`
+- [ ] **PostgreSQL:** it starts — verify `SHOW server_version;` matches the pinned package and only one version directory exists under `/persist/var/lib/postgresql`
+- [ ] **Firewall:** Caddy routes work — verify `curl http://ser8.local:<port>` from a non-Tailscale LAN device is refused
+- [ ] **DNS:** the name resolves — verify it resolves to firebat, not ser8
+- [ ] **Secrets:** the service starts — verify `grep -r <secret-fragment> /nix/store` returns nothing
+- [ ] **Import:** tasks appear in Donetick — verify recurring chores actually recur, and spot-check three due dates against Google Tasks for off-by-one
+- [ ] **Import:** it ran once — verify re-running it produces zero new items
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Homebox state lost to root rollback (Pitfall 2) | HIGH if noticed late, LOW if noticed on the first reboot | If backups predate the loss, restore the SQLite file and attachments. If not, re-enter inventory by hand. Prevention is the only real answer, which is why the reboot test belongs in the deployment phase, not the backup phase |
+| Wrong PostgreSQL major pinned after data exists (Pitfall 9) | MEDIUM | `pg_dumpall` from the running old version, stop Postgres, move the old data directory aside, change the pin, let the new version initdb, restore. Do this with `make test-ser8` first so a failure does not become the boot default |
+| Corrupt SQLite backup discovered at restore (Pitfall 11) | HIGH | Fall back to an older backup; if all backups used `cp`, all are suspect. Recover from the live database if the service still runs, then fix the backup method immediately |
+| ZFS dedup already enabled with a large DDT (Pitfall 14) | MEDIUM | Create a new dataset with `dedup=off`, `zfs send`/`receive` or copy the data across, destroy the old dataset. Cannot be fixed in place |
+| Caddy root CA lost (firebat data directory wiped) | MEDIUM | Caddy regenerates a new root; every enrolled device must re-enrol. Avoid by using an explicit `pki { ca }` block with a root key kept in sops, or by backing up `pki/authorities/local` |
+| Donetick JWT secret rotated or lost | LOW | Everyone re-logs in. Annoying, not destructive. Keep the secret in sops so this only happens deliberately |
+| Duplicate chores from a re-run import (Pitfall 20) | LOW if a pre-import backup exists, MEDIUM otherwise | Restore the pre-import Donetick SQLite backup and re-run the fixed script. Taking that backup is a one-line step; skipping it turns a 5-minute recovery into an afternoon of manual deletion |
+| Open signup exploited on the LAN | LOW technically, uncomfortable socially | Delete the account, close signup, rotate the JWT secret to invalidate sessions |
+| Actual data lost with only `account.sqlite` backed up (Pitfall 12) | HIGH | Budgets are gone unless a client still holds a local copy; Actual is local-first, so a laptop or phone that has synced may be able to re-upload. Do not rely on this |
+
+## Pitfall-to-Phase Mapping
+
+Phase names below are descriptive, since v1.2 phases are not yet in `ROADMAP.md`.
+The roadmapper should map them onto real phase numbers.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| 1. DynamicUser vs `/var/lib/<svc>` | Persistence foundation | `systemctl show <unit> -p DynamicUser,StateDirectory` matches the persistence entries; reboot test |
+| 2. Homebox static user missed | Persistence foundation + Homebox deploy | `/persist/var/lib/homebox` exists and is populated after a reboot |
+| 3. Homebox registration lockout/exposure | Homebox deploy | `/register` returns closed; environment asserts `false` |
+| 4. Donetick not packaged | Donetick packaging (dedicated) | `nix eval` resolves the chosen derivation or container; decision recorded in PROJECT.md |
+| 5. Mealie secret + image persistence | Mealie deploy + backup/restore | Reboot without logout; restored recipe shows its image |
+| 6. Mealie `BASE_URL` and forwarded headers | Mealie deploy | Share link contains `https://mealie.vofi` |
+| 7. Actual needs trusted TLS | Gateway/TLS trust (must precede Actual deploy) | Actual loads a budget on a phone with the CA installed |
+| 8. Duplicated COOP/COEP, subpath | Actual deploy | `curl -sI` shows exactly one value per header |
+| 9. PostgreSQL version pinned by stateVersion | Postgres foundation | `SHOW server_version;` matches the explicit pin |
+| 10. Postgres data dir ownership | Persistence foundation | Cold boot with no manual `chown` needed |
+| 11. `cp` of live SQLite | Backup/restore | `PRAGMA integrity_check` returns `ok` in the unit's own output |
+| 12. Actual's split state | Backup/restore | Restored instance opens a named budget with transactions |
+| 13. `pg_dump` under hardening | Backup/restore | Timer-triggered run succeeds, not just a manual root run |
+| 14. ZFS dedup on backup target | Backup/restore (first design step) | `zfs get dedup` on the chosen dataset returns `off` |
+| 15. Caddy WebSocket header copying | Gateway/vhost | No `header_up` in the four new vhosts; sync/live features work |
+| 16. Donetick signup + JWT secret | Donetick deploy | Signup closed; `grep` of `/nix/store` finds no secret; mobile app connects |
+| 17. sops-nix vs DynamicUser | Secrets, or per-service deploy | Every secret arrives via `EnvironmentFile`; no `/run/secrets` reads in app logs |
+| 18. Port collisions and binding | Roadmap design, verified in gateway | `ss -tlnp` matches the allocation table; off-Tailscale probe refused |
+| 19. Takeout recurrence gap | Google Tasks import (archive inspection gate) | Recurring chores exist in Donetick and recur; three spot-checked due dates match |
+| 20. Non-idempotent import | Google Tasks import | Second run creates zero items; pre-import backup exists |
+| 21. DNS rewrite pointed at ser8 | Gateway/DNS | `dig +short <name>.vofi` returns firebat |
+
+**Ordering implications for the roadmap:**
+
+1. Persistence foundation and PostgreSQL pinning must come **first**, before any service is enabled. Pitfalls 1, 2, 9, and 10 are all cheap to prevent and expensive to fix after data exists.
+2. The gateway/TLS-trust phase must precede the Actual phase. Pitfall 7 makes Actual non-functional without it, so Actual should be the **last** of the four services.
+3. Donetick packaging must precede the Google Tasks import phase and should be sized as its own phase (Pitfall 4).
+4. Homebox and Donetick both need a two-stage deploy (open signup, create accounts, close signup) that must be encoded in the plan, not improvised.
+5. Backup/restore should come after at least Mealie and one SQLite service exist, so the restore drill exercises both engines, but before the Google Tasks import, so a pre-import backup is available.
+
+**Research flags for phases:**
+
+- Donetick packaging: needs its own research pass on `buildGoModule` plus an embedded frontend if the native path is chosen.
+- Google Tasks import: needs the real Takeout archive in hand before any planning; the schema cannot be assumed from documentation.
+- Everything else is covered by this document plus the nixpkgs module sources.
 
 ## Sources
 
-- [Loki 3.0 Release Notes](https://grafana.com/docs/loki/latest/release-notes/v3-0/) - HIGH confidence
-- [Loki Upgrade Guide](https://grafana.com/docs/loki/latest/setup/upgrade/) - HIGH confidence
-- [Loki Retention Documentation](https://grafana.com/docs/loki/latest/operations/storage/retention/) - HIGH confidence
-- [Loki WAL Documentation](https://grafana.com/docs/loki/latest/operations/storage/wal/) - HIGH confidence
-- [Loki TSDB Documentation](https://grafana.com/docs/loki/latest/operations/storage/tsdb/) - HIGH confidence
-- [Promtail Troubleshooting](https://grafana.com/docs/loki/latest/send-data/promtail/troubleshooting/) - HIGH confidence
-- [Promtail Configuration](https://grafana.com/docs/loki/latest/send-data/promtail/configuration/) - HIGH confidence
-- [Promtail Silent Journal Permission Failure - Issue #7836](https://github.com/grafana/loki/issues/7836) - HIGH confidence
-- [NixOS Journal Permissions - Issue #2865](https://github.com/NixOS/nixpkgs/issues/2865) - HIGH confidence
-- [Prometheus Multi-Target Exporter Guide](https://prometheus.io/docs/guides/multi-target-exporter/) - HIGH confidence
-- [Blackbox Exporter README](https://github.com/prometheus/blackbox_exporter/blob/master/README.md) - HIGH confidence
-- [Grafana File Provisioning Docs](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/) - HIGH confidence
-- [Grafana SMTP Password NixOS Warning](https://mynixos.com/nixpkgs/option/services.grafana.settings.smtp.password) - HIGH confidence
-- [Grafana Email Alert Configuration](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-email/) - HIGH confidence
-- [Grafana Alertmanager Configuration](https://grafana.com/docs/grafana/latest/alerting/set-up/configure-alertmanager/) - HIGH confidence
-- [Home Assistant Prometheus Integration](https://www.home-assistant.io/integrations/prometheus/) - HIGH confidence
-- [NixOS Wiki - Grafana Loki](https://wiki.nixos.org/wiki/Grafana_Loki) - MEDIUM confidence (may have outdated examples)
-- [NixOS Wiki - Grafana](https://wiki.nixos.org/wiki/Grafana) - MEDIUM confidence
-- [Loki Configuration Verification - NixOS Issue #293088](https://github.com/NixOS/nixpkgs/issues/293088) - MEDIUM confidence
-- [Gmail SMTP Grafana Setup](https://community.grafana.com/t/setup-smtp-with-gmail/85815) - MEDIUM confidence
-- [Grafana Blog: Provisioning Notification Policies](https://grafana.com/blog/2023/09/11/how-to-provision-a-notification-policy-in-grafana-alerting-and-keep-it-editable-in-the-ui/) - MEDIUM confidence
-- [NixOS Observability Stack Example](https://github.com/shinbunbun/nixos-observability) - LOW confidence (third-party example)
+**Primary (read verbatim from the pinned `nixos-25.11` branch):**
+
+- `nixos/modules/services/web-apps/mealie.nix` — https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-25.11/nixos/modules/services/web-apps/mealie.nix (HIGH)
+- `nixos/modules/services/web-apps/actual.nix` — https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-25.11/nixos/modules/services/web-apps/actual.nix (HIGH)
+- `nixos/modules/services/web-apps/homebox.nix` — https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-25.11/nixos/modules/services/web-apps/homebox.nix (HIGH)
+- `nixos/modules/module-list.nix` on `nixos-25.11` and `master`, plus a 404 on `pkgs/by-name/do/donetick/package.nix`, establishing that Donetick is absent (HIGH)
+- Package versions in `nixos-25.11`: mealie 3.9.2, actual-server 26.6.0, homebox 0.24.0 (HIGH)
+- This repository: `flake.nix`, `hosts/ser8/configuration.nix`, `hosts/ser8/impermanence.nix`, `hosts/ser8/disko-config.nix`, `modules/gateway/Caddyfile`, `modules/servers/backup.nix` (HIGH)
+
+**Upstream documentation:**
+
+- Mealie backend configuration — https://docs.mealie.io/documentation/getting-started/installation/backend-config/ (MEDIUM)
+- Actual Budget configuration — https://actualbudget.org/docs/config/ (MEDIUM)
+- Actual Budget reverse proxies — https://actualbudget.org/docs/config/reverse-proxies/ (MEDIUM)
+- Actual Budget HTTPS — https://actualbudget.org/docs/config/https/ (MEDIUM)
+- Donetick `config/selfhosted.yaml` — https://github.com/donetick/donetick/blob/main/config/selfhosted.yaml (HIGH, read verbatim)
+- Caddy automatic HTTPS and local CA — https://caddyserver.com/docs/automatic-https (MEDIUM)
+- Caddy `reverse_proxy` directive — https://caddyserver.com/docs/caddyfile/directives/reverse_proxy (MEDIUM)
+- Google Tasks export — https://support.google.com/tasks/answer/10017961 (MEDIUM)
+
+**Issue trackers:**
+
+- impermanence #93, DynamicUser + StateDirectory — https://github.com/nix-community/impermanence/issues/93 (MEDIUM)
+- impermanence #254, `/var/lib/private` created `0755` — https://github.com/nix-community/impermanence/issues/254 (MEDIUM)
+- nixpkgs #321623, Mealie `/run/secrets` PermissionError under DynamicUser + sops-nix — https://github.com/NixOS/nixpkgs/issues/321623 (MEDIUM)
+- donetick #619, reverse proxy / internal network — https://github.com/donetick/donetick/issues/619 (MEDIUM, unresolved upstream)
+- donetick #254, JWT `invalid number of segments` — https://github.com/donetick/donetick/issues/254 (MEDIUM)
+- actual-server #371, `ACTUAL_TRUSTED_PROXIES` ineffective — https://github.com/actualbudget/actual-server/issues/371 (LOW, not independently verified)
+- mealie #5023, #4197, #6038, reverse-proxy login and OIDC scheme issues (MEDIUM)
+- caddy #7292, HTTP/2 `invalid Upgrade request header` — https://github.com/caddyserver/caddy/issues/7292 (MEDIUM)
+
+**Community:**
+
+- NixOS Discourse, systemd dynamic user persistent directories — https://discourse.nixos.org/t/systemd-dynamic-user-persistant-directories/51468 (LOW)
+- NixOS Discourse, crowdsec and DynamicUser — https://discourse.nixos.org/t/nixos-crowdsec-and-dynamicuser/73815 (LOW)
+- NixOS 25.11 release notes, `postgresql.target` and stateVersion-gated defaults — https://nixos.org/manual/nixos/stable/release-notes.html (MEDIUM)
+- SQLite forum, hot backup in WAL mode by copying — https://sqlite.org/forum/forumpost/2ea989bbe9 (MEDIUM)
+- Google Calendar Community, Takeout recurrence missing from JSON — https://support.google.com/calendar/thread/244906743 (LOW)
+- `Nockiro/gtask-exporthelper`, recurrence not recoverable from Takeout or the Tasks API — https://github.com/Nockiro/gtask-exporthelper (LOW)
+
+**Caveat:** the shared research cache (`~/.gsd/research-cache`) was not writable in this sandbox (`EPERM`), so digests from this run were not persisted for reuse.
+
+---
+*Pitfalls research for: self-hosted household services on an impermanence-based NixOS 25.11 homelab*
+*Researched: 2026-08-16*

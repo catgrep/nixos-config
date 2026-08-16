@@ -1,0 +1,27 @@
+=== ./scripts/smoketests/household/test-mealie-endpoint.sh ===
+
+[info] === Mealie Endpoint Tests ===
+[info] checking Mealie on the loopback port 9000
+[done] Mealie answered with HTTP 200 on port 9000
+
+[info] === Mealie Deployed Settings Tests ===
+[info] checking that the deployed BASE_URL is https://mealie.shad-bangus.ts.net
+[done] BASE_URL is https://mealie.shad-bangus.ts.net
+[info] checking that BASE_URL is not the module default http://localhost:9000
+[done] BASE_URL is not the module default
+[info] checking that ALLOW_SIGNUP is the non-empty string 'false'
+[done] ALLOW_SIGNUP is the string 'false'
+
+[info] === Mealie Authentication Tests ===
+[info] checking that Mealie's shipped default administrator is rejected
+[FAIL] the shipped default administrator still authenticates (HTTP 200); change it before exposing Mealie
+[WARN] test failed: default_admin_rejected
+
+[info] === Mealie Tsnet Tests ===
+[info] checking DNS resolution for 'mealie.shad-bangus.ts.net' from firebat
+[done] DNS resolves 'mealie.shad-bangus.ts.net' -> 100.85.94.86
+[info] checking HTTPS connectivity to 'https://mealie.shad-bangus.ts.net' from firebat
+[done] mealie.shad-bangus.ts.net answered with HTTP 200
+
+[FAIL] 6/7 Mealie endpoint tests passed
+[FAIL] script './scripts/smoketests/household/test-mealie-endpoint.sh' failed with exit code: 1

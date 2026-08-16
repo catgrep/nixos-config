@@ -1,0 +1,42 @@
+[1m[0;34m=== ./scripts/nixos-rebuild.sh ===[0m
+/nix/store/19yw86isnr00gchav7s3cmc1718fgfvp-nixos-rebuild-ng-26.05/bin/nixos-rebuild
+[1m[0;33m[info][0m Ensuring remote Nix build directory '/nix-builds' exists...
+[1m[0;33m[info][0m Running 'nixos-rebuild test' on 'bdhill@192.168.68.63'...
+[1m[0;33m[info][0m build logs will be at: './logs/nixos-rebuild.log-20260817-114551'
+building the system configuration...
+warning: unknown experimental feature 'provenance'
+warning: unknown setting 'eval-cores'
+warning: unknown setting 'lazy-trees'
+evaluation warning: stdenv.isDarwin is deprecated, use stdenv.hostPlatform.isDarwin instead
+warning: unknown experimental feature 'provenance'
+warning: unknown setting 'eval-cores'
+warning: unknown setting 'lazy-trees'
+copying 0 paths...
+Checking switch inhibitors... done
+stopping the following units: avahi-daemon.service, avahi-daemon.socket, caddy.service, grafana.service, kmod-static-nodes.service, logrotate-checkconf.service, nscd.service, prometheus-blackbox-exporter.service, prometheus-node-exporter.service, prometheus-process-exporter.service, prometheus-systemd-exporter.service, prometheus.service, subgen.service, systemd-modules-load.service, systemd-networkd-wait-online.service, systemd-oomd.service, systemd-oomd.socket, systemd-sysctl.service, systemd-timesyncd.service, systemd-tmpfiles-resetup.service, systemd-vconsole-setup.service
+NOT restarting the following changed units: getty@tty1.service, mkswap-dev-disk-byx2dpartlabel-diskx2dmainx2dswap.service, systemd-fsck@dev-disk-by\x2dpartlabel-disk\x2dmain\x2dESP.service, systemd-journal-flush.service, systemd-logind.service, systemd-random-seed.service, systemd-remount-fs.service, systemd-update-utmp.service, systemd-user-sessions.service, user-runtime-dir@1000.service, user@1000.service
+activating the configuration...
+setting up /etc...
+sops-install-secrets: Imported /persist/etc/ssh/ssh_host_rsa_key as GPG key with fingerprint df948c0c5e1e2f254e40fd713f3eb31a0768fa6c
+sops-install-secrets: Imported /persist/etc/ssh/ssh_host_ed25519_key as age key with fingerprint age1pj3fd5sjdlm7u05a8jhxuygdldzrc76vaz80f5mvmavssa0axu8slq8s0t
+adding secret: grafana_secret_key
+restarting systemd...
+reloading user units for bdhill...
+NOT restarting the following user units: systemd-tmpfiles-setup.service
+reloading the following user units: dbus.service
+restarting the following user units: nixos-activation.service
+Failed to reload user unit dbus-broker.service
+warning: the following user units failed: dbus-broker.service
+See `systemctl --user status dbus-broker.service` for details.
+warning: user activation for bdhill failed
+restarting sysinit-reactivation.target
+reloading the following units: dbus.service, firewall.service, reload-systemd-vconsole-setup.service
+restarting the following units: nix-daemon.service, sshd.service, systemd-journald.service, systemd-networkd.service, systemd-resolved.service, systemd-udevd.service, tailscaled.service
+starting the following units: avahi-daemon.socket, caddy.service, grafana.service, kmod-static-nodes.service, logrotate-checkconf.service, nscd.service, prometheus-blackbox-exporter.service, prometheus-node-exporter.service, prometheus-process-exporter.service, prometheus-systemd-exporter.service, prometheus.service, subgen.service, systemd-modules-load.service, systemd-networkd-wait-online.service, systemd-oomd.socket, systemd-sysctl.service, systemd-timesyncd.service, systemd-tmpfiles-resetup.service, systemd-vconsole-setup.service
+Failed to reload dbus-broker.service
+the following new units were started: dbus-broker.service, home-manager-bdhill.service, post-boot.service, systemd-journalctl.socket, systemd-networkd-varlink-metrics.socket, time-set.target
+error: while running command with remote sudo, did you forget to use --ask-sudo-password?
+Command 'ssh -o ControlMaster=auto -o ControlPath=/tmp/nix-shell.XWexXz/nixos-rebuild.eynpbg43/ssh-%n -o ControlPersist=60 bdhill@192.168.68.63 -- sudo /bin/sh -c ''"'"'exec env -i PATH="${PATH-}" LOCALE_ARCHIVE="${LOCALE_ARCHIVE-}" NIXOS_NO_CHECK="${NIXOS_NO_CHECK-}" NIXOS_INSTALL_BOOTLOADER=0 "$@"'"'"'' sh systemd-run -E LOCALE_ARCHIVE -E NIXOS_INSTALL_BOOTLOADER -E NIXOS_NO_CHECK --collect --no-ask-password --pipe --quiet --service-type=exec --unit=nixos-rebuild-switch-to-configuration /nix/store/kmfznlnwnq9r24fay4r3mfik2s1sdnj1-nixos-system-firebat-26.05.20260817.0dd31db/bin/switch-to-configuration test' returned non-zero exit status 4.
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/nixos-rebuild.sh[0m' failed with exit code: 4
+make[1]: *** [Makefile:252: test-firebat] Error 4
+EXIT=2

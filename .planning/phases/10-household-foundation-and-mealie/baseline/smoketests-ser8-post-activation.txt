@@ -1,0 +1,296 @@
+[1m[0;34m=== ./scripts/smoketests/media/all.sh ===[0m
+[1m[0;33m[info][0m testing Jellyfin media service
+[1m[0;33m[info][0m testing Jellyfin connectivity at '[1mjellyfin.vofi[0m'
+[1m[0;33m[info][0m Jellyfin: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m Jellyfin HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m Jellyfin connectivity test passed
+[1m[0;32m[done][0m Jellyfin smoketest passed
+
+[1m[0;33m[info][0m testing Sonarr media service
+[1m[0;33m[info][0m testing Sonarr connectivity at '[1msonarr.vofi[0m'
+[1m[0;33m[info][0m Sonarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m Sonarr HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m Sonarr connectivity test passed
+[1m[0;32m[done][0m Sonarr smoketest passed
+
+[1m[0;33m[info][0m testing Radarr media service
+[1m[0;33m[info][0m testing Radarr connectivity at '[1mradarr.vofi[0m'
+[1m[0;33m[info][0m Radarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m Radarr HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m Radarr connectivity test passed
+[1m[0;32m[done][0m Radarr smoketest passed
+
+[1m[0;33m[info][0m testing Bazarr media service
+[1m[0;33m[info][0m testing Bazarr connectivity at '[1mbazarr.vofi[0m'
+[1m[0;33m[info][0m Bazarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m Bazarr HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m Bazarr connectivity test passed
+[1m[0;32m[done][0m Bazarr smoketest passed
+
+[1m[0;33m[info][0m testing qBittorrent media service
+[1m[0;33m[info][0m testing qBittorrent connectivity at '[1mtorrent.vofi[0m'
+[1m[0;33m[info][0m qBittorrent: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m qBittorrent HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m qBittorrent connectivity test passed
+[1m[0;32m[done][0m qBittorrent smoketest passed
+
+[1m[0;33m[info][0m testing Prowlarr media service
+[1m[0;33m[info][0m testing Prowlarr connectivity at '[1mprowlarr.vofi[0m'
+[1m[0;33m[info][0m Prowlarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m Prowlarr HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m Prowlarr connectivity test passed
+[1m[0;32m[done][0m Prowlarr smoketest passed
+
+[1m[0;33m[info][0m testing SABnzbd media service
+[1m[0;33m[info][0m testing SABnzbd connectivity at '[1msabnzbd.vofi[0m'
+[1m[0;33m[info][0m SABnzbd: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m SABnzbd HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m SABnzbd connectivity test passed
+[1m[0;32m[done][0m SABnzbd smoketest passed
+
+[1m[0;33m[info][0m testing NZBGet media service
+[1m[0;33m[info][0m testing NZBGet connectivity at '[1mnzbget.vofi[0m'
+[1m[0;33m[info][0m NZBGet: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[1m[0;32m[done][0m NZBGet HTTP responded with HTTP 200 (via Host header)
+[1m[0;32m[done][0m NZBGet connectivity test passed
+[1m[0;32m[done][0m NZBGet smoketest passed
+
+[1m[0;33m[info][0m testing primary groups for media-facing services
+[1m[0;32m[done][0m Media-facing services use the media primary group
+[1m[0;33m[info][0m testing completed download permissions
+[1m[0;32m[done][0m Completed downloads have shared media permissions
+[1m[0;33m[info][0m testing media library permissions
+[1m[0;32m[done][0m Media libraries have shared media permissions
+[1m[0;33m[info][0m testing Bazarr access to media libraries
+[1m[0;32m[done][0m Bazarr can read files and write directories in media libraries
+[1m[0;32m[done][0m All media services smoketests passed
+[1m[0;34m=== ./scripts/smoketests/household/test-mealie-service.sh ===[0m
+
+[1m[0;33m[info][0m === Mealie Service Tests ===
+[1m[0;33m[info][0m checking that the '[1mmealie[0m' unit is active
+[1m[0;32m[done][0m '[1mmealie[0m' unit is active
+[1m[0;33m[info][0m checking that port [1m9000[0m is bound on ser8
+[1m[0;32m[done][0m port 9000 accepts connections on ser8
+[1m[0;33m[info][0m checking the current boot's journal for '[1mmealie[0m' errors
+[1m[0;32m[done][0m no error-level journal entries for '[1mmealie[0m' in the current boot
+
+[1m[0;33m[info][0m === PostgreSQL Tests ===
+[1m[0;33m[info][0m checking that the '[1mmealie[0m' database answers
+[1m[0;32m[done][0m '[1mmealie[0m' database answers over the postgres socket
+[1m[0;33m[info][0m checking that PostgreSQL reports major [1m17[0m
+[1m[0;32m[done][0m PostgreSQL server_version is 17.11
+[1m[0;33m[info][0m checking ownership and mode of [1m/var/lib/postgresql/17[0m
+[1m[0;32m[done][0m /var/lib/postgresql/17 is postgres:postgres mode 750
+
+[1m[0;33m[info][0m === State Directory Tests ===
+[1m[0;33m[info][0m checking that [1m/var/lib/mealie[0m is a real directory
+[1m[0;32m[done][0m /var/lib/mealie is a real directory owned mealie:mealie
+[1m[0;33m[info][0m checking the persisted state directory [1m/persist/var/lib/mealie[0m
+[1m[0;32m[done][0m /persist/var/lib/mealie exists and is owned mealie:mealie
+
+[1m[0;33m[info][0m === Seeded Data Tests ===
+[1m[0;33m[info][0m checking that the '[1mingredient_foods[0m' table is populated
+[1m[0;33m[info][0m mealie_foods_count=0
+[1m[0;31m[FAIL][0m 'ingredient_foods' is empty
+[1m[35m[WARN][0m test failed: mealie_foods_seeded
+[1m[0;33m[info][0m checking that the '[1mingredient_units[0m' table is populated
+[1m[0;33m[info][0m mealie_units_count=0
+[1m[0;31m[FAIL][0m 'ingredient_units' is empty
+[1m[35m[WARN][0m test failed: mealie_units_seeded
+
+[1m[0;33m[info][0m === Persistence Tests ===
+[1m[0;33m[info][0m checking that the '[1mrecipes[0m' table is populated
+[1m[0;33m[info][0m mealie_recipe_count=0
+[1m[0;31m[FAIL][0m 'recipes' is empty
+[1m[35m[WARN][0m test failed: mealie_recipes_present
+[1m[0;33m[info][0m checking the persisted recipe image tree [1m/persist/var/lib/mealie/recipes[0m
+[1m[0;33m[info][0m mealie_recipe_image_files=0
+[1m[0;31m[FAIL][0m the recipe image tree under /persist/var/lib/mealie/recipes is empty
+[1m[35m[WARN][0m test failed: mealie_recipe_images_present
+
+[1m[0;31m[FAIL][0m 8/12 Mealie service tests passed
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/household/test-mealie-service.sh[0m' failed with exit code: 1
+[1m[0;34m=== ./scripts/smoketests/household/test-mealie-endpoint.sh ===[0m
+
+[1m[0;33m[info][0m === Mealie Endpoint Tests ===
+[1m[0;33m[info][0m checking Mealie on the loopback port [1m9000[0m
+[1m[0;32m[done][0m Mealie answered with HTTP 200 on port 9000
+
+[1m[0;33m[info][0m === Mealie Deployed Settings Tests ===
+[1m[0;33m[info][0m checking that the deployed BASE_URL is [1mhttps://mealie.shad-bangus.ts.net[0m
+[1m[0;32m[done][0m BASE_URL is https://mealie.shad-bangus.ts.net
+[1m[0;33m[info][0m checking that BASE_URL is not the module default [1mhttp://localhost:9000[0m
+[1m[0;32m[done][0m BASE_URL is not the module default
+[1m[0;33m[info][0m checking that ALLOW_SIGNUP is the non-empty string 'false'
+[1m[0;32m[done][0m ALLOW_SIGNUP is the string 'false'
+
+[1m[0;33m[info][0m === Mealie Authentication Tests ===
+[1m[0;33m[info][0m checking that Mealie's shipped default administrator is rejected
+[1m[0;31m[FAIL][0m the shipped default administrator still authenticates (HTTP 200); change it before exposing Mealie
+[1m[35m[WARN][0m test failed: default_admin_rejected
+
+[1m[0;33m[info][0m === Mealie Tsnet Tests ===
+[1m[0;33m[info][0m checking DNS resolution for '[1mmealie.shad-bangus.ts.net[0m' from firebat
+[1m[0;31m[FAIL][0m DNS resolution failed for '[1mmealie.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m test failed: tsnet_dns
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mhttps://mealie.shad-bangus.ts.net[0m' from firebat
+[1m[0;31m[FAIL][0m mealie.shad-bangus.ts.net returned '000'
+[1m[35m[WARN][0m test failed: tsnet_https
+
+[1m[0;31m[FAIL][0m 4/7 Mealie endpoint tests passed
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/household/test-mealie-endpoint.sh[0m' failed with exit code: 1
+
+[1m[0;31m[FAIL][0m household suite: 0/2 tests passed
+[1m[0;31m[FAIL][0m   failed: ./scripts/smoketests/household/test-mealie-service.sh
+[1m[0;31m[FAIL][0m   failed: ./scripts/smoketests/household/test-mealie-endpoint.sh
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/household/all.sh[0m' failed with exit code: 1
+[1m[0;34m=== ./scripts/smoketests/nordvpn/test-veth-interfaces.sh ===[0m
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Checking systemd service states...
+  - wgnord.service: ACTIVE
+  - wgnord-monitor.service: ACTIVE
+  - netns@wgnord.service: ACTIVE
+Checking network namespace...
+  - wgnord namespace exists: OK
+Checking veth bridge interfaces...
+  - veth-host interface exists: OK
+  - veth-vpn interface exists in namespace: OK
+Checking WireGuard interface...
+  - wgnord interface exists in namespace: OK
+Checking IP address assignments...
+  - veth-host has IP 192.168.100.1: OK
+  - veth-vpn has IP 192.168.100.2 in namespace: OK
+  - wgnord has VPN IP assigned: OK
+Checking WireGuard configuration...
+  - WireGuard interface is up: OK
+Checking basic namespace connectivity...
+  - Loopback ping in namespace: OK
+  - Self ping (VPN interface): OK
+[1m[0;32m[done][0m [1m[0;34m./scripts/smoketests/nordvpn/test-veth-interfaces.sh[0m
+[1m[0;34m=== ./scripts/smoketests/nordvpn/test-forwarding.sh ===[0m
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Testing veth bridge connectivity...
+  - Host to VPN namespace (192.168.100.2): OK
+  - VPN namespace to host (192.168.100.1): OK
+Testing DNS resolution in VPN namespace...
+  - Local AdGuard DNS (192.168.68.56): FAILED
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/nordvpn/test-forwarding.sh[0m' failed with exit code: 1
+[1m[0;34m=== ./scripts/smoketests/nordvpn/test-qbittorrent.sh ===[0m
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Checking qBittorrent service status...
+  - qbittorrent-nox.service is active: OK
+Verifying qBittorrent runs in VPN namespace...
+  - qBittorrent process in wgnord namespace: OK
+Checking qBittorrent network binding...
+  - qBittorrent listening on port 8080 in namespace: OK
+Testing qBittorrent web UI accessibility...
+  - Web UI accessible from host (localhost:8080): OK (HTTP 200)
+  - Web UI accessible via veth bridge (192.168.100.2:8080): OK (HTTP 200)
+Testing qBittorrent API functionality...
+  - API endpoint responds: OK (HTTP 403)
+Testing service-to-service connectivity...
+  - qBittorrent reachable from host network: OK
+Testing qBittorrent external connectivity...
+  - External connectivity from qBittorrent namespace: OK
+Testing qBittorrent storage access...
+  - Download directory accessible: OK
+Checking qBittorrent service health...
+  - No critical errors in recent logs: OK
+[1m[0;32m[done][0m [1m[0;34m./scripts/smoketests/nordvpn/test-qbittorrent.sh[0m
+[1m[0;34m=== ./scripts/smoketests/nordvpn/test-qbittorrent-confinement.sh ===[0m
+
+[1m[0;33m[info][0m === qBittorrent Confinement Tests ===
+[1m[0;33m[info][0m checking that qbittorrent-nox.service runs inside the '[1mwgnord[0m' namespace
+[1m[0;32m[done][0m qbittorrent-nox.service (pid 752224) is confined to the 'wgnord' namespace
+[1m[0;33m[info][0m comparing '[1mwgnord[0m' egress against the host's own egress
+[1m[0;32m[done][0m 'wgnord' egresses from 187.15.81.30, host egresses from 73.158.138.127 (addresses differ)
+[1m[0;33m[info][0m checking the qBittorrent web UI on localhost port 8080
+[1m[0;32m[done][0m qBittorrent web UI responded with HTTP 200 through the nginx proxy
+
+[1m[0;32m[done][0m all 3 qBittorrent confinement tests passed
+
+[1m[0;31m[FAIL][0m nordvpn suite: 3/4 tests passed
+[1m[0;31m[FAIL][0m   failed: ./scripts/smoketests/nordvpn/test-forwarding.sh
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/nordvpn/all.sh[0m' failed with exit code: 1
+[1m[0;34m=== ./scripts/smoketests/ser8/test-zfs-health.sh ===[0m
+
+[1m[0;33m[info][0m === ZFS Pool Health Tests ===
+[1m[0;33m[info][0m checking ZFS pool '[1mrpool[0m' health
+[1m[0;32m[done][0m ZFS pool '[1mrpool[0m' is healthy
+[1m[0;33m[info][0m checking ZFS pool '[1mrpool[0m' for data errors
+[1m[0;32m[done][0m ZFS pool '[1mrpool[0m' reports no known data errors
+[1m[0;33m[info][0m checking ZFS pool '[1mbackup[0m' health
+[1m[0;32m[done][0m ZFS pool '[1mbackup[0m' is healthy
+[1m[0;33m[info][0m checking ZFS pool '[1mbackup[0m' for data errors
+[1m[0;32m[done][0m ZFS pool '[1mbackup[0m' reports no known data errors
+
+[1m[0;33m[info][0m === Impermanence Rollback Tests ===
+[1m[0;33m[info][0m checking the impermanence rollback snapshot '[1mrpool/local/root@blank[0m'
+[1m[0;32m[done][0m rollback snapshot '[1mrpool/local/root@blank[0m' exists
+
+[1m[0;33m[info][0m === Pool Feature-Flag Tests ===
+[1m[0;33m[info][0m checking that ZFS pool '[1mrpool[0m' has not been feature-upgraded
+[1m[0;32m[done][0m ZFS pool '[1mrpool[0m' is not feature-upgraded; an older ZFS can still import it
+[1m[0;33m[info][0m checking that ZFS pool '[1mbackup[0m' has not been feature-upgraded
+[1m[0;32m[done][0m ZFS pool '[1mbackup[0m' is not feature-upgraded; an older ZFS can still import it
+
+[1m[0;32m[done][0m all 7 ZFS health tests passed
+[1m[0;34m=== ./scripts/smoketests/ser8/test-vaapi.sh ===[0m
+
+[1m[0;33m[info][0m === Render Node Tests ===
+[1m[0;33m[info][0m checking render node '[1m/dev/dri/renderD128[0m'
+[1m[0;32m[done][0m render node '[1m/dev/dri/renderD128[0m' is present
+
+[1m[0;33m[info][0m === VAAPI Encode Tests (as the service users) ===
+[1m[0;33m[info][0m running a VAAPI h264_vaapi encode as the '[1mjellyfin[0m' user
+[1m[0;32m[done][0m VAAPI h264_vaapi encode succeeded as '[1mjellyfin[0m' on /dev/dri/renderD128
+[1m[0;33m[info][0m running a VAAPI h264_vaapi encode as the '[1mfrigate[0m' user
+[1m[0;32m[done][0m VAAPI h264_vaapi encode succeeded as '[1mfrigate[0m' on /dev/dri/renderD128
+
+[1m[0;33m[info][0m === Accelerated Unit Tests ===
+[1m[0;33m[info][0m checking that the '[1mjellyfin[0m' unit is active
+[1m[0;32m[done][0m '[1mjellyfin[0m' unit is active
+[1m[0;33m[info][0m checking that the '[1mfrigate[0m' unit is active
+[1m[0;32m[done][0m '[1mfrigate[0m' unit is active
+
+[1m[0;33m[info][0m === Driver Diagnostics (not asserted) ===
+[1m[0;33m[info][0m driver: vainfo: Driver version: Mesa Gallium driver 26.1.5 for AMD Radeon 780M Graphics (radeonsi, phoenix, ACO, DRM 3.64, 6.18.44)
+
+[1m[0;32m[done][0m all 5 VAAPI tests passed
+[1m[0;34m=== ./scripts/smoketests/ser8/test-frigate.sh ===[0m
+
+[1m[0;33m[info][0m === Frigate Service Tests ===
+[1m[0;33m[info][0m checking that the '[1mfrigate[0m' unit is active
+[1m[0;32m[done][0m '[1mfrigate[0m' unit is active
+[1m[0;33m[info][0m checking the Frigate web interface on port [1m80[0m
+[1m[0;32m[done][0m Frigate web interface responded with HTTP 200 on port 80
+
+[1m[0;33m[info][0m === Frigate MQTT Publication Tests ===
+[1m[0;33m[info][0m resolving the MQTT subscriber from the running mosquitto unit
+[1m[0;32m[done][0m MQTT subscriber resolved from the running broker: [1m/nix/store/5lf59hxq5b6rqpsbkm99bi3vl3q2kfcz-mosquitto-2.1.2/bin/mosquitto_sub[0m
+[1m[0;33m[info][0m subscribing to '[1mfrigate/available[0m' (retained, 10s bound)
+[1m[0;32m[done][0m broker holds Frigate's retained availability message: '[1monline[0m'
+[1m[0;33m[info][0m waiting up to 90s for a live message on '[1mfrigate/stats[0m'
+[1m[0;32m[done][0m received a live Frigate publication on '[1mfrigate/stats[0m' (55908 bytes)
+
+[1m[0;32m[done][0m all 5 Frigate tests passed
+[1m[0;34m=== ./scripts/smoketests/ser8/test-home-assistant.sh ===[0m
+
+[1m[0;33m[info][0m === Home Assistant Service Tests ===
+[1m[0;33m[info][0m checking that the '[1mhome-assistant[0m' unit is active
+[1m[0;32m[done][0m '[1mhome-assistant[0m' unit is active
+[1m[0;33m[info][0m checking the Home Assistant frontend on port [1m8123[0m
+[1m[0;32m[done][0m Home Assistant frontend responded with HTTP 200 on port 8123
+
+[1m[0;33m[info][0m === Home Assistant Startup Tests ===
+[1m[0;33m[info][0m checking the current boot's journal for '[1mhome-assistant[0m' errors
+[1m[0;32m[done][0m no error-level journal entries for '[1mhome-assistant[0m' in the current boot
+
+[1m[0;32m[done][0m all 3 Home Assistant tests passed
+
+[1m[0;31m[FAIL][0m ser8 suite: 5/7 tests passed
+[1m[0;31m[FAIL][0m   failed: ./scripts/smoketests/household/all.sh
+[1m[0;31m[FAIL][0m   failed: ./scripts/smoketests/nordvpn/all.sh
+[1m[0;31m[FAIL][0m script '[1m[0;34m./scripts/smoketests/ser8/all.sh[0m' failed with exit code: 1
+make[1]: *** [Makefile:284: smoketests-ser8] Error 1
+EXIT=2

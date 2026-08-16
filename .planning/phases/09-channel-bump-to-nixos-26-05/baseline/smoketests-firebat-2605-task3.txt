@@ -1,0 +1,137 @@
+[1m[0;34m=== ./scripts/smoketests/gateway/test-caddy.sh ===[0m
+[1m[0;33m[info][0m checking caddy proxy services
+[1m[0;33m[info][0m extracting 'servers' and 'upstreams' from './modules/gateway/Caddyfile'...
+[1m[0;33m[info][0m extracted: jellyfin.vofi nzbget.vofi sabnzbd.vofi frigate.vofi radarr.vofi torrent.vofi hass.vofi prowlarr.vofi prometheus.vofi.app sonarr.vofi grafana.vofi.app bazarr.vofi jellyfin.vofi.app
+[1m[0;33m[info][0m testing route: jellyfin.vofi -> ser8.local:8096
+[1m[0;33m[info][0m check that '[1mjellyfin.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mjellyfin.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mjellyfin.vofi[0m' responded with HTTP 302
+[1m[0;33m[info][0m testing route: nzbget.vofi -> ser8.local:6789
+[1m[0;33m[info][0m check that '[1mnzbget.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mnzbget.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mnzbget.vofi[0m' responded with HTTP 401
+[1m[0;33m[info][0m testing route: sabnzbd.vofi -> ser8.local:8085
+[1m[0;33m[info][0m check that '[1msabnzbd.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1msabnzbd.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1msabnzbd.vofi[0m' responded with HTTP 303
+[1m[0;33m[info][0m testing route: frigate.vofi -> ser8.local:80
+[1m[0;33m[info][0m check that '[1mfrigate.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mfrigate.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mfrigate.vofi[0m' responded with HTTP 200
+[1m[0;33m[info][0m testing route: radarr.vofi -> ser8.local:7878
+[1m[0;33m[info][0m check that '[1mradarr.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mradarr.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mradarr.vofi[0m' responded with HTTP 302
+[1m[0;33m[info][0m testing route: torrent.vofi -> ser8.local:8080
+[1m[0;33m[info][0m check that '[1mtorrent.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mtorrent.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mtorrent.vofi[0m' responded with HTTP 200
+[1m[0;33m[info][0m testing route: hass.vofi -> ser8.local:8123
+[1m[0;33m[info][0m check that '[1mhass.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mhass.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mhass.vofi[0m' responded with HTTP 400
+[1m[0;33m[info][0m testing route: prowlarr.vofi -> ser8.local:9696
+[1m[0;33m[info][0m check that '[1mprowlarr.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mprowlarr.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mprowlarr.vofi[0m' responded with HTTP 302
+[1m[0;33m[info][0m testing route: prometheus.vofi.app -> firebat.local:9090
+[1m[0;33m[info][0m check that '[1mprometheus.vofi.app[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mprometheus.vofi.app[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mprometheus.vofi.app[0m' responded with HTTP 302
+[1m[0;33m[info][0m testing route: sonarr.vofi -> ser8.local:8989
+[1m[0;33m[info][0m check that '[1msonarr.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1msonarr.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1msonarr.vofi[0m' responded with HTTP 302
+[1m[0;33m[info][0m testing route: grafana.vofi.app -> firebat.local:3000
+[1m[0;33m[info][0m check that '[1mgrafana.vofi.app[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mgrafana.vofi.app[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mgrafana.vofi.app[0m' responded with HTTP 200
+[1m[0;33m[info][0m testing route: bazarr.vofi -> ser8.local:6767
+[1m[0;33m[info][0m check that '[1mbazarr.vofi[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mbazarr.vofi[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mbazarr.vofi[0m' responded with HTTP 200
+[1m[0;33m[info][0m testing route: jellyfin.vofi.app -> ser8.local:8096
+[1m[0;33m[info][0m check that '[1mjellyfin.vofi.app[0m' redirects properly
+[1m[0;33m[info][0m SKIPPED the '.vofi' DNS lookup for '[1mjellyfin.vofi.app[0m' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[1m[0;32m[done][0m HTTPS for '[1mjellyfin.vofi.app[0m' responded with HTTP 302
+
+[1m[0;32m[done][0m all 13 caddy proxy services passed
+[1m[0;33m[info][0m checking caddy service status
+[1m[0;32m[done][0m caddy service is running
+
+[1m[0;32m[done][0m all tests passed
+[1m[0;34m=== ./scripts/smoketests/gateway/test-subgen.sh ===[0m
+[1m[0;33m[info][0m checking Subgen service state on firebat
+[1m[0;32m[done][0m Subgen service is active
+[1m[0;33m[info][0m checking Subgen status endpoint from ser8
+[1m[0;32m[done][0m Subgen status endpoint returned version metadata
+[1m[0;34m=== ./scripts/smoketests/gateway/test-tailscale.sh ===[0m
+
+[1m[0;33m[info][0m === Tailscale Daemon Tests ===
+[1m[0;33m[info][0m checking Tailscale daemon status
+[1m[0;32m[done][0m tailscaled service is running
+[1m[0;33m[info][0m checking Tailscale connection status
+[1m[0;32m[done][0m Tailscale is connected (state: Running)
+
+[1m[0;33m[info][0m === Tailscale Node Tests ===
+[1m[0;33m[info][0m checking Tailscale nodes
+[1m[0;32m[done][0m all 7 Tailscale nodes present: jellyfin sabnzbd nzbget radarr sonarr bazarr prowlarr
+
+[1m[0;33m[info][0m === DNS Resolution Tests ===
+[1m[0;33m[info][0m checking DNS resolution for '[1mjellyfin.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1mjellyfin.shad-bangus.ts.net[0m' -> 100.94.108.104
+[1m[0;33m[info][0m checking DNS resolution for '[1msabnzbd.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1msabnzbd.shad-bangus.ts.net[0m' -> 100.97.3.71
+[1m[0;33m[info][0m checking DNS resolution for '[1mnzbget.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1mnzbget.shad-bangus.ts.net[0m' -> 100.95.185.89
+[1m[0;33m[info][0m checking DNS resolution for '[1mradarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1mradarr.shad-bangus.ts.net[0m' -> 100.112.150.89
+[1m[0;33m[info][0m checking DNS resolution for '[1msonarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1msonarr.shad-bangus.ts.net[0m' -> 100.113.7.100
+[1m[0;33m[info][0m checking DNS resolution for '[1mbazarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1mbazarr.shad-bangus.ts.net[0m' -> 100.104.247.70
+[1m[0;33m[info][0m checking DNS resolution for '[1mprowlarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m DNS resolves '[1mprowlarr.shad-bangus.ts.net[0m' -> 100.74.175.99
+
+[1m[0;33m[info][0m === HTTPS Connectivity Tests ===
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mjellyfin.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m jellyfin HTTPS responded with HTTP 302
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1msabnzbd.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m sabnzbd HTTPS responded with HTTP 403
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mnzbget.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m nzbget HTTPS responded with HTTP 401
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mradarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m radarr HTTPS responded with HTTP 302
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1msonarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m sonarr HTTPS responded with HTTP 302
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mbazarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m bazarr HTTPS responded with HTTP 200
+[1m[0;33m[info][0m checking HTTPS connectivity to '[1mprowlarr.shad-bangus.ts.net[0m'
+[1m[0;32m[done][0m prowlarr HTTPS responded with HTTP 302
+
+[1m[0;33m[info][0m === TLS Certificate Tests ===
+[1m[0;33m[info][0m checking TLS certificate for '[1mjellyfin.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for jellyfin
+[1m[0;32m[done][0m jellyfin TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1msabnzbd.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for sabnzbd
+[1m[0;32m[done][0m sabnzbd TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1mnzbget.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for nzbget
+[1m[0;32m[done][0m nzbget TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1mradarr.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for radarr
+[1m[0;32m[done][0m radarr TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1msonarr.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for sonarr
+[1m[0;32m[done][0m sonarr TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1mbazarr.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for bazarr
+[1m[0;32m[done][0m bazarr TLS check skipped (openssl not installed)
+[1m[0;33m[info][0m checking TLS certificate for '[1mprowlarr.shad-bangus.ts.net[0m'
+[1m[35m[WARN][0m openssl not available on firebat, skipping TLS certificate check for prowlarr
+[1m[0;32m[done][0m prowlarr TLS check skipped (openssl not installed)
+
+[1m[0;32m[done][0m all 24 Tailscale tests passed
+
+[1m[0;32m[done][0m gateway suite: 3/3 tests passed

@@ -1,0 +1,30 @@
+[1m[0;34m=== ./scripts/nixos-rebuild.sh ===[0m
+/nix/store/19yw86isnr00gchav7s3cmc1718fgfvp-nixos-rebuild-ng-26.05/bin/nixos-rebuild
+
+[1m[35m[WARN][0m This could result in a boot failure upon reboot and require console access!
+
+[1m[0;33m[info][0m Ensuring remote Nix build directory '/nix-builds' exists...
+[1m[0;33m[info][0m Running 'nixos-rebuild switch' on 'bdhill@192.168.68.63'...
+[1m[0;33m[info][0m build logs will be at: './logs/nixos-rebuild.log-20260817-134807'
+building the system configuration...
+warning: unknown experimental feature 'provenance'
+warning: unknown setting 'eval-cores'
+warning: unknown setting 'lazy-trees'
+evaluation warning: stdenv.isDarwin is deprecated, use stdenv.hostPlatform.isDarwin instead
+warning: unknown experimental feature 'provenance'
+warning: unknown setting 'eval-cores'
+warning: unknown setting 'lazy-trees'
+copying 0 paths...
+Checking switch inhibitors... done
+updating systemd-boot from 258.7 to 260.2
+Copied "/nix/store/krsvx5x37w4h082i25iqwls10bhcdxl7-systemd-260.2/lib/systemd/boot/efi/systemd-bootx64.efi" to "/boot/EFI/systemd/systemd-bootx64.efi".
+Copied "/nix/store/krsvx5x37w4h082i25iqwls10bhcdxl7-systemd-260.2/lib/systemd/boot/efi/systemd-bootx64.efi" to "/boot/EFI/BOOT/BOOTX64.EFI".
+activating the configuration...
+setting up /etc...
+sops-install-secrets: Imported /persist/etc/ssh/ssh_host_rsa_key as GPG key with fingerprint df948c0c5e1e2f254e40fd713f3eb31a0768fa6c
+sops-install-secrets: Imported /persist/etc/ssh/ssh_host_ed25519_key as age key with fingerprint age1pj3fd5sjdlm7u05a8jhxuygdldzrc76vaz80f5mvmavssa0axu8slq8s0t
+reloading user units for bdhill...
+restarting the following user units: nixos-activation.service
+restarting sysinit-reactivation.target
+Done. The new configuration is /nix/store/kmfznlnwnq9r24fay4r3mfik2s1sdnj1-nixos-system-firebat-26.05.20260817.0dd31db
+[1m[0;32m[done][0m [1m[0;34m./scripts/nixos-rebuild.sh[0m completed

@@ -1,237 +1,93 @@
 # External Integrations
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## APIs & External Services
 
-**Tailscale VPN:**
-- Purpose: Secure remote access to all homelab services via WireGuard mesh network
-- SDK/Client: `unstable.tailscale` package
-- Auth: Shared authkey (`tailscale_authkey` from `secrets/shared.yaml`)
-- Config files:
-  - `modules/servers/tailscale.nix` - Auto-authentication on boot
-  - `modules/gateway/caddy.nix` - Caddy plugin for auto HTTPS via Tailscale certificates
-- Behavior: All hosts auto-connect on boot using shared key, domain = `shad-bangus.ts.net`
-- Services accessible via Tailscale MagicDNS with valid Let's Encrypt certificates
+**VPN:**
+- NordVPN (WireGuard, via `wgnord`) - `modules/nordvpn/service.nix`, `modules/nordvpn/default.nix`
+  - Auth: access token file referenced by `config.nordvpn.accessTokenFile` (SOPS-backed)
+  - qBittorrent runs inside the resulting `wgnord` network namespace on `ser8`
 
-**NordVPN:**
-- Purpose: Anonymized torrent client via WireGuard tunnel
-- Client: `wgnord` package with `modules/nordvpn/` module
-- Auth: Access token file (path configured per-host in nordvpn module)
-- Behavior: Creates isolated network namespace (`/var/run/netns/wgnord`) for qBittorrent
-- qBittorrent runs exclusively in this namespace for IP anonymization
-- Network bridge: veth pair connecting namespace to host (configurable subnet)
+**Remote access / mesh networking:**
+- Tailscale - `modules/servers/tailscale.nix` (base auth), `modules/gateway/tailscale.nix`, `caddy-nix`'s Tailscale plugin (`modules/gateway/caddy.nix`)
+  - Auth: `tailscale_authkey` SOPS secret from `secrets/shared.yaml`, injected via `services.tailscale.authKeyFile`
+  - Domain: `shad-bangus.ts.net` (`deploy.yaml`); services get individual Tailscale nodes and automatic ACME TLS via the `bind tailscale/<service>` directive in `modules/gateway/Caddyfile`
 
-**Frigate NVR (Camera System):**
-- Purpose: Security camera recording and AI object detection
-- Config: `modules/automation/frigate.nix`
-- Auth: Camera RTSP credentials stored in SOPS (`frigate_cam_user`, `frigate_cam_pass`)
-- Credentials injected via environment variables: `{FRIGATE_CAM_USER}`, `{FRIGATE_CAM_PASS}`
-- Cameras: TP-Link Tapo C120 RTSP cameras (driveway, front_door, garage, side_gate, living_room, basement)
-- Ports: 8554 (RTSP restream), 8555 (WebRTC), port 80 (nginx web UI)
-- Storage: `/mnt/cameras` on ZFS backup pool with 5-day motion retention
-- Integrations:
-  - MQTT to Mosquitto (localhost:1883) for Home Assistant connectivity
-  - prometheus-frigate-exporter metrics on port 9710
+**Media automation (*Arr stack, internal service-to-service):**
+- Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, SABnzbd, NZBGet, FlareSolverr - all under `modules/media/`, orchestrated together on `ser8`; inter-service API keys/config coordinated by `hosts/ser8/media.nix` systemd units
+- Jellyfin - declaratively configured via the `declarative-jellyfin` flake input (`modules/media/jellyfin.nix`)
 
-**Home Assistant:**
-- Purpose: Home automation hub
-- Config: `modules/automation/home-assistant.nix`
-- Components: MQTT integration, generic camera drivers, FFmpeg transcoding
-- MQTT Broker: Mosquitto (localhost:1883) for Frigate data ingestion
-- Storage: SQLite database at `/var/lib/hass` with 30-day retention
-- Web UI: Port 8123, accessible via Caddy reverse proxy at `hass.vofi`
-- Trusted proxies configured for Caddy reverse proxy (192.168.68.0/24)
-- Data directories: Custom components, www assets in `/var/lib/hass/`
-
-**Mosquitto MQTT Broker:**
-- Purpose: Message broker for Frigate <-> Home Assistant communication
-- Config: `modules/automation/home-assistant.nix`
-- Listener: 127.0.0.1:1883 (local-only, no authentication)
-- Topic pattern: Read-write all topics (permissive for internal network)
-- Behavior: Started alongside Home Assistant
+**Home automation:**
+- Home Assistant - `modules/automation/home-assistant.nix`
+- Frigate (NVR/object detection) - `modules/automation/frigate.nix`, exposed via Caddy with WebSocket upgrade headers
+- Mosquitto (MQTT broker) - referenced alongside Home Assistant/Frigate integration on `ser8`
 
 ## Data Storage
 
 **Databases:**
-- SQLite (Home Assistant) - `/var/lib/hass/` with 30-day state retention
-- Frigate SQLite - `/var/lib/frigate/frigate.db` for object detection history
+- No standalone RDBMS; each service (Jellyfin, *Arr apps, Home Assistant, Grafana) manages its own embedded/SQLite-style state under its NixOS-managed data directory
 
 **File Storage:**
-- ZFS pools (ser8):
-  - Main pool: Stores media library (Jellyfin content)
-  - Backup pool: Stores camera recordings at `/mnt/cameras`
-  - ARC max configured: 8GB
-  - Auto-import: Backup pool on boot
-- MergerFS (ser8): Unified view across multiple ZFS datasets for media organization
-- Storage paths:
-  - `/mnt/media/downloads/` - qBittorrent and SABnzbd downloads
-  - `/mnt/media/downloads/complete/` - Completed downloads for arr stack
-  - `/mnt/cameras/` - Frigate recordings (5-day + 30-day event retention)
+- ZFS - system and backup pool on `ser8`
+- MergerFS - unified `/mnt/media` pool on `ser8`
+- Samba - LAN file sharing of media storage
+- Local filesystem only for all other hosts; no object storage / S3-compatible integration detected
 
 **Caching:**
-- Redis: Not used
-- In-memory: Prometheus time-series database (TSDB) on firebat
-- Retention policy: 30 days / 10GB size limit for Prometheus
+- None detected (no Redis/Memcached)
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom SOPS-based secrets (no external auth service)
-
-**Implementation:**
-- Jellyfin: Hashed passwords stored in SOPS (`jellyfin_admin_password`, `jellyfin_jordan_password`)
-  - Hash generation: `scripts/sops/genhash.py` before SOPS storage
-  - Credentials managed via declarative-jellyfin module
-- Grafana: Admin password via SOPS (`grafana_admin_password`) with file reference `$__file{}`
-- Caddy: Tailscale plugin auto-provisions HTTPS certificates
-- Frigate: Auth disabled (behind Tailscale firewall)
-- Home Assistant: Onboarding flow for initial user creation
-- SSH: Key-based authentication to all hosts (no password login)
-
-**Secrets Management:**
-- SOPS with age encryption (RFC 8439)
-- Master GPG key: `05BE930549C3E945BA3D8B6E72B6A6E95F049306` (admin_bobby)
-- Age keys per-host stored in `secrets/keys/hosts/`
-- Shared secrets in `secrets/shared.yaml` (readable by all hosts)
-- Host-specific secrets in `secrets/HOST.yaml` (readable only by that host)
-- Creation rules in `.sops.yaml` define encryption keys per file
+- No third-party identity provider (no OAuth/OIDC integration detected)
+- Per-service local auth: qBittorrent password hash generated via `make sops-gen-hash-qbittorrent`; generic API keys/hashes via `make sops-gen-api-key` / `make sops-gen-hash`
+- SSH key-based access for deployment (`deploy.yaml` targetUser per host)
 
 ## Monitoring & Observability
 
-**Metrics Collection:**
-- Prometheus (firebat:9090) - Time-series database
-- 30-day retention, 10GB storage limit
-- Admin API enabled for series deletion
-
-**Scrape Targets:**
-- Node Exporter: System metrics from ser8, firebat, pi4 (port 9100)
-  - CPU, memory, filesystem, disk I/O, load average, network, processes
-- Systemd Exporter: Service state and restart counts (port 9558)
-  - Monitors: jellyfin, sonarr, radarr, prowlarr, qbittorrent, sabnzbd, frigate, home-assistant, caddy, grafana, prometheus, adguardhome, mosquitto, nginx
-- Process Exporter: Per-service CPU/memory/IO metrics (port 9256)
-  - Process filtering by name and command line
-- ZFS Exporter: Pool health and metrics (ser8 only, port 9134)
-- Frigate Exporter: NVR metrics via `/api/stats` endpoint (port 9710)
-- Jellyfin Exporter: Media server metrics (port 9711)
-- Exportarr: Sonarr (9707), Radarr (9708), Prowlarr (9709)
-- Caddy Metrics: Admin API on port 2019
-- AdGuard Home: DNS metrics (pi4, port 9618)
-
-**Visualization:**
-- Grafana (firebat:3000)
-- Dashboards from grafana.com (pre-downloaded in `dashboards/`):
-  - Node Exporter Full (ID 1860) - System metrics
-  - ZFS Pool Status (ID 7845) - Storage health
-  - Prometheus Stats (ID 3662) - Self-monitoring
-  - Frigate dashboard - NVR metrics
-  - Jellyfin dashboard - Media server metrics
-  - Sonarr, Radarr dashboards - Arr stack metrics
-  - AdGuard dashboard - DNS filtering stats
-  - Caddy dashboard - Reverse proxy metrics
-  - Systemd dashboard - Service monitoring
-- Datasource: Prometheus (http://localhost:9090)
-- Admin auth: SOPS-encrypted password
-- Anonymous viewer access enabled for dashboards
+**Metrics:**
+- Prometheus - `modules/gateway/prometheus.nix`, scraping exporters across hosts
+- Prometheus Blackbox Exporter - `modules/gateway/blackbox.nix` for endpoint/uptime probing
+- Grafana - `modules/gateway/grafana.nix`, dashboards version-controlled as JSON in `dashboards/`, provisioned declaratively
+- Service-specific exporters: `modules/automation/frigate-exporter.nix`, `modules/media/jellyfin-exporter.nix`, `modules/dns/adguard-exporter.nix`
 
 **Error Tracking:**
-- systemd journal aggregation with log rotation
-- Journal max: 1GB per host, 100MB per file, 10 files max
-- Service logs accessible via `journalctl`
-- No external error tracking (Sentry, Rollbar, etc.)
+- None (no Sentry or similar APM/error-tracking integration)
 
 **Logs:**
-- All systemd service logs via journald
-- Log rotation: 7-day retention, daily rotation, compression enabled
-- API key sanitization in logs (secrets not exposed in systemd output)
+- systemd journal (standard NixOS logging) plus Caddy access/error logs (per-route `log tailscale { level DEBUG }` in `modules/gateway/Caddyfile`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Self-hosted homelab:
-  - ser8: Beelink SER8 (x86_64, media server)
-  - firebat: x86_64 gateway/proxy
-  - pi4: Raspberry Pi 4B (DNS)
-  - pi5: Raspberry Pi 5 (experimental)
-- No cloud hosting
-
-**Deployment Process:**
-- Local build via `nixos-rebuild` wrapped in Makefile
-- Remote build available on targets (`buildOnTarget: true` in deploy.yaml)
-- nixos-anywhere for initial provisioning with kexec installers
-- Rollback capability to previous system generation
-- SD card image builders for Raspberry Pi via Docker
-- Smoketests post-deployment: `scripts/smoketests/` per service type
+- Self-hosted bare-metal/homelab (no cloud provider); four physical hosts per `deploy.yaml`
 
 **CI Pipeline:**
-- No external CI (GitHub Actions, GitLab CI, etc.)
-- Local testing via `make check` (flake validation)
-- Format validation via `make fmt` with nixfmt-rfc-style
+- None detected in-repo (no `.github/workflows/`); `make check` is the local pre-deploy validation gate
+- Deployment executed manually via `make build-<host>`, `make test-<host>`, `make switch-<host>` using `nixos-anywhere`/remote build (`buildOnTarget: true`)
 
 ## Environment Configuration
 
 **Required env vars:**
-- None hardcoded in deployment
-- All secrets via SOPS (age-encrypted files)
-- Service-specific env vars injected via systemd unit files from SOPS templates
-
-**Critical SOPS Secrets:**
-- `tailscale_authkey` (shared.yaml) - Shared across all hosts for auto-auth
-- `tailscale_authkey_caddy` (shared.yaml) - Caddy-owned copy for reverse proxy
-- `grafana_admin_password` (firebat.yaml) - Grafana admin access
-- `jellyfin_admin_password` (ser8.yaml) - Jellyfin media server admin
-- `jellyfin_jordan_password` (ser8.yaml) - Jellyfin user account
-- `frigate_cam_user` (ser8.yaml) - RTSP camera username
-- `frigate_cam_pass` (ser8.yaml) - RTSP camera password
-- `nordvpn_access_token` (ser8.yaml) - NordVPN API token
+- None required for the flake itself (SOPS/age handle secret injection at the Nix/systemd level rather than shell env vars)
+- `NO_CONFIRM=true` - opt-in Makefile flag to bypass interactive deploy prompts
 
 **Secrets location:**
-- `secrets/shared.yaml` - Readable by all hosts (age-encrypted with all host keys + admin GPG)
-- `secrets/HOST.yaml` - Host-specific secrets (encrypted with admin GPG + single host age key)
-- `secrets/keys/hosts/` - Host age private keys (generated during provisioning)
-- `secrets/keys/users/` - User age keys for admin access
-- `.sops.yaml` - Encryption rules and key management configuration
+- `secrets/<host>.yaml` - host-specific SOPS-encrypted secrets (e.g. NordVPN token, service API keys)
+- `secrets/shared.yaml` - cross-host secrets (e.g. `tailscale_authkey`)
+- Age identities derived from SSH host keys; persistent hosts read keys from `/persist/etc/ssh/`
+- Managed exclusively through `make sops-edit-<host>`, `make sops-edit-shared`, `make sops-status` — never via ad hoc plaintext edits
 
 ## Webhooks & Callbacks
 
-**Incoming Webhooks:**
-- None configured
-- Frigate runs locally without external webhook callbacks
-- Home Assistant automation internal only
+**Incoming:**
+- None detected (no webhook receiver endpoints configured)
 
-**Outgoing Webhooks:**
-- None configured
-- No external service callbacks
-- All integrations are pull-based (Prometheus scraping exporters)
-
-## Network & DNS
-
-**DNS Provider:**
-- Internal: AdGuard Home on pi4 (DNS on port 53)
-- Upstream: Cloudflare (1.1.1.1, 1.0.0.1), Google (8.8.8.8, 8.8.4.4)
-- All hosts configured to use pi4 as primary DNS server
-- Internal domain rewriting for `.internal` and `.local` domains
-- Tailscale MagicDNS for remote access via `shad-bangus.ts.net`
-
-**Reverse Proxy:**
-- Caddy with Tailscale plugin (firebat)
-- Local domain: `vofi.app` and `vofi` with self-signed certs via local CA
-- Tailscale domain: `shad-bangus.ts.net` with Let's Encrypt certificates
-- HTTPS enforcement for remote access
-
-**Services via Caddy:**
-- `jellyfin.vofi.app` → localhost:8096
-- `sonarr.vofi` → localhost:8989
-- `radarr.vofi` → localhost:7878
-- `prowlarr.vofi` → localhost:9696
-- `torrent.vofi` → localhost:8080 (qBittorrent)
-- `sabnzbd.vofi` → localhost:8085
-- `frigate.vofi` → localhost:5000
-- `hass.vofi` → localhost:8123
-- `grafana.vofi.app` → localhost:3000
-- `prometheus.vofi.app` → localhost:9090
-- `adguard.internal` → localhost:3000 (AdGuard admin)
+**Outgoing:**
+- *Arr-stack-to-download-client API calls (Sonarr/Radarr/Prowlarr → qBittorrent/SABnzbd/NZBGet) are internal service integrations, not external webhooks
+- No outbound webhook/notification integrations (e.g. Slack, Discord, PagerDuty) detected
 
 ---
 
-*Integration audit: 2026-02-09*
+*Integration audit: 2026-08-17*

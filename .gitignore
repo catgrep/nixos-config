@@ -4,3 +4,6 @@ tmp
 
 # Tailscale fallback cache (created when local network unreachable)
 .use_tailscale
+
+# GSD tooling runtime state (dispatch sentinels, not project data)
+.gsd/

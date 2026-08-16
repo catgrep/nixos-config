@@ -1,0 +1,156 @@
+=== ./scripts/smoketests/gateway/test-caddy.sh ===
+[info] checking caddy proxy services
+[WARN] local and remote Caddyfiles differ
+[WARN] testing the remote Caddyfile
+[WARN] the routes below reflect what is DEPLOYED, not the working tree
+[info] extracting 'servers' and 'upstreams' from '/tmp/nix-shell.XWexXz/tmp.Mx0c4kIpdv'...
+[info] extracted: jellyfin.vofi nzbget.vofi sabnzbd.vofi frigate.vofi radarr.vofi torrent.vofi hass.vofi prowlarr.vofi prometheus.vofi.app sonarr.vofi grafana.vofi.app bazarr.vofi jellyfin.vofi.app
+[info] testing route: jellyfin.vofi -> ser8.local:8096
+[info] check that 'jellyfin.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'jellyfin.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'jellyfin.vofi' responded with HTTP 302
+[info] testing route: nzbget.vofi -> ser8.local:6789
+[info] check that 'nzbget.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'nzbget.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'nzbget.vofi' responded with HTTP 401
+[info] testing route: sabnzbd.vofi -> ser8.local:8085
+[info] check that 'sabnzbd.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'sabnzbd.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[WARN] HTTPS for 'sabnzbd.vofi' did not reach the upstream (HTTP 502); retrying over HTTP
+[done] HTTP for 'sabnzbd.vofi' responded with HTTP 308
+[info] testing route: frigate.vofi -> ser8.local:80
+[info] check that 'frigate.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'frigate.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'frigate.vofi' responded with HTTP 200
+[info] testing route: radarr.vofi -> ser8.local:7878
+[info] check that 'radarr.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'radarr.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'radarr.vofi' responded with HTTP 302
+[info] testing route: torrent.vofi -> ser8.local:8080
+[info] check that 'torrent.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'torrent.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'torrent.vofi' responded with HTTP 200
+[info] testing route: hass.vofi -> ser8.local:8123
+[info] check that 'hass.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'hass.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'hass.vofi' responded with HTTP 400
+[info] testing route: prowlarr.vofi -> ser8.local:9696
+[info] check that 'prowlarr.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'prowlarr.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'prowlarr.vofi' responded with HTTP 302
+[info] testing route: prometheus.vofi.app -> firebat.local:9090
+[info] check that 'prometheus.vofi.app' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'prometheus.vofi.app' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'prometheus.vofi.app' responded with HTTP 302
+[info] testing route: sonarr.vofi -> ser8.local:8989
+[info] check that 'sonarr.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'sonarr.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'sonarr.vofi' responded with HTTP 302
+[info] testing route: grafana.vofi.app -> firebat.local:3000
+[info] check that 'grafana.vofi.app' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'grafana.vofi.app' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'grafana.vofi.app' responded with HTTP 200
+[info] testing route: bazarr.vofi -> ser8.local:6767
+[info] check that 'bazarr.vofi' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'bazarr.vofi' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'bazarr.vofi' responded with HTTP 200
+[info] testing route: jellyfin.vofi.app -> ser8.local:8096
+[info] check that 'jellyfin.vofi.app' redirects properly
+[info] SKIPPED the '.vofi' DNS lookup for 'jellyfin.vofi.app' (pi4 resolver retired, pending .vofi re-establishment); forcing the address with curl --resolve instead
+[done] HTTPS for 'jellyfin.vofi.app' responded with HTTP 302
+
+[done] all 13 caddy proxy services passed
+[info] checking caddy service status
+[done] caddy service is running
+
+[done] all tests passed
+=== ./scripts/smoketests/gateway/test-subgen.sh ===
+[info] checking Subgen service state on firebat
+[done] Subgen service is active
+[info] checking Subgen status endpoint from ser8
+[done] Subgen status endpoint returned version metadata
+=== ./scripts/smoketests/gateway/test-tailscale.sh ===
+
+[info] === Tailscale Daemon Tests ===
+[info] checking Tailscale daemon status
+[done] tailscaled service is running
+[info] checking Tailscale connection status
+[done] Tailscale is connected (state: Running)
+
+[info] === Tailscale Node Tests ===
+[info] checking Tailscale nodes
+[WARN] found nodes: jellyfin sabnzbd nzbget radarr sonarr bazarr prowlarr
+[FAIL] missing Tailscale nodes: mealie
+[WARN] test failed: tailscale_nodes
+
+[info] === DNS Resolution Tests ===
+[info] checking DNS resolution for 'jellyfin.shad-bangus.ts.net'
+[done] DNS resolves 'jellyfin.shad-bangus.ts.net' -> 100.94.108.104
+[info] checking DNS resolution for 'sabnzbd.shad-bangus.ts.net'
+[done] DNS resolves 'sabnzbd.shad-bangus.ts.net' -> 100.97.3.71
+[info] checking DNS resolution for 'nzbget.shad-bangus.ts.net'
+[done] DNS resolves 'nzbget.shad-bangus.ts.net' -> 100.95.185.89
+[info] checking DNS resolution for 'radarr.shad-bangus.ts.net'
+[done] DNS resolves 'radarr.shad-bangus.ts.net' -> 100.112.150.89
+[info] checking DNS resolution for 'sonarr.shad-bangus.ts.net'
+[done] DNS resolves 'sonarr.shad-bangus.ts.net' -> 100.113.7.100
+[info] checking DNS resolution for 'bazarr.shad-bangus.ts.net'
+[done] DNS resolves 'bazarr.shad-bangus.ts.net' -> 100.104.247.70
+[info] checking DNS resolution for 'prowlarr.shad-bangus.ts.net'
+[done] DNS resolves 'prowlarr.shad-bangus.ts.net' -> 100.74.175.99
+[info] checking DNS resolution for 'mealie.shad-bangus.ts.net'
+[FAIL] DNS resolution failed for 'mealie.shad-bangus.ts.net'
+[WARN] test failed: dns_mealie
+
+[info] === HTTPS Connectivity Tests ===
+[info] checking HTTPS connectivity to 'jellyfin.shad-bangus.ts.net'
+[done] jellyfin HTTPS responded with HTTP 302
+[info] checking HTTPS connectivity to 'sabnzbd.shad-bangus.ts.net'
+[FAIL] sabnzbd HTTPS returned unexpected code: 502
+[WARN] test failed: https_sabnzbd
+[info] checking HTTPS connectivity to 'nzbget.shad-bangus.ts.net'
+[done] nzbget HTTPS responded with HTTP 401
+[info] checking HTTPS connectivity to 'radarr.shad-bangus.ts.net'
+[done] radarr HTTPS responded with HTTP 302
+[info] checking HTTPS connectivity to 'sonarr.shad-bangus.ts.net'
+[done] sonarr HTTPS responded with HTTP 302
+[info] checking HTTPS connectivity to 'bazarr.shad-bangus.ts.net'
+[done] bazarr HTTPS responded with HTTP 200
+[info] checking HTTPS connectivity to 'prowlarr.shad-bangus.ts.net'
+[done] prowlarr HTTPS responded with HTTP 302
+[info] checking HTTPS connectivity to 'mealie.shad-bangus.ts.net'
+[FAIL] mealie HTTPS connection failed
+[WARN] test failed: https_mealie
+
+[info] === TLS Certificate Tests ===
+[info] checking TLS certificate for 'jellyfin.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for jellyfin
+[done] jellyfin TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'sabnzbd.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for sabnzbd
+[done] sabnzbd TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'nzbget.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for nzbget
+[done] nzbget TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'radarr.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for radarr
+[done] radarr TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'sonarr.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for sonarr
+[done] sonarr TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'bazarr.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for bazarr
+[done] bazarr TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'prowlarr.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for prowlarr
+[done] prowlarr TLS check skipped (openssl not installed)
+[info] checking TLS certificate for 'mealie.shad-bangus.ts.net'
+[WARN] openssl not available on firebat, skipping TLS certificate check for mealie
+[done] mealie TLS check skipped (openssl not installed)
+
+[FAIL] 23/27 Tailscale tests passed
+[FAIL] script './scripts/smoketests/gateway/test-tailscale.sh' failed with exit code: 1
+
+[FAIL] gateway suite: 2/3 tests passed
+[FAIL]   failed: ./scripts/smoketests/gateway/test-tailscale.sh
+[FAIL] script './scripts/smoketests/gateway/all.sh' failed with exit code: 1

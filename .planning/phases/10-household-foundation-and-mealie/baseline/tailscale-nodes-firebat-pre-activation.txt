@@ -1,0 +1,29 @@
+100.104.98.126   firebat              <owner-redacted>  linux    -                                                          
+100.104.195.39   alejandros-tv        <owner-redacted>    android  offline, last seen 11d ago                                 
+100.69.82.109    apple-tv-1           <owner-redacted>  tvOS     offline, last seen 8d ago                                  
+100.97.57.54     apple-tv             <owner-redacted>  tvOS     offline, last seen 10d ago                                 
+100.104.247.70   bazarr               <owner-redacted>  linux    active; direct 192.168.68.63:59506, tx 1025124 rx 2718332  
+100.119.109.112  bob-mac-1            <owner-redacted>  macOS    idle, tx 236 rx 308                                        
+100.66.178.55    bob-mac              <owner-redacted>  macOS    offline, last seen 161d ago                                
+100.107.72.56    frigate              <owner-redacted>  linux    idle, tx 1062848 rx 4224048                                
+100.121.148.82   fuckthismac          <owner-redacted>    macOS    offline, last seen 18m ago                                 
+100.112.73.4     grafana              <owner-redacted>  linux    idle, tx 1601784 rx 21247216                               
+100.67.184.125   hass                 <owner-redacted>  linux    idle, tx 1050600 rx 3927888                                
+100.99.234.54    iphone-13-pro        <owner-redacted>  iOS      offline, last seen 176d ago                                
+100.100.62.89    iphone181-1          <owner-redacted>  iOS      -                                                          
+100.94.54.79     iphone181            <owner-redacted>    iOS      -                                                          
+100.94.108.104   jellyfin             <owner-redacted>  linux    idle, tx 2007148 rx 5742028                                
+100.92.144.63    jmgo-k93a            <owner-redacted>    android  offline, last seen 208d ago                                
+100.110.102.122  jordans-macbook-air  <owner-redacted>    macOS    offline, last seen 173d ago                                
+100.95.185.89    nzbget               <owner-redacted>  linux    active; direct 192.168.68.63:36227, tx 1008204 rx 2033740  
+100.90.61.10     pi4                  <owner-redacted>  linux    offline, last seen 64d ago                                 
+100.121.116.64   prom                 <owner-redacted>  linux    idle, tx 1972808 rx 4544704                                
+100.74.175.99    prowlarr             <owner-redacted>  linux    idle, tx 2025552 rx 7132928                                
+100.112.150.89   radarr               <owner-redacted>  linux    idle, tx 2040460 rx 7139600                                
+100.97.3.71      sabnzbd              <owner-redacted>  linux    idle, tx 1006080 rx 2050316                                
+100.127.74.98    ser8                 <owner-redacted>  linux    -                                                          
+100.113.7.100    sonarr               <owner-redacted>  linux    idle, tx 2064460 rx 7139124                                
+100.75.13.36     torrent              <owner-redacted>  linux    -                                                          
+
+# Health check:
+#     - Tailscale can't reach the configured DNS servers. Internet connectivity may be affected.

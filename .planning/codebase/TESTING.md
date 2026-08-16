@@ -1,393 +1,250 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## Test Framework
 
-**Runner:**
-- Bash scripts for all testing
-- Smoketests: Post-deployment integration tests
-- No unit test framework (this is infrastructure, not application code)
-- Location: `scripts/smoketests/` organized by module (gateway, dns, media, nordvpn)
+This is a NixOS infrastructure repository, not an application codebase. There is no unit-test framework (no Jest/pytest/etc). Testing takes three forms:
 
-**Assertion Library:**
-- Custom bash library: `scripts/lib/logging.sh`
-- Functions: `pass()` for success, `fail()` for failure, `warn()` for warnings
-- Color-coded output with status labels: `[info]`, `[WARN]`, `[FAIL]`, `[done]`
+1. **Nix evaluation checks** — `nix flake check`, `statix check`, and dry-run builds of every host's `toplevel` derivation.
+2. **Validation scripts** — one-off Bash scripts under `scripts/validation/` that assert specific Nix module/option behavior via `nix eval --json`.
+3. **Smoketests** — Bash scripts under `scripts/smoketests/` that SSH into a live, already-deployed host and assert real runtime behavior (services up, hardware acceleration works, network isolation holds, DNS resolves).
+
+**Runner:** Plain Bash (`#!/usr/bin/env bash`, `set -euo pipefail`). No test framework dependency.
 
 **Run Commands:**
 ```bash
-make smoketests-HOST                    # Run smoketests for a host
-make apply-HOST                         # Full deploy: build + test + switch + reboot + smoketests
-./scripts/smoketests/gateway/all.sh firebat    # Run gateway tests directly
-./scripts/smoketests/media/all.sh ser8         # Run media tests directly
-./scripts/smoketests/dns/all.sh pi4            # Run DNS tests directly
-./scripts/smoketests/nordvpn/all.sh ser8       # Run NordVPN tests directly
+make check                     # nix flake check + statix + validation scripts + dry-run builds of every host
+make smoketests-ser8           # run the full ser8 smoketest suite over SSH
+make smoketests-HOST           # generic form, HOST from deploy.yaml
+./scripts/validation/test-actual-module.sh   # run a single validation script directly
+./scripts/smoketests/ser8/test-vaapi.sh ser8 # run a single smoketest directly (host arg required)
+```
+
+`make check` is the main repo-wide gate and is defined in `Makefile`:
+```makefile
+check:
+	@nix flake check
+	@statix check
+	@./scripts/validation/test-nzbget-permissions.sh
+	@./scripts/validation/test-actual-module.sh
+	@./scripts/validation/test-pi-bootloader.sh
+	@$(call success_msg,"✓ Flake check passed")
+	@$(call info_msg,"Testing host configurations..."); \
+	set -e; \
+	for host in $(HOSTS); do \
+		nix build .#nixosConfigurations."$$host".config.system.build.toplevel --dry-run; \
+	done; \
+	$(call success_msg,"✓ All host configurations are valid")
 ```
 
 ## Test File Organization
 
-**Location:**
-- `scripts/smoketests/` contains module-specific test suites
-- Structure: `scripts/smoketests/<module>/all.sh` aggregates test cases
-- Individual test files: `scripts/smoketests/<module>/test-<feature>.sh`
+**Validation scripts** (`scripts/validation/`): standalone, non-suite scripts that gate specific Nix evaluation invariants. Run individually inside `make check`, not through a fan-out helper. Examples:
+- `scripts/validation/test-actual-module.sh` — asserts the flake resolves a specific upstream NixOS module version by checking option existence/type, not option value.
+- `scripts/validation/test-nzbget-permissions.sh`, `scripts/validation/test-pi-bootloader.sh`.
 
-**Naming:**
-- `all.sh`: Aggregate runner for a module's tests
-- `test-<feature>.sh`: Individual test case
-- Example structure:
-  - `scripts/smoketests/gateway/all.sh` → runs test-caddy.sh, test-tailscale.sh
-  - `scripts/smoketests/dns/all.sh` → runs test-dns.sh, test-dhcp.sh
-  - `scripts/smoketests/media/all.sh` → aggregates tests via helper function
+**Smoketests** (`scripts/smoketests/`): organized by host or subsystem, each directory containing individual `test-*.sh` checks plus one `all.sh` entry point:
+```
+scripts/smoketests/
+├── lib/                     # shared fan-out and service-check helpers
+│   ├── fanout.sh
+│   └── services.sh
+├── ser8/
+│   ├── test-frigate.sh
+│   ├── test-home-assistant.sh
+│   ├── test-zfs-health.sh
+│   ├── test-vaapi.sh
+│   └── all.sh               # fans out to media/all.sh, nordvpn/all.sh, and the ser8 test-*.sh files
+├── media/
+│   └── all.sh
+├── nordvpn/
+│   ├── test-qbittorrent-confinement.sh
+│   ├── test-forwarding.sh
+│   ├── test-veth-interfaces.sh
+│   ├── test-anonymity.sh
+│   ├── test-netns.sh
+│   ├── test-qbittorrent.sh
+│   ├── all.sh
+│   └── disruptive.sh        # kill-switch tests; deliberately excluded from all.sh / the deploy path
+├── gateway/
+│   ├── test-subgen.sh
+│   ├── test-tailscale.sh
+│   ├── test-caddy.sh
+│   └── all.sh
+└── subgen/
+```
 
-**Configuration:**
-- Test definitions in `deploy.yaml` under `hosts.<hostname>.smoketests`
-- Maps host to test script path: `smoketests: "./scripts/smoketests/gateway/all.sh"`
-- Triggered by `make apply-HOST` after successful `make switch-HOST`
+**Naming:** `test-<subject>.sh` for individual checks. `all.sh` reserved exclusively for suite entry points referenced by `deploy.yaml` — never rename or duplicate this filename casually, since `deploy.yaml` is the single source of truth for which script runs per host/tag.
 
 ## Test Structure
 
-**Suite Organization:**
+**Suite entry point pattern** — every `all.sh` follows the same shape (`scripts/smoketests/ser8/all.sh`):
 ```bash
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-
-. ./scripts/lib/all.sh               # Source common libraries
-set -euo pipefail                     # Strict error handling
-
-title "$0"                            # Print test suite name
-
-# Parameter validation
-if [ $# -lt 1 ]; then
-    info "Usage: $0 <host>"
-    exit 1
-fi
-
-# Extract host metadata
-host="$1"
-ipaddr=$(get_ip "$host")
-user=$(get_user "$host")
-
-# Define test functions
-test_feature() {
-    local param1="$1"
-    info "testing feature: $param1"
-    # ... test logic
-    if condition; then
-        pass "feature test passed"
-    else
-        fail "feature test failed"
-        exit 1
-    fi
-}
-
-# Run tests
-test_feature "param"
-
-# Final status
-echo
-pass "all tests passed"
-```
-
-**Example from `scripts/smoketests/dns/test-dns.sh`:**
-```bash
-#!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-3.0-or-later
-
-. ./scripts/lib/all.sh
 set -euo pipefail
 
-title "$0"
+# shellcheck source=scripts/lib/all.sh
+. ./scripts/lib/all.sh
+# shellcheck source=scripts/smoketests/lib/fanout.sh
+. ./scripts/smoketests/lib/fanout.sh
 
-if [ $# -lt 1 ]; then
-    info "Usage: $0 <host>"
-    exit 1
-fi
+SUITE_NAME="ser8"
+TESTS=(
+	./scripts/smoketests/media/all.sh
+	./scripts/smoketests/nordvpn/all.sh
+	./scripts/smoketests/ser8/test-zfs-health.sh
+	./scripts/smoketests/ser8/test-vaapi.sh
+	./scripts/smoketests/ser8/test-frigate.sh
+	./scripts/smoketests/ser8/test-home-assistant.sh
+)
 
-host="$1"
-ipaddr=$(get_ip "$host")
-user=$(get_user "$host")
-
-# Define test function
-resolves() {
-    local domain="$1"
-    local ipaddr="$2"
-
-    info "check that '$(fmt_bold "$domain")' resolves"
-    if nslookup "$domain" "$ipaddr"; then
-        pass "resolved '$(fmt_bold "$domain")'"
-    else
-        fail "failed to resolve '$(fmt_bold "$domain")'"
-    fi
-}
-
-# Run tests
-if ! resolves google.com "$ipaddr"; then
-    exit 1
-fi
-
-echo
-pass "all tests passed"
+run_suite "$@"
 ```
+New suites: declare `SUITE_NAME`, populate a `TESTS` array of script paths (individual tests or nested `all.sh` suites), then call `run_suite "$@"` — never hand-roll a `for` loop, because a loop's exit status reflects only its last iteration and can silently certify a broken activation (explicitly called out in the header comment of `scripts/smoketests/ser8/all.sh`).
 
-**Patterns:**
-- Setup: Extract host metadata (`ipaddr`, `user`) from `deploy.yaml` helpers
-- Teardown: None explicitly (tests are read-only, no state changes)
-- Assertion: Call `pass()` on success, `fail()` on failure, call `exit 1` if critical
+**Individual test-script pattern** — each `test-*.sh` accepts the host as `$1`, resolves its IP/user, defines one or more `test_*` predicate functions, invokes them through a local `run_test` counter helper, and prints a final pass/fail summary (`scripts/smoketests/ser8/test-vaapi.sh`):
+```bash
+run_test() {
+	local test_name="$1"
+	local test_func="$2"
+	shift 2
+	((tests_run += 1))
+	if "$test_func" "$@"; then
+		((tests_passed += 1))
+		return 0
+	fi
+	warn "test failed: $test_name"
+	return 1
+}
+```
+Every check runs even after a prior one fails (`run_test ... || true`), so a single script surfaces every broken assertion rather than stopping at the first.
+
+**Suite fan-out helper** (`scripts/smoketests/lib/fanout.sh`) — `run_suite` runs every entry in `TESTS`, tallies pass/fail, and returns non-zero if any failed:
+```bash
+run_suite() {
+	local suite="${SUITE_NAME:-smoketest}"
+	local tests_run=0
+	local tests_passed=0
+	local failed=()
+	local test
+
+	if [ "${#TESTS[@]}" -eq 0 ]; then
+		fail "suite '$suite' defines no tests"
+		return 1
+	fi
+
+	for test in "${TESTS[@]}"; do
+		tests_run=$((tests_run + 1))
+		if "$test" "$@"; then
+			tests_passed=$((tests_passed + 1))
+		else
+			failed+=("$test")
+		fi
+	done
+	...
+}
+```
 
 ## Mocking
 
-**Framework:**
-- No mocking framework; tests are end-to-end integration tests
-- SSH used to verify remote behavior: `ssh "$user@$ipaddr" 'command'`
-- Services tested via HTTP: `curl` with DNS resolution and Host headers
-- No unit-level mocking; tests verify actual system state
+There is no mocking framework. Smoketests deliberately avoid mocking and instead exercise real subsystems on a live, already-deployed host over SSH:
+- Hardware acceleration is proven by running an actual `ffmpeg` VAAPI encode as the real service user (`sudo -n -u jellyfin ffmpeg ...`), not by checking that the render node file exists (`scripts/smoketests/ser8/test-vaapi.sh`). The header comment explicitly rejects the "presence check" as insufficient because permission and driver-ABI failures look identical to a passing presence check.
+- Network connectivity checks hit real HTTPS/HTTP endpoints with `curl`, trying a Host-header fallback path when DNS resolution isn't available (`scripts/smoketests/lib/services.sh`).
+- Validation scripts call real `nix eval --json` against the actual flake outputs rather than stubbing evaluation.
 
-**Patterns:**
-- Fallback on DNS failure: Try DNS resolution, then use Host header, then use IP directly
-- Retry logic: Curl with timeout flags for slow services
-- Example from `scripts/smoketests/lib/services.sh`:
-  ```bash
-  # Try HTTPS first
-  if error_output=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "$domain:443:$ipaddr" "https://$domain" --connect-timeout 5 --max-time 10 2>&1); then
-      response="$error_output"
-      if [[ "$response" =~ ^[0-9]{3}$ ]]; then
-          if [[ "$response" =~ ^(200|301|302|404)$ ]]; then
-              pass "HTTPS redirect for '$domain' responded with HTTP $response"
-              return 0
-          fi
-      fi
-  fi
-
-  # Fallback to HTTP
-  if error_output=$(curl -s -o /dev/null -w "%{http_code}" --resolve "$domain:80:$ipaddr" "http://$domain" --connect-timeout 5 --max-time 10 2>&1); then
-      ...
-  fi
-  ```
-
-**What to Mock:**
-- Remote verification: Use SSH to check service status
-- DNS resolution: Test both DNS-based and Host header methods
-- HTTP endpoints: Curl with flexible DNS strategies
-
-**What NOT to Mock:**
-- Service startup/shutdown (let real systemd handle it)
-- Configuration loading (read real config files)
-- Database/state changes (tests are read-only queries)
+**What NOT to mock:** service credentials, hardware device access, and Nix evaluation are always exercised for real. If a check can't reach the real target (SSH refused, hardware absent), it fails — it is never skipped or short-circuited to a pass. This is stated explicitly in `scripts/smoketests/ser8/test-vaapi.sh`: "Nothing is skipped. A missing ffmpeg, a missing render node, or a refused `sudo -n` fails the check."
 
 ## Fixtures and Factories
 
-**Test Data:**
-- No fixtures; tests use real infrastructure (DNS, services, network)
-- Service endpoints defined in test script arrays: `MEDIA_SERVICES`, `TESTS`, etc.
-- Example from `scripts/smoketests/media/all.sh`:
-  ```bash
-  # format: "service_name:domain:port:systemd_service"
-  MEDIA_SERVICES=(
-      "Jellyfin:jellyfin.vofi:8096:jellyfin"
-      "Sonarr:sonarr.vofi:8989:sonarr"
-      "Radarr:radarr.vofi:7878:radarr"
-      "qBittorrent:torrent.vofi:8080:qbittorrent"
-      "Prowlarr:prowlarr.vofi:9696:prowlarr"
-      "SABnzbd:sabnzbd.vofi:8085:sabnzbd"
-  )
-  ```
-
-**Location:**
-- Test service definitions inline in `all.sh` files
-- Shared helper functions in `scripts/smoketests/lib/services.sh`
-- Host metadata in `deploy.yaml`
-- No separate fixture files
+No fixture/factory framework. Test inputs are inline constants at the top of each script, e.g.:
+```bash
+RENDER_NODE="/dev/dri/renderD128"
+VAAPI_ENCODER="h264_vaapi"
+SERVICE_USERS=( jellyfin frigate )
+ACCELERATED_UNITS=( jellyfin frigate )
+```
+Synthetic test input is generated on the fly rather than stored as a fixture file, e.g. `ffmpeg`'s `-f lavfi -i "testsrc=size=320x240:rate=25:duration=1"` in the VAAPI encode test avoids needing any media fixture on disk.
 
 ## Coverage
 
-**Requirements:**
-- No coverage targets enforced
-- Manual testing via `make apply-HOST`
-- Smoketests are gate-keepers for deployment
-
-**View Coverage:**
-```bash
-# Coverage is implicit - run all tests for a host
-make smoketests-HOST
-
-# Or run a specific test suite
-./scripts/smoketests/gateway/all.sh firebat -v
-```
+No coverage tooling or enforced coverage target. Coverage is reasoned about qualitatively per subsystem: add or update a smoketest whenever changing deployed services, networking, DNS, gateway behavior, monitoring, or media automation (per project CLAUDE.md Testing Expectations).
 
 ## Test Types
 
-**Unit Tests:**
-- Not used; this is infrastructure configuration
-- Nix code validated by `nix flake check` which type-checks modules
+**Nix evaluation / build checks:**
+- Scope: flake-level correctness (`nix flake check`), lint (`statix check`), and that every host's system closure evaluates and dry-run builds.
+- Approach: `make check`; run at the affected-host/file level first when practical, then repo-wide.
 
-**Integration Tests (Smoketests):**
-- **Scope:** Verify that deployed services respond to network requests
-- **Approach:** SSH into host, check systemd service status, curl HTTP endpoints
-- **What they test:**
-  - DNS resolution: `nslookup domain server`
-  - HTTP connectivity: `curl` with DNS resolution and Host headers
-  - Service routing: Verify Caddy routes reach correct upstream
-  - Systemd status: `systemctl is-active --quiet service`
-  - Backend health: Direct curl to localhost:port on host
+**Validation scripts (`scripts/validation/`):**
+- Scope: narrow, targeted assertions about Nix module/option resolution — e.g. proving a specific upstream module version is in the resolved closure by checking option *type*, not value, since a stale module might not even expose the option (`scripts/validation/test-actual-module.sh`).
+- Approach: `nix eval --json <expr>` against `.#nixosConfigurations.<host>.options...` / `.config...`, compared with a hardcoded expected value; failures accumulate into a counter and the script exits non-zero if any failed. Evaluation errors are never caught/suppressed — they must propagate so a broken gate is loud.
 
-**Examples:**
-- `scripts/smoketests/gateway/test-caddy.sh`: Verifies Caddy routes via reverse proxy
-- `scripts/smoketests/gateway/test-tailscale.sh`: Verifies Tailscale connectivity
-- `scripts/smoketests/dns/test-dns.sh`: Verifies AdGuard DNS resolution
-- `scripts/smoketests/media/all.sh`: Verifies all media services respond to HTTP
-- `scripts/smoketests/nordvpn/test-qbittorrent.sh`: Verifies qBittorrent in VPN namespace
+**Smoketests (`scripts/smoketests/`):**
+- Scope: runtime behavior of already-deployed hosts, reached over SSH — service HTTP reachability, hardware acceleration, VPN network-namespace isolation, DNS resolution, ZFS pool health.
+- Approach: `make smoketests-HOST` after `make test-HOST`/`make switch-HOST`; disruptive suites (e.g. NordVPN kill-switch, `scripts/smoketests/nordvpn/disruptive.sh`) are intentionally excluded from the deploy-path `all.sh` and must be run manually.
 
-**E2E Tests:**
-- Not explicitly defined
-- `make apply-HOST` serves as full E2E pipeline: build → test → switch → reboot → smoketests
-- Smoketests verify the entire deployment end-to-end
+**E2E tests:** Not applicable in the traditional sense — smoketests against live hosts serve this role for infrastructure.
 
 ## Common Patterns
 
-**Host Resolution:**
+**Remote command execution (SSH):**
 ```bash
-# Get IP from deploy.yaml
-ipaddr=$(get_ip "$host")
-user=$(get_user "$host")
-
-# Resolve host: tries local IP, falls back to Tailscale
-ssh "$user@$ipaddr" 'command'
+local remote_command
+local remote_args=(test -c "$RENDER_NODE")
+printf -v remote_command '%q ' "${remote_args[@]}"
+# remote_command is intentionally expanded after printf %q shell escaping.
+# shellcheck disable=SC2029
+if ssh "$user@$ipaddr" "$remote_command" 2>/dev/null; then
+	pass "render node '$(fmt_bold "$RENDER_NODE")' is present"
+	return 0
+fi
+fail "render node '$(fmt_bold "$RENDER_NODE")' is missing on $host"
+return 1
 ```
+Always build the remote argv as an array and shell-quote it with `printf -v ... '%q '` before interpolating into the `ssh` command string — never interpolate raw variables directly into the SSH command.
 
-**DNS Testing:**
+**HTTP connectivity checks with fallback:**
 ```bash
-# Test resolution via AdGuard DNS
-dns_ipaddr=$(get_ip "pi4")
-if ! nslookup "$domain" "$dns_ipaddr" >/dev/null 2>&1; then
-    warn "DNS resolution failed, trying with Host header fallback"
+if response=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: $domain" "https://$ipaddr" --connect-timeout 5 --max-time 10 2>&1); then
+	if [[ "$response" =~ ^(200|301|302|404)$ ]]; then
+		pass "$service_name HTTPS responded with HTTP $response (via Host header)"
+		return 0
+	fi
 fi
 ```
+Accept `200|301|302|404` as "service is up" (404 counts because it still proves the service answered), always set `--connect-timeout` and `--max-time` explicitly.
 
-**HTTP Testing:**
+**Nix eval assertion:**
 ```bash
-# Try with DNS resolution
-response=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "$domain:443:$ipaddr" "https://$domain" --connect-timeout 5 --max-time 10 2>&1)
-
-# Try with Host header fallback
-response=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $domain" "https://$ipaddr" --connect-timeout 5 --max-time 10 2>&1)
-
-# Validate response code
-if [[ "$response" =~ ^(200|301|302|404)$ ]]; then
-    pass "HTTP response: $response"
-fi
+check_eval() {
+	local label=$1 expr=$2 expected=$3 actual
+	actual=$(nix eval --json "$expr")
+	if [ "$actual" != "$expected" ]; then
+		echo "FAIL: $label is $actual, expected $expected" >&2
+		failures=$((failures + 1))
+		return
+	fi
+	echo "ok: $label = $actual"
+}
 ```
 
-**Service Status Checking:**
+**Diagnostic-only steps (never assert, always report):**
 ```bash
-# Check if systemd service is running
-if ssh "$user@$ipaddr" 'systemctl is-active --quiet caddy'; then
-    pass "caddy service is running"
-else
-    fail "caddy service is not running"
-    exit 1
-fi
+report_vaapi_driver() {
+	...
+	if [ -n "$driver" ]; then
+		info "driver: $driver"
+	else
+		info "driver string unavailable; the encode assertions are the gate, not this line"
+	fi
+}
+...
+report_vaapi_driver || true
 ```
-
-**Error Diagnostic:**
-```bash
-# Determine if failure is due to gateway or backend
-if test_service "$domain" "$service_name" "$port"; then
-    pass "$service_name connectivity test passed"
-else
-    # Check if backend is reachable
-    if ssh "$user@$ipaddr" "curl -s --connect-timeout 3 http://localhost:$port" >/dev/null 2>&1; then
-        fail "upstream is reachable locally, issue with gateway routing"
-    else
-        fail "backend service is not running on $host"
-    fi
-    return 1
-fi
-```
-
-**Array Iteration:**
-```bash
-# Define service list as colon-delimited strings
-MEDIA_SERVICES=(
-    "Jellyfin:jellyfin.vofi:8096:jellyfin"
-    "Sonarr:sonarr.vofi:8989:sonarr"
-)
-
-# Parse and iterate
-for service_config in "${MEDIA_SERVICES[@]}"; do
-    IFS=':' read -r service_name domain port systemd_service <<<"$service_config"
-    if test_media_service "$service_name" "$domain" "$port" "$systemd_service" "$host" "$ipaddr" "$user"; then
-        pass "$service_name passed"
-    else
-        fail "$service_name failed"
-        exit 1
-    fi
-done
-```
-
-## Nix Configuration Testing
-
-**Validation:**
-```bash
-make check                    # Runs 'nix flake check' for all hosts
-```
-
-**What it validates:**
-- Nix syntax correctness
-- Module attribute type checking (via lib.mkOption declarations)
-- No undefined references
-- All imports resolve
-
-**Building without deployment:**
-```bash
-make build-HOST               # Build config locally, don't deploy
-make test-HOST                # Build and test activation (reverts on reboot)
-make switch-HOST              # Build and make default boot config
-```
-
-## Library Functions
-
-**Source in `scripts/lib/`:**
-
-**logging.sh:**
-- `info()` - Blue `[info]` label with yellow text
-- `warn()` - Pink `[WARN]` label (to stderr)
-- `pass()` - Green `[done]` label
-- `fail()` - Red `[FAIL]` label (to stderr)
-- `title()` - Blue header line
-- `fmt_bold()`, `fmt_yellow()`, `fmt_red()` - Format individual strings
-
-**all.sh:**
-- Aggregates: `./scripts/lib/logging.sh`, `./scripts/lib/cleanup.sh`, `./scripts/lib/yq.sh`, `./scripts/lib/ssh.sh`, `./scripts/lib/prompt.sh`
-
-**ssh.sh:**
-- `resolve_ssh_host <hostname>` - Returns local IP or Tailscale hostname
-- Tries local IP first (2s timeout), falls back to Tailscale if unreachable
-- Caches preference in `.use_tailscale` file to avoid repeated timeouts
-
-**services.sh (in smoketests/lib/):**
-- `test_service <domain> <service_name> <port>` - Test HTTP connectivity with DNS fallback
-- `test_media_service <name> <domain> <port> <systemd> <host> <ipaddr> <user>` - Full media service test with backend fallback
-
-## Pre-commit and CI
-
-**Flake validation:**
-```bash
-make check                    # Validates all Nix code
-make fmt                      # Format all Nix files
-```
-
-**No automated CI:**
-- Tests are manual via Makefile targets
-- `make apply-HOST` is the full CI/CD pipeline for a single host
-
-**Deployment order:**
-1. `make build-HOST` - Type-check and build
-2. `make test-HOST` - Activate and test (reverts on reboot)
-3. `make switch-HOST` - Make boot default
-4. `make reboot-HOST` - Reboot with new config
-5. `make smoketests-HOST` - Verify services
+Use this pattern for informational output (version strings, driver names) that should never affect pass/fail — keep it clearly separated from asserted checks with a comment.
 
 ---
 
-*Testing analysis: 2026-02-09*
+*Testing analysis: 2026-08-17*

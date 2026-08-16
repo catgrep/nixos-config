@@ -1,268 +1,153 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-09
+**Analysis Date:** 2026-08-17
 
 ## Tech Debt
 
-**AllDebrid-Proxy Integration:**
-- Issue: API integration is completely disabled and non-functional
-- Files: `hosts/ser8/media.nix:646-653`
-- Impact: Cannot use AllDebrid streaming/download acceleration; feature is partially documented but broken
-- Fix approach: Re-enable and test AllDebrid-rs API integration, or remove incomplete code if not planned
+**SOPS admin key bootstrap disabled:**
+- Issue: The user-provisioning and status scripts have their admin-age-key logic commented out because the maintainer currently prefers using a GPG key manually instead of the scripted SSH-to-age flow.
+- Files: `scripts/sops/add-user.sh:8-19`, `scripts/sops/status.sh:6-14`
+- Impact: `make sops-status` no longer reports the admin key, and onboarding a new user via the script does not add the admin's age key to `.sops.yaml`. Anyone relying on the documented `make` targets for secret rotation gets an incomplete picture.
+- Fix approach: Either restore the automated path (parameterize which key type is used) or delete the dead code and document the manual GPG workflow as the supported one.
 
-**SOPS User Key Management:**
-- Issue: User SSH key integration commented out; fallback to GPG-only approach
-- Files: `scripts/sops/add-user.sh:8-21` and `scripts/sops/status.sh:6-8`
-- Impact: Reduced flexibility for multi-user secret management; relies entirely on single GPG key
-- Fix approach: Debug and re-enable SSH-to-age key conversion, or document why GPG-only is preferred
-
-**Tmux Status Bar Hardcoding:**
-- Issue: Status bar background color not host-variable driven
+**Tmux status bar color is host-agnostic:**
+- Issue: The shared tmux module has a hardcoded status-bar background with a `TODO` noting it should vary per host.
 - Files: `modules/common/tmux.nix:3`
-- Impact: Cannot differentiate hosts visually in tmux across cluster
-- Fix approach: Add host-based status-bg configuration option
+- Impact: Cosmetic only; multiple hosts opened in adjacent terminals look identical, increasing risk of running a command on the wrong host by mistake.
+- Fix approach: Pass a per-host color parameter into the module from `hosts/<host>/configuration.nix`.
 
-**Incomplete Gerrit Development Module:**
-- Issue: Gerrit module exists but is planned/incomplete
-- Files: `modules/development/gerrit.nix` (178 lines)
-- Impact: CI/CD pipeline not available; development workflow still manual
-- Fix approach: Complete Gerrit implementation or remove placeholder module
+**`rollback-HOST` Make target is a non-functional placeholder:**
+- Files: `Makefile:75` (help text), `Makefile:274` (`rollback-%:` target)
+- Impact: An operator who assumes `make rollback-ser8` performs an automated rollback after a bad deploy has no real safety net; `CLAUDE.md` explicitly warns not to present it as functional.
+- Fix approach: Implement it against `nixos-rebuild --rollback` / generation switching over SSH, or remove the target entirely and rely on `nixos-rebuild switch --rollback` run manually per the deploy docs.
+
+**`experimental/docker-compose/` tree duplicates and diverges from the live flake:**
+- Files: `experimental/docker-compose/` (full parallel `hosts/`, `scripts/`, `secrets/keys/` structure)
+- Impact: Contains its own copies of provisioning scripts, host configuration, and public key material that can silently drift from the real `hosts/` and `secrets/` trees, creating confusion about which is authoritative. Public keys checked in here (`secrets/keys/users/bobmac-rsa.pub`, host keys) are not obviously kept in sync with `secrets/keys/` at the repo root.
+- Fix approach: Either promote this to a real host once complete, or delete it and track the docker-compose exploration in `.planning/` instead of a parallel live-looking tree.
+
+**pi5 has no role-specific module group:**
+- Files: `hosts/pi5/`
+- Impact: `pi5` only has base server config, boot config, and disk layout (per `CLAUDE.md`); it is effectively unused infrastructure carried in the flake with no service payload, adding maintenance surface without benefit.
+- Fix approach: Assign it a role and module group, or remove it from `deploy.yaml`/flake outputs until a role is defined.
 
 ## Known Bugs
 
-**SABnzbd Integration Cascade Failure:**
-- Symptoms: SABnzbd service fails to start properly; Prowlarr cannot connect; entire media stack setup fails
-- Files: `hosts/ser8/media.nix:484-735` (detailed analysis in `.claude/analysis/2025-10-11_sabnzbd-systemd-failures.md`)
-- Root causes:
-  1. Service dependency missing - `sabnzbd.service` doesn't depend on `sabnzbd-config.service`
-  2. Configuration subdirectories not created - `logs`, `admin`, `backup` directories expected but missing
-  3. Configuration uses relative paths instead of absolute paths
-  4. API wait timeout too short (30 iterations = 60s, needs 60 iterations = 120s)
-  5. No health check before Prowlarr integration attempts connection
-- Workaround: Manual systemd restart or longer wait times
-- Fix: Add explicit dependencies, create subdirectories, use absolute paths, increase timeouts
+**Frigate live-stream 403 (pre-existing, documented but unresolved):**
+- Symptoms: Frigate's live camera stream returns HTTP 403 under some access paths.
+- Files: `modules/automation/frigate.nix`; diagnosis recorded in git history (`fb0b982 docs(09-05): record pre-existing frigate live-stream 403 diagnosis`)
+- Trigger: Accessing the Frigate live view through the current reverse-proxy/auth path.
+- Workaround: None implemented yet at time of writing; tracked only as a diagnosis, not a fix, per the phase-09 verification report (`5c4912c docs(09): add phase verification report (gaps found)`).
 
-**Caddy DEBUG Logging on All Tailscale Routes:**
-- Symptoms: Excessive Caddy logging overhead on production Tailscale routes
-- Files: `modules/gateway/Caddyfile:98-99, 106-107, 114-115, 122-123, 130-131, 139-140, 147-148, 156-157, 166-168`
-- Impact: Performance degradation, log disk usage growth, security information disclosure
-- Fix approach: Change `level DEBUG` to `level INFO` or remove debug logging blocks entirely
-
-**Frigate CVE With Known Security Vulnerability:**
-- Symptoms: Using insecure package version with known vulnerability
-- Files: `modules/automation/frigate.nix:16-21`
-- Vulnerability: Frigate 0.15.2 has CVE (GHSA-vg28-83rp-8xx4)
-- Mitigation: Application is behind Tailscale and firewall; only accessible to authorized users
-- Risk: Currently acceptable due to network isolation, but needs upgrade path
-- Fix approach: Track upstream Frigate releases and upgrade when stable patched version available
+**Phase 09 verification found gaps not yet closed:**
+- Symptoms: The most recent phase-09 verification pass (`5c4912c`) reported gaps, followed by two gap-closure plans (`0d5cff8`, `5e0fcb3`) that had not yet been executed as of this analysis.
+- Files: `.planning/phases/` (phase 09 artifacts)
+- Trigger: N/A — planning-time issue, not a runtime bug.
+- Workaround: Re-run `/gsd-progress` or the phase-09 gap-closure plans before treating the 26.05 channel migration as fully verified.
 
 ## Security Considerations
 
-**Hardcoded Static IP Addresses Throughout Config:**
-- Risk: Network changes require manual updates across multiple files
-- Files: `modules/gateway/Caddyfile:89-94, 102-175` (reverse_proxy static IPs), `modules/automation/frigate.nix:170+` (camera IPs), `modules/dns/adguard-home.nix:112-132` (DNS response IPs)
-- Current state: IPs documented in comments but hardcoded in multiple places
-- Recommendations: Parameterize IP addresses in deploy.yaml or create shared variable definitions
+**qBittorrent exposed through nginx from inside the NordVPN network namespace:**
+- Risk: The service that most directly handles untrusted/internet-facing torrent traffic runs inside a VPN network namespace and is bridged back to the LAN via nginx (`hosts/ser8/media.nix`, `modules/nordvpn/service.nix`). Misconfiguration of this bridge (wrong bind address, missing auth) could expose qBittorrent's WebUI outside the VPN boundary it's meant to be confined to.
+- Files: `modules/nordvpn/service.nix` (324 lines), `hosts/ser8/media.nix`
+- Current mitigation: Namespace isolation plus nginx reverse proxy; SOPS-managed credentials for the WebUI (`make sops-gen-hash-qbittorrent`).
+- Recommendations: Periodically verify with `make smoketests-ser8` that the WebUI is only reachable via the intended LAN path, and confirm nginx does not also bind on the VPN-facing interface.
 
-**API Keys Exposed in Systemd Setup Scripts:**
-- Risk: API keys passed as command-line arguments visible in `ps` output and systemd logs
-- Files: `hosts/ser8/media.nix:550-627` (Prowlarr setup), `hosts/ser8/media.nix:596-607` (download client setup)
-- Current mitigation: API sanitization in systemd logs prevents exposure
-- Recommendations: Use `LoadCredential` pattern (like jellyfin-exporter) for all setup scripts, not just exporters
+**Impermanence persistence list is manually curated and easy to under-specify:**
+- Risk: `environment.persistence."/persist"` on ser8 hand-lists every directory/file that survives a reboot (SSH host keys, ACME state, NetworkManager connections, Jellyfin data, media mount points). Anything omitted silently resets on next boot, which for `/persist/etc/ssh/*` in particular would rotate host keys and break scripted SOPS decryption (age identities derive from SSH host keys per `CLAUDE.md`).
+- Files: `hosts/ser8/impermanence.nix`
+- Current mitigation: The critical SSH host keys and ACME/network state are already listed (`hosts/ser8/impermanence.nix:13-31`).
+- Recommendations: Add a smoketest or boot-time assertion that confirms `/persist/etc/ssh/ssh_host_ed25519_key` exists and matches the expected fingerprint after activation, since a missing entry here fails silently rather than loudly.
 
-**SOPS Secrets File Management:**
-- Risk: `.sops.yaml` configuration file checked into git; if private keys leaked, secrets are compromised
-- Files: `.sops.yaml` (public), `secrets/` directory (encrypted)
-- Current state: Public keys are in config, private keys on host machines only
-- Recommendations: Verify no private keys in `.sops.yaml`; ensure all secrets files encrypted before commit
-
-**Jellyfin Password Hashing Dependency:**
-- Risk: Jellyfin password hashing requires external script `scripts/sops/genhash.py`
-- Files: `modules/media/jellyfin.nix:75-76` (hashedPasswordFile dependency)
-- Impact: Password changes require manual hash generation via script
-- Recommendations: Document the password hashing requirement; consider systemd-based password injection
-
-**Media Service Secrets Sharing Pattern:**
-- Risk: Multiple services (Sonarr, Radarr, etc.) can access each other's API keys through SOPS
-- Files: `hosts/ser8/media.nix:18-106` (secrets declarations are permissive)
-- Impact: One compromised service could be lateral-moved using other services' credentials
-- Recommendations: Implement service-level isolation; restrict secret visibility per service
+**`.jj` (Jujutsu) working-copy metadata present alongside `.git`:**
+- Risk: Low direct security risk, but a second VCS metadata directory (`.jj/`) increases the chance of divergent history or accidental commits made through one tool that the other doesn't see, especially relevant given the "never push directly to main" and PR-review workflow.
+- Files: `.jj/`
+- Current mitigation: None observed; not clear if `.jj` is actively used or a leftover from experimentation.
+- Recommendations: Confirm whether `.jj` is intentional (colocated jj+git repo) or accidental, and gitignore/remove it if unused.
 
 ## Performance Bottlenecks
 
-**Large Configuration File - ser8/media.nix:**
-- Problem: Monolithic 654-line file containing all media service configuration, setup scripts, and systemd units
-- Files: `hosts/ser8/media.nix` (654 lines)
-- Impact: Difficult to modify without understanding entire setup flow; high cognitive load
-- Improvement path: Split into separate modules (`media-config.nix`, `media-setup.nix`, `exporters.nix`)
+**`tools/sagent/default.nix` is a 1,020-line single file:**
+- Problem: The largest file in the repo by a wide margin (next largest is 900 lines). A single monolithic derivation/script definition of this size is slow to review, slow for tooling (`sb`, editors) to parse in full, and increases the chance that unrelated changes collide.
+- Files: `tools/sagent/default.nix`
+- Cause: Organic growth of the `sagent` sandboxing tool as a single flake output without submodule decomposition.
+- Improvement path: Split into logical units (sandbox profile generation, tmux session management, CLI argument parsing) under `tools/sagent/lib/` the way `scripts/lib/` is already organized elsewhere in the repo.
 
-**Synchronous Setup Dependencies Chain:**
-- Problem: Three sequential systemd setup services run serially: `media-config → servarrs-setup → download-clients-setup`
-- Files: `hosts/ser8/media.nix:469-644`
-- Impact: Full media stack initialization takes 3-5 minutes minimum; blocks system readiness
-- Improvement path: Parallelize independent setup tasks; reduce polling waits with event-driven initialization
-
-**Prometheus Retention at 30 Days:**
-- Problem: Retention time configured to 30 days with 10GB size limit
-- Files: `modules/gateway/prometheus.nix:135-139`
-- Impact: Insufficient retention for ZFS anomaly detection; metrics will be pruned
-- Improvement path: Increase retention based on available storage, or implement remote storage
-
-**Network Name Resolution Fallback to Static IPs:**
-- Problem: mDNS resolution fails from Tailscale-bound Caddy instances; requires hardcoded static IPs in Caddyfile
-- Files: `modules/gateway/Caddyfile:74-94` (detailed explanation of issue)
-- Impact: Caddy Tailscale routes use static IPs instead of mDNS; fragile to network changes
-- Improvement path: Use split DNS (local names for mDNS, static IPs as fallback); implement Caddy DNS module for dynamic discovery
+**`modules/gateway/grafana.nix` at 900 lines mixes provisioning config with dashboard logic:**
+- Problem: Large single-file module makes it harder to isolate dashboard-provisioning changes from datasource/alerting changes when only one needs to change.
+- Files: `modules/gateway/grafana.nix`
+- Cause: All Grafana provisioning (datasources, dashboard JSON wiring, alerting) consolidated in one module.
+- Improvement path: Split into `datasources.nix`, `dashboards.nix`, and `alerting.nix` under `modules/gateway/grafana/`, mirroring the pattern already used for `hosts/ser8/media/` (separate `orchestration.nix`, `sabnzbd.nix`, etc.).
 
 ## Fragile Areas
 
-**Media Stack Setup Service Chain:**
-- Files: `hosts/ser8/media.nix:469-644`
-- Why fragile:
-  - Circular dependencies: setup services wait for other services that haven't started
-  - API polling with hardcoded timeouts: if service is slow, setup fails permanently
-  - Bash script complexity: 150+ lines of shell with API polling, JSON parsing, error handling
-  - Manual retry required on failure: systemd RemainAfterExit prevents auto-retry
-- Safe modification:
-  1. Always test setup scripts locally first (`bash scripts/smoketests/media/test-integration.sh`)
-  2. Increase wait timeouts before reducing them
-  3. Add explicit health checks before integration attempts
-  4. Log all API requests/responses for debugging
-- Test coverage gaps: No automated test for full media stack initialization flow
+**Disk identity assumptions in ZFS mirror migration plan:**
+- Files: `.planning/SER8-ZFS-MIRROR-MIGRATION.md`, `hosts/ser8/disko-config.nix`
+- Why fragile: The migration handoff document explicitly warns that `/dev/sde` and `/dev/sdf` device names are not guaranteed stable across reboots/reinstalls, and any destructive disk step must re-resolve device identity by WWN before running. This is a real and currently-open migration (not yet executed based on planning state), so `disko-config.nix` will need matching updates when it lands.
+- Safe modification: Never hardcode `/dev/sdX` paths in `disko-config.nix`; use `/dev/disk/by-id/` WWN paths, and cross-check against the live system before any destructive step, exactly as the migration doc's approval contract requires.
+- Test coverage: No automated test can validate physical disk identity; this is inherently a manual, gated process (see the doc's "Additional Disk Approval Gate").
 
-**Frigate Camera Configuration:**
-- Files: `modules/automation/frigate.nix:170-343`
-- Why fragile:
-  - Hardcoded camera IP addresses (6 cameras with static IPs)
-  - RTSP credentials injected via environment variable substitution
-  - Two cameras (TP-Link models) require TCP transport workaround for WiFi stability
-  - No health checks for camera connectivity
-- Safe modification:
-  1. Test RTSP connectivity before modifying streams
-  2. Camera resets may require manual credential updates in SOPS
-  3. Keep TP-Link TCP transport settings; WiFi instability has been debugged
-- Test coverage gaps: No automated camera health check or stream availability test
+**`modules/nordvpn/service.nix` couples systemd network namespace plumbing to qBittorrent lifecycle:**
+- Files: `modules/nordvpn/service.nix` (324 lines)
+- Why fragile: Network-namespace-based VPN confinement combined with a reverse-proxy bridge is inherently order-sensitive (namespace must exist before qBittorrent starts, nginx must route into the namespace correctly). A change to systemd unit ordering or nginx upstream config can silently break connectivity without a NixOS build failure.
+- Safe modification: Always run `make smoketests-ser8` after touching this file or `hosts/ser8/media.nix`; do not rely on `make build-ser8` succeeding as proof the namespace routing still works.
+- Test coverage: Smoketests exist under `scripts/smoketests/` but this analysis did not confirm one specifically exercises the VPN-namespace-to-nginx bridge end to end; verify one exists before making changes here.
 
-**NordVPN Network Namespace Isolation:**
-- Files: `modules/nordvpn/service.nix` (324 lines), `hosts/ser8/configuration.nix:151-175`
-- Why fragile:
-  - Complex systemd service with veth interface creation
-  - qBittorrent confined to network namespace; cannot access local resources
-  - Manual routing table management for namespace
-  - NordVPN key renewal could interrupt isolation
-- Safe modification:
-  1. Test netns connectivity before changes
-  2. Verify qBittorrent can still reach download directories
-  3. Check Prowlarr can still reach qBittorrent on localhost:8080
-- Test coverage: Dedicated smoketests exist but integration with media services untested
-
-**Impermanence Configuration for Entire Filesystem:**
-- Files: `hosts/ser8/impermanence.nix:1-181`
-- Why fragile:
-  - Root filesystem rolls back on boot; any changes lost
-  - Service data depends on correct persistence rules
-  - Missing persistence rule = data loss on reboot
-  - Easy to add service without adding persistence directory
-- Safe modification:
-  1. Before adding new service, add its state directory to persistence rules
-  2. Test service after reboot to verify state persistence
-  3. Document which directories are critical for service function
-- Test coverage gaps: No automated test for impermanence; manual reboot verification only
+**Frigate module (572 lines) and Home Assistant module (471 lines) are the largest automation surfaces:**
+- Files: `modules/automation/frigate.nix`, `modules/automation/home-assistant.nix`
+- Why fragile: Both integrate with camera hardware acceleration and external device state, areas already shown to have at least one open bug (Frigate live-stream 403). Their size also means a single edit is more likely to have unreviewed side effects elsewhere in the same file.
+- Safe modification: Use `sb map` on these files before editing to see the full symbol surface, and re-run the relevant smoketest after any change.
+- Test coverage: Git history shows active smoketest coverage work for Frigate/Home Assistant (`a3b28a8 smoketests(09-03): cover Frigate and Home Assistant`), which should be extended alongside any future change rather than assumed sufficient.
 
 ## Scaling Limits
 
-**Camera Storage - /mnt/cameras:**
-- Current capacity: Alert triggered at 20% available
-- Limit: Single ZFS backup pool; no tiered storage or archiving
-- Scaling path: Implement video retention policy (30/7/1 day for high/medium/low priority); migrate old footage to cold storage
-
-**Prometheus Time-Series Database:**
-- Current capacity: 30-day retention, 10GB size limit
-- Limit: Will drop metrics when retention period expires or size limit hit
-- Scaling path: Implement long-term storage (Thanos, Cortex, or remote write); increase retention based on available storage
-
-**Media Library - /mnt/media:**
-- Current architecture: Single MergerFS mount across multiple ZFS pools
-- Limit: MergerFS has no sharding; single controller bottleneck
-- Scaling path: Implement distributed media storage (NFS, S3) or split into dedicated mount points
-
-**Caddy Reverse Proxy - Single Instance:**
-- Current state: Firebat is single reverse proxy for all services
-- Limit: No redundancy; single point of failure for all service access
-- Scaling path: Implement Caddy clustering or separate load balancer
+**Single-node hosts with no redundancy for stateful services:**
+- Current capacity: `ser8` (media/storage/automation) and `firebat` (gateway/monitoring) are each single physical/virtual hosts; there is no documented failover for either.
+- Limit: Any hardware failure on `ser8` takes down Jellyfin, the *arr stack, Home Assistant, and Frigate simultaneously; any failure on `firebat` takes down Caddy (all reverse-proxied services), Prometheus, and Grafana simultaneously.
+- Scaling path: Out of scope for a homelab of this size, but the in-progress ZFS mirror migration (`.planning/SER8-ZFS-MIRROR-MIGRATION.md`) at least addresses disk-level redundancy for media storage specifically.
 
 ## Dependencies at Risk
 
-**Frigate Package Using Insecure Version:**
-- Risk: Known security vulnerability (CVE-vg28-83rp-8xx4) in 0.15.2
-- Impact: If exposed to untrusted network, vulnerability could be exploited
-- Current mitigation: Tailscale + firewall isolation
-- Migration plan: Monitor Frigate releases; upgrade to patched version (0.16+) when stable
+**`nixos-hardware` pinned to a specific commit rather than a branch:**
+- Risk: `flake.nix:12` pins `nixos-hardware` to a fixed commit hash (`ff17823245ab9ff7bcae6acf950bd89cba82c38c`) rather than tracking a branch, which is correct for reproducibility but means Raspberry Pi board-support fixes/updates require a manual bump and are easy to forget.
+- Impact: `pi4`/`pi5` board support can silently lag upstream `nixos-hardware` improvements (kernel config, firmware) until someone manually re-pins.
+- Migration plan: Periodically check `nixos-hardware` upstream for the `raspberry-pi/4`/`raspberry-pi/5` modules and re-pin during routine `flake update` passes; document this as part of quarterly maintenance.
 
-**AllUnfree Packages Globally Enabled:**
-- Risk: All unfree packages allowed (media codecs, drivers, etc.)
-- Impact: Some packages may have licensing/support concerns
-- Current state: Necessary for media transcoding, AMD VA-API drivers
-- Recommendation: Document specific unfree packages needed; consider enabling only required packages
+**Dual `nixpkgs` channels (`nixos-26.05` stable + `nixos-unstable`) increase overlay/package-conflict surface:**
+- Risk: `flake.nix:7-8` tracks both a stable and unstable `nixpkgs` input, presumably for packages not yet in stable. Every package sourced from `nixpkgs-unstable` carries less testing and a higher chance of upstream breakage between updates.
+- Impact: A `flake update` that bumps `nixpkgs-unstable` can break specific packages (subgen, faster-whisper, etc. under `packages/`) without any corresponding stable-channel signal.
+- Migration plan: Audit which overlays/packages actually require the unstable input (`overlays/`) and periodically re-check whether they've since landed in stable, to shrink the unstable surface over time.
 
 ## Missing Critical Features
 
-**No Backup Strategy for ZFS Snapshots:**
-- Problem: ZFS snapshots configured but no remote backup
-- Files: CLAUDE.md references snapshots but no backup automation
-- Blocks: Data loss risk if hardware fails; no disaster recovery
-- Implementation path: Add ZFS send/receive to remote storage or cloud backup
+**No documented automated rollback path:**
+- Problem: With `rollback-HOST` a placeholder (see Tech Debt), there is no single-command recovery from a bad `switch-HOST` deploy; an operator must know the manual `nixos-rebuild --rollback` incantation and target host address from `deploy.yaml` themselves.
+- Blocks: Fast recovery during an on-call/incident scenario, especially for `firebat` where a bad Caddy config could cut off remote access entirely.
 
-**No Monitoring for NordVPN Connection Status:**
-- Problem: qBittorrent isolated in VPN namespace; no alerting if VPN drops
-- Files: No exporter for NordVPN connectivity
-- Blocks: qBittorrent could leak traffic if VPN fails without alert
-- Implementation path: Add systemd service to monitor netns default route
-
-**No Gerrit Code Review System:**
-- Problem: Module exists but incomplete; no CI/CD pipeline
-- Files: `modules/development/gerrit.nix`
-- Blocks: Cannot enforce code review for configuration changes
-- Implementation path: Complete Gerrit implementation with integrated CI
-
-**No Grafana Dashboards for ZFS Metrics:**
-- Problem: ZFS exporter running but dashboards not provisioned
-- Files: `modules/gateway/prometheus.nix` (exporter configured), but no matching dashboard
-- Blocks: Cannot visualize ZFS pool health without manual queries
-- Implementation path: Add ZFS dashboard from grafana.com/dashboards
+**No Raspberry Pi image-building or device-write tooling:**
+- Problem: `CLAUDE.md` explicitly states bootstrap-image and device-write targets for the Pi hosts do not exist.
+- Blocks: Reproducing `pi4`/`pi5` from bare metal without falling back to manual `nixos-anywhere` or SD-card flashing outside the repo's tooling.
 
 ## Test Coverage Gaps
 
-**Media Stack Integration:**
-- What's not tested: Full initialization flow (media-config → servarrs-setup → download-clients-setup)
-- Files: `hosts/ser8/media.nix:469-644`
-- Risk: Configuration changes could break entire stack; only discovered on deployment
-- Priority: High - this is most fragile area
+**`experimental/docker-compose/` tree has no smoketest coverage:**
+- What's not tested: Anything under `experimental/`, since it is explicitly not part of the active host flake per `CLAUDE.md`.
+- Files: `experimental/docker-compose/`
+- Risk: Low today (not deployed), but if promoted later without adding smoketests first, it would ship untested relative to every other host's `all.sh` convention under `scripts/smoketests/`.
+- Priority: Low (only matters if/when promoted out of `experimental/`).
 
-**Impermanence Persistence:**
-- What's not tested: Automated verification that all service data persists across reboot
-- Files: `hosts/ser8/impermanence.nix`
-- Risk: Missing persistence rule = silent data loss; discovered only when service fails
-- Priority: High - data loss is critical
+**No confirmed end-to-end smoketest for the qBittorrent VPN-namespace-to-nginx bridge:**
+- What's not tested: This analysis did not locate a smoketest under `scripts/smoketests/` that specifically verifies qBittorrent's WebUI is reachable only through the intended LAN path and not directly via the VPN namespace's interface.
+- Files: `modules/nordvpn/service.nix`, `scripts/smoketests/`
+- Risk: A regression here is a security-relevant network exposure issue, not just a functional break, making it a higher-priority gap than typical missing coverage.
+- Priority: High.
 
-**Frigate Camera Connectivity:**
-- What's not tested: Automated health check for all 6 cameras
-- Files: `modules/automation/frigate.nix:170-343`
-- Risk: Broken RTSP feed goes unnoticed; NVR appears running but capturing no footage
-- Priority: High - security camera failure undetected
-
-**NordVPN Isolation:**
-- What's not tested: Automated verification that qBittorrent traffic stays in namespace
-- Files: `modules/nordvpn/service.nix`
-- Risk: VPN isolation could silently fail; traffic leaks to clearnet undetected
-- Priority: Medium - privacy impact
-
-**Caddy Reverse Proxy:**
-- What's not tested: Automated verification that all service routes functional
-- Files: `modules/gateway/Caddyfile`, `modules/gateway/caddy.nix`
-- Risk: Service endpoint changes could break reverse proxy routing; not discovered until manual test
-- Priority: Medium - affects service availability
+**Frigate live-stream 403 has a diagnosis but no regression test:**
+- What's not tested: There is no smoketest asserting the Frigate live-stream path returns 200, so the known-403 issue could recur silently even after a future fix.
+- Files: `modules/automation/frigate.nix`, `scripts/smoketests/`
+- Risk: Silent regression of a user-facing feature (camera live view) already known to be broken once.
+- Priority: Medium.
 
 ---
 
-*Concerns audit: 2026-02-09*
+*Concerns audit: 2026-08-17*

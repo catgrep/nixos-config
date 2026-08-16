@@ -1,0 +1,72 @@
+=== ./scripts/smoketests/household/test-mealie-service.sh ===
+
+[info] === Mealie Service Tests ===
+[info] checking that the 'mealie' unit is active
+[done] 'mealie' unit is active
+[info] checking that port 9000 is bound on ser8
+[done] port 9000 accepts connections on ser8
+[info] checking the current boot's journal for 'mealie' errors
+[done] no error-level journal entries for 'mealie' in the current boot
+
+[info] === PostgreSQL Tests ===
+[info] checking that the 'mealie' database answers
+[done] 'mealie' database answers over the postgres socket
+[info] checking that PostgreSQL reports major 17
+[done] PostgreSQL server_version is 17.11
+[info] checking ownership and mode of /var/lib/postgresql/17
+[done] /var/lib/postgresql/17 is postgres:postgres mode 750
+
+[info] === State Directory Tests ===
+[info] checking that /var/lib/mealie is a real directory
+[done] /var/lib/mealie is a real directory owned mealie:mealie
+[info] checking the persisted state directory /persist/var/lib/mealie
+[done] /persist/var/lib/mealie exists and is owned mealie:mealie
+
+[info] === Seeded Data Tests ===
+[info] checking that the 'ingredient_foods' table is populated
+[info] mealie_foods_count=2687
+[done] 'ingredient_foods' holds 2687 rows
+[info] checking that the 'ingredient_units' table is populated
+[info] mealie_units_count=24
+[done] 'ingredient_units' holds 24 rows
+
+[info] === Persistence Tests ===
+[info] checking that the 'recipes' table is populated
+[info] mealie_recipe_count=1
+[done] 'recipes' holds 1 rows
+[info] checking the persisted recipe image tree /persist/var/lib/mealie/recipes
+[info] mealie_recipe_image_files=0
+[FAIL] the recipe image tree under /persist/var/lib/mealie/recipes is empty
+[WARN] test failed: mealie_recipe_images_present
+
+[FAIL] 11/12 Mealie service tests passed
+[FAIL] script './scripts/smoketests/household/test-mealie-service.sh' failed with exit code: 1
+=== ./scripts/smoketests/household/test-mealie-endpoint.sh ===
+
+[info] === Mealie Endpoint Tests ===
+[info] checking Mealie on the loopback port 9000
+[done] Mealie answered with HTTP 200 on port 9000
+
+[info] === Mealie Deployed Settings Tests ===
+[info] checking that the deployed BASE_URL is https://mealie.shad-bangus.ts.net
+[done] BASE_URL is https://mealie.shad-bangus.ts.net
+[info] checking that BASE_URL is not the module default http://localhost:9000
+[done] BASE_URL is not the module default
+[info] checking that ALLOW_SIGNUP is the non-empty string 'false'
+[done] ALLOW_SIGNUP is the string 'false'
+
+[info] === Mealie Authentication Tests ===
+[info] checking that Mealie's shipped default administrator is rejected
+[done] shipped default administrator rejected with HTTP 401
+
+[info] === Mealie Tsnet Tests ===
+[info] checking DNS resolution for 'mealie.shad-bangus.ts.net' from firebat
+[done] DNS resolves 'mealie.shad-bangus.ts.net' -> 100.85.94.86
+[info] checking HTTPS connectivity to 'https://mealie.shad-bangus.ts.net' from firebat
+[done] mealie.shad-bangus.ts.net answered with HTTP 200
+
+[done] all 7 Mealie endpoint tests passed
+
+[FAIL] household suite: 1/2 tests passed
+[FAIL]   failed: ./scripts/smoketests/household/test-mealie-service.sh
+[FAIL] script './scripts/smoketests/household/all.sh' failed with exit code: 1

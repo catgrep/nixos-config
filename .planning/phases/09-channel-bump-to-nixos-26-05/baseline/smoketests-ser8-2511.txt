@@ -1,0 +1,203 @@
+=== ./scripts/smoketests/media/all.sh ===
+[info] testing Jellyfin media service
+[info] testing Jellyfin connectivity at 'jellyfin.vofi'
+[info] Jellyfin: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] Jellyfin HTTP responded with HTTP 200 (via Host header)
+[done] Jellyfin connectivity test passed
+[done] Jellyfin smoketest passed
+
+[info] testing Sonarr media service
+[info] testing Sonarr connectivity at 'sonarr.vofi'
+[info] Sonarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] Sonarr HTTP responded with HTTP 200 (via Host header)
+[done] Sonarr connectivity test passed
+[done] Sonarr smoketest passed
+
+[info] testing Radarr media service
+[info] testing Radarr connectivity at 'radarr.vofi'
+[info] Radarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] Radarr HTTP responded with HTTP 200 (via Host header)
+[done] Radarr connectivity test passed
+[done] Radarr smoketest passed
+
+[info] testing Bazarr media service
+[info] testing Bazarr connectivity at 'bazarr.vofi'
+[info] Bazarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] Bazarr HTTP responded with HTTP 200 (via Host header)
+[done] Bazarr connectivity test passed
+[done] Bazarr smoketest passed
+
+[info] testing qBittorrent media service
+[info] testing qBittorrent connectivity at 'torrent.vofi'
+[info] qBittorrent: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] qBittorrent HTTP responded with HTTP 200 (via Host header)
+[done] qBittorrent connectivity test passed
+[done] qBittorrent smoketest passed
+
+[info] testing Prowlarr media service
+[info] testing Prowlarr connectivity at 'prowlarr.vofi'
+[info] Prowlarr: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] Prowlarr HTTP responded with HTTP 200 (via Host header)
+[done] Prowlarr connectivity test passed
+[done] Prowlarr smoketest passed
+
+[info] testing SABnzbd media service
+[info] testing SABnzbd connectivity at 'sabnzbd.vofi'
+[info] SABnzbd: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] SABnzbd HTTP responded with HTTP 200 (via Host header)
+[done] SABnzbd connectivity test passed
+[done] SABnzbd smoketest passed
+
+[info] testing NZBGet media service
+[info] testing NZBGet connectivity at 'nzbget.vofi'
+[info] NZBGet: SKIPPED the '.vofi' DNS path (pi4 resolver retired, pending .vofi re-establishment); testing via Host header instead
+[done] NZBGet HTTP responded with HTTP 200 (via Host header)
+[done] NZBGet connectivity test passed
+[done] NZBGet smoketest passed
+
+[info] testing primary groups for media-facing services
+[done] Media-facing services use the media primary group
+[info] testing completed download permissions
+[done] Completed downloads have shared media permissions
+[info] testing media library permissions
+[done] Media libraries have shared media permissions
+[info] testing Bazarr access to media libraries
+[done] Bazarr can read files and write directories in media libraries
+[done] All media services smoketests passed
+=== ./scripts/smoketests/nordvpn/test-veth-interfaces.sh ===
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Checking systemd service states...
+  - wgnord.service: ACTIVE
+  - wgnord-monitor.service: ACTIVE
+  - netns@wgnord.service: ACTIVE
+Checking network namespace...
+  - wgnord namespace exists: OK
+Checking veth bridge interfaces...
+  - veth-host interface exists: OK
+  - veth-vpn interface exists in namespace: OK
+Checking WireGuard interface...
+  - wgnord interface exists in namespace: OK
+Checking IP address assignments...
+  - veth-host has IP 192.168.100.1: OK
+  - veth-vpn has IP 192.168.100.2 in namespace: OK
+  - wgnord has VPN IP assigned: OK
+Checking WireGuard configuration...
+  - WireGuard interface is up: OK
+Checking basic namespace connectivity...
+  - Loopback ping in namespace: OK
+  - Self ping (VPN interface): OK
+[done] ./scripts/smoketests/nordvpn/test-veth-interfaces.sh
+=== ./scripts/smoketests/nordvpn/test-forwarding.sh ===
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Testing veth bridge connectivity...
+  - Host to VPN namespace (192.168.100.2): OK
+  - VPN namespace to host (192.168.100.1): OK
+Testing DNS resolution in VPN namespace...
+  - Local AdGuard DNS (192.168.68.56): FAILED
+[FAIL] script './scripts/smoketests/nordvpn/test-forwarding.sh' failed with exit code: 1
+=== ./scripts/smoketests/nordvpn/test-qbittorrent.sh ===
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Checking qBittorrent service status...
+  - qbittorrent-nox.service is active: FAILED
+[FAIL] script './scripts/smoketests/nordvpn/test-qbittorrent.sh' failed with exit code: 1
+=== ./scripts/smoketests/nordvpn/test-qbittorrent-confinement.sh ===
+
+[info] === qBittorrent Confinement Tests ===
+[info] checking that qbittorrent-nox.service runs inside the 'wgnord' namespace
+[FAIL] qbittorrent-nox.service has no running process on ser8
+[WARN] test failed: process_in_namespace
+[info] comparing 'wgnord' egress against the host's own egress
+[FAIL] could not obtain the 'wgnord' namespace egress address; the tunnel is down or the namespace is broken
+[WARN] test failed: egress_differs_from_host
+[info] checking the qBittorrent web UI on localhost port 8080
+[FAIL] qBittorrent web UI on localhost port 8080 returned HTTP 502
+[WARN] test failed: webui_reachable
+
+[FAIL] 0/3 qBittorrent confinement tests passed
+[FAIL] script './scripts/smoketests/nordvpn/test-qbittorrent-confinement.sh' failed with exit code: 1
+
+[FAIL] nordvpn suite: 1/4 tests passed
+[FAIL]   failed: ./scripts/smoketests/nordvpn/test-forwarding.sh
+[FAIL]   failed: ./scripts/smoketests/nordvpn/test-qbittorrent.sh
+[FAIL]   failed: ./scripts/smoketests/nordvpn/test-qbittorrent-confinement.sh
+[FAIL] script './scripts/smoketests/nordvpn/all.sh' failed with exit code: 1
+=== ./scripts/smoketests/ser8/test-zfs-health.sh ===
+
+[info] === ZFS Pool Health Tests ===
+[info] checking ZFS pool 'rpool' health
+[done] ZFS pool 'rpool' is healthy
+[info] checking ZFS pool 'rpool' for data errors
+[done] ZFS pool 'rpool' reports no known data errors
+[info] checking ZFS pool 'backup' health
+[done] ZFS pool 'backup' is healthy
+[info] checking ZFS pool 'backup' for data errors
+[done] ZFS pool 'backup' reports no known data errors
+
+[info] === Impermanence Rollback Tests ===
+[info] checking the impermanence rollback snapshot 'rpool/local/root@blank'
+[done] rollback snapshot 'rpool/local/root@blank' exists
+
+[info] === Pool Feature-Flag Tests ===
+[info] checking that ZFS pool 'rpool' has not been feature-upgraded
+[done] ZFS pool 'rpool' is not feature-upgraded; an older ZFS can still import it
+[info] checking that ZFS pool 'backup' has not been feature-upgraded
+[done] ZFS pool 'backup' is not feature-upgraded; an older ZFS can still import it
+
+[done] all 7 ZFS health tests passed
+=== ./scripts/smoketests/ser8/test-vaapi.sh ===
+
+[info] === Render Node Tests ===
+[info] checking render node '/dev/dri/renderD128'
+[done] render node '/dev/dri/renderD128' is present
+
+[info] === VAAPI Encode Tests (as the service users) ===
+[info] running a VAAPI h264_vaapi encode as the 'jellyfin' user
+[done] VAAPI h264_vaapi encode succeeded as 'jellyfin' on /dev/dri/renderD128
+[info] running a VAAPI h264_vaapi encode as the 'frigate' user
+[done] VAAPI h264_vaapi encode succeeded as 'frigate' on /dev/dri/renderD128
+
+[info] === Accelerated Unit Tests ===
+[info] checking that the 'jellyfin' unit is active
+[done] 'jellyfin' unit is active
+[info] checking that the 'frigate' unit is active
+[done] 'frigate' unit is active
+
+[info] === Driver Diagnostics (not asserted) ===
+[info] driver: vainfo: Driver version: Mesa Gallium driver 25.2.6 for AMD Radeon 780M Graphics (radeonsi, phoenix, LLVM 21.1.7, DRM 3.61, 6.12.90)
+
+[done] all 5 VAAPI tests passed
+=== ./scripts/smoketests/ser8/test-frigate.sh ===
+
+[info] === Frigate Service Tests ===
+[info] checking that the 'frigate' unit is active
+[done] 'frigate' unit is active
+[info] checking the Frigate web interface on port 80
+[done] Frigate web interface responded with HTTP 200 on port 80
+
+[info] === Frigate MQTT Publication Tests ===
+[info] resolving the MQTT subscriber from the running mosquitto unit
+[done] MQTT subscriber resolved from the running broker: /nix/store/ibpywc4raifdqhs05zv1lrd497y8s9q5-mosquitto-2.0.22/bin/mosquitto_sub
+[info] subscribing to 'frigate/available' (retained, 10s bound)
+[done] broker holds Frigate's retained availability message: 'online'
+[info] waiting up to 90s for a live message on 'frigate/stats'
+[done] received a live Frigate publication on 'frigate/stats' (58345 bytes)
+
+[done] all 5 Frigate tests passed
+=== ./scripts/smoketests/ser8/test-home-assistant.sh ===
+
+[info] === Home Assistant Service Tests ===
+[info] checking that the 'home-assistant' unit is active
+[done] 'home-assistant' unit is active
+[info] checking the Home Assistant frontend on port 8123
+[done] Home Assistant frontend responded with HTTP 200 on port 8123
+
+[info] === Home Assistant Startup Tests ===
+[info] checking the current boot's journal for 'home-assistant' errors
+[done] no error-level journal entries for 'home-assistant' in the current boot
+
+[done] all 3 Home Assistant tests passed
+
+[FAIL] ser8 suite: 5/6 tests passed
+[FAIL]   failed: ./scripts/smoketests/nordvpn/all.sh
+[FAIL] script './scripts/smoketests/ser8/all.sh' failed with exit code: 1
+make[1]: *** [Makefile:283: smoketests-ser8] Error 1

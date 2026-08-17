@@ -94,9 +94,8 @@ help:
 	@echo "    make pkg-version-ser8 PKG=lcevcdec        # Check version (debug overlays)"
 	@echo "    make pkg-eval-ser8 EXPR='config.services.jellyfin.enable'"
 	@echo
-	@$(call title_msg,"🍓 Raspberry Pi Builds")
-	$(call help_option,"HOST-installer","Build Arm64 image for Raspberry Pi using Docker")
-	$(call help_option,"write-HOST DEVICE","Write Arm64 image for Raspberry Pi to '/dev/rdiskX'")
+	@$(call title_msg,"🍓 Arm64 Builds")
+	$(call help_option,"aarch64-kexec","Build the Arm64 kexec installer using Docker")
 	@echo
 	@$(call title_msg,"🤫 SOPS Secrets Management")
 	$(call help_option,"sops-init","Generate barebones '.sops.yaml'")
@@ -143,6 +142,7 @@ check:
 	@statix check
 	@./scripts/validation/test-nzbget-permissions.sh
 	@./scripts/validation/test-actual-module.sh
+	@./scripts/validation/test-pi-bootloader.sh
 	@$(call success_msg,"✓ Flake check passed")
 	@$(call info_msg,"Testing host configurations..."); \
 	set -e; \
@@ -299,47 +299,16 @@ switch-all:
 diff-%:
 	nixos-rebuild dry-run --flake .#$* --target-host $(HOST).local
 
-# Build SD card image for Pi5
+# Build aarch64 artifacts using Docker
+#
+# The Raspberry Pi SD-image and device-write targets were removed with the
+# third-party fork that built them. A minimal upstream bootstrap image is
+# deferred; see the Phase 9 planning notes before reintroducing one.
 NIX_DOCKER_VOLUME ?= nix-store-cache
 NIX_DOCKER_IMAGE ?= nixos/nix:2.30.1-arm64
 
-# Build aarch64 artifacts using Docker
-aarch64-sdimage-%:
-	@./scripts/provision/linux-aarch64-docker-build.sh installerConfigurations.$* sd-image/nixos-sd-image-r$*-uboot.img.zst
-
 aarch64-kexec:
 	@./scripts/provision/linux-aarch64-docker-build.sh installerConfigurations.aarch64-kexec nixos-kexec-installer-aarch64-linux.tar.gz
-
-%-installer: aarch64-sdimage-% aarch64-kexec
-	@$(call success_msg,"✓ $* installers complete \(SD image + kexec\)")
-
-# Write raspberrypi image to a device
-write-%:
-	@if [ -z "$(DEVICE)" ]; then \
-		$(call error_msg,"Usage: make write-sd-$* DEVICE=/dev/rdiskX"); \
-		exit 1; \
-	fi
-	@if [ ! -f "./result/nixos-sd-image-r$*-uboot.img.zst" ] || [ ! -f "./result/nixos-kexec-installer-aarch64-linux.tar.gz" ]; then \
-		$(call error_msg,"No $* installer found. Run 'make $*-installer' first"); \
-		exit 1; \
-	fi
-	@sudo fdisk $(DEVICE)
-	@$(call info_msg,"WARNING: This will erase all data on $(DEVICE)!")
-	@bash -c 'read -p "Continue? (y/N) " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		pi_img="./result/nixos-sd-image-r$*-uboot.img"; \
-		$(call info_msg,"Uncompressing $$pi_img.zst..."); \
-		if [ ! -f "$${pi_img}" ]; then \
-			zstd -d "$${pi_img}.zst" -o "$${pi_img}"; \
-		fi; \
-		$(call info_msg,"Begin writing $$pi_img to $(DEVICE)..."); \
-		sudo dd if="$${pi_img}" of=$(DEVICE) bs=1M status=progress; \
-		$(call success_msg,"Done! The Pi will boot with SSH enabled."); \
-		$(call info_msg,"Default user: nixos"); \
-		$(call info_msg,"Your SSH key is already installed"); \
-		$(call success_msg,"Safely eject '$(DEVICE)' and boot the $*"); \
-	fi'
 
 provision:
 	$(call title_msg,"HOSTS = $(HOSTS)")

@@ -6,7 +6,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixos-hardware.url = "github:NixOS/nixos-hardware/daa628a725ab4948e0e2b795e8fb6f4c3e289a7a";
+    # Pinned (not `master`): raspberry-pi/common/ is under active development and a
+    # silent change there would alter Pi boot behaviour on an unrelated flake update.
+    # ff178232 is master head as of 2026-08-16. Re-bump deliberately.
+    nixos-hardware.url = "github:NixOS/nixos-hardware/ff17823245ab9ff7bcae6acf950bd89cba82c38c";
 
     disko = {
       url = "github:nix-community/disko";
@@ -20,16 +23,6 @@
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nixos-raspberrypi = {
-      # Pinned (not `main`): nixos-raspberrypi uses its own nixpkgs fork
-      # (nvmd/nixpkgs/modules-with-keys-25.05), which keeps boot.loader.raspberryPi --
-      # read via .variant/.bootloader in modules/raspberrypi/base.nix:56. `main` has
-      # moved to upstream nixpkgs 25.11, where that option is removed, breaking the Pis.
-      # Omitting an `inputs.nixpkgs.follows` doesn't pin which nixpkgs nixos-raspberrypi
-      # uses -- only pinning this input's rev does. Unpin with a base.nix migration.
-      url = "github:nvmd/nixos-raspberrypi/a12cce5710031c44e0e36b581d8e71bc4f157907";
     };
 
     nixos-images = {
@@ -57,24 +50,15 @@
     };
   };
 
-  nixConfig = {
-    extra-substituters = [
-      "https://nixos-raspberrypi.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI="
-    ];
-  };
-
   outputs =
     {
       self,
       nixpkgs,
       nixpkgs-unstable,
+      nixos-hardware,
       disko,
       impermanence,
       sops-nix,
-      nixos-raspberrypi,
       nixos-images,
       declarative-jellyfin,
       home-manager,
@@ -172,34 +156,6 @@
         ./modules/raspberrypi/base.nix
       ];
 
-      # Helper function for Raspberry Pi systems using nixos-raspberrypi
-      mkPiSystem =
-        {
-          hostname,
-          piVersion ? "4", # "4" or "5"
-          modules ? [ ],
-        }:
-        nixos-raspberrypi.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs;
-            inherit nixos-raspberrypi;
-            # Unstable tailscale: stable 25.11 has 1.90.9, need >= 1.92.5
-            # Remove when stable tailscale >= 1.92.5
-            unstable = import nixpkgs-unstable {
-              system = "aarch64-linux";
-              config.allowUnfree = true;
-            };
-          };
-          modules = [
-            nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".base
-            nixos-raspberrypi.nixosModules."raspberry-pi-${piVersion}".display-vc4
-            ./hosts/${hostname}/configuration.nix
-          ]
-          ++ baseModules
-          ++ piModules
-          ++ modules;
-        };
-
       # Helper function to create a nixos system configuration
       mkSystem =
         {
@@ -253,20 +209,25 @@
         };
 
         # DNS Server (Raspberry Pi 4B)
-        pi4 = mkPiSystem {
+        pi4 = mkSystem {
           hostname = "pi4";
-          piVersion = "4";
+          system = "aarch64-linux";
+          useX86Modules = false;
+          usePiModules = true;
           modules = [
+            nixos-hardware.nixosModules.raspberry-pi-4
             ./modules/dns
           ];
         };
 
         # Extraneous Server (Raspberry Pi 5)
-        pi5 = mkPiSystem {
+        pi5 = mkSystem {
           hostname = "pi5";
-          piVersion = "5";
+          system = "aarch64-linux";
+          useX86Modules = false;
+          usePiModules = true;
           modules = [
-            ./hosts/pi5/configtxt.nix
+            nixos-hardware.nixosModules.raspberry-pi-5
             disko.nixosModules.disko
           ];
         };
@@ -285,28 +246,10 @@
         x86_64-linux = subgenPackagesFor "x86_64-linux";
       };
 
-      # Add minimally configured SD card image builders
-      # (these are pre-builts provided by nixos-raspberrypi)
+      # kexec installers for nixos-anywhere. The Raspberry Pi sd-image entries were
+      # removed with the third-party fork that built them; a minimal upstream
+      # bootstrap image is deferred (D-02).
       installerConfigurations = {
-        pi4 =
-          (nixos-raspberrypi.lib.nixosInstaller {
-            specialArgs = inputs;
-            modules = [
-              nixos-raspberrypi.nixosModules.raspberry-pi-4.base
-              ./modules/raspberrypi/installer.nix
-            ];
-          }).config.system.build.sdImage;
-
-        pi5 =
-          (nixos-raspberrypi.lib.nixosInstaller {
-            specialArgs = { inherit inputs nixos-raspberrypi; };
-            modules = [
-              nixos-raspberrypi.nixosModules.raspberry-pi-5.base
-              ./modules/raspberrypi/usb-installer.nix
-            ];
-          }).config.system.build.sdImage;
-
-        # kexec installers for nixos-anywhere
         aarch64-kexec = nixos-images.packages.aarch64-linux.kexec-installer-nixos-unstable;
         x86_64-kexec = nixos-images.packages.x86_64-linux.kexec-installer-nixos-unstable;
       };

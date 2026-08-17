@@ -28,6 +28,11 @@
     '';
   };
 
+  # This module owns /etc/resolv.conf outright (below), so resolvconf must not also
+  # manage it. NixOS 26.05 asserts on the overlap instead of silently letting one
+  # writer win.
+  networking.resolvconf.enable = false;
+
   # Create a proper resolv.conf with fallback
   environment.etc."resolv.conf".text = ''
     nameserver 127.0.0.1

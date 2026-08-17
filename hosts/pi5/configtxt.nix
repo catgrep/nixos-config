@@ -1,53 +1,29 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}:
+_:
 
 {
-  hardware.raspberry-pi.config = {
-    all = {
-      # [all] conditional filter, https://www.raspberrypi.com/documentation/computers/config_txt.html#conditional-filters
-
-      options = {
-        # https://www.raspberrypi.com/documentation/computers/config_txt.html#enable_uart
-        # in conjunction with `console=serial0,115200` in kernel command line (`cmdline.txt`)
-        # creates a serial console, accessible using GPIOs 14 and 15 (pins
-        #  8 and 10 on the 40-pin header)
-        enable_uart = {
-          enable = true;
-          value = true;
-        };
-        # https://www.raspberrypi.com/documentation/computers/config_txt.html#uart_2ndstage
-        # enable debug logging to the UART, also automatically enables
-        # UART logging in `start.elf`
-        uart_2ndstage = {
-          enable = true;
-          value = true;
-        };
-      };
-
-      # Base DTB parameters
-      # https://github.com/raspberrypi/linux/blob/a1d3defcca200077e1e382fe049ca613d16efd2b/arch/arm/boot/dts/overlays/README#L132
-      base-dt-params = {
-
-        # https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#enable-pcie
-        pciex1 = {
-          enable = true;
-          value = "on";
-        };
-        # PCIe Gen 3.0
-        # https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#pcie-gen-3-0
-        pciex1_gen = {
-          enable = true;
-          value = "3";
-        };
-
-      };
-
-    };
+  hardware.raspberry-pi.configtxt.settings.all = {
+    # [all] conditional filter, https://www.raspberrypi.com/documentation/computers/config_txt.html#conditional-filters
+    #
+    # This list is at normal priority and therefore REPLACES the module default
+    # `dtparam = lib.mkDefault [ "audio=on" ]` from nixos-hardware's
+    # raspberry-pi/common/config-txt-defaults.nix -- it does not merge with it.
+    # `audio=on` must stay listed here or it silently disappears.
+    #
+    # Deliberately absent: the two serial-console UART settings this file used to
+    # force on. nixos-hardware's raspberry-pi/common/config-txt-defaults.nix turns
+    # the mini UART back off under the [pi5] filter on purpose, because the Pi 5 has
+    # a dedicated debug UART and leaving the mini UART on feeds ghost input into
+    # boot. The previous values here were debugging aids from the original fork
+    # install. Do not re-add them.
+    dtparam = [
+      "audio=on"
+      # https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#enable-pcie
+      "pciex1=on"
+      # PCIe Gen 3.0
+      # https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#pcie-gen-3-0
+      "pciex1_gen=3"
+    ];
   };
 }

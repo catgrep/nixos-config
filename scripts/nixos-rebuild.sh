@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# shellcheck source=scripts/lib/all.sh
 . ./scripts/lib/all.sh
 
 set -euo pipefail
@@ -39,29 +40,6 @@ usage() {
 	echo "  $0 pkg-version ser8 lcevcdec            # Check package version"
 	echo "  $0 pkg-eval ser8 'config.services.jellyfin.enable'"
 	echo ""
-}
-
-raspberrypi_warning_banner() {
-	echo
-	echo -e "$(fmt_bold "📝 NOTE on Raspberry Pi's")"
-	echo -e "$(fmt_blue "||") For bootstrapping from the installer, you may need to generate"
-	echo -e "$(fmt_blue "||") the hardware config first with:"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") > $(fmt_yellow "$0 update-hardware piX")"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") This will replace the existing config with the generated one."
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") For rebuilds, if '$(fmt_blue test)' or '$(fmt_blue switch)' fails due to:"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") $(fmt_red "Error: Failed to open unit file /nix/store/.../etc/systemd/system/boot-firmware.mount")"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") You may need to mount '$(fmt_blue /boot/firmware)' first with:"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") > $(fmt_yellow "sudo mount /dev/disk/by-label/FIRMWARE /boot/firmware")"
-	echo -e "$(fmt_blue "||")"
-	echo -e "$(fmt_blue "||") See: https://gist.github.com/mti/f6572f34aefbcb1aba1d33c888a5b298"
-	echo -e "$(fmt_bold "📝 END NOTE")"
-	echo
 }
 
 # confirm to not accidentally bork your system :'D
@@ -228,8 +206,6 @@ main() {
 	local action="$1"
 	local host="$2"
 	shift 2
-
-	# raspberrypi_warning_banner
 
 	case $action in
 	dry-build)

@@ -7,7 +7,7 @@ This file provides agent-agnostic guidance for working in this repository.
 
 This repository is a NixOS homelab flake built around NixOS 25.11.
 It manages two x86_64 systems and two Raspberry Pi systems through shared modules and host-specific configuration.
-The root flake also exports development shells, Raspberry Pi installers, service metadata, package inspection data, and the local `sagent` tool.
+The root flake also exports development shells, kexec installers, service metadata, package inspection data, and the local `sagent` tool.
 
 ## Host Architecture
 
@@ -20,7 +20,7 @@ The root flake also exports development shells, Raspberry Pi installers, service
 
 `deploy.yaml` is the source of truth for deployment addresses, users, tags, and smoketest commands.
 The `ser8` and `firebat` hosts use disko and impermanence.
-The Pi hosts use the pinned `nixos-raspberrypi` input, and `pi5` also uses disko.
+The Pi hosts build from upstream `nixpkgs` with the pinned `nixos-hardware` board modules, and `pi5` also uses disko.
 
 ### ser8
 
@@ -115,8 +115,8 @@ nix eval '.#servicePackages.ser8' --json
 nix eval '.#packageInfo.ser8' --json
 ```
 
-Build Raspberry Pi installer artifacts with `make pi4-installer` or `make pi5-installer`.
-Write an installer only with an explicit device, such as `make write-pi4 DEVICE=/dev/rdiskX`.
+Build the Arm64 kexec installer with `make aarch64-kexec`.
+Raspberry Pi bootstrap-image and device-write targets do not currently exist and must not be presented as available.
 
 ## Coding Conventions
 

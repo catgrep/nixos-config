@@ -171,12 +171,14 @@
   # Bind mount persistent directories
   fileSystems."/etc/nixos" = {
     device = "/persist/etc/nixos";
+    fsType = "none";
     options = [ "bind" ];
     neededForBoot = true;
   };
 
   fileSystems."/var/log" = {
     device = "/persist/var/log";
+    fsType = "none";
     options = [ "bind" ];
     neededForBoot = true;
   };

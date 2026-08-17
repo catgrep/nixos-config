@@ -142,8 +142,10 @@ check:
 	@nix flake check
 	@statix check
 	@./scripts/validation/test-nzbget-permissions.sh
+	@./scripts/validation/test-actual-module.sh
 	@$(call success_msg,"✓ Flake check passed")
 	@$(call info_msg,"Testing host configurations..."); \
+	set -e; \
 	for host in $(HOSTS); do \
 		nix build .#nixosConfigurations."$$host".config.system.build.toplevel --dry-run; \
 	done; \

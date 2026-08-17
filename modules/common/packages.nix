@@ -48,7 +48,7 @@
     p7zip
 
     # Development
-    nixfmt-rfc-style
+    nixfmt
 
     # File management
     ripgrep

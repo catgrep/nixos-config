@@ -52,26 +52,6 @@ let
     };
   };
 
-  advancedCameraCard = pkgs.home-assistant-custom-lovelace-modules.advanced-camera-card;
-
-  # Lovelace resource registration for storage mode
-  # When lovelace.mode = "storage", HA ignores lovelace.resources in configuration.yaml
-  # and reads from .storage/lovelace_resources instead. We create this file declaratively.
-  lovelaceResources = pkgs.writeText "lovelace_resources" (
-    builtins.toJSON {
-      version = 1;
-      minor_version = 1;
-      key = "lovelace_resources";
-      data.items = [
-        {
-          id = "nixos-advanced-camera-card";
-          type = "module";
-          url = "/local/nixos-lovelace-modules/advanced-camera-card.js?${advancedCameraCard.version}";
-        }
-      ];
-    }
-  );
-
   # Admin-only dashboard for detection/motion controls
   adminDashboard = pkgs.writeText "camera-admin-dashboard.yaml" (
     builtins.toJSON adminDashboardConfig
@@ -283,7 +263,6 @@ in
 
     # Lovelace dashboard configuration
     config.lovelace = {
-      mode = "storage"; # Keep default dashboard UI-editable
       dashboards = {
         lovelace-cameras = {
           mode = "yaml";
@@ -443,19 +422,16 @@ in
     # Symlink dashboards from Nix store (JSON is valid YAML)
     "L+ /var/lib/hass/cameras-dashboard.yaml - - - - ${camerasDashboard}"
     "L+ /var/lib/hass/camera-admin-dashboard.yaml - - - - ${adminDashboard}"
-    # Register Lovelace resources for storage mode (HA ignores configuration.yaml resources)
-    "C+ /var/lib/hass/.storage/lovelace_resources 0600 hass hass - ${lovelaceResources}"
   ];
 
   # Service ordering: HA starts after Mosquitto and Frigate
   # Uses `wants` (not `requires`) so HA can start even if Frigate is temporarily down
   systemd.services.home-assistant = {
-    # Restart HA when dashboard config or lovelace resources change
+    # Restart HA when dashboard config changes
     # (HA only reads YAML dashboards at startup, not on reload)
     restartTriggers = [
       camerasDashboard
       adminDashboard
-      lovelaceResources
     ];
     after = [
       "mosquitto.service"

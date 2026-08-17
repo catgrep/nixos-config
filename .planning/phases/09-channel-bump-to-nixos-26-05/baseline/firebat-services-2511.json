@@ -1,0 +1,17 @@
+[
+  "avahi",
+  "caddy",
+  "dbus",
+  "fstrim",
+  "grafana",
+  "logrotate",
+  "lvm",
+  "nscd",
+  "openssh",
+  "prometheus",
+  "resolved",
+  "subgen",
+  "tailscale",
+  "timesyncd",
+  "udev"
+]

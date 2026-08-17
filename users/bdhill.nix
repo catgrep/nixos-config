@@ -48,9 +48,9 @@
     # Git configuration
     programs.git = {
       enable = true;
-      userName = "catgrep";
-      userEmail = "catgrep@sudomail.com";
-      extraConfig = {
+      settings = {
+        user.name = "catgrep";
+        user.email = "catgrep@sudomail.com";
         init.defaultBranch = "main";
         pull.rebase = false;
       };

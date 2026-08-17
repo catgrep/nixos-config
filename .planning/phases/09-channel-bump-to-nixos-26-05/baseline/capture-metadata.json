@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-08-17T05:52:25Z",
+  "purpose": "Pre-bump NixOS 25.11 evaluation baseline for phase 09 channel bump to nixos-26.05. Captured on the untouched tree before any file was edited.",
+  "nix_version": "nix (Nix) 2.34.7+1",
+  "jq_version": "jq-1.8.1",
+  "nixpkgs_ref_before": "nixos-25.11",
+  "nixpkgs_rev_before": "687f05a9184cad4eaf905c48b63649e3a86f5433",
+  "make_check_exit_status": 0,
+  "make_check_status_caveat": "This exit status was captured BEFORE Task 3 fixed the check target. The host-configuration loop in the pre-fix Makefile recipe ended in an echo, so a failing nix build inside the loop could not make the recipe exit non-zero. Treat make-check-2511.txt as the authority for the pre-bump state, not this number.",
+  "commands": {
+    "ser8-services-2511.json": "nix eval --json '.#enabledServices.ser8' | jq -S 'sort'",
+    "ser8-packages-2511.json": "nix eval --json '.#packageInfo.ser8' | jq -S .",
+    "firebat-services-2511.json": "nix eval --json '.#enabledServices.firebat' | jq -S 'sort'",
+    "firebat-packages-2511.json": "nix eval --json '.#packageInfo.firebat' | jq -S .",
+    "make-check-2511.txt": "make check > make-check-2511.txt 2>&1",
+    "make-check-2511.status": "printf %s\\\\n $? > make-check-2511.status (exit status of the make check invocation above)",
+    "capture-metadata.json": "jq -n (this file; nixpkgs_rev_before read from nix flake metadata --json via .locks.nodes[.locks.nodes.root.inputs.nixpkgs].locked.rev)"
+  },
+  "notes": [
+    "enabledServices.<host> is a JSON array produced by builtins.filter (flake.nix:391). The two services captures are sorted with jq -S sort so later diffs are order-insensitive. Do not write object-shaped assertions against them.",
+    "The root flake input named nixpkgs resolves to lock node nixpkgs_3, not the node literally named nixpkgs. Any assertion about the locked ref must dereference .locks.nodes.root.inputs.nixpkgs first."
+  ]
+}

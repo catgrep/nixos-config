@@ -3,7 +3,7 @@
 # Shared Tailscale configuration for all servers
 # Enables remote SSH access via Tailnet with auto-authentication
 {
-  unstable,
+  pkgs,
   config,
   ...
 }:
@@ -16,8 +16,7 @@
 
   services.tailscale = {
     enable = true;
-    # Use unstable for security fixes (stable 25.05 has 1.82.5, need >= 1.92.5)
-    package = unstable.tailscale;
+    package = pkgs.tailscale;
     # Auto-authenticate on startup using shared auth key
     authKeyFile = config.sops.secrets.tailscale_authkey.path;
   };

@@ -53,6 +53,15 @@ in
     mode = "0400";
   };
 
+  # SOPS secret for Grafana secret_key. 26.05 removed the option's default; this
+  # pins the LEGACY upstream constant so existing grafana.db ciphertext stays
+  # decryptable. Compatibility pin, not a security decision.
+  sops.secrets.grafana_secret_key = {
+    owner = "grafana";
+    group = "grafana";
+    mode = "0400";
+  };
+
   services.grafana = {
     enable = lib.mkDefault true;
     settings = {
@@ -66,6 +75,7 @@ in
       security = {
         admin_user = "admin";
         admin_password = "$__file{${config.sops.secrets.grafana_admin_password.path}}";
+        secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
       };
 
       # SMTP configuration for email alert delivery via Gmail

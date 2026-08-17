@@ -1,0 +1,6 @@
+Done. The new configuration is /nix/store/wxpn95cb5bhr66x81ny24jvs738jhnzl-nixos-system-ser8-26.05.20260817.0dd31db
+warning: would not apply GID change of group ‘media’ (992 -> 1100) in /etc/group
+warning: would not apply UID change of user ‘media’ (1002 -> 1100) in /etc/passwd
+would activate the configuration...
+would start the following units: home-assistant.service, systemd-tmpfiles-resetup.service
+would stop the following units: home-assistant.service, systemd-tmpfiles-resetup.service

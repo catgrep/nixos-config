@@ -12,7 +12,7 @@
     ripgrep
     fd
     bat
-    nixfmt-rfc-style
+    nixfmt
     nixd
     nil
     charasay

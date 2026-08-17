@@ -21,7 +21,12 @@
     group = lib.mkForce "media";
   };
 
-  systemd.services.radarr.serviceConfig.UMask = lib.mkIf config.services.radarr.enable "0002";
+  # nixpkgs 26.05 sets UMask = "0022" in the servarr module. Force 0002 back: the
+  # media pipeline hands files between services sharing the `media` group, so the
+  # group-write bit must survive.
+  systemd.services.radarr.serviceConfig.UMask = lib.mkIf config.services.radarr.enable (
+    lib.mkForce "0002"
+  );
 
   # Open Radarr port when enabled
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.radarr.enable [ 7878 ];

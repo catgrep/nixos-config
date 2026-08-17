@@ -1,0 +1,245 @@
+{
+  "overlays": {
+    "caddy": "2.11.3"
+  },
+  "services": {
+    "avahi": {
+      "package": "avahi",
+      "version": "0.8"
+    },
+    "caddy": {
+      "package": "caddy",
+      "version": "2.11.3"
+    },
+    "grafana": {
+      "package": "grafana",
+      "version": "12.3.6+security-01"
+    },
+    "lvm": {
+      "package": "lvm2",
+      "version": "2.03.35"
+    },
+    "nscd": {
+      "package": "glibc",
+      "version": "2.40"
+    },
+    "openssh": {
+      "package": "openssh",
+      "version": "10.3p1"
+    },
+    "prometheus": {
+      "package": "prometheus",
+      "version": "3.7.2"
+    },
+    "subgen": {
+      "package": "subgen",
+      "version": "2026.07.3"
+    },
+    "tailscale": {
+      "package": "tailscale",
+      "version": "1.98.0"
+    }
+  },
+  "systemPackages": [
+    {
+      "name": "acl",
+      "version": "2.3.2"
+    },
+    {
+      "name": "aide",
+      "version": "0.19.2"
+    },
+    {
+      "name": "attr",
+      "version": "2.5.2"
+    },
+    {
+      "name": "audit",
+      "version": "4.1.2-unstable-2025-09-06"
+    },
+    {
+      "name": "avahi",
+      "version": "0.8"
+    },
+    {
+      "name": "bandwhich",
+      "version": "0.23.1"
+    },
+    {
+      "name": "bash-interactive",
+      "version": "5.3p3"
+    },
+    {
+      "name": "bat",
+      "version": "0.26.1"
+    },
+    {
+      "name": "bcache-tools",
+      "version": "1.1"
+    },
+    {
+      "name": "bind",
+      "version": "9.20.21"
+    },
+    {
+      "name": "blktrace",
+      "version": "1.3.0"
+    },
+    {
+      "name": "borgbackup",
+      "version": "1.4.3"
+    },
+    {
+      "name": "bpftrace",
+      "version": "0.24.1"
+    },
+    {
+      "name": "btop",
+      "version": "1.4.5"
+    },
+    {
+      "name": "btrfs-progs",
+      "version": "6.17.1"
+    },
+    {
+      "name": "bzip2",
+      "version": "1.0.8"
+    },
+    {
+      "name": "charasay",
+      "version": "3.3.0"
+    },
+    {
+      "name": "coreutils-full",
+      "version": "9.8"
+    },
+    {
+      "name": "cowsay",
+      "version": "3.8.4"
+    },
+    {
+      "name": "cpio",
+      "version": "2.15"
+    },
+    {
+      "name": "curl",
+      "version": "8.19.0"
+    },
+    {
+      "name": "dbus",
+      "version": "1.14.10"
+    },
+    {
+      "name": "diffutils",
+      "version": "3.12"
+    },
+    {
+      "name": "dosfstools",
+      "version": "4.2"
+    },
+    {
+      "name": "e2fsprogs",
+      "version": "1.47.3"
+    },
+    {
+      "name": "eza",
+      "version": "0.23.4"
+    },
+    {
+      "name": "fastfetch",
+      "version": "2.55.1"
+    },
+    {
+      "name": "fd",
+      "version": "10.3.0"
+    },
+    {
+      "name": "findutils",
+      "version": "4.10.0"
+    },
+    {
+      "name": "fontconfig",
+      "version": "2.17.1"
+    },
+    {
+      "name": "fuse",
+      "version": "2.9.9"
+    },
+    {
+      "name": "gawk",
+      "version": "5.3.2"
+    },
+    {
+      "name": "getconf-glibc-2.40-224",
+      "version": "2.40"
+    },
+    {
+      "name": "getent-glibc-2.40-224",
+      "version": "2.40"
+    },
+    {
+      "name": "ghostty",
+      "version": "1.3.1"
+    },
+    {
+      "name": "git",
+      "version": "2.51.2"
+    },
+    {
+      "name": "glibc",
+      "version": "2.40"
+    },
+    {
+      "name": "glibc-locales",
+      "version": "2.40"
+    },
+    {
+      "name": "gnugrep",
+      "version": "3.12"
+    },
+    {
+      "name": "gnupg",
+      "version": "2.4.9"
+    },
+    {
+      "name": "gnused",
+      "version": "4.9"
+    },
+    {
+      "name": "gnutar",
+      "version": "1.35"
+    },
+    {
+      "name": "grafana",
+      "version": "12.3.6+security-01"
+    },
+    {
+      "name": "gzip",
+      "version": "1.14"
+    },
+    {
+      "name": "hdparm",
+      "version": "9.65"
+    },
+    {
+      "name": "hicolor-icon-theme",
+      "version": "0.18"
+    },
+    {
+      "name": "hostname-debian",
+      "version": "3.25"
+    },
+    {
+      "name": "htop",
+      "version": "3.4.1"
+    },
+    {
+      "name": "inotify-tools",
+      "version": "4.25.9.0"
+    },
+    {
+      "name": "iotop",
+      "version": "0.6"
+    }
+  ]
+}

@@ -153,25 +153,16 @@ with lib;
         };
 
         # DNS configuration for non-AdGuard hosts
+        #
+        # NixOS 26.05 removed services.resolved.extraConfig and renamed domains,
+        # dnssec, dnsovertls, and fallbackDns into the structured settings.Resolve
+        # attrset. Every key is written in the new form so no renamed-option warning
+        # is emitted. The module space-joins DNS, Domains, and FallbackDNS when they
+        # are given as lists, so the rendered resolved.conf matches what the previous
+        # hand-written [Resolve] section produced.
         services.resolved = mkIf (!config.services.adguardhome.enable or false) {
           enable = true;
-          domains = [ "~." ];
-          dnssec = "allow-downgrade";
-          # Only set fallbackDns for non-AdGuard or failover mode
-          # Strict mode should have NO fallback to ensure all DNS goes through AdGuard
-          fallbackDns =
-            if cfg.adguard.enabled && cfg.adguard.mode == "strict" then
-              [ ] # No fallback in strict mode
-            else
-              [
-                "1.1.1.1"
-                "8.8.8.8"
-                "1.0.0.1"
-                "8.8.4.4"
-              ];
-          # Avahi publishes .local names, while systemd-resolved resolves them for DNS-stub clients.
-          # Resolver-only mode must be enabled globally here and per link in networkd below.
-          extraConfig =
+          settings.Resolve =
             let
               dnsServers =
                 if cfg.adguard.enabled then
@@ -186,16 +177,32 @@ with lib;
                   [
                     "1.1.1.1"
                     "8.8.8.8"
-                  ]; # default public DNS # default public DNS
+                  ]; # default public DNS
             in
-            ''
-              [Resolve]
-              DNS=${concatStringsSep " " dnsServers}
-              DNSStubListener=yes
-              Cache=yes
-              DNSOverTLS=no
-              MulticastDNS=resolve
-            '';
+            {
+              DNS = dnsServers;
+              Domains = [ "~." ];
+              DNSSEC = "allow-downgrade";
+              # Only set FallbackDNS for non-AdGuard or failover mode
+              # Strict mode should have NO fallback to ensure all DNS goes through AdGuard
+              FallbackDNS =
+                if cfg.adguard.enabled && cfg.adguard.mode == "strict" then
+                  [ ] # No fallback in strict mode
+                else
+                  [
+                    "1.1.1.1"
+                    "8.8.8.8"
+                    "1.0.0.1"
+                    "8.8.4.4"
+                  ];
+              DNSStubListener = "yes";
+              Cache = "yes";
+              DNSOverTLS = "no";
+              # Avahi publishes .local names, while systemd-resolved resolves them for
+              # DNS-stub clients. Resolver-only mode must be enabled globally here and
+              # per link in networkd below.
+              MulticastDNS = "resolve";
+            };
         };
 
         # Prevent DHCP from overwriting DNS settings when using AdGuard

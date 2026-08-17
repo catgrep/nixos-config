@@ -4,7 +4,7 @@
   description = "Bobby's Homelab NixOS configurations";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/daa628a725ab4948e0e2b795e8fb6f4c3e289a7a";
 
@@ -42,7 +42,7 @@
     };
 
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -213,8 +213,7 @@
           inherit system;
           specialArgs = {
             inherit inputs;
-            # Unstable tailscale: stable 25.11 has 1.90.9, need >= 1.92.5
-            # Remove when stable tailscale >= 1.92.5
+            # Retained with no in-tree consumers: Phase 10 needs this plumbing.
             unstable = import nixpkgs-unstable {
               inherit system;
               config.allowUnfree = true;
@@ -242,9 +241,6 @@
             ./modules/media
             ./modules/nordvpn
             ./modules/automation
-            {
-              nixpkgs.overlays = [ (import ./overlays/frigate-tflite-optional.nix) ];
-            }
           ];
         };
 
@@ -340,6 +336,7 @@
                   mkpasswd
                   inetutils
                   shellcheck
+                  shfmt
                   nixos-anywhere
                   mkcert
                   addlicense

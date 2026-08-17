@@ -546,7 +546,9 @@
       # links protobuf into libtensorflow_framework.so.2; when
       # loaded alongside onnxruntime (dynamic libprotobuf.so),
       # the competing symbols cause segfaults in forked detectors.
-      # overlays/frigate-tflite-optional.nix keeps startup imports tolerant.
+      # Startup imports stay safe without a local overlay: since 26.05 nixpkgs
+      # applies its own ai-edge-litert patch, so Frigate's TFLite modules import
+      # ai_edge_litert (on PYTHONPATH) rather than tensorflow.
       # Build a clean PYTHONPATH: remove tensorflow (protobuf collision)
       # and fix frigate's self-reference (overrideAttrs doesn't update
       # the pythonPath passthru attribute's self-reference).

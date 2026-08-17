@@ -84,10 +84,26 @@
       useTmpfs = lib.mkForce false; # Disable the common setting
     };
 
-    # Implement "Erase Your Darlings" - rollback root on boot
-    initrd.postDeviceCommands = lib.mkAfter ''
-      zfs rollback -r rpool/local/root@blank
-    '';
+    # Implement "Erase Your Darlings" - rollback root on boot.
+    #
+    # NixOS 26.05 flipped boot.initrd.systemd.enable to true by default, and the
+    # systemd stage-1 initrd ignores boot.initrd.postDeviceCommands entirely (it
+    # asserts on the option rather than silently dropping it). The rollback is
+    # therefore expressed as a stage-1 systemd oneshot: ordered after rpool is
+    # imported and before the root filesystem is mounted, which is exactly the
+    # window the old postDeviceCommands hook ran in.
+    initrd.systemd.services.rollback = {
+      description = "Roll back rpool/local/root to its blank snapshot";
+      wantedBy = [ "initrd.target" ];
+      after = [ "zfs-import-rpool.service" ];
+      before = [ "sysroot.mount" ];
+      path = [ pkgs.zfs ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig.Type = "oneshot";
+      script = ''
+        zfs rollback -r rpool/local/root@blank
+      '';
+    };
   };
 
   # ZFS services

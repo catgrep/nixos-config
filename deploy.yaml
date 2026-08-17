@@ -13,7 +13,7 @@ hosts:
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["media", "x86_64"]
-    smoketests: "./scripts/smoketests/media/all.sh"
+    smoketests: "./scripts/smoketests/ser8/all.sh"
 
   firebat:
     targetHost: "192.168.68.63"
@@ -26,8 +26,8 @@ hosts:
     targetHost: "192.168.68.56"
     targetUser: "bdhill"
     buildOnTarget: true
-    tags: ["dns", "arm", "raspberrypi"]
-    smoketests: "./scripts/smoketests/dns/all.sh"
+    tags: ["arm", "raspberrypi"]
+    smoketests: "test"
 
   pi5:
     targetHost: "192.168.0.110"

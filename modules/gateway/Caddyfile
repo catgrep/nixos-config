@@ -60,11 +60,6 @@ hass.vofi {
 	}
 }
 
-# adguard should be internally accessible only
-adguard.internal {
-	reverse_proxy pi4.local:3000
-}
-
 grafana.vofi.app {
 	reverse_proxy firebat.local:3000
 }

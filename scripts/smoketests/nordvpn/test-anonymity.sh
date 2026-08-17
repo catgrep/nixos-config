@@ -8,8 +8,8 @@ set -euo pipefail
 title "$0"
 
 if [ $# -lt 1 ]; then
-    info "Usage: $0 <host>"
-    exit 1
+	info "Usage: $0 <host>"
+	exit 1
 fi
 
 host="$1"
@@ -86,23 +86,38 @@ fi
 echo "Testing kill switch functionality..."
 echo -n "  - Traffic blocked when VPN interface down: "
 
+# The only mechanism that brings wgnord back up. Idempotent, so the trap and
+# the inline call below cannot disagree about the interface state.
+vpn_is_down=0
+restore_vpn() {
+    [ "$vpn_is_down" = "1" ] || return 0
+    vpn_is_down=0
+    echo "  - restoring wgnord interface"
+    sudo ip netns exec wgnord ip link set wgnord up || true
+    # The tunnel needs time to re-establish before anything probes it.
+    sleep 20
+}
+
+# Armed before the teardown so that NO path out of this script — including an
+# unexpected failure between here and the restore — leaves the household's VPN
+# interface down.
+trap restore_vpn EXIT
+
 # Temporarily bring down WireGuard interface
+vpn_is_down=1
 sudo ip netns exec wgnord ip link set wgnord down
 sleep 2
 
 # Try to make external request - should fail
 if sudo ip netns exec wgnord timeout 5 curl -s --connect-timeout 3 --max-time 5 http://httpbin.org/ip >/dev/null 2>&1; then
     echo "FAILED - traffic leaked when VPN down"
-    # Bring interface back up before exiting
-    sudo ip netns exec wgnord ip link set wgnord up
     exit 1
 else
     echo "OK - traffic blocked when VPN down"
 fi
 
-# Bring VPN interface back up
-sudo ip netns exec wgnord ip link set wgnord up
-sleep 20
+# Bring the interface back before the connectivity re-check that follows.
+restore_vpn
 
 # Verify connectivity is restored
 echo -n "  - Connectivity restored after VPN recovery: "

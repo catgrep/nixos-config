@@ -182,10 +182,10 @@ store-gc:
 status:
 	@$(call info_msg,"Checking host connectivity..."); \
 	$(foreach host,$(HOSTS), \
-		if ! ping -c 1 -W 2 "$(host).internal"; then \
-			$(call error_msg,"✗ $(host): Offline"); \
+		if ! ping -c 1 -W 2 "$(call get-host-ip,$(host))" >/dev/null 2>&1; then \
+			$(call error_msg,"✗ $(host): Offline at $(call get-host-ip,$(host))"); \
 		else \
-			$(call success_msg,"✓ $(host): Online"); \
+			$(call success_msg,"✓ $(host): Online at $(call get-host-ip,$(host))"); \
 		fi; \
 	)
 

@@ -143,6 +143,7 @@ check:
 	@./scripts/validation/test-nzbget-permissions.sh
 	@./scripts/validation/test-actual-module.sh
 	@./scripts/validation/test-pi-bootloader.sh
+	@./scripts/validation/test-mealie-module.sh
 	@$(call success_msg,"✓ Flake check passed")
 	@$(call info_msg,"Testing host configurations..."); \
 	set -e; \

@@ -199,3 +199,14 @@ https://hass.shad-bangus.ts.net {
 		header_up Connection "Upgrade"
 	}
 }
+
+# -- Household services
+# No header_up pair: Mealie needs no WebSocket handling, and an unconditional
+# Connection: Upgrade stamps every ordinary page load as an upgrade request.
+https://mealie.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/mealie
+	reverse_proxy 192.168.68.65:9000
+}

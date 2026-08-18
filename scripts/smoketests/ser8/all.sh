@@ -18,6 +18,9 @@
 # array — it interrupts VPN connectivity, and it lives behind its own entry
 # point under scripts/smoketests/nordvpn/ that nothing on the deploy path
 # reaches.
+#
+# The household area joined this fan-out in Phase 10; it owns the Mealie checks
+# and the household services that follow it in Phases 12-13.
 
 set -euo pipefail
 
@@ -29,6 +32,7 @@ set -euo pipefail
 SUITE_NAME="ser8"
 TESTS=(
 	./scripts/smoketests/media/all.sh
+	./scripts/smoketests/household/all.sh
 	./scripts/smoketests/nordvpn/all.sh
 	./scripts/smoketests/ser8/test-zfs-health.sh
 	./scripts/smoketests/ser8/test-vaapi.sh

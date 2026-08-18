@@ -32,6 +32,7 @@ EXPECTED_NODES=(
   "sonarr"
   "bazarr"
   "prowlarr"
+  "mealie"
 )
 
 # Track test results

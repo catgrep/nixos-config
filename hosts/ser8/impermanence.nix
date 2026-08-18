@@ -58,6 +58,7 @@
       "/var/lib/sabnzbd"
       "/var/lib/nzbget"
       "/var/lib/postgresql"
+      "/var/lib/mealie"
       {
         directory = "/var/lib/docker";
         mode = "0710";
@@ -109,7 +110,14 @@
     "Z /persist/var/lib/jellyfin 0755 jellyfin media - -"
     "d /var/lib/jellyfin 0755 jellyfin media -"
     "Z /var/lib/jellyfin 0755 jellyfin media -"
-    # "d /persist/var/lib/postgresql 0700 postgres postgres -"
+    # 0750, not 0700: the postgresql module sets StateDirectoryMode to 0750 for
+    # any major >= 11, so a 0700 declarative rule would fight systemd on every
+    # start. PostgreSQL accepts 0750 on PGDATA.
+    "d /persist/var/lib/postgresql 0750 postgres postgres -"
+
+    # Mealie stores recipe images, user assets, and the session-signing secret
+    # under DATA_DIR on disk, not in PostgreSQL.
+    "d /persist/var/lib/mealie 0750 mealie mealie -"
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0775 media media -"

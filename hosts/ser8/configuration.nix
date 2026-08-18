@@ -12,6 +12,7 @@
     ./hardware-configuration.nix
     ./disko-config.nix
     ./media
+    ./household
   ];
 
   # Media server networking configuration

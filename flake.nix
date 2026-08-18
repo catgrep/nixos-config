@@ -195,6 +195,7 @@
           hostname = "ser8";
           modules = [
             ./modules/media
+            ./modules/household
             ./modules/nordvpn
             ./modules/automation
           ];

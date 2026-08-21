@@ -14,6 +14,11 @@
 # the module. Evaluation failures are allowed to propagate: wrapping these eval
 # calls in a fallback that substitutes a default on error would make the gate
 # certify nothing.
+#
+# ACT-01-scoped assertions (Phase 11 plan 02) were added below the original
+# Phase 9 module-resolution checks: they confirm ser8's host policy actually
+# sets the static actual:actual user/group and opens the firewall, rather than
+# merely proving the option paths exist.
 
 set -euo pipefail
 
@@ -48,6 +53,21 @@ check_eval \
 	"config.services.actual.settings.dataDir" \
 	".#nixosConfigurations.${host}.config.services.actual.settings.dataDir" \
 	'"/var/lib/actual"'
+
+check_eval \
+	"config.services.actual.user" \
+	".#nixosConfigurations.${host}.config.services.actual.user" \
+	'"actual"'
+
+check_eval \
+	"config.services.actual.group" \
+	".#nixosConfigurations.${host}.config.services.actual.group" \
+	'"actual"'
+
+check_eval \
+	"config.services.actual.openFirewall" \
+	".#nixosConfigurations.${host}.config.services.actual.openFirewall" \
+	'true'
 
 if [ "$failures" -ne 0 ]; then
 	echo "$failures assertion(s) failed: the resolved services.actual module is not the 26.05 one" >&2

@@ -60,6 +60,7 @@
       "/var/lib/postgresql"
       "/var/lib/mealie"
       "/var/lib/homebox"
+      "/var/lib/actual"
       {
         directory = "/var/lib/docker";
         mode = "0710";
@@ -126,6 +127,26 @@
     # StateDirectory is 0755, so without that override this rule would be
     # cosmetic and get re-stamped to 0755 on every service start.
     "d /persist/var/lib/homebox 0750 homebox homebox -"
+
+    # Actual stores its SQLite account/budget databases and uploaded budget
+    # files under /var/lib/actual. 0700, matching services.actual's own
+    # StateDirectoryMode -- unlike Mealie/Homebox, the upstream Actual module
+    # hardcodes StateDirectoryMode = "0700" unconditionally (not left at
+    # systemd's 0755 default), so a 0750 rule here would fight it on every
+    # service start.
+    "d /persist/var/lib/actual 0700 actual actual -"
+
+    # Upstream's services.actual module sets ReadWritePaths to
+    # cfg.settings.serverFiles / cfg.settings.userFiles
+    # (/var/lib/actual/server-files, /var/lib/actual/user-files) but never
+    # creates either subdirectory itself -- neither via preStart nor its own
+    # tmpfiles rules. systemd's mount-namespace setup for ReadWritePaths
+    # requires each path to already exist, so on a fresh /var/lib/actual the
+    # unit fails at step NAMESPACE ("No such file or directory") before
+    # ExecStartPre ever runs. Declared explicitly here rather than filed
+    # upstream-only, since the household service must work today.
+    "d /persist/var/lib/actual/server-files 0700 actual actual -"
+    "d /persist/var/lib/actual/user-files 0700 actual actual -"
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0775 media media -"

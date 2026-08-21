@@ -218,3 +218,11 @@ https://homebox.shad-bangus.ts.net {
 	bind tailscale/homebox
 	reverse_proxy 192.168.68.65:7745
 }
+
+https://actual.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/actual
+	reverse_proxy 192.168.68.65:3000
+}

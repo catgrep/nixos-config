@@ -6,5 +6,6 @@
   imports = [
     ./mealie.nix
     ./homebox.nix
+    ./actual.nix
   ];
 }

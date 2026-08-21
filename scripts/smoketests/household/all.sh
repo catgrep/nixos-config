@@ -30,6 +30,8 @@ TESTS=(
 	./scripts/smoketests/household/test-mealie-endpoint.sh
 	./scripts/smoketests/household/test-homebox-service.sh
 	./scripts/smoketests/household/test-homebox-endpoint.sh
+	./scripts/smoketests/household/test-actual-service.sh
+	./scripts/smoketests/household/test-actual-endpoint.sh
 )
 
 run_suite "$@"

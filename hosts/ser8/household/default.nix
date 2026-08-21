@@ -6,5 +6,6 @@
   imports = [
     ./postgresql.nix
     ./mealie.nix
+    ./homebox.nix
   ];
 }

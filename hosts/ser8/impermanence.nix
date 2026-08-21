@@ -59,6 +59,7 @@
       "/var/lib/nzbget"
       "/var/lib/postgresql"
       "/var/lib/mealie"
+      "/var/lib/homebox"
       {
         directory = "/var/lib/docker";
         mode = "0710";
@@ -118,6 +119,13 @@
     # Mealie stores recipe images, user assets, and the session-signing secret
     # under DATA_DIR on disk, not in PostgreSQL.
     "d /persist/var/lib/mealie 0750 mealie mealie -"
+
+    # Homebox stores its SQLite database and uploaded attachments under
+    # /var/lib/homebox. 0750, matching modules/household/homebox.nix's
+    # explicit StateDirectoryMode override -- systemd's own default for
+    # StateDirectory is 0755, so without that override this rule would be
+    # cosmetic and get re-stamped to 0755 on every service start.
+    "d /persist/var/lib/homebox 0750 homebox homebox -"
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0775 media media -"

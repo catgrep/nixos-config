@@ -123,6 +123,7 @@
           subgen = pkgs.callPackage ./packages/subgen {
             stable-ts-whisperless = stableTsWhisperless;
           };
+          donetick = pkgs.callPackage ./packages/donetick { };
         };
 
       # Common module groups

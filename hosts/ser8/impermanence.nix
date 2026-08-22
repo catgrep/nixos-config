@@ -61,6 +61,7 @@
       "/var/lib/mealie"
       "/var/lib/homebox"
       "/var/lib/actual"
+      "/var/lib/donetick"
       {
         directory = "/var/lib/docker";
         mode = "0710";
@@ -147,6 +148,14 @@
     # upstream-only, since the household service must work today.
     "d /persist/var/lib/actual/server-files 0700 actual actual -"
     "d /persist/var/lib/actual/user-files 0700 actual actual -"
+
+    # Donetick stores its SQLite database under /var/lib/donetick. 0750,
+    # matching modules/household/donetick.nix's explicit StateDirectoryMode
+    # override -- systemd's own default for StateDirectory is 0755, so
+    # without that override this rule would be cosmetic and get re-stamped
+    # to 0755 on every service start (the exact defect found and fixed for
+    # Homebox in 11-01).
+    "d /persist/var/lib/donetick 0750 donetick donetick -"
 
     # Ensure media directories have correct permissions
     "d /mnt/media 0775 media media -"

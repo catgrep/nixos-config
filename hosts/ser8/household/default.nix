@@ -8,5 +8,6 @@
     ./mealie.nix
     ./homebox.nix
     ./actual.nix
+    ./donetick.nix
   ];
 }

@@ -110,13 +110,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| FLEET-01 | Phase 12 | Pending |
+| FLEET-02 | Phase 12 | Pending |
+| FLEET-03 | Phase 12 | Pending |
+| FLEET-04 | Phase 12 | Pending |
+| ZFS-01 | Phase 13 | Pending |
+| ZFS-02 | Phase 13 | Pending |
+| ZFS-03 | Phase 13 | Pending |
+| ZFS-04 | Phase 13 | Pending |
+| ZFS-05 | Phase 13 | Pending |
+| BKP-01 | Phase 14 | Pending |
+| BKP-02 | Phase 14 | Pending |
+| BKP-03 | Phase 14 | Pending |
+| BKP-04 | Phase 14 | Pending |
+| BKP-05 | Phase 14 | Pending |
+| BKP-06 | Phase 14 | Pending |
+| BKP-07 | Phase 14 | Pending |
+| NIX-01 | Phase 15 | Pending |
+| NIX-02 | Phase 15 | Pending |
+| NIX-03 | Phase 15 | Pending |
+| NIX-04 | Phase 15 | Pending |
+| NIX-05 | Phase 15 | Pending |
+| NIX-06 | Phase 15 | Pending |
+| SVC-01 | Phase 16 | Pending |
+| SVC-02 | Phase 16 | Pending |
+| SVC-03 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-23*
-*Last updated: 2026-08-23 after initial definition*
+*Last updated: 2026-08-23 after roadmap creation (Phases 12-16)*

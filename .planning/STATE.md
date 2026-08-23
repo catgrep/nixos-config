@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-08-23T22:32:27.540Z"
 last_activity: 2026-08-23
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-23)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 12 — Fleet Repair (v1.3 ZFS Mirror + Nixflix Migration)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-08-23 — Milestone v1.3 started
+Phase: Phase 12 of 16 (Fleet Repair) — 1st of 5 phases in v1.3
+Plan: — (not yet planned)
+Status: Roadmap created; ready to plan Phase 12
+Last activity: 2026-08-23 — v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -79,7 +81,7 @@ Open items carried into the next milestone (resolved and phase-scoped entries pr
 - Google Takeout `Tasks.json` envelope is undocumented — inspect the real archive before writing any import code.
 - Both Mealie accounts carry admin=true (unplanned privilege), and MEAL-04's two-profile UI confirmation remains operator-deferred — resolve both before a SEC-02-style audit.
 - v1.1 leftovers: Alloy HCL config format unverified; firebat impermanence status unclear (both shelved with phases 5-7).
-- Fleet issues acknowledged at v1.2 close are tracked in Deferred Items below (NordVPN tunnel, sabnzbd uid drift, media UID/GID drift, offline Pis, smoketest honesty, Frigate items).
+- v1.3 Phase 12 (Fleet Repair) now owns the NordVPN tunnel, sabnzbd uid drift, and media UID/GID drift items previously listed below as deferred; see Deferred Items for their FLEET-01..03 mapping.
 
 ### Roadmap Evolution
 
@@ -87,6 +89,7 @@ Open items carried into the next milestone (resolved and phase-scoped entries pr
 - v1.2 descoped 2026-08-20 to phases 9-11 (apps first); backups, TLS, import, and the access gate parked as Deferred
 - v1.2 shipped 2026-08-23 (override closeout); archives under `.planning/milestones/v1.2-*`
 - v1.1 phases 5-7 shelved to Future Requirements; phase artifacts archived under `.planning/milestones/v1.1-phases/`
+- v1.3 phases 12-16 added 2026-08-23: fleet repair, ZFS mirror migration (human-gated), backup engine, Nixflix migration (arr/Prowlarr/Jellyfin), new services (Recyclarr/Seerr/Maintainerr) — 25/25 v1.3 requirements mapped, no orphans
 
 ## Deferred Items
 
@@ -98,9 +101,9 @@ Full text lives in each phase's `deferred-items.md` (archived under `milestones/
 |----------|------|--------|
 | verification | Phase 09 verification `gaps_found` (pi4/pi5 never remotely dry-activated; workstation cachix trust; always-pass smoketests) | acknowledged |
 | todo | migrate-vofi-hostnames-to-public-vofi-dev-domain (gateway) | pending |
-| operational | ser8 NordVPN tunnel down; qBittorrent has no internet path; sole cause of `make reboot-test-ser8` exit 1 | deferred |
-| operational | sabnzbd.service fails (uid-drifted 38:194 files under /var/lib/sabnzbd/admin); causes gateway https_sabnzbd 502 | deferred |
-| operational | media user/group UID/GID drift on ser8 (declared 1100, live 1002/992); needs deliberate re-chown plan | deferred |
+| operational | ser8 NordVPN tunnel down; qBittorrent has no internet path; sole cause of `make reboot-test-ser8` exit 1 | → FLEET-01, Phase 12 (v1.3) |
+| operational | sabnzbd.service fails (uid-drifted 38:194 files under /var/lib/sabnzbd/admin); causes gateway https_sabnzbd 502 | → FLEET-02, Phase 12 (v1.3) |
+| operational | media user/group UID/GID drift on ser8 (declared 1100, live 1002/992); needs deliberate re-chown plan | → FLEET-03, Phase 12 (v1.3) |
 | operational | pi4 and pi5 offline; pi5 deploy.yaml entry (192.168.0.110, user nixos) stale | deferred |
 | operational | Workstation /etc/nix/nix.custom.conf still trusts nixos-raspberrypi.cachix.org (needs `sudo make update-nix-conf`) | deferred |
 | smoketest | deploy.yaml pi4/pi5 smoketests are the literal `test` builtin — always pass | deferred |
@@ -114,12 +117,14 @@ Full text lives in each phase's `deferred-items.md` (archived under `milestones/
 | app | services.sabnzbd.configFile deprecated in 26.05; migration to `settings` needs its own plan | deferred |
 | app | pinned impermanence input's dead `method` option breaks bare `nix eval --json` dumps of persistence dirs | deferred |
 
+Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-ZFS-MIRROR-MIGRATION.md` Known Blockers, not in this table; it is also scoped to Phase 12 (v1.3).
+
 ## Session Continuity
 
 Last session: 2026-08-23
-Stopped at: Milestone v1.2 completed and archived
+Stopped at: v1.3 ROADMAP.md created (Phases 12-16); ready to plan Phase 12
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd-plan-phase 12` to plan the Fleet Repair phase.

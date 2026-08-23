@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Household Stack
-status: Awaiting next milestone
-stopped_at: Milestone v1.2 completed and archived (override closeout, 17 acknowledged deferred items)
-last_updated: "2026-08-23T22:10:00.000Z"
+milestone: v1.3
+milestone_name: ZFS Mirror + Nixflix Migration
+status: planning
+last_updated: "2026-08-23T22:32:27.540Z"
 last_activity: 2026-08-23
-last_activity_desc: Milestone v1.2 completed and archived
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 23
-  completed_plans: 18
-  percent: 100
-current_phase: 11
-current_phase_name: homebox-actual-budget-and-donetick
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 
 ## Current Position
 
-Phase: Milestone v1.2 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-08-23 — Milestone v1.2 completed and archived
+Status: Defining requirements
+Last activity: 2026-08-23 — Milestone v1.3 started
 
 ## Performance Metrics
 

@@ -25,15 +25,23 @@ The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred I
 - Tailscale/LAN-internal only; nothing exposed publicly
 - Home Assistant integration deferred to a later milestone
 
-## Next Milestone Goals
+## Current Milestone: v1.3 ZFS Mirror + Nixflix Migration
 
-Candidates carried out of v1.2, to be scoped by `/gsd-new-milestone`:
+**Goal:** Rebuild ser8's media foundation in one milestone — storage first (MergerFS → two-disk ZFS mirror, paranoid and human-gated), then the full Nixflix migration through Recyclarr, Seerr, and Maintainerr, plus a nightly backup engine.
 
-- Backups: nightly pg_dump + SQLite `.backup`/`VACUUM INTO` to the ZFS backup pool, with demonstrated restores (BKP-01..06)
-- TLS/domain decision and the `.vofi` → `vofi.dev` migration (TLS-01/02, pending todo)
-- Google Tasks import into Donetick (IMP-01..03; Takeout export not yet requested)
-- Access control and verification gate: negative access smoketests, secrets audit, blackbox probes for household apps (SEC-01/02, OBS-01/02)
-- Fleet repair: NordVPN tunnel, sabnzbd uid drift, media UID/GID re-chown, pi5 reflash/bootstrap, smoketest honesty fixes (deferred gap-closure plans 09-08/09-09)
+**Target features, in sequence:**
+- Prereq fleet repairs: wgnord/qBittorrent restart loop (NordVPN tunnel), sabnzbd uid-drift repair, media UID/GID reconciliation (repo 1100 vs live 1002/992), Radarr root-folder drift cleanup
+- ZFS mirror migration (paranoid, human-in-the-loop): stage ~7.8 TB to the backup pool, freeze, erase the two approved 12 TB WWNs, create single-dataset `media/data`, restore, checksum-verify, scrub — prior research in `.planning/SER8-ZFS-MIRROR-MIGRATION.md`
+- Backup engine (BKP-01..06 unparked): nightly pg_dump + SQLite `.backup` to the ZFS backup pool for household apps and media app state, with demonstrated restores; doubles as the pre-cutover snapshot + tested rollback
+- Nixflix foundation: pinned flake input, `hosts/ser8/media/nixflix.nix` adapter forcing live identities and existing state paths, written against the final ZFS topology
+- Cutover (careful): export full API inventory, declare all root folders/download clients/Prowlarr objects, enable reconciliation for Sonarr/Radarr/Prowlarr, remove local orchestration units; then Jellyfin with a dedicated SOPS API key and preserved database/users
+- New services (simple standups, separate paths): Recyclarr (no unmanaged-profile deletion), Seerr (full gateway/monitoring/smoketest coverage), Maintainerr (observation mode, zero deletions)
+
+**Key constraints:**
+- Storage-first so Nixflix declarations target the final topology and hardlink validation can actually pass
+- Mirror halves usable media capacity to ~12 TB (currently ~7.8 TB used, ~65%)
+- Preserved as-is: qBittorrent service + NordVPN namespace (repaired, not replaced), firebat gateway topology, Bazarr, NZBGet, SQLite databases
+- Out of scope: anime Sonarr instance, Lidarr, PostgreSQL migration, Nixflix-managed VPN, Maintainerr deletion rules
 
 ## Requirements
 
@@ -67,14 +75,19 @@ Candidates carried out of v1.2, to be scoped by `/gsd-new-milestone`:
 
 <!-- Current scope. Building toward these. -->
 
-(None — v1.2 shipped; next milestone defines the new active set.)
+Milestone v1.3 scope (REQ-IDs defined in REQUIREMENTS.md):
+
+- Prereq fleet repairs: wgnord/qBittorrent loop, sabnzbd uid drift, media UID/GID reconciliation, Radarr root-folder cleanup
+- ser8 media storage migrated from MergerFS/ext4 to a two-disk ZFS mirror (single dataset, hardlink-capable)
+- Nightly backup engine to the ZFS backup pool with demonstrated restores (BKP-01..06 unparked from v1.2)
+- Nixflix adopted as the declarative orchestration layer: pinned input, ser8 adapter, arr/Prowlarr/Jellyfin cutover with full data retention
+- Recyclarr, Seerr, and Maintainerr (observation mode) stood up on the migrated stack
 
 ### Deferred (v1.2 descope, 2026-08-20)
 
 - One-time Google Tasks import into Donetick (one-off todos + recurring chores)
 - `.vofi` → `vofi.dev` migration with real TLS (tsnet pattern serves the household apps in the meantime)
 - Negative access smoketest proving no service is reachable from outside Tailscale/LAN
-- Nightly backups to ZFS backup pool with a demonstrated restore
 - Secrets audit: all secrets via sops-nix, nothing secret in the Nix store
 - Formal two-consecutive-reboot persistence drill (one real reboot proven in Phase 11)
 
@@ -197,4 +210,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-23 after v1.2 milestone*
+*Last updated: 2026-08-23 — milestone v1.3 started*

@@ -101,7 +101,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 **Plans**: TBD
 
 ### Phase 15: Nixflix Migration
-**Goal**: Nixflix is the declarative orchestration layer for Sonarr, Radarr, Prowlarr, and Jellyfin on ser8, with full data retention and no removed configuration.
+**Goal**: Nixflix is the declarative orchestration layer for Sonarr, Radarr, Prowlarr, and Jellyfin on ser8, with full data retention and no removed configuration, executed per the staged plan in `.planning/SER8-NIXFLIX-MIGRATION.md`.
 **Depends on**: Phase 14 (the pre-cutover snapshot and tested rollback ride on the backup engine; declarations target the final ZFS topology)
 **Requirements**: NIX-01, NIX-02, NIX-03, NIX-04, NIX-05, NIX-06
 **Success Criteria** (what must be TRUE):

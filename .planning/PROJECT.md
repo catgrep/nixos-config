@@ -33,7 +33,7 @@ The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred I
 - Prereq fleet repairs: wgnord/qBittorrent restart loop (NordVPN tunnel), sabnzbd uid-drift repair, media UID/GID reconciliation (repo 1100 vs live 1002/992), Radarr root-folder drift cleanup
 - ZFS mirror migration (paranoid, human-in-the-loop): stage ~7.8 TB to the backup pool, freeze, erase the two approved 12 TB WWNs, create single-dataset `media/data`, restore, checksum-verify, scrub — prior research in `.planning/SER8-ZFS-MIRROR-MIGRATION.md`
 - Backup engine (BKP-01..06 unparked): nightly pg_dump + SQLite `.backup` to the ZFS backup pool for household apps and media app state, with demonstrated restores; doubles as the pre-cutover snapshot + tested rollback
-- Nixflix foundation: pinned flake input, `hosts/ser8/media/nixflix.nix` adapter forcing live identities and existing state paths, written against the final ZFS topology
+- Nixflix foundation: pinned flake input, `hosts/ser8/media/nixflix.nix` adapter forcing live identities and existing state paths, written against the final ZFS topology — prior research in `.planning/SER8-NIXFLIX-MIGRATION.md`
 - Cutover (careful): export full API inventory, declare all root folders/download clients/Prowlarr objects, enable reconciliation for Sonarr/Radarr/Prowlarr, remove local orchestration units; then Jellyfin with a dedicated SOPS API key and preserved database/users
 - New services (simple standups, separate paths): Recyclarr (no unmanaged-profile deletion), Seerr (full gateway/monitoring/smoketest coverage), Maintainerr (observation mode, zero deletions)
 

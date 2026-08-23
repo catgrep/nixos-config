@@ -38,7 +38,7 @@ BKP-01..06 unparked from the v1.2 descope, extended to the media stack.
 
 ### Nixflix
 
-Foundation and cutover, per `nixflix-proposal.md`.
+Foundation and cutover, per `.planning/SER8-NIXFLIX-MIGRATION.md`.
 
 - [ ] **NIX-01**: Nixflix is pinned as a flake input to a reviewed commit with a ser8 adapter forcing live identities and existing state paths; PostgreSQL, local proxy, VPN, and qBittorrent service management stay disabled; ser8 builds without activation
 - [ ] **NIX-02**: The full API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, and a pre-cutover state snapshot with a tested state-aware rollback exists before reconciliation is enabled

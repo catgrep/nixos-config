@@ -2,30 +2,38 @@
 
 ## What This Is
 
-A declarative NixOS homelab managing multiple hosts (ser8, firebat, pi4, pi5) with media services, security cameras, home automation, DNS, reverse proxy, and monitoring. All configuration is version-controlled Nix with SOPS secrets, Tailscale networking, and ZFS storage.
+A declarative NixOS homelab managing multiple hosts (ser8, firebat, pi4, pi5) with media services, security cameras, home automation, DNS, reverse proxy, monitoring, and self-hosted household apps (Mealie, Homebox, Actual Budget, Donetick). All configuration is version-controlled Nix with SOPS secrets, Tailscale networking, and ZFS storage.
 
 ## Core Value
 
 The homelab runs reliably without manual intervention — when something needs attention, I know about it before it becomes a problem.
 
-## Current Milestone: v1.2 Household Stack
+## Current State
 
-**Goal:** Four standalone self-hosted household services (Mealie, Donetick, Homebox, Actual Budget) on ser8, reachable at `<name>.vofi` via the firebat Caddy gateway, with impermanence-safe persistence and restore-tested backups, plus a one-time Google Tasks import into Donetick.
+**Shipped: v1.2 Household Stack (2026-08-23).**
+The whole fleet runs NixOS 26.05 (both x86 hosts activated and switched; both Pis re-platformed from the `nvmd` fork onto upstream nixpkgs + pinned `nixos-hardware`, evaluation-level only).
+All four household services (Mealie, Homebox, Actual Budget, Donetick) run on ser8 behind the firebat Caddy tsnet pattern at `<name>.shad-bangus.ts.net`, each with both household members bootstrapped, self-signup closed, and persistence proven across a real ser8 reboot.
+Donetick is packaged locally from source — the repository's first Go and first npm packages.
 
-**Target features:**
-- Mealie with PostgreSQL, multi-user household, behind Caddy (highest priority)
-- Donetick (SQLite) for chores, with one-time Google Tasks import (one-off todos + recurring chores)
-- Homebox (SQLite) for durable goods inventory, registration disabled after initial accounts
-- Actual Budget (SQLite) for budgeting
-- Nightly backups (pg_dump for Mealie, SQLite `.backup`/`VACUUM INTO` for the rest) to the ZFS backup pool, with a demonstrated restore
-- Caddy vhosts + AdGuard DNS entries following the existing `<service>.vofi` pattern
+The 2026-08-20 descope deferred backups, `.vofi`/TLS migration, the Google Tasks import, and the access-control acceptance gate to a later milestone.
+The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred Items): NordVPN tunnel down on ser8, sabnzbd uid drift, six dishonest smoketests, Frigate go2rtc 403, and the workstation's lingering cachix trust, among others.
 
-**Design constraints (firm, from proposal):**
+**Design constraints that shipped (firm, from proposal):**
 - No integration layer or sync between the four services
 - No inventory/pantry consumption tracking (Grocy rejected)
 - Single shopping list (Mealie's)
 - Tailscale/LAN-internal only; nothing exposed publicly
 - Home Assistant integration deferred to a later milestone
+
+## Next Milestone Goals
+
+Candidates carried out of v1.2, to be scoped by `/gsd-new-milestone`:
+
+- Backups: nightly pg_dump + SQLite `.backup`/`VACUUM INTO` to the ZFS backup pool, with demonstrated restores (BKP-01..06)
+- TLS/domain decision and the `.vofi` → `vofi.dev` migration (TLS-01/02, pending todo)
+- Google Tasks import into Donetick (IMP-01..03; Takeout export not yet requested)
+- Access control and verification gate: negative access smoketests, secrets audit, blackbox probes for household apps (SEC-01/02, OBS-01/02)
+- Fleet repair: NordVPN tunnel, sabnzbd uid drift, media UID/GID re-chown, pi5 reflash/bootstrap, smoketest honesty fixes (deferred gap-closure plans 09-08/09-09)
 
 ## Requirements
 
@@ -59,12 +67,16 @@ The homelab runs reliably without manual intervention — when something needs a
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] One-time Google Tasks import into Donetick (one-off todos + recurring chores)
-- [ ] Each service reachable at `<name>.vofi` through firebat Caddy with AdGuard DNS entries (superseded in practice by the tsnet pattern; `.vofi` migration tracked as a pending todo)
-- [ ] No service reachable from outside Tailscale/LAN
-- [ ] All stateful paths declared in impermanence; data survives reboot
-- [ ] Nightly backups to ZFS backup pool with a demonstrated restore
-- [ ] All secrets via sops-nix; nothing secret in the Nix store
+(None — v1.2 shipped; next milestone defines the new active set.)
+
+### Deferred (v1.2 descope, 2026-08-20)
+
+- One-time Google Tasks import into Donetick (one-off todos + recurring chores)
+- `.vofi` → `vofi.dev` migration with real TLS (tsnet pattern serves the household apps in the meantime)
+- Negative access smoketest proving no service is reachable from outside Tailscale/LAN
+- Nightly backups to ZFS backup pool with a demonstrated restore
+- Secrets audit: all secrets via sops-nix, nothing secret in the Nix store
+- Formal two-consecutive-reboot persistence drill (one real reboot proven in Phase 11)
 
 ### Deferred (v1.1 shelved with phases 5-7 incomplete)
 
@@ -93,9 +105,10 @@ The homelab runs reliably without manual intervention — when something needs a
 ## Context
 
 - Household services target ser8: it hosts all app services, has ZFS + the backup pool, and Caddy already proxies `ser8.local:<port>`
-- Caddy (firebat) serves `<service>.vofi` vhosts with a local CA (`local_certs`); AdGuard Home on pi4 provides DNS
+- Caddy (firebat) serves household apps as Tailscale tsnet nodes at `<name>.shad-bangus.ts.net` with Let's Encrypt certs; legacy `<service>.vofi` vhosts used a local CA with AdGuard DNS on pi4, which is now disconnected
+- The shared `tailscale_authkey` must be reusable and non-ephemeral; a dead key takes the whole gateway down when Caddy restarts (proven by the 64-day-latent 2026-08-18 outage)
 - Deployment is via `deploy.yaml` + Makefile targets (not Colmena, despite older proposal docs)
-- ser8 runs Frigate 0.15.2, Home Assistant, Mosquitto, and media stack on the same host
+- ser8 runs Frigate 0.17.2, Home Assistant, Mosquitto, the media stack, PostgreSQL 17 (pinned), and the four household apps on the same host
 - firebat runs Caddy reverse proxy, Grafana, and Prometheus
 - Prometheus already scrapes node-exporter (ser8, firebat, pi4), zfs-exporter (ser8), and Prometheus self
 - Grafana has provisioned dashboards (Node Exporter Full, ZFS, Prometheus Stats)
@@ -131,6 +144,14 @@ The homelab runs reliably without manual intervention — when something needs a
 | [Phase 09, FOUND-02] Pi evidence is evaluation-level only, recorded separately per host | D-13 sets a different bar per board and a single combined claim would be wrong for one of them; see the evidence subsection below for the exact commands | ✓ Neither Pi was switched, activated, or powered on in this phase |
 | [Phase 09] Pi 5 bootstrap image and physical reflash deferred to a later phase | D-04 chose reflash-from-image over in-place bootloader migration, and stable 26.05's `sd-image-aarch64.nix` still lacks Pi 5 boot files | — Deferred; intended technical path recorded below so it is not re-researched |
 | [Phase 09] `.vofi` DNS ownership is unresolved and must be answered in Phase 10 | pi4 served `.vofi` names via AdGuard Home and is retiring; no household service is reachable by name until a new owner exists | — Open; `SKIP_VOFI_DNS` defaults to `1` and holds the smoketests in the meantime |
+| [v1.2, 2026-08-20] Descope backups, `.vofi` TLS, the Google Tasks import, and the access-control gate; ship the four apps first | Apps in daily use deliver value now; ceremony can follow in its own milestone | ✓ All four apps shipped 2026-08-22; deferred requirements parked with IDs intact |
+| [Phase 10] Household apps exposed as firebat Caddy tsnet nodes at `<name>.shad-bangus.ts.net`, superseding the `.vofi`+AdGuard pattern | pi4 (the AdGuard `.vofi` resolver) is disconnected; tsnet gives per-app hostnames with real Let's Encrypt certs and no DNS server to own | ✓ Good — four apps live on the pattern; `.vofi` migration parked as a todo |
+| [Phase 10] Mealie runs as a static system user with DynamicUser forced off; PostgreSQL pinned to `postgresql_17` by plain assignment | State must land at a real persisted path a backup job can address; stateVersion 24.11 would have silently selected major 16 | ✓ Good — pattern reused by all household services |
+| [Phase 10] Household smoketests assert both state stores (DB rows AND persisted file tree) and unit state before ports | A row-count-only or HTTP-only check stays green while data is broken — proven by the media area's blind SABnzbd pass | ✓ Good — household suite 8/8 post-reboot |
+| [Phase 11] Donetick packaged from source: `buildGoModule` backend + `buildNpmPackage` frontend from the separate `donetick/frontend` repo, pinned to the release build's exact commit | No usable upstream package; the backend repo's committed `frontend/dist` is an 88-byte placeholder | ✓ Good — repo's first Go and npm packages, full upstream test suite runs in checkPhase |
+| [Phase 11] `sops.templates.<name>.restartUnits` set explicitly for any template whose content can change post-deploy | sops-install-secrets only restarts units named at diff time; otherwise a running process keeps stale env vars (found live: signup stayed open after the flag flipped) | ✓ Good — fixed live in 11-05 |
+| [Phase 11] `StateDirectoryMode` forced to 0750 for every household service from the start | systemd's real default is 0755, not 0750; applied proactively after the Homebox lesson | ✓ Good |
+| [v1.2 close, 2026-08-23] Override closeout: ~15 open issues acknowledged as deferred rather than fixed pre-close | All are pre-existing conditions or own-plan-sized work; none block the shipped household stack | — Pending; recorded in STATE.md Deferred Items |
 
 ### Phase 09 Raspberry Pi evidence (FOUND-02)
 
@@ -176,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-22 after Phase 11 close (Homebox, Actual Budget, and Donetick live on the household pattern; reboot survival proven for all three)*
+*Last updated: 2026-08-23 after v1.2 milestone*

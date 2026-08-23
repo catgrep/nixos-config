@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Household Stack
-current_phase: 11
-status: completed
+status: Awaiting next milestone
 stopped_at: Completed 11-06-PLAN.md (real ser8 reboot proved Homebox/Actual/Donetick persistence; household suite 8/8 post-reboot; pre-existing NordVPN gap logged, not fixed)
-last_updated: "2026-08-22T08:14:58.628Z"
-last_activity: 2026-08-22
-last_activity_desc: "Completed 11-05 (Donetick: gateway vhost, household bootstrap, signup closed -- Phase 11 app trio complete)"
+last_updated: "2026-08-23T21:56:10.899Z"
+last_activity: 2026-08-23
+last_activity_desc: Milestone v1.2 completed and archived
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 23
   completed_plans: 18
   percent: 33
+current_phase: 11
 current_phase_name: homebox-actual-budget-and-donetick
 ---
 
@@ -28,11 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 ## Current Position
 
-Phase: 11
-Status: All phases complete
-Last activity: 2026-08-22 — Phase 11 complete
-
-Progress: [████████░░] 78%
+Phase: Milestone v1.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-08-23 — Milestone v1.2 completed and archived
 
 ## Performance Metrics
 
@@ -219,8 +218,38 @@ Recent decisions affecting current work:
 - v1.2 phases 9-14 added: channel bump, household foundation + Mealie, backup engine, TLS + Homebox + Actual, Donetick + import, access control + verification
 - v1.1 phases 5-7 shelved to Future Requirements; phase artifacts archived under `.planning/milestones/v1.1-phases/`
 
+## Deferred Items
+
+Items acknowledged and deferred at milestone v1.2 close on 2026-08-23 (override closeout).
+The raw audit counted 49 open lines; deduplicated below to distinct issues.
+Full text lives in each phase's `deferred-items.md` (archived under `milestones/v1.2-phases/`).
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | Phase 09 verification `gaps_found` (pi4/pi5 never remotely dry-activated; workstation cachix trust; always-pass smoketests) | acknowledged |
+| todo | migrate-vofi-hostnames-to-public-vofi-dev-domain (gateway) | pending |
+| operational | ser8 NordVPN tunnel down; qBittorrent has no internet path; sole cause of `make reboot-test-ser8` exit 1 | deferred |
+| operational | sabnzbd.service fails (uid-drifted 38:194 files under /var/lib/sabnzbd/admin); causes gateway https_sabnzbd 502 | deferred |
+| operational | media user/group UID/GID drift on ser8 (declared 1100, live 1002/992); needs deliberate re-chown plan | deferred |
+| operational | pi4 and pi5 offline; pi5 deploy.yaml entry (192.168.0.110, user nixos) stale | deferred |
+| operational | Workstation /etc/nix/nix.custom.conf still trusts nixos-raspberrypi.cachix.org (needs `sudo make update-nix-conf`) | deferred |
+| smoketest | deploy.yaml pi4/pi5 smoketests are the literal `test` builtin — always pass | deferred |
+| smoketest | test-caddy.sh passes with zero routes extracted | deferred |
+| smoketest | test-home-assistant.sh treats SSH failure as "no errors" | deferred |
+| smoketest | media SABnzbd check passes while unit is dead | deferred |
+| smoketest | gateway tls_* subtests skip (no openssl on firebat) but count as passes | deferred |
+| smoketest | nordvpn/test-forwarding.sh hard-codes retired pi4 resolver 192.168.68.56 | deferred |
+| app | Frigate live-stream 403 (go2rtc api.origin; CSRF tradeoff is an operator decision) | deferred |
+| app | Frigate 0.16.3 → 0.17.2 bump unverified (recordings/detection/retention) | deferred |
+| app | services.sabnzbd.configFile deprecated in 26.05; migration to `settings` needs its own plan | deferred |
+| app | pinned impermanence input's dead `method` option breaks bare `nix eval --json` dumps of persistence dirs | deferred |
+
 ## Session Continuity
 
 Last session: 2026-08-22T07:59:33.246Z
 Stopped at: Completed 11-06-PLAN.md (real ser8 reboot proved Homebox/Actual/Donetick persistence; household suite 8/8 post-reboot; pre-existing NordVPN gap logged, not fixed)
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

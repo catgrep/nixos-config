@@ -147,3 +147,12 @@ None - no external service configuration required.
 ---
 *Phase: 12-fleet-repair*
 *Completed: 2026-08-24*
+
+## Self-Check: PASSED
+
+- FOUND: `modules/media/sabnzbd.nix`
+- FOUND: `.planning/phases/12-fleet-repair/evidence/sabnzbd-diagnosis.md`
+- FOUND: `.planning/phases/12-fleet-repair/12-02-SUMMARY.md`
+- FOUND commit: `e97996b` (Task 1 diagnosis)
+- FOUND commit: `bac4c33` (Task 2 repair)
+- FOUND commit: `ec1203b` (this summary)

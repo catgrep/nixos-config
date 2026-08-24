@@ -183,3 +183,11 @@ None beyond the one-time human action already completed (removing the three SOPS
 
 ## Next Phase Readiness
 FLEET-01 is fully closed: no NordVPN/qBittorrent code, live units, live state, or secrets remain anywhere in the repo or on ser8. Phase 12 has one remaining plan (12-05, FLEET-04 Radarr root-folder cleanup) before Phase 13's ZFS mirror migration, which depends on ser8's fleet being stable and API-clean.
+
+## Self-Check: PASSED
+
+- FOUND: secrets/ser8.yaml
+- FOUND: .planning/PROJECT.md
+- FOUND: .planning/phases/12-fleet-repair/12-04-SUMMARY.md
+- FOUND commit: b73ad14 (Task 3: delete + secrets + PROJECT.md decision)
+- FOUND commit: 72e6766 (docs: SUMMARY.md)

@@ -77,7 +77,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
   3. Live ser8 media user/group identities match the repo's declarations with no blind recursive re-chown, and the reconciliation approach is recorded in PROJECT.md Key Decisions
   4. Radarr reports `/mnt/media/movies` as its only root folder, with every previously registered movie file still present
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 **Wave 1**
 
 - [x] 12-01-PLAN.md — Reconcile media user/group identity to live ser8 values (uid 1002 / gid 992) and audit for drift elsewhere
@@ -86,7 +86,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 12-04-PLAN.md — Deploy the removal to ser8, archive-then-delete live state, remove secrets
+- [x] 12-04-PLAN.md — Deploy the removal to ser8, archive-then-delete live state, remove secrets
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

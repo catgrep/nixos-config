@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 13
-current_phase_name: ZFS Mirror Migration
+current_phase_name: zfs-mirror-migration
 status: executing
-stopped_at: Phase 13 context gathered (power mode, 17/17 decisions)
-last_updated: "2026-08-24T06:40:47.139Z"
+stopped_at: Completed 13-01-PLAN.md (preflight & doc reconciliation)
+last_updated: "2026-08-24T07:11:47.043Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 12
-  completed_plans: 5
+  completed_plans: 6
   percent: 20
 ---
 
@@ -24,16 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-23)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Phase 12 — fleet-repair
+**Current focus:** Phase 13 — zfs-mirror-migration
 
 ## Current Position
 
-Phase: 13 — ZFS Mirror Migration
-Plan: Not started
+Phase: 13 (zfs-mirror-migration) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-08-23 — Phase 12 complete, transitioned to Phase 13
+Last activity: 2026-08-23 — Phase 13 execution started
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Phase 12 P03 | 40min | 3 tasks | 30 files |
 | Phase 12 P04 | ~17min (2 checkpoints) | 3 tasks | 2 files |
 | Phase 12 P05 | ~15min | 3 tasks | 4 files |
+| Phase 13 P01 | 25min | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Still-operative decisions for future work:
 - [Phase ?]: [Phase 12] FLEET-01: Task 3 deletion scope expanded (human-confirmed) to include /persist/var/lib/qbittorrent after a mount-unit fix unbound it from /var/lib/qbittorrent's persist backing
 - [Phase ?]: [Phase 12] SOPS secrets editing (make sops-edit-ser8) cannot be performed by the executor in this sandboxed session (GPG/age keyring access blocked); requires human execution in an unsandboxed terminal, verified afterward via git diff without decrypting
 - [Phase ?]: [Phase 12]: Radarr root-folder cleanup done via API (re-point vs Radarr-managed move per record); D-15 satisfied structurally since Radarr's root-folder DELETE has no deleteFiles option; qBittorrent download-client entries removed from Radarr/Sonarr, Prowlarr confirmed never had one (D-16)
+- [Phase ?]: [Phase 13, Plan 01]: Migration doc reconciled to post-Phase-12 world across 10 targeted sections (D-01); Approval Contract/Safety Rules/Approved Disk Inventory preserved byte-identical
+- [Phase ?]: [Phase 13, Plan 01]: Both approved 12 TB disks pass short SMART health test gate (D-04) - zero reallocated/pending/offline-uncorrectable, short self-test completed without error
+- [Phase ?]: [Phase 13, Plan 01]: Live media usage ~2.06 TB lower than doc's 2026-08-13 snapshot (5.73TB vs 7.79TB), likely from Phase 12 qBittorrent/wgnord deletion; favorable for staging capacity margin
 
 ### Pending Todos
 
@@ -143,9 +147,9 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T03:48:28.181Z
-Stopped at: Phase 13 context gathered (power mode, 17/17 decisions)
-Resume file: .planning/phases/13-zfs-mirror-migration/13-CONTEXT.md
+Last session: 2026-08-24T07:11:47.035Z
+Stopped at: Completed 13-01-PLAN.md (preflight & doc reconciliation)
+Resume file: None
 
 ## Operator Next Steps
 

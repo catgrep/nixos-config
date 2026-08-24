@@ -18,7 +18,7 @@ Prerequisites sitting on the storage and cutover critical paths.
 
 MergerFS → two-disk ZFS mirror, per `.planning/SER8-ZFS-MIRROR-MIGRATION.md`.
 
-- [ ] **ZFS-01**: Short SMART health test (self-test + zero pending/reallocated/offline-uncorrectable sector counters) passes on both approved 12 TB disks, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
+- [x] **ZFS-01**: Short SMART health test (self-test + zero pending/reallocated/offline-uncorrectable sector counters) passes on both approved 12 TB disks, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
 - [ ] **ZFS-02**: The two approved WWNs are reformatted into ZFS pool `media` with one mirror vdev and a single dataset `media/data` mounted at `/mnt/media` with the documented properties
 - [ ] **ZFS-03**: The restore from staging via `zfs send/recv` verifies intrinsically checksum-clean and the first scrub completes with zero data errors
 - [ ] **ZFS-04**: MergerFS is removed from the active configuration, disko defines the mirror, and the full media stack runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working import-write ownership check
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLEET-02 | Phase 12 | Complete |
 | FLEET-03 | Phase 12 | Complete |
 | FLEET-04 | Phase 12 | Complete |
-| ZFS-01 | Phase 13 | Pending |
+| ZFS-01 | Phase 13 | Complete |
 | ZFS-02 | Phase 13 | Pending |
 | ZFS-03 | Phase 13 | Pending |
 | ZFS-04 | Phase 13 | Pending |

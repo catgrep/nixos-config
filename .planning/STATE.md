@@ -5,15 +5,15 @@ milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 13
 current_phase_name: zfs-mirror-migration
 status: executing
-stopped_at: Completed 13-03-PLAN.md (freeze + initial staging copy, media stack frozen and outage in progress on ser8)
-last_updated: "2026-08-24T18:12:28.403Z"
+stopped_at: Completed 13-04-PLAN.md (gate 3.3 sampled + metadata verification PASS, ZFS-01 satisfied)
+last_updated: "2026-08-24T18:33:04.649Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 ## Current Position
 
 Phase: 13 (zfs-mirror-migration) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-08-23 — Phase 13 execution started
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Phase 13 P01 | 25min | 4 tasks | 5 files |
 | Phase 13 P02 | ~20min | 3 tasks | 5 files |
 | Phase 13 P03 | ~10h47m (~45min active) | 4 tasks | 1 files |
+| Phase 13 P04 | ~18min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Still-operative decisions for future work:
 - [Phase ?]: [Phase 13, Plan 02]: Both checkpoint:decision tasks auto-approved per operator's explicit checkpoint policy (repo-only/build-only mutations); ZFS-02/ZFS-04 not marked complete since both describe live-state outcomes only reached after Plan 13-05's cutover
 - [Phase ?]: [Phase 13, Plan 03]: All 18 freeze-set services stopped and zero writers confirmed under /mnt/media (D-02/D-03) -- the sole freeze window for the whole migration; total app downtime clock started here
 - [Phase ?]: [Phase 13, Plan 03]: backup/media-staging created and verified within the D-17 capacity floor; single frozen rsync pass completed (7h43m, systemd-run detached unit) with exact structural match to source (3,478 files, 5,727,815,651,227 bytes both sides); ZFS-01 not yet marked complete pending Plan 13-04's checksum verification gate
+- [Phase ?]: [Phase 13, Plan 04]: scripts/sampled-verify.sh implements D-07 sampling in 1-MiB-block-index space (not byte-offset-then-divide) so head/tail samples always land on a file's true first/last bytes regardless of size alignment -- fixed as a Rule 1 bug against the plan's literal dd formula
+- [Phase ?]: [Phase 13, Plan 04]: Gate 3.3 PASS -- 3,478 files sampled, 0 differences between frozen /mnt/media and backup/media-staging on ser8, independently re-verified against the manifest file content (not systemctl exit status or a coordinator report alone); ZFS-01 fully satisfied across Plans 13-01/13-03/13-04
+- [Phase ?]: [Phase 13, Plan 04]: Task 2's checkpoint auto-approved per operator checkpoint policy (read-only mutation class against ser8); dispatched as a detached systemd-run unit (--setenv=PATH fix required, systemd-run's default env excludes /run/current-system/sw/bin) and tracked via .planning/async-jobs/gate-3.3-sampled-verify.json rather than polled, per the >10min async-dispatch threshold
 
 ### Pending Todos
 
@@ -153,8 +157,8 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T18:12:28.395Z
-Stopped at: Completed 13-03-PLAN.md (freeze + initial staging copy, media stack frozen and outage in progress on ser8)
+Last session: 2026-08-24T18:33:04.640Z
+Stopped at: Completed 13-04-PLAN.md (gate 3.3 sampled + metadata verification PASS, ZFS-01 satisfied)
 Resume file: None
 
 ## Operator Next Steps

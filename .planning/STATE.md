@@ -5,15 +5,15 @@ milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 12
 current_phase_name: fleet-repair
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-08-24T00:56:38.013Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-08-24T01:19:33.964Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 ## Current Position
 
 Phase: 12 (fleet-repair) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-23 — Phase 12 execution started
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 12 P01 | 35min | 2 tasks | 3 files |
+| Phase 12 P02 | 55min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Still-operative decisions for future work:
 - [Phase 11]: Dev machine x86 remote-builder is broken; iterate package hashes via `nix copy --derivation` + `ssh nix-store --realise`; `make switch-ser8` unaffected (buildOnTarget)
 - [Phase 12]: Abandoned uid 1002/gid 992 media identity adoption: live ser8 already matches repo (1100/1100); gid 992 belongs to mealie. Corrected PROJECT.md D-07/D-08.
 - [Phase 12]: Deferred a 1,443-file/3.27 TiB uid-38 ownership finding (correlated with FLEET-02 sabnzbd 38:194 drift) rather than mass-chown it; flagged for plan 12-02 or a future plan.
+- [Phase 12]: sabnzbd 38:194 drift root cause: unpinned uid auto-allocation reassigned across unrelated declarative user/group changes (recurred twice on ser8); pinned uid=985 in modules/media/sabnzbd.nix, gid inherited from already-pinned media group (1100)
+- [Phase 12]: sabnzbd host_whitelist/local_ranges fixed live (API + ini edit) to unblock the tsnet gateway route; not Nix-declared pending the separately-deferred configFile->settings migration; tracked in WINDOWS.md
 
 ### Pending Todos
 
@@ -132,8 +135,8 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T00:56:38.006Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-08-24T01:19:33.956Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

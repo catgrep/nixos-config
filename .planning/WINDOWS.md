@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 10
+open_count: 11
 waived_count: 0
 fixed_count: 0
-total_count: 10
-last_updated: 2026-08-18T19:03:17.176Z
+total_count: 11
+last_updated: 2026-08-24T01:17:42.094Z
 ---
 
 # Broken Windows Ledger
@@ -25,6 +25,7 @@ last_updated: 2026-08-18T19:03:17.176Z
 | 8 | 10 | deviation | scripts/smoketests/gateway/test-tailscale.sh |  | shfmt -d with default tab indent rewrites this pre-existing 2-space file; it is clean under shfmt -i 2 both before and after the one-line mealie append, and the plan requires preserving its indentation | open |  | 2026-08-18T07:09:06.275Z |  |
 | 9 | 10 | unmet-truth | scripts/smoketests/household/all.sh |  | Household smoketest area exits 1 after plan 10-04: default_admin_rejected owned by 10-06, tsnet_dns and tsnet_https owned by 10-05 | open |  | 2026-08-18T19:03:17.076Z |  |
 | 10 | 10 | deviation | scripts/smoketests/media |  | media area reports SABnzbd HTTP 200 while sabnzbd.service is in the failed state; asserts HTTP only, never unit state | open |  | 2026-08-18T19:03:17.176Z |  |
+| 11 | 12 | deviation | modules/media/sabnzbd.nix |  | sabnzbd host_whitelist and local_ranges fixed live via API/ini edit to unblock the tsnet gateway route (D-13); not declared in Nix because services.sabnzbd.configFile->settings migration is a separate deferred item. A future full state loss/rebuild of /var/lib/sabnzbd would need these reapplied manually until that migration lands. | open |  | 2026-08-24T01:17:42.094Z |  |
 
 ````json
 [
@@ -146,6 +147,18 @@ last_updated: 2026-08-18T19:03:17.176Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-18T19:03:17.176Z",
+    "resolved_at": null
+  },
+  {
+    "id": 11,
+    "kind": "deviation",
+    "phase": "12",
+    "file": "modules/media/sabnzbd.nix",
+    "line": null,
+    "description": "sabnzbd host_whitelist and local_ranges fixed live via API/ini edit to unblock the tsnet gateway route (D-13); not declared in Nix because services.sabnzbd.configFile->settings migration is a separate deferred item. A future full state loss/rebuild of /var/lib/sabnzbd would need these reapplied manually until that migration lands.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-24T01:17:42.094Z",
     "resolved_at": null
   }
 ]

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 11
+open_count: 12
 waived_count: 0
 fixed_count: 0
-total_count: 11
-last_updated: 2026-08-24T01:17:42.094Z
+total_count: 12
+last_updated: 2026-08-24T01:32:30.604Z
 ---
 
 # Broken Windows Ledger
@@ -26,6 +26,7 @@ last_updated: 2026-08-24T01:17:42.094Z
 | 9 | 10 | unmet-truth | scripts/smoketests/household/all.sh |  | Household smoketest area exits 1 after plan 10-04: default_admin_rejected owned by 10-06, tsnet_dns and tsnet_https owned by 10-05 | open |  | 2026-08-18T19:03:17.076Z |  |
 | 10 | 10 | deviation | scripts/smoketests/media |  | media area reports SABnzbd HTTP 200 while sabnzbd.service is in the failed state; asserts HTTP only, never unit state | open |  | 2026-08-18T19:03:17.176Z |  |
 | 11 | 12 | deviation | modules/media/sabnzbd.nix |  | sabnzbd host_whitelist and local_ranges fixed live via API/ini edit to unblock the tsnet gateway route (D-13); not declared in Nix because services.sabnzbd.configFile->settings migration is a separate deferred item. A future full state loss/rebuild of /var/lib/sabnzbd would need these reapplied manually until that migration lands. | open |  | 2026-08-24T01:17:42.094Z |  |
+| 12 | 12 | lint-warning | scripts/smoketests/ser8/all.sh |  | shellcheck SC2034 (SUITE_NAME/TESTS appears unused) is a pre-existing, repo-wide pattern across every scripts/smoketests/*/all.sh fan-out entry point; not caused by 12-03's qBittorrent/nordvpn removal edits; not enforced by make check | open |  | 2026-08-24T01:32:30.604Z |  |
 
 ````json
 [
@@ -159,6 +160,18 @@ last_updated: 2026-08-24T01:17:42.094Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-24T01:17:42.094Z",
+    "resolved_at": null
+  },
+  {
+    "id": 12,
+    "kind": "lint-warning",
+    "phase": "12",
+    "file": "scripts/smoketests/ser8/all.sh",
+    "line": null,
+    "description": "shellcheck SC2034 (SUITE_NAME/TESTS appears unused) is a pre-existing, repo-wide pattern across every scripts/smoketests/*/all.sh fan-out entry point; not caused by 12-03's qBittorrent/nordvpn removal edits; not enforced by make check",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-24T01:32:30.604Z",
     "resolved_at": null
   }
 ]

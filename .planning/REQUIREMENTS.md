@@ -9,7 +9,7 @@
 
 Prerequisites sitting on the storage and cutover critical paths.
 
-- [ ] **FLEET-01**: Torrents are retired; the download path is usenet-only (SABnzbd/NZBGet). The NordVPN + qBittorrent stack is removed entirely from code and state with no restart loop recurrence
+- [x] **FLEET-01**: Torrents are retired; the download path is usenet-only (SABnzbd/NZBGet). The NordVPN + qBittorrent stack is removed entirely from code and state with no restart loop recurrence
 - [x] **FLEET-02**: sabnzbd's uid-drifted state is repaired; `sabnzbd.service` is active and the gateway `https_sabnzbd` route is healthy again
 - [x] **FLEET-03**: Repo `media` user/group declarations are reconciled to live ser8 identities with no blind recursive re-chown; the drift resolution is recorded in Key Decisions
 - [ ] **FLEET-04**: Radarr root folders are cleaned via API to the single canonical `/mnt/media/movies` with no media files deleted
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FLEET-01 | Phase 12 | Pending |
+| FLEET-01 | Phase 12 | Complete |
 | FLEET-02 | Phase 12 | Complete |
 | FLEET-03 | Phase 12 | Complete |
 | FLEET-04 | Phase 12 | Pending |

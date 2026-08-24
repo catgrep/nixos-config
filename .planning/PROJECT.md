@@ -18,6 +18,8 @@ Donetick is packaged locally from source — the repository's first Go and first
 The 2026-08-20 descope deferred backups, `.vofi`/TLS migration, the Google Tasks import, and the access-control acceptance gate to a later milestone.
 The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred Items): NordVPN tunnel down on ser8, sabnzbd uid drift, six dishonest smoketests, Frigate go2rtc 403, and the workstation's lingering cachix trust, among others.
 
+**v1.3 Phase 12 complete (2026-08-23):** Fleet Repair — NordVPN + qBittorrent stack removed from code and live ser8 state (archive-then-delete, usenet-only download path), sabnzbd uid pinned at 985 with the 38:194 drift repaired, media identity verified already-correct at 1100/1100 (planned 1002/992 adoption abandoned; D-07/D-08 corrected), Radarr cleaned to the single canonical `/mnt/media/movies` root with a zero-loss snapshot diff.
+
 **Design constraints that shipped (firm, from proposal):**
 - No integration layer or sync between the four services
 - No inventory/pantry consumption tracking (Grocy rejected)
@@ -40,7 +42,7 @@ The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred I
 **Key constraints:**
 - Storage-first so Nixflix declarations target the final topology and hardlink validation can actually pass
 - Mirror halves usable media capacity to ~12 TB (currently ~7.8 TB used, ~65%)
-- Preserved as-is: qBittorrent service + NordVPN namespace (repaired, not replaced), firebat gateway topology, Bazarr, NZBGet, SQLite databases
+- Preserved as-is: firebat gateway topology, Bazarr, NZBGet, SQLite databases (qBittorrent + NordVPN were retired outright in Phase 12 per D-01/D-02, superseding the original repair-in-place constraint)
 - Out of scope: anime Sonarr instance, Lidarr, PostgreSQL migration, Nixflix-managed VPN, Maintainerr deletion rules
 
 ## Requirements
@@ -70,6 +72,7 @@ The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred I
 - ✓ Homebox deployed on ser8 with registration disabled after initial accounts — v1.2 Phase 11
 - ✓ Actual Budget deployed on ser8 with server password set and one unencrypted budget file — v1.2 Phase 11
 - ✓ All four household apps reachable at `<name>.shad-bangus.ts.net` through the firebat Caddy tsnet pattern, both members bootstrapped, self-signup closed, state reboot-proven — v1.2 Phase 11
+- ✓ Prereq fleet repairs: NordVPN/qBittorrent stack retired (usenet-only path), sabnzbd uid drift fixed, media identity verified/reconciled, Radarr root-folder cleanup with zero media loss — v1.3 Phase 12
 
 ### Active
 
@@ -77,7 +80,6 @@ The v1.2 close acknowledged ~15 open issues as deferred (see STATE.md Deferred I
 
 Milestone v1.3 scope (REQ-IDs defined in REQUIREMENTS.md):
 
-- Prereq fleet repairs: wgnord/qBittorrent loop, sabnzbd uid drift, media UID/GID reconciliation, Radarr root-folder cleanup
 - ser8 media storage migrated from MergerFS/ext4 to a two-disk ZFS mirror (single dataset, hardlink-capable)
 - Nightly backup engine to the ZFS backup pool with demonstrated restores (BKP-01..06 unparked from v1.2)
 - Nixflix adopted as the declarative orchestration layer: pinned input, ser8 adapter, arr/Prowlarr/Jellyfin cutover with full data retention
@@ -212,4 +214,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-23 — milestone v1.3 started*
+*Last updated: 2026-08-23 — Phase 12 (Fleet Repair) complete*

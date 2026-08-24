@@ -78,11 +78,18 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
   4. Radarr reports `/mnt/media/movies` as its only root folder, with every previously registered movie file still present
 
 **Plans**: 0/5 plans executed
+**Wave 1**
 
 - [ ] 12-01-PLAN.md — Reconcile media user/group identity to live ser8 values (uid 1002 / gid 992) and audit for drift elsewhere
 - [ ] 12-02-PLAN.md — Diagnose and repair sabnzbd's uid-drifted state with a static identity pin
 - [ ] 12-03-PLAN.md — Delete the NordVPN + qBittorrent stack from code, wiring, monitoring, and docs
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 12-04-PLAN.md — Deploy the removal to ser8, archive-then-delete live state, remove secrets
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 12-05-PLAN.md — Clean Radarr root folders and de-register dead qBittorrent download clients
 
 ### Phase 13: ZFS Mirror Migration

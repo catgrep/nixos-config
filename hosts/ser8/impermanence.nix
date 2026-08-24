@@ -54,7 +54,6 @@
       "/var/lib/radarr"
       "/var/lib/bazarr"
       "/var/lib/prowlarr"
-      "/var/lib/qbittorrent"
       "/var/lib/sabnzbd"
       "/var/lib/nzbget"
       "/var/lib/postgresql"
@@ -169,11 +168,6 @@
     "d /mnt/media/downloads/tv 2775 media media -"
     "d /mnt/media/downloads/movies 2775 media media -"
 
-    # qBittorrent download directories in media filesystem
-    "d /mnt/media/downloads 2775 media media -"
-    "d /mnt/media/downloads/complete 2775 media media -"
-    "d /mnt/media/downloads/incomplete 2775 media media -"
-
     # SABnzbd Usenet downloads (setgid bit ensures files inherit media group)
     "d /mnt/media/downloads/usenet 2775 media media -"
     "d /mnt/media/downloads/usenet/incomplete 2775 media media -"
@@ -183,18 +177,11 @@
     "d /mnt/media/downloads/usenet/complete/prowlarr 2775 media media -"
     "d /mnt/media/downloads/usenet/complete/default 2775 media media -"
 
-    # qBittorrent config directories
-    "d /var/lib/qbittorrent 0755 qbittorrent media -"
-    "d /var/lib/qbittorrent/qBittorrent 0755 qbittorrent media -"
-    "d /var/lib/qbittorrent/qBittorrent/config 0755 qbittorrent media -"
-    "d /var/lib/qbittorrent/qBittorrent/data 0755 qbittorrent media -"
-
     # Service-specific directories with proper permissions
     "d /persist/var/lib/sonarr 0755 sonarr media -"
     "d /persist/var/lib/radarr 0755 radarr media -"
     "d /persist/var/lib/bazarr 0700 bazarr media -"
     "d /persist/var/lib/private/prowlarr 0755 prowlarr prowlarr -"
-    "d /persist/var/lib/qbittorrent 0755 qbittorrent media -"
     "d /persist/var/lib/sabnzbd 0755 sabnzbd media -"
     "d /persist/var/lib/nzbget 0755 nzbget media -"
     "d /mnt/backups 0755 root root -"

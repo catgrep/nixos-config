@@ -7,5 +7,6 @@
     ./configuration.nix
     ./impermanence.nix
     ./samba.nix
+    ./media/freeze-set-disable.nix
   ];
 }

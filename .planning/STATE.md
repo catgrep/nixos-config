@@ -1,10 +1,14 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
-milestone_name: ZFS Mirror + Nixflix Migration
+milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
+current_phase: 12
+current_phase_name: 1st of 5 phases in v1.3
 status: planning
-last_updated: "2026-08-23T22:32:27.540Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-08-24T00:06:12.074Z"
 last_activity: 2026-08-23
+last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 0
@@ -121,9 +125,9 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-23
-Stopped at: v1.3 ROADMAP.md created (Phases 12-16); ready to plan Phase 12
-Resume file: None
+Last session: 2026-08-24T00:06:12.067Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-fleet-repair/12-CONTEXT.md
 
 ## Operator Next Steps
 

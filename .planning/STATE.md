@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
-current_phase: 12
-current_phase_name: fleet-repair
-status: verifying
+current_phase: 13
+current_phase_name: ZFS Mirror Migration
+status: planning
 stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-08-24T02:05:30.839Z"
+last_updated: "2026-08-24T02:18:50.764Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 
 ## Current Position
 
-Phase: 12 (fleet-repair) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-08-23 — Phase 12 execution started
+Phase: 13 — ZFS Mirror Migration
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-23 — Phase 12 complete, transitioned to Phase 13
 
 Progress: [██████████] 100%
 
@@ -39,7 +39,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 41 (23 through v1.1 + 18 v1.2)
+- Total plans completed: 23 (23 through v1.1 + 18 v1.2)
 - v1.2 execution: 18 plans, 52 tasks, 2026-08-16 → 2026-08-22
 
 **By Phase (v1.2):**
@@ -49,6 +49,7 @@ Progress: [██████████] 100%
 | 9. Channel Bump to NixOS 26.05 | 7 | ~6.7h | ~57 min |
 | 10. Household Foundation and Mealie | 5 | ~2h + 3 sessions | ~25 min |
 | 11. Homebox, Actual Budget, Donetick | 6 | ~3.4h | ~34 min |
+| 12 | 5 | - | - |
 
 Pre-v1.2 metrics are archived in `.planning/milestones/`.
 **Per-Plan Metrics:**

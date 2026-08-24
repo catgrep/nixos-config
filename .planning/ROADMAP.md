@@ -57,7 +57,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 
 **Milestone Goal:** Rebuild ser8's media foundation in one milestone — storage first (MergerFS → two-disk ZFS mirror, paranoid and human-gated), then the full Nixflix migration through Recyclarr, Seerr, and Maintainerr, plus a nightly backup engine.
 
-- [ ] **Phase 12: Fleet Repair** - Durably fix the wgnord/qBittorrent loop, sabnzbd uid drift, media UID/GID drift, and Radarr root-folder drift before the storage freeze
+- [x] **Phase 12: Fleet Repair** - Durably fix the wgnord/qBittorrent loop, sabnzbd uid drift, media UID/GID drift, and Radarr root-folder drift before the storage freeze (completed 2026-08-23)
 - [ ] **Phase 13: ZFS Mirror Migration** - Migrate ser8 media storage from MergerFS to a two-disk ZFS mirror, human-gated per the migration doc's approval contract
 - [ ] **Phase 14: Backup Engine** - Nightly application-aware backups to the ZFS backup pool for household and media app state, with demonstrated restores
 - [ ] **Phase 15: Nixflix Migration** - Adopt Nixflix as the declarative orchestration layer for Sonarr, Radarr, Prowlarr, and Jellyfin with full data retention

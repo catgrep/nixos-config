@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 12
-current_phase_name: 1st of 5 phases in v1.3
-status: planning
-stopped_at: Phase 12 context gathered
-last_updated: "2026-08-24T00:42:40.409Z"
+current_phase_name: fleet-repair
+status: executing
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-08-24T00:56:38.013Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,16 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-23)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Phase 12 — Fleet Repair (v1.3 ZFS Mirror + Nixflix Migration)
+**Current focus:** Phase 12 — fleet-repair
 
 ## Current Position
 
-Phase: Phase 12 of 16 (Fleet Repair) — 1st of 5 phases in v1.3
-Plan: — (not yet planned)
-Status: Roadmap created; ready to plan Phase 12
-Last activity: 2026-08-23 — v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
+Phase: 12 (fleet-repair) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-08-23 — Phase 12 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -51,6 +51,11 @@ Progress: [░░░░░░░░░░] 0%
 | 11. Homebox, Actual Budget, Donetick | 6 | ~3.4h | ~34 min |
 
 Pre-v1.2 metrics are archived in `.planning/milestones/`.
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 12 P01 | 35min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +72,8 @@ Still-operative decisions for future work:
 - [Phase 10]: `services.mealie.settings` values must be Nix strings (`toString false` is "" and would silently reopen registration)
 - [Phase 11]: `sops.templates.<name>.restartUnits` must be set explicitly for any template whose content can change post-deploy
 - [Phase 11]: Dev machine x86 remote-builder is broken; iterate package hashes via `nix copy --derivation` + `ssh nix-store --realise`; `make switch-ser8` unaffected (buildOnTarget)
+- [Phase 12]: Abandoned uid 1002/gid 992 media identity adoption: live ser8 already matches repo (1100/1100); gid 992 belongs to mealie. Corrected PROJECT.md D-07/D-08.
+- [Phase 12]: Deferred a 1,443-file/3.27 TiB uid-38 ownership finding (correlated with FLEET-02 sabnzbd 38:194 drift) rather than mass-chown it; flagged for plan 12-02 or a future plan.
 
 ### Pending Todos
 
@@ -125,9 +132,9 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T00:06:12.067Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-fleet-repair/12-CONTEXT.md
+Last session: 2026-08-24T00:56:38.006Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

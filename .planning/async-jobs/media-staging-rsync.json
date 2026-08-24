@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "job_id": "media-staging-rsync",
+  "plan_id": "13-03",
+  "phase": "13",
+  "backend": "systemd-run",
+  "status": "running",
+  "submit_command": "ssh bdhill@192.168.68.65 'sudo systemd-run --unit=media-staging-rsync --description=\"Phase 13 Leg 1: frozen copy /mnt/media -> backup/media-staging\" -- rsync -aHAXx --numeric-ids --info=progress2 /mnt/media/ /mnt/media-staging/'",
+  "expected_artifacts": [
+    "backup/media-staging (ser8 ZFS dataset) fully populated as a frozen copy of /mnt/media, file count and apparent byte total matching the Plan 13-01 preflight manifest"
+  ],
+  "verification_command": "ssh bdhill@192.168.68.65 'systemctl show media-staging-rsync -p ExecMainStatus --value'",
+  "resume_command": "ssh bdhill@192.168.68.65 'systemctl status media-staging-rsync --no-pager; journalctl -u media-staging-rsync --no-pager | tail -80'",
+  "submitted_at": "2026-08-24T07:35:51Z",
+  "terminal_details": null,
+  "notes": "Dispatched as a detached systemd-run transient unit on ser8 (D-13); survives SSH disconnect. Source was already frozen (all 18 freeze-set app services stopped, zero writers under /mnt/media confirmed via lsof) before this copy started, and backup/media-staging was created and verified (properties + capacity floor) immediately before dispatch. Estimated duration ~6.9h at ~231 MB/s against a ~5.7 TB post-cleanup media tree. Task 4 (structural verification: ExecMainStatus==0, no I/O errors in journal, file/byte counts vs the Plan 13-01 manifest) and this plan's SUMMARY.md are deferred until this job reaches a terminal state. Do not re-dispatch media-staging-rsync while this manifest is non-terminal."
+}

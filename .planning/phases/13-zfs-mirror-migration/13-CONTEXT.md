@@ -123,8 +123,10 @@ Several decisions amend the migration doc; D-01 makes that amendment the first a
 <deferred>
 ## Deferred Ideas
 
-None — discussion stayed within phase scope.
-The doc's existing note stands: revisiting auto-snapshots for `media/data` after measuring churn is a post-phase consideration.
+- **Downloads tree size governance** (operator idea, 2026-08-24): keep `/mnt/media/downloads` under a bounded size — periodic prune / circular-buffer behavior. A hard ZFS quota is off the table by design (requires a child dataset, which breaks cross-directory hardlinks). Right shape: a hardlink-aware age-based systemd prune timer (delete sole-copy `-links 1` files older than N days) plus reviewing Sonarr/Radarr completed-download handling so failed imports stop accumulating. Slot after Phase 15 (Nixflix owns the import flow).
+- The doc's existing note stands: revisiting auto-snapshots for `media/data` after measuring churn is a post-phase consideration.
+
+**Pre-phase cleanup record (2026-08-24, before planning):** the operator deleted large titles via Radarr/Sonarr and pruned the entire downloads tree (1.98 TB of verified failed imports / torrent-era leftovers, zero hardlinks into libraries). Media payload is now 5.728 TB (verified byte-exact) → per-pass ~6.9 h, app downtime ~16 h, staging margin ~5.4 TB. One casualty: `movies/Tenet (2020)` was a manual symlink into downloads (now dangling; removal/re-grab is the operator's call). The measured-facts section above predates this cleanup — Step 0.1 re-measures live.
 
 </deferred>
 

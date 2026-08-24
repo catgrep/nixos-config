@@ -77,9 +77,25 @@ exactly as found. No files or directories were deleted anywhere in this task. Th
 not created or modified by this plan; they already existed and were only referenced for the
 re-pointing decision on movie id 11.
 
-## Post-Cleanup Snapshot and Zero-Loss Diff
+## Post-Cleanup Snapshot and Zero-Loss Diff (Task 2, D-14)
 
-See the closing section below (added by Task 2) for the after-snapshot comparison and the explicit
-zero-loss conclusion.
+Exported the same `GET /api/v3/movie` snapshot again after the root-folder cleanup and saved it to
+`.planning/phases/12-fleet-repair/evidence/radarr-movie-snapshot-after.json`.
 
-<!-- Task 2 appends its closing section here -->
+Diffed the before- and after-snapshots by movie `id` (stable across the re-home, since re-homing
+only changed `path`/`rootFolderPath`/`folderName`, never the record's identity):
+
+- **Movie count:** 50 before, 50 after — unchanged.
+- **Movie ID set:** identical — zero IDs missing from the after-snapshot, zero new IDs.
+- **TMDB ID set:** identical.
+- **`hasFile` flips (true → false):** none. Every record that had a file before the cleanup still
+  has a file after it (including movie ids 50 and 51, whose files were physically moved).
+- The three re-homed records (ids 11, 50, 51) each show their `path`/`rootFolderPath` now under the
+  canonical `/mnt/media/movies`, with `hasFile` unchanged from its before-value (`false` for id 11,
+  `true` for ids 50 and 51).
+
+### Conclusion
+
+**Zero movie/moviefile records were lost.** Before: 50 movies. After: 50 movies. All 50 movie IDs
+and TMDB IDs present before the cleanup are present after it, and no record's file-presence flag
+regressed from `true` to `false`. D-14's zero-loss requirement is satisfied.

@@ -66,7 +66,10 @@
     zfs = {
       forceImportRoot = false;
       devNodes = "/dev/disk/by-id/";
-      extraPools = [ "backup" ]; # Auto-import backup pool on boot
+      extraPools = [
+        "backup"
+        "media"
+      ]; # Auto-import backup and media pools on boot
     };
 
     # Kernel parameters for ZFS
@@ -151,22 +154,6 @@
     };
   };
 
-  # MergerFS for unified media view
-  fileSystems."/mnt/media" = {
-    device = "/mnt/disk1:/mnt/disk2";
-    fsType = "fuse.mergerfs";
-    options = [
-      "defaults"
-      "allow_other"
-      "use_ino" # for better inode handling
-      "cache.files=partial"
-      "dropcacheonclose=true" # for memory management
-      "category.create=mfs" # Most free space for new files
-      "moveonenospc=true" # Move files if no space
-      "minfreespace=50G" # Keep 50GB free on each drive
-    ];
-  };
-
   # NixOS build optimization
   nix.settings = {
     max-jobs = "auto";
@@ -246,10 +233,6 @@
     zfs
     zfstools
     sanoid
-
-    # MergerFS
-    mergerfs
-    mergerfs-tools
 
     # Media tools
     ffmpeg

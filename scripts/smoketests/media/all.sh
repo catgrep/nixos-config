@@ -25,7 +25,6 @@ MEDIA_SERVICES=(
 	"Sonarr:sonarr.vofi:8989:sonarr"
 	"Radarr:radarr.vofi:7878:radarr"
 	"Bazarr:bazarr.vofi:6767:bazarr"
-	"qBittorrent:torrent.vofi:8080:qbittorrent"
 	"Prowlarr:prowlarr.vofi:9696:prowlarr"
 	"SABnzbd:sabnzbd.vofi:8085:sabnzbd"
 	"NZBGet:nzbget.vofi:6789:nzbget"
@@ -57,7 +56,6 @@ MEDIA_ACCOUNTS=(
 	bazarr
 	jellyfin
 	nzbget
-	qbittorrent
 	radarr
 	sabnzbd
 	sonarr
@@ -118,5 +116,12 @@ else
 	exit 1
 fi
 pass "Bazarr can read files and write directories in media libraries"
+
+if ./scripts/smoketests/media/test-zfs-media.sh "$host"; then
+	pass "ZFS media storage smoketest passed"
+else
+	fail "ZFS media storage smoketest failed"
+	exit 1
+fi
 
 pass "All media services smoketests passed"

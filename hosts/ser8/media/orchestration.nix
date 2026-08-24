@@ -17,7 +17,7 @@
   # 1. media-config.service (Phase 1: Configuration)
   #    - Deploys all service configurations from SOPS templates
   #    - Runs before any media services start
-  #    - Configures: Sonarr, Radarr, Prowlarr, NZBGet, SABnzbd, qBittorrent
+  #    - Configures: Sonarr, Radarr, Prowlarr, NZBGet, SABnzbd
   #
   # 2. servarrs-setup.service (Phase 2: Indexer Management)
   #    - Connects Prowlarr to Sonarr and Radarr for indexer synchronization
@@ -25,7 +25,7 @@
   #    - Runs in parallel with download-clients-setup
   #
   # 3. download-clients-setup.service (Phase 2: Download Client Integration)
-  #    - Connects download clients (qBittorrent, NZBGet, SABnzbd) to all arr services
+  #    - Connects download clients (NZBGet, SABnzbd) to all arr services
   #    - Configures categories for automatic media organization
   #    - Depends on: media-config + all services running
   #    - Runs in parallel with servarrs-setup
@@ -57,7 +57,7 @@
           source ${./deployment-helpers.sh}
           set -euo pipefail
 
-          echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, qBittorrent, NZBGet, SABnzbd)..."
+          echo "Starting media services configuration (Sonarr, Radarr, Prowlarr, NZBGet, SABnzbd)..."
         '')
         (lib.mkOrder 800 ''
           echo "✓ Completed media services configuration"
@@ -108,10 +108,9 @@
     };
 
     download-clients-setup = {
-      description = "Configure download clients (qBittorrent, NZBGet, SABnzbd) for all Servarr services";
+      description = "Configure download clients (NZBGet, SABnzbd) for all Servarr services";
       after = [
         "media-config.service"
-        "qbittorrent-nox.service"
         "nzbget.service"
         "sabnzbd.service"
         "sonarr.service"
@@ -142,16 +141,6 @@
         wait_for_api "SABnzbd" "http://localhost:8085/api?mode=version&apikey=$(cat ${
           config.sops.secrets."sabnzbd_api_key".path
         })" 60
-        # wait_for_api "qBittorrent" "http://localhost:8080/api/v2/app/version" 30
-
-        # Configure qBittorrent for arr services
-        setup_qbittorrent_client "Sonarr" "8989" "${
-          config.sops.secrets."sonarr_api_key".path
-        }" "tvCategory" "tv" "${config.sops.secrets."qbittorrent_admin_password".path}"
-
-        setup_qbittorrent_client "Radarr" "7878" "${
-          config.sops.secrets."radarr_api_key".path
-        }" "movieCategory" "movies" "${config.sops.secrets."qbittorrent_admin_password".path}"
 
         # Verify SABnzbd categories are configured
         echo "Verifying SABnzbd categories..."

@@ -66,7 +66,10 @@
     zfs = {
       forceImportRoot = false;
       devNodes = "/dev/disk/by-id/";
-      extraPools = [ "backup" ]; # Auto-import backup pool on boot
+      extraPools = [
+        "backup"
+        "media"
+      ]; # Auto-import backup and media pools on boot
     };
 
     # Kernel parameters for ZFS
@@ -151,22 +154,6 @@
     };
   };
 
-  # MergerFS for unified media view
-  fileSystems."/mnt/media" = {
-    device = "/mnt/disk1:/mnt/disk2";
-    fsType = "fuse.mergerfs";
-    options = [
-      "defaults"
-      "allow_other"
-      "use_ino" # for better inode handling
-      "cache.files=partial"
-      "dropcacheonclose=true" # for memory management
-      "category.create=mfs" # Most free space for new files
-      "moveonenospc=true" # Move files if no space
-      "minfreespace=50G" # Keep 50GB free on each drive
-    ];
-  };
-
   # NixOS build optimization
   nix.settings = {
     max-jobs = "auto";
@@ -200,25 +187,11 @@
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
-      # NordVPN WireGuard configuration
-      "nordvpn_access_token" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
       # Gmail SMTP password for msmtp (ZFS zed email alerts)
       "gmail_smtp_password" = {
         mode = "0400";
       };
     };
-  };
-
-  # Enable NordVPN for anonymized torrenting
-  nordvpn = {
-    enable = true;
-    accessTokenFile = config.sops.secrets.nordvpn_access_token.path;
-    dnsServers = [ config.networking.internal.adguard.address ]; # Use local AdGuard DNS
-    localNetworkAccess = "192.168.68.0/24"; # Local network subnet
   };
 
   # Enable specific media services
@@ -260,10 +233,6 @@
     zfs
     zfstools
     sanoid
-
-    # MergerFS
-    mergerfs
-    mergerfs-tools
 
     # Media tools
     ffmpeg

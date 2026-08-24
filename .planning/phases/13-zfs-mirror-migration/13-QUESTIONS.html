@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 13: ZFS Mirror Migration — Discussion Questions</title>
+<style>
+  :root {
+    --green: #22c55e; --green-bg: #f0fdf4;
+    --orange: #f97316; --gray: #e2e8f0; --text: #1e293b; --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 0; background: #f8fafc; color: var(--text); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; }
+  .statsbar { background: white; border: 1px solid var(--gray); border-radius: 10px;
+              padding: 14px 18px; display: flex; align-items: center; gap: 24px;
+              position: sticky; top: 8px; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .stat { font-size: 0.95rem; }
+  .stat b { font-size: 1.15rem; }
+  .progress { flex: 1; height: 10px; background: var(--gray); border-radius: 5px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--green); width: 0%; transition: width .3s; }
+  button.save { background: var(--text); color: white; border: none; border-radius: 8px;
+                padding: 10px 18px; font-size: 0.95rem; cursor: pointer; }
+  button.save:hover { background: #0f172a; }
+  .section { margin-top: 28px; }
+  .sechead { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+             padding: 10px 14px; background: white; border: 1px solid var(--gray); border-radius: 10px; }
+  .sechead h2 { font-size: 1.05rem; margin: 0; flex: 1; }
+  .sechead .count { color: var(--muted); font-size: 0.85rem; }
+  .sechead .chev { transition: transform .2s; }
+  .section.collapsed .chev { transform: rotate(-90deg); }
+  .section.collapsed .grid { display: none; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: white; border: 1px solid var(--gray); border-radius: 10px; padding: 16px;
+          display: flex; flex-direction: column; gap: 10px; }
+  .card.answered { border: 2px solid var(--green); background: var(--green-bg); }
+  .qhead { display: flex; gap: 8px; align-items: flex-start; }
+  .badge { background: var(--text); color: white; border-radius: 6px; font-size: 0.72rem;
+           padding: 3px 7px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .card.answered .badge { background: var(--green); }
+  .qtitle { font-weight: 600; font-size: 0.95rem; line-height: 1.35; }
+  .qcontext { color: var(--muted); font-style: italic; font-size: 0.82rem; line-height: 1.45;
+              border-left: 3px solid var(--gray); padding-left: 10px; }
+  .opt { display: flex; gap: 9px; align-items: flex-start; padding: 8px; border-radius: 8px;
+         cursor: pointer; }
+  .opt:hover { background: #f1f5f9; }
+  .card.answered .opt:hover { background: #dcfce7; }
+  .opt input { margin-top: 3px; flex-shrink: 0; }
+  .opt .lbl { font-weight: 700; font-size: 0.86rem; }
+  .opt .desc { font-size: 0.8rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+  textarea { width: 100%; min-height: 58px; border: 1px solid var(--gray); border-radius: 8px;
+             padding: 8px; font-size: 0.83rem; font-family: inherit; resize: vertical; }
+  textarea.haschat { border: 2px solid var(--orange); }
+  .customtext { display: none; margin-top: 4px; }
+  .customtext.show { display: block; }
+  .foot { margin: 32px 0; text-align: center; }
+  .hint { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px;
+          font-size: 0.85rem; margin-top: 16px; line-height: 1.5; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Phase 13: ZFS Mirror Migration — Discussion Questions</h1>
+  <div class="sub">MergerFS → two-disk ZFS mirror on ser8, human-gated per <code>.planning/SER8-ZFS-MIRROR-MIGRATION.md</code></div>
+
+  <div class="statsbar">
+    <div class="stat"><b id="s-total">0</b> total</div>
+    <div class="stat" style="color:var(--green)"><b id="s-answered">0</b> answered</div>
+    <div class="stat"><b id="s-remaining">0</b> remaining</div>
+    <div class="stat" style="color:var(--orange)"><b id="s-chat">0</b> chat-more</div>
+    <div class="progress"><div id="pbar"></div></div>
+    <button class="save" onclick="saveAnswers()">Save answers</button>
+  </div>
+
+  <div class="hint">
+    Answer at your own pace. <b>Save answers</b> writes the JSON back over
+    <code>13-QUESTIONS.json</code> (or downloads it — replace the original file).
+    Then return to Claude and say <b>"refresh"</b> to process, or <b>"finalize"</b> to generate CONTEXT.md.
+    Use the text box under any question for nuance or follow-ups ("chat more").
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="foot">
+    <button class="save" onclick="saveAnswers()">Save answers</button>
+  </div>
+</div>
+
+<script>
+const DATA = {
+  "phase": "13-zfs-mirror-migration",
+  "generated_at": "2026-08-24T02:33:51Z",
+  "stats": {
+    "total": 17,
+    "answered": 17,
+    "chat_more": 7,
+    "remaining": 0
+  },
+  "sections": [
+    {
+      "id": "doc-reconciliation",
+      "title": "Migration Doc Reconciliation",
+      "questions": [
+        {
+          "id": "Q-01",
+          "title": "How should we handle the migration doc's post-Phase-12 drift?",
+          "context": "The doc (.planning/SER8-ZFS-MIRROR-MIGRATION.md, written 2026-08-13, never updated since) still treats qBittorrent/wgnord as live: freeze set lists qbittorrent-nox/wgnord/nginx, Steps 0.2-0.3 target blockers Phase 12 already fixed, Step 5.4 requires qBittorrent tests, and Handoff Status says both blockers are unresolved. Phase 12 deleted that entire stack. The doc is the contract every fresh session reads cold — stale instructions in it are a live hazard for a multi-session migration. 💡 Recommended: update the doc first — Phase 12's D-05 set the precedent of fixing stale torrent wording in planning docs, and the approval contract itself makes the doc edit a normal repo-writing approved step.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Update the doc first (own approved step)",
+              "description": "First repo-writing step of the phase: refresh the freeze set, mark Steps 0.2/0.3 as satisfied by Phase 12 (with evidence links), drop qBittorrent checks from 5.4, update Handoff Status. Doc stays the single source of truth; safety language untouched. Cost: careful editing of a contract document."
+            },
+            {
+              "id": "b",
+              "label": "Freeze the doc, carry a deltas table",
+              "description": "Doc stays as the historical handoff; CONTEXT/PLAN carries a 'deltas from doc' table every session must read alongside it. No risk of eroding safety text, but two sources of truth during a multi-day migration — drift risk exactly where precision matters most."
+            },
+            {
+              "id": "c",
+              "label": "Fold the refresh into Step 0.1",
+              "description": "Step 0.1 (reconcile repo and live state) already re-queries everything; extend it to also patch the doc from its findings. One less standalone step, but 0.1 changes from read-only to repo-writing, and the doc edit is driven by whatever 0.1 happens to find rather than a deliberate review."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-02",
+          "title": "What is the freeze set now that qBittorrent, wgnord, and nginx are gone?",
+          "context": "The doc's verified freeze set is stale. The live media stack is now: jellyfin, radarr, sonarr, bazarr, prowlarr, sabnzbd, nzbget, samba-smbd, samba-wsdd, plus the three orchestration oneshots (media-config, servarrs-setup, download-clients-setup). Household apps and Frigate/HA don't touch /mnt/media (Frigate writes to the backup pool's camera datasets and keeps running). 💡 Recommended: full stack — the outage is minutes-to-hours on a household server, and 'stop everything, then prove zero open writable handles with lsof' is trivially verifiable; a minimal freeze forces you to prove read-only behavior per service (Jellyfin can write NFO/artwork into media dirs depending on settings).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Full media stack freeze",
+              "description": "Stop all nine units plus ensure the orchestration oneshots can't fire. Simplest possible verification: no writer-classification ambiguity, lsof check must come back empty. Longer user-visible outage (Jellyfin down during sync + verify)."
+            },
+            {
+              "id": "b",
+              "label": "Writers-only minimal freeze",
+              "description": "Stop only proven writers (arr apps, downloaders, Samba); leave Jellyfin/Prowlarr up read-only. Shorter outage, but requires proving each 'reader' truly never writes to /mnt/media — a per-service audit that buys little on a home server."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Finalized in chat 2026-08-24: quiesce ALL APP services on ser8 — media stack, household apps (Mealie/Homebox/Actual/Donetick), Frigate, Home Assistant, Mosquitto, plus the orchestration oneshots. Infra services stay up: sshd, networking, Tailscale, node/zfs exporters, nix-daemon. Camera recording pauses while Frigate is down. TIMING: quiesce starts BEFORE the initial copy (Stage 2), not at Stage 3 — one clean copy pass with zero drift, no delta sync step, any verification diff is a real error. Total app downtime ~23 h (sampled gate) with the copy and restore each running overnight. Margin and media size freeze at quiesce.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-03",
+          "title": "Re-verify Phase 12's fixes live, or trust the evidence records?",
+          "context": "Doc Steps 0.2 (wgnord loop) and 0.3 (Radarr roots) are satisfied by Phase 12, with evidence in .planning/phases/12-fleet-repair/evidence/. The question is whether Phase 13's preflight re-proves them on the live host. 💡 Recommended: cheap live re-verification folded into Step 0.1 — the doc already mandates re-querying all live state in a fresh session, and the checks are three one-liners (assert qbittorrent/wgnord units absent, sabnzbd active, Radarr reports a single root via API).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Re-verify live in Step 0.1",
+              "description": "Assert unit absence, sabnzbd health, and single Radarr root via API during preflight. Seconds of work; catches any regression between Phase 12 close and the storage freeze."
+            },
+            {
+              "id": "b",
+              "label": "Trust Phase 12 evidence, link it",
+              "description": "Mark 0.2/0.3 done with links to the Phase 12 evidence files; skip live re-checks. Saves nothing meaningful and leaves a gap if something drifted since 2026-08-23."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-16",
+          "title": "SMART gating depth (decided in chat, 2026-08-24)",
+          "context": "Decided during power-mode discussion: the ~20h extended SMART surface scans are dropped. The operator's risk posture: transfer integrity (rsync checksum gates + first scrub) is what matters, not medium provenance for replaceable media. Downstream edits this locks in: REQUIREMENTS.md ZFS-01 and ROADMAP.md Phase 13 criterion 1 must be reworded to explicitly require the SHORT SMART health test gate (not extended); migration doc Step 0.4 is replaced with the counters + short-test gate as part of the Q-01 doc update. The doc's refuse-if-failing rule stays: nonzero pending/reallocated/offline-uncorrectable sectors or a failed short test on either 12 TB disk still blocks the erase step.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Counters + short SMART test gate (~2 min/disk)",
+              "description": "Read smartctl attributes and run the short self-test on both approved 12 TB disks before the erase step. Refuse-if-failing rule preserved at near-zero cost. Both drives showed all-zero counters on 2026-08-13."
+            },
+            {
+              "id": "b",
+              "label": "Counters read only",
+              "description": "Attribute read only, no self-test."
+            },
+            {
+              "id": "c",
+              "label": "Drop SMART gating entirely",
+              "description": "rsync gates + scrub are the only integrity checks."
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Requirement text must say explicitly: short SMART health test gate. Extended tests removed from ZFS-01, ROADMAP criterion 1, and migration doc Step 0.4.",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "plan-structure",
+      "title": "Plan Structure and Approval Mechanics",
+      "questions": [
+        {
+          "id": "Q-04",
+          "title": "How should GSD plans map onto the doc's numbered stages?",
+          "context": "The doc has 7 stages (0 preflight, 1 repo change, 2 staging copy, 3 freeze + final sync, 4 destructive cutover, 5 restore + startup, 6 observe + cleanup). MEASURED on ser8 2026-08-24 (read-only dd, three platter zones): media disks 250/213/145 MB/s outer/middle/inner; backup disks ~190 MB/s; media tree now 8.94 TB. Each full pass ≈ 10.7 h. With full checksum verifies: ~56 h elapsed (~2.3 days), of which ~33 h is service outage; with metadata-only verifies: ~34 h elapsed, ~12 h outage (Q-12 decides). Hands-on time is a few hours either way. 💡 Recommended: one plan per stage — checkpoints align with the session breaks around the ~11 h unattended ops, and each SUMMARY.md documents one rollback-matrix row.",
+          "options": [
+            {
+              "id": "a",
+              "label": "One plan per doc stage (~7 plans)",
+              "description": "Plan boundaries = stage boundaries = session boundaries. Durable per-stage audit trail (SUMMARY.md each). More GSD ceremony, but the ceremony is doing real work here: this phase is executed across many sessions over ~a week."
+            },
+            {
+              "id": "b",
+              "label": "Three plans (prep / stage+freeze / cutover+restore+observe)",
+              "description": "Prep+repo change; staging+freeze+verification; destructive cutover through observation. Fewer artifacts; coarser resume points mean a mid-plan interruption leaves more ambiguous state."
+            },
+            {
+              "id": "c",
+              "label": "Single plan with ~20 checkpoint tasks",
+              "description": "One artifact tracking everything. Strains plan-sized context across days of execution and gives the executor one giant resume surface; weakest fit for the multi-session reality."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-05",
+          "title": "How should the per-step approval gates be implemented in-session?",
+          "context": "The doc's contract: every numbered step needs separate approval after seeing purpose/commands/targets/mutation class/rollback, and disk-mutating steps need a second identity confirmation of exact WWNs and commands. 💡 Recommended: the hybrid — structured AskUserQuestion gates for routine steps (uniform, enforced stop), but typed echo-back for the destructive gates (typing the step id or WWN suffix is deliberately higher-friction than clicking Approve; a misclick can't erase a disk).",
+          "options": [
+            {
+              "id": "a",
+              "label": "AskUserQuestion gate for every step",
+              "description": "Structured prompt shows the full step contract; options Approve / Modify / Abort. Uniform and enforced, but destructive approval becomes a single click — the same gesture as approving a read-only inspection."
+            },
+            {
+              "id": "b",
+              "label": "Typed plain-text approval for every step",
+              "description": "Agent presents the contract as text and waits for you to type 'approve 4.3'. Maximum deliberateness everywhere, but nothing structural stops an eager continuation and routine steps get needless friction."
+            },
+            {
+              "id": "c",
+              "label": "Hybrid: structured gates + typed echo-back for disk mutations",
+              "description": "AskUserQuestion for routine steps; Steps 4.2-4.4 and 6.2 require you to type the step id (or a WWN suffix) back. Mirrors the doc's two-tier contract exactly."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-06",
+          "title": "What session cadence for the multi-day long-running operations?",
+          "context": "MEASURED wall-clock (ser8, 2026-08-24): initial copy ~10.7 h, checksummed verifies ~10.7 h each, restore ~10.7 h, first scrub ~11.7 h (services up). Extended SMART is dropped (Q-16). None of the long ops fits inside an agent session, but active work per stage is minutes. 💡 Recommended: stage-per-session — kick off the long op detached on ser8, end the session, and start the next session by verifying the completed op (exit status + log) before requesting the next gate.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Stage-per-session, detached long ops",
+              "description": "Launch the long op detached, close the session; next session begins by verifying the finished op before proceeding. Checkpoint files + STATE.md carry position. No idle contexts, natural fit with per-stage plans."
+            },
+            {
+              "id": "b",
+              "label": "Marathon sessions, agent polls",
+              "description": "Agent stays up polling progress every few minutes for hours. Burns context and tokens on waiting; a dropped session mid-poll leaves the same resume problem anyway."
+            },
+            {
+              "id": "c",
+              "label": "Human monitors long ops, agent per gate",
+              "description": "You watch rsync/scrub progress yourself and summon the agent only at decision points. Cheapest agent-wise, but you become the progress monitor and log keeper for a ~week-long procedure."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "execution-mechanics",
+      "title": "Execution and Repo Mechanics",
+      "questions": [
+        {
+          "id": "Q-07",
+          "title": "How should long-running commands be kept alive on ser8?",
+          "context": "The doc requires capturing each copy's exit status and complete log, and the ops must survive SSH disconnects across sessions. SMART self-tests run in drive firmware and need nothing; rsync passes, verification runs, and scrub monitoring do. 💡 Recommended: systemd-run transient units — the repo already leans on systemd for everything, journald captures the complete log, `systemctl status <unit>` gives an unambiguous exit status to the next session, and the unit name itself documents what ran.",
+          "options": [
+            {
+              "id": "a",
+              "label": "systemd-run transient units",
+              "description": "e.g. `systemd-run --unit=media-staging-rsync -- rsync ...`. Survives disconnects, journald logging, machine-checkable exit status, visible in systemctl. Cleanest handoff artifact for the verify-then-proceed session pattern."
+            },
+            {
+              "id": "b",
+              "label": "tmux/screen session on ser8",
+              "description": "Human-attachable live progress view (rsync --info=progress2 renders nicely). Log capture and exit-status retrieval are manual; scrollback is not an audit log."
+            },
+            {
+              "id": "c",
+              "label": "nohup + redirect to log files",
+              "description": "Simplest possible. Exit status requires wrapper bookkeeping; log files need a home that survives the outage; least inspectable while running."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-08",
+          "title": "Who executes the destructive disk commands — agent or human?",
+          "context": "Steps 4.2-4.4 (unmount, erase, repartition, pool creation) and 6.2 (staging destroy) are the irreversible minutes of the whole migration. The doc's contract was written for an implementer-agent presenting then executing after approval; Phase 12 proved SSH to ser8 works fine from the sandboxed session (only local SOPS/GPG editing was blocked). 💡 Recommended: agent executes after the echo-back gate — the agent runs identity resolution and target verification more reliably than hand-typing, and the double gate already puts your explicit approval on the exact commands. Choose human-executes if you want fingers-on-trigger for those steps regardless.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Agent executes after approval",
+              "description": "Agent presents resolved identities + exact commands, waits for the double gate, runs over SSH, then immediately verifies only the approved disks changed. Consistent verification, no transcription errors."
+            },
+            {
+              "id": "b",
+              "label": "Human runs destructive steps personally",
+              "description": "Agent prepares and verifies everything; you paste the erase/create commands into your own ser8 shell and share output. Maximum human control at the point of no return; adds transcription risk and slows the frozen-outage window."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-09",
+          "title": "Branch and merge strategy for the storage change vs the cutover window?",
+          "context": "Wrinkle: after Step 1.1 the repo declares a `media` zpool that won't exist until Step 4.4 — any premature `make switch-ser8` from that code would try to mount a nonexistent pool. Repo rules say never push directly to main; GSD planning commits do land on main routinely. 💡 Recommended: hold the change on a feature branch through the cutover — build, `make test-ser8`, and switch ser8 from the branch during the Step 4.5 window, then merge to main immediately after the switch succeeds. Mid-migration, main always describes a bootable ser8, and the branch merges the moment it's true.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Feature branch, merge only after cutover succeeds",
+              "description": "Branch holds the ZFS declaration through Stages 1-4; ser8 activates from the branch at 4.5; merge (PR or fast-forward) right after the switch. Main never declares hardware that doesn't exist. Requires remembering the branch across multi-day sessions — the plan carries it."
+            },
+            {
+              "id": "b",
+              "label": "PR merged to main after validation, before cutover",
+              "description": "Normal PR flow right after Step 1.2 validation passes. Cleaner git hygiene, but for days main declares a pool that doesn't exist — a habitual `make switch-ser8` in that window breaks the media mount."
+            },
+            {
+              "id": "c",
+              "label": "Direct commits to main (solo-operator norm)",
+              "description": "Same premature-declaration risk as (b) plus it contradicts the repo's own no-direct-push rule for non-planning changes."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "cutover-verification",
+      "title": "Cutover Sequencing, Capacity, and Verification",
+      "questions": [
+        {
+          "id": "Q-10",
+          "title": "Step 4.5 activation will start the media stack against an empty mirror — how do we prevent that?",
+          "context": "Every media unit AND the three orchestration oneshots are `wantedBy = multi-user.target` (hosts/ser8/media/orchestration.nix), so `make test-ser8` at Step 4.5 starts them while the doc requires the stack stopped until restore verification (5.2). Radarr/Sonarr rescanning an empty root can mangle file records — precisely what this migration must never do. The doc predates this hazard. 💡 Recommended: runtime-mask the media units before activation and make unmasking part of the approved Step 5.3 start — keeps the doc's order (mount config verified before the 7.8 TB restore), and masks are reversible runtime state.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Mask media units before activation, unmask at 5.3",
+              "description": "`systemctl mask` the nine units + three oneshots before `make test-ser8`; unmask inside the approved service-start step. Doc order preserved; one extra piece of runtime state the plan must track across sessions."
+            },
+            {
+              "id": "b",
+              "label": "Reorder: restore first, activate after",
+              "description": "Run the restore into the manually-created pool (4.4 → 5.1/5.2), then activate. Services start with data present, no masking. Deviates from the doc's explicit order, and config-vs-live mount agreement goes unverified until after the 10-20h restore."
+            },
+            {
+              "id": "c",
+              "label": "Accept brief start against empty pool, re-stop fast",
+              "description": "Let activation start services, immediately stop them again. Races Radarr/Sonarr library scans against an empty /mnt/media — an unforced data-integrity gamble."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Confirmed in chat 2026-08-24 after discussing rationale: activation-first fails fast on mount/import config against the empty pool and protects the reboot path during the ~11 h restore (boot default must not reference the erased ext4 disks). Mask all media units + orchestration oneshots before test/switch; unmask inside the approved service-start step.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-11",
+          "title": "What staging safety margin must hold on the backup pool, and how do we handle Frigate churn?",
+          "context": "The doc requires an 'agreed safety margin' but never defines it — and the live numbers moved: media is now 8.94 TB (was 7.788 TB on 08-13 — growing ~105 GB/day), backup pool avail is 11.11 TB, so free after staging is ~2.16 TB and shrinking ~0.1 TB/day until the freeze. The proposed ≥2 TB gate is already marginal. Camera datasets currently use 394 GB (clips quota 5 TB) and keep writing throughout. 💡 Recommended: ≥1.5 TB hard floor with recheck at every stage boundary, PLUS either start the migration soon or pause large downloads during it — at the current growth rate the ≥2 TB variant fails within days.",
+          "options": [
+            {
+              "id": "a",
+              "label": "≥2 TB margin, recheck each stage boundary",
+              "description": "Proceed only while projected free-after-staging ≥2 TB; every session's preflight re-reads pool free space and camera growth. No config changes, no revert debt."
+            },
+            {
+              "id": "b",
+              "label": "≥1 TB margin",
+              "description": "Looser gate; acceptable if you judge camera churn slow, but a burst of recordings during a long pause could squeeze the pool with the staging copy captive on it."
+            },
+            {
+              "id": "c",
+              "label": "≥2 TB + temporarily tighten camera quotas",
+              "description": "Also clamp cameras/clips to current-use + ~500 GB for the migration window, restore afterwards. Hard capacity guarantee; adds a live ZFS property change that must be reverted and tracked."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Partially resolved by the stop-everything decision (Q-02 chat note): with Frigate down during the window, camera churn on the backup pool stops, and with downloaders down media growth (~105 GB/day) stops — the margin freezes at whatever it is when services stop. Remaining decision: the numeric go/no-go floor checked before creating staging (~2.16 TB free after staging at current size, shrinking until the stop). DECIDED 2026-08-24: floor is >=1.5 TB free after staging projection, checked before creating staging (margin freezes at quiesce; ~2.16 TB projected today).",
+          "status": "answered"
+        },
+        {
+          "id": "Q-12",
+          "title": "Verification depth: rsync checksum gates only, or also a persistent hash manifest?",
+          "context": "MEASURED (ser8, 2026-08-24): 11,847 files / 8.94 TB, sequential read 231 MB/s, random 1 MiB read 39 ms. A full rsync -c pass is disk-gated at ~10.8 h per gate (hash algorithm irrelevant — md5 930 MB/s, xxh128 multi-GB/s; every byte must cross the head). SAMPLED alternative: deterministic per-file samples (head + tail + 1 MiB per GiB of file, offsets derived from file size so the identical bytes compare across source → staging → mirror), files <1 MiB hashed fully, plus the fast full metadata dry-run (counts, sizes, mtimes, perms — 100% coverage of structure): ~21 min per gate at 0.4% content coverage. Math note: sampled effective throughput is 27 MB/s vs 231 sequential, so sampling only beats full reads below ~12% coverage — there is no useful middle ground. Timeline impact: full -c both gates = 33 h outage / 56 h elapsed; sampled both gates = ~13 h outage / ~35 h elapsed. Residual risk with sampling: isolated corruption in unsampled regions — mitigated by rsync's in-flight per-file checksums during each copy, ZFS at-rest checksums on staging and mirror, and the full scrub. The unique thing full -c adds is a complete independent re-read of the un-checksummed ext4 source before erase. 💡 Recommended: sampled verify at both gates (identical manifest), keep the scrub — the layered checks cover what sampling skips, and it returns ~20 h of uptime. NOTE (chat 2026-08-24): rsync's in-flight checksums are protocol-internal and cannot be exported to a manifest — an explicit verify's real value is the independent second read of the un-checksummed ext4 source. If Q-17 chooses zfs send/recv for the restore, gate 5.2 becomes moot and this question only decides gate 3.3 (source vs staging) depth.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Sampled verify at both gates (~21 min each)",
+              "description": "Deterministic head+tail+per-GiB 1 MiB samples, same manifest compared at 3.3 (source vs staging) and 5.2 (staging vs mirror); small files hashed fully; metadata dry-run stays 100%. Outage ~13 h, elapsed ~35 h. Relies on rsync in-flight + ZFS at-rest checksums for unsampled regions."
+            },
+            {
+              "id": "b",
+              "label": "Full -c at 3.3, sampled at 5.2",
+              "description": "One complete independent re-read of the ext4 source before the point of no return (the erase); ZFS-to-ZFS restore gate gets the cheap sampled check. Outage ~23 h, elapsed ~45 h. Strongest pre-erase guarantee per hour spent."
+            },
+            {
+              "id": "c",
+              "label": "Full -c at both gates (doc baseline)",
+              "description": "Maximum verification: every byte compared at both hops. Outage ~33 h, elapsed ~56 h."
+            },
+            {
+              "id": "d",
+              "label": "Metadata-only at both gates",
+              "description": "No content verification beyond rsync in-flight + ZFS + scrub. Fastest (outage ~12 h) but zero independent content re-check of the ext4 source before erase."
+            },
+            {
+              "id": "e",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": " DECIDED 2026-08-24: sampled verify for Leg 1 gate 3.3. Clarified: metadata comparison = stat-level attrs (size, mtime, mode, uid/gid, type, symlink targets, hardlink grouping via -H, ACLs, xattrs), not literal inode numbers. Verify dry-run reports diffs in itemized output with exit 0 — the gate is 'output empty', enforced by the script, not exit status.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-13",
+          "title": "How long does backup/media-staging survive after cutover?",
+          "context": "DECIDED in chat 2026-08-24: no extended observation window. Clarification recorded: Phase 14 backs up media APPLICATION STATE only (BKP-07 — arr databases/configs), never media content; the 2x12 TB mirror is the sole and sufficient home of the media files by design (off-host media backup is explicitly out of scope). Staging is destroyed at the earliest point that is still safe: immediately after the first scrub completes clean and the Step 5.4 application tests pass — same day services return, with the scrub result presented in the destroy approval (which the doc's Step 6.2 requires anyway). Frees ~8.94 TB on the backup pool right away. The destroy remains its own individually-approved step per the approval contract.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Destroy after first clean scrub + app tests (chosen)",
+              "description": "Earliest safe trigger: scrub (~12 h, services up) proves the mirror end-to-end before the last second copy disappears. Same-day, no multi-day window."
+            },
+            {
+              "id": "b",
+              "label": "Destroy immediately after restore verification",
+              "description": "Before the scrub. ~12 h earlier, but a scrub-surfaced problem would find no source copy remaining."
+            },
+            {
+              "id": "c",
+              "label": "Multi-day observation window",
+              "description": "Rejected: holding an 8.9 TB copy for days adds nothing once scrub + app tests have passed."
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Operator: media content is never part of Phase 14 backups; mirror redundancy is sufficient. Remove staging from the backup pool as soon as the restore is proven (scrub-clean gate accepted as the trigger).",
+          "status": "answered"
+        },
+        {
+          "id": "Q-17",
+          "title": "Restore mechanism: rsync copy + verify, or zfs send/recv?",
+          "context": "Raised in chat 2026-08-24. Staging (backup/media-staging) and the new mirror are both ZFS, and staging is created with the target's exact properties (lz4, recordsize=1M). Replacing the doc's Stage 5 rsync restore with 'zfs snapshot backup/media-staging@verified; zfs send -s ... | zfs recv media/data' makes restore integrity intrinsic: the send stream is block-checksummed and verified on receive, the result is bit-identical to the verified snapshot by construction, and gate 5.2 reduces to 'first scrub clean'. Same ~10.7 h transfer (mirror write gates). Extras: @verified is a named rollback point; send -s resume tokens survive interruption better than rsync. Requires amending the migration doc's Stage 5 (rides on the Q-01 doc update). Mount handling: recv -u then set mountpoint=/mnt/media as an explicit step. 💡 Recommended: zfs send/recv — strictly stronger integrity than rsync + separate verify, eliminates a whole verification gate, better resume behavior.",
+          "options": [
+            {
+              "id": "a",
+              "label": "zfs send/recv (recommended)",
+              "description": "Snapshot staging after gate 3.3, stream into media/data, verify via receive success + first scrub. Gate 5.2 as a separate comparison disappears; Q-12 then only decides gate 3.3 depth."
+            },
+            {
+              "id": "b",
+              "label": "Keep rsync restore per the doc",
+              "description": "File-level copy into the empty dataset plus an explicit 5.2 comparison (depth per Q-12). More familiar, doc-as-written, but weaker integrity per hour and no snapshot/resume benefits."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "validation-cleanup",
+      "title": "Validation Surface and Cleanup",
+      "questions": [
+        {
+          "id": "Q-14",
+          "title": "Where do the new ZFS media smoketests live?",
+          "context": "The doc mandates the checks (mount source = media/data, ZFS not fuse.mergerfs, mirror membership by exact WWN, directory existence, service access, hardlink round-trip). Current layout: scripts/smoketests/media/all.sh is a single 106-line file with inline checks, while scripts/smoketests/ser8/ follows the all.sh-dispatches-test-*.sh convention the repo guide prescribes. 💡 Recommended: new test-zfs-media.sh dispatched from media/all.sh — deploy.yaml keeps its all.sh entry point, the new file gets a descriptive test-*.sh name per convention, and the storage checks stay separable from app checks.",
+          "options": [
+            {
+              "id": "a",
+              "label": "New media/test-zfs-media.sh + all.sh dispatch",
+              "description": "Nudges the media suite toward the ser8-style layout. Storage assertions (pool health, WWN membership, hardlink) live in one purpose-named file; all.sh stays the deploy.yaml entry point."
+            },
+            {
+              "id": "b",
+              "label": "Extend media/all.sh inline",
+              "description": "Keeps the current single-file style; smallest diff. The file grows past mixed-concern size and the storage checks are harder to run in isolation during the migration itself."
+            },
+            {
+              "id": "c",
+              "label": "Extend ser8/test-zfs-health.sh",
+              "description": "Pool-health logic already lives there. But mirror-membership WWNs and the media hardlink test are media-area concerns; deploy.yaml runs ser8 and media suites at different moments."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-15",
+          "title": "Does MergerFS documentation cleanup belong in this phase?",
+          "context": "After cutover, repo prose still describes the old world: CLAUDE.md/AGENTS.md says ser8 uses 'MergerFS for /mnt/media', hosts/ser8/README.md and disko comments reference MergerFS/ext4, and /mnt/disk1//mnt/disk2 vanish. Stale agent-facing docs mislead every future session (the repo guide explicitly warns about this). 💡 Recommended: fold the doc sweep into this phase's final plan — it's a small, mechanical diff and Phase 15's Nixflix work will read these files.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Doc sweep in this phase's final plan",
+              "description": "Update CLAUDE.md host description, hosts/ser8/README.md, and code comments as part of Stage 6 cleanup. Docs are truthful the moment the migration completes."
+            },
+            {
+              "id": "b",
+              "label": "Defer to milestone close",
+              "description": "Batch all v1.3 doc updates at the end. Smaller phase, but Phases 14-15 sessions read stale storage descriptions in the meantime."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Decided in chat 2026-08-24: MergerFS doc sweep lands in this phase's final plan (Stage 6 cleanup).",
+          "status": "answered"
+        }
+      ]
+    }
+  ]
+};
+
+function computeStats(d) {
+  let total = 0, answered = 0, chat = 0;
+  d.sections.forEach(s => s.questions.forEach(q => {
+    total++;
+    if (q.answer !== null && q.answer !== "") answered++;
+    if (q.chat_more && q.chat_more.trim()) chat++;
+  }));
+  d.stats = { total, answered, chat_more: chat, remaining: total - answered };
+  return d.stats;
+}
+
+function render() {
+  const root = document.getElementById('sections');
+  root.innerHTML = '';
+  DATA.sections.forEach(sec => {
+    const answered = sec.questions.filter(q => q.answer).length;
+    const div = document.createElement('div');
+    div.className = 'section';
+    div.innerHTML = `<div class="sechead" onclick="this.parentNode.classList.toggle('collapsed')">
+        <span class="chev">▼</span><h2>${sec.title}</h2>
+        <span class="count">${answered}/${sec.questions.length} answered</span></div>`;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    sec.questions.forEach(q => grid.appendChild(card(q)));
+    div.appendChild(grid);
+    root.appendChild(div);
+  });
+  updateStats();
+}
+
+function card(q) {
+  const c = document.createElement('div');
+  c.className = 'card' + (q.answer ? ' answered' : '');
+  c.id = 'card-' + q.id;
+  const opts = q.options.map(o => {
+    const isCustom = o.label === 'Custom';
+    const checked = q.answer === o.id || (isCustom && q.answer && !q.options.some(x => x.id === q.answer)) ? 'checked' : '';
+    return `<label class="opt"><input type="radio" name="${q.id}" value="${o.id}" ${checked}
+        onchange="setAnswer('${q.id}','${o.id}',${isCustom})">
+      <span><span class="lbl">${o.label}</span>
+      ${o.description ? `<div class="desc">${o.description}</div>` : ''}
+      ${isCustom ? `<div class="customtext${checked ? ' show' : ''}" id="custom-${q.id}">
+        <textarea placeholder="Describe your preferred approach..."
+          oninput="setCustom('${q.id}', this.value)">${q.answer && !q.options.some(x => x.id === q.answer) ? q.answer : ''}</textarea></div>` : ''}
+      </span></label>`;
+  }).join('');
+  c.innerHTML = `<div class="qhead"><span class="badge">${q.id}</span><span class="qtitle">${q.title}</span></div>
+    <div class="qcontext">${q.context}</div>
+    <div>${opts}</div>
+    <textarea class="${q.chat_more && q.chat_more.trim() ? 'haschat' : ''}"
+      placeholder="Add context, nuance, or clarification for this question..."
+      oninput="setChat('${q.id}', this)">${q.chat_more || ''}</textarea>`;
+  return c;
+}
+
+function findQ(id) {
+  for (const s of DATA.sections) for (const q of s.questions) if (q.id === id) return q;
+}
+
+function setAnswer(id, optId, isCustom) {
+  const q = findQ(id);
+  const box = document.getElementById('custom-' + id);
+  if (isCustom) {
+    if (box) box.classList.add('show');
+    const ta = box ? box.querySelector('textarea') : null;
+    q.answer = ta && ta.value.trim() ? ta.value.trim() : 'custom';
+  } else {
+    if (box) box.classList.remove('show');
+    q.answer = optId;
+  }
+  q.status = 'answered';
+  document.getElementById('card-' + id).classList.add('answered');
+  refreshCounts();
+}
+
+function setCustom(id, val) {
+  const q = findQ(id);
+  q.answer = val.trim() || 'custom';
+  q.status = 'answered';
+  refreshCounts();
+}
+
+function setChat(id, ta) {
+  const q = findQ(id);
+  q.chat_more = ta.value;
+  ta.classList.toggle('haschat', !!ta.value.trim());
+  if (!q.answer) q.status = ta.value.trim() ? 'chat-more' : 'unanswered';
+  refreshCounts();
+}
+
+function refreshCounts() {
+  updateStats();
+  document.querySelectorAll('.section').forEach((div, i) => {
+    const sec = DATA.sections[i];
+    const answered = sec.questions.filter(q => q.answer).length;
+    div.querySelector('.count').textContent = `${answered}/${sec.questions.length} answered`;
+  });
+}
+
+function updateStats() {
+  const s = computeStats(DATA);
+  document.getElementById('s-total').textContent = s.total;
+  document.getElementById('s-answered').textContent = s.answered;
+  document.getElementById('s-remaining').textContent = s.remaining;
+  document.getElementById('s-chat').textContent = s.chat_more;
+  document.getElementById('pbar').style.width = (s.total ? (100 * s.answered / s.total) : 0) + '%';
+}
+
+async function saveAnswers() {
+  computeStats(DATA);
+  const json = JSON.stringify(DATA, null, 2) + '\n';
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await showSaveFilePicker({
+        suggestedName: '13-QUESTIONS.json',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      });
+      const w = await handle.createWritable();
+      await w.write(json); await w.close();
+      alert('Saved. Return to Claude and say "refresh".');
+      return;
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '13-QUESTIONS.json';
+  a.click();
+  alert('Downloaded 13-QUESTIONS.json — replace the original file at .planning/phases/13-zfs-mirror-migration/, then tell Claude "refresh".');
+}
+
+render();
+</script>
+</body>
+</html>

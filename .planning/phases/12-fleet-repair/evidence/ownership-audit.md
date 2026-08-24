@@ -133,3 +133,38 @@ $ ssh bdhill@192.168.68.65 'find /mnt/media -uid 1002 -type f'
 $ ssh bdhill@192.168.68.65 'find /mnt/media -uid 755 -type f'
 (no output)
 ```
+
+## Follow-up: uid-38 remediation executed post-phase (2026-08-23)
+
+After phase 12 completed and verification passed, the deferred uid-38 finding above was resolved
+as a standalone, user-authorized follow-up.
+The precondition named in the deferral — plan 12-02 confirming the historical origin (SABnzbd's
+vacated auto-allocated identity `38:194`, root cause fixed by the static `uid = 985` pin) — was met,
+so the fix could no longer recur and became a bounded one-time operation.
+
+Re-census before the fix found 1,597 paths owned by uid 38 (the original 1,443 files plus 154
+directories the files-only census did not count).
+The full path list was preserved on ser8 at
+`/mnt/backups/phase12-fleet-repair-archive/uid38-ownership-before-20260823.txt`.
+
+```
+$ ssh bdhill@192.168.68.65 'sudo find /mnt/media -uid 38 -exec chown media:media {} +'
+$ ssh bdhill@192.168.68.65 'sudo find /mnt/media -uid 38 | wc -l'
+0
+```
+
+The ownership-predicate form (`find -uid 38 -exec chown`) touches exactly the drifted paths —
+this is the targeted mechanism this audit's prohibition distinguishes from a blind recursive
+re-chown of the tree.
+
+The same sweep surfaced 11 further stray paths the original files-only, sampled audit missed:
+directories and `.DS_Store` files owned uid 1002, the stale
+`_UNPACK_The.Real.Housewives...` directory, and two paths still carrying mealie's gid 992
+(`/mnt/media/lost+found`, `/mnt/media/.DS_Store`).
+All were chowned to `media:media` by the same predicate mechanism.
+
+Final verification: `find /mnt/media \( -uid 38 -o -uid 1002 -o -uid 755 \)` and
+`find /mnt/media \( -gid 992 -o -gid 194 \)` both return zero paths, and the full media smoketest
+suite (`./scripts/smoketests/media/all.sh ser8`) passes.
+The media tree enters the Phase 13 storage freeze with uniform `media:media` (1100:1100) ownership
+on every previously drifted path.

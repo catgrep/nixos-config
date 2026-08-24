@@ -126,3 +126,7 @@ None - no external service configuration required. All changes were made live vi
 ---
 *Phase: 12-fleet-repair*
 *Completed: 2026-08-24*
+
+## Self-Check: PASSED
+
+All 4 evidence files and the summary file exist on disk; all 4 task/summary commit hashes (`93b6b32`, `69ff3cc`, `cf6f886`, `3b564f0`) are present in git history.

@@ -18,9 +18,9 @@ Prerequisites sitting on the storage and cutover critical paths.
 
 MergerFS → two-disk ZFS mirror, per `.planning/SER8-ZFS-MIRROR-MIGRATION.md`.
 
-- [ ] **ZFS-01**: Extended SMART tests pass on both approved 12 TB disks, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
+- [ ] **ZFS-01**: Short SMART health test (self-test + zero pending/reallocated/offline-uncorrectable sector counters) passes on both approved 12 TB disks, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
 - [ ] **ZFS-02**: The two approved WWNs are reformatted into ZFS pool `media` with one mirror vdev and a single dataset `media/data` mounted at `/mnt/media` with the documented properties
-- [ ] **ZFS-03**: The restore from staging verifies checksum-identical against the frozen source and the first scrub completes with zero data errors
+- [ ] **ZFS-03**: The restore from staging via `zfs send/recv` verifies intrinsically checksum-clean and the first scrub completes with zero data errors
 - [ ] **ZFS-04**: MergerFS is removed from the active configuration, disko defines the mirror, and the full media stack runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a cross-directory hardlink
 - [ ] **ZFS-05**: Every destructive step follows the migration doc's per-step human approval contract, and `backup/media-staging` is destroyed only after post-cutover observation and separate approval
 

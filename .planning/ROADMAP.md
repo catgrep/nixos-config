@@ -99,7 +99,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 **Requirements**: ZFS-01, ZFS-02, ZFS-03, ZFS-04, ZFS-05
 **Success Criteria** (what must be TRUE):
 
-  1. Both approved 12 TB disks pass extended SMART self-tests, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
+  1. Both approved 12 TB disks pass a short SMART health test gate (self-test plus zero pending/reallocated/offline-uncorrectable sectors), and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
   2. `zpool status media` shows one online `mirror-0` vdev with exactly the two approved WWNs, and `media/data` is mounted at `/mnt/media` with the documented pool and dataset properties
   3. The restore from staging into the new mirror verifies checksum-identical against the frozen source, and the first scrub completes with zero data errors
   4. MergerFS is gone from the active configuration, disko declares the mirror, and the full media stack (Jellyfin, Sonarr, Radarr, Bazarr, SABnzbd, NZBGet, Samba) runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working cross-directory hardlink

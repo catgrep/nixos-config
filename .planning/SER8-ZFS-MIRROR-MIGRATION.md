@@ -70,7 +70,7 @@ The target provides approximately 12 TB decimal usable capacity.
 It tolerates failure of either one of the two 12 TB disks.
 It replaces MergerFS entirely.
 It preserves `/mnt/media` as the application-visible path.
-It keeps movies, television, downloads, books, and music as directories in one ZFS dataset so hardlinks can cross those directories.
+It keeps movies, television, books, and music as directories in one ZFS dataset for simplicity (D-22); downloads now live on a separate `rpool/safe/downloads` dataset (D-21), and imports copy from there into the library directories rather than relying on cross-dataset hardlinks, since torrenting is retired.
 
 ## Non-Goals
 
@@ -258,6 +258,8 @@ Automatic snapshots are intentionally disabled for the single media dataset beca
 This decision can be revisited separately after measuring churn and available capacity.
 Weekly ZFS scrubs should continue to cover the new pool.
 
+Downloads relocate to a separate `rpool/safe/downloads` dataset with a 500G quota (D-21), implemented in this phase's final stage, off the storage-freeze critical path.
+
 ## Repository Changes
 
 The implementation should modify only the smallest necessary SER8 storage and validation files.
@@ -304,33 +306,39 @@ Extend the SER8 media smoketest to verify all of the following:
 - `zpool status media` contains one mirror vdev with exactly the two approved media disk members.
 - The canonical movies, television, books, and download directories exist.
 - Media service accounts can access their required directories.
-- A hardlink can be created between controlled test paths under downloads and a library directory, then removed.
+- A controlled import-write test creates a file under the downloads dataset, copies it into a library directory on `media/data`, verifies ownership/permissions, then removes both (D-22).
 
 Do not leave test payloads behind.
 
 ## Service Freeze Set
 
-The following live unit names were verified on 2026-08-13:
+The following live unit names comprise the freeze set (amended post-Phase-12; qBittorrent, wgnord, and nginx are deleted from the fleet):
 
 - `jellyfin.service`
 - `radarr.service`
 - `sonarr.service`
 - `bazarr.service`
 - `prowlarr.service`
-- `qbittorrent-nox.service`
 - `sabnzbd.service`
 - `nzbget.service`
 - `samba-smbd.service`
 - `samba-wsdd.service`
-- `nginx.service`
-- `wgnord.service`
+- `media-config.service`
+- `servarrs-setup.service`
+- `download-clients-setup.service`
+- `mealie.service`
+- `homebox.service`
+- `actual.service`
+- `donetick.service`
+- `frigate.service`
+- `home-assistant.service`
+- `mosquitto.service`
 
-Home Assistant and Frigate do not store their primary data under `/mnt/media` and are not part of the normal freeze set.
-Confirm this again before cutover.
+Confirm this list again before cutover.
 
 The freeze must stop every process that can write to `/mnt/media`.
-Because qBittorrent is bound to `wgnord.service`, the approved stop sequence must account for both units and confirm that qBittorrent remains stopped.
-Nginx does not directly write media, but its qBittorrent proxy may be stopped during the outage to avoid presenting a misleading interface.
+Infrastructure stays up throughout the freeze — sshd, networking, Tailscale, the node and zfs Prometheus exporters, and nix-daemon are not part of the stop list.
+Quiesce timing moved before the initial staging copy per D-03: there is no separate "keep the media stack running during the first pass" step in this migration; see Stage 2/3 in the Numbered Execution Plan.
 
 ## Migration State Machine
 
@@ -343,8 +351,8 @@ flowchart TD
     E --> F{Explicit disk identity approval}
     F --> G[Erase only two approved 12 TB disks]
     G --> H[Create media mirror and media/data]
-    H --> I[Restore 7.788 TB from staging]
-    I --> J[Full restore verification]
+    H --> I[zfs send/recv restore 7.788 TB from staging]
+    I --> J[Confirm receive integrity and mount]
     J --> K[Approval: start media stack]
     K --> L[Application tests plus clean scrub]
     L --> M{Separate staging deletion approval}
@@ -374,6 +382,8 @@ Exit criteria:
 
 ### Step 0.2: Resolve the wgnord and qBittorrent Restart Loop
 
+Status: Satisfied by Phase 12 — trusted via evidence records per D-05, no live re-verification in this phase. See `.planning/phases/12-fleet-repair/12-CONTEXT.md` and its `evidence/` directory.
+
 Mutation class: begin read-only, then repository-writing or live-writing only through separately approved substeps.
 
 Present the diagnostic commands and request approval.
@@ -391,6 +401,8 @@ Exit criteria:
 
 ### Step 0.3: Correct Radarr Root Folders
 
+Status: Satisfied by Phase 12 — trusted via evidence records per D-05, no live re-verification in this phase. See `.planning/phases/12-fleet-repair/12-CONTEXT.md` and its `evidence/` directory.
+
 Mutation class: live application configuration.
 
 Present the Radarr API reads and proposed root-folder deletions before requesting approval.
@@ -404,18 +416,20 @@ Exit criteria:
 - Every registered movie path remains under `/mnt/media/movies`.
 - Jellyfin and Radarr still see the canonical movie files.
 
-### Step 0.4: Run Extended SMART Tests
+### Step 0.4: Run the Short SMART Health Test Gate (D-04)
 
 Mutation class: live device diagnostic.
 
 Present the exact `smartctl` commands and both resolved devices before requesting approval.
-Start an extended self-test on each 12 TB media disk.
-Wait for both tests to complete.
-Do not run the tests concurrently if the enclosure, controller, or thermal conditions make that unsafe.
+Run `smartctl -a` on both approved WWNs and confirm `SMART overall-health self-assessment test result: PASSED`, and that the Reallocated_Sector_Ct, Current_Pending_Sector, and Offline_Uncorrectable raw values are all zero on both disks.
+Then run `smartctl -t short` on each disk, sequentially rather than concurrently, per the enclosure/controller thermal-safety note.
+Wait approximately two minutes per disk for the short self-test to complete.
+Re-read `smartctl -a` on each disk afterward and confirm `Self-test execution status: ... completed without error`.
+Refuse to proceed to Step 4.3 (erase) if any counter is nonzero or either short test fails; never rationalize a nonzero counter as acceptable.
 
 Exit criteria:
 
-- Both extended tests complete without error.
+- Both short self-tests complete without error.
 - Reallocated sectors remain zero.
 - Pending sectors remain zero.
 - Offline uncorrectable sectors remain zero.
@@ -631,6 +645,9 @@ sudo rsync -aHAXxnc --numeric-ids --delete --itemize-changes \
 ```
 
 Treat any output as a discrepancy that must be understood.
+Verification uses deterministic per-file sampling per D-07/D-09: head plus tail plus 1 MiB per GiB of file size, with offsets derived from the file size, and files under 1 MiB hashed fully.
+Pair the sampled hash comparison with a 100%-coverage metadata-only dry run.
+The gate is "itemized/diff output is empty," enforced by the verification script — never by rsync's exit status, since rsync exits `0` even when differences are found.
 Do not erase either media disk until this step produces zero unexplained differences.
 
 Exit criteria:
@@ -744,47 +761,42 @@ Exit criteria:
 
 Mutation class: live data copy to the final pool.
 
-Present the exact restore command and request approval.
+Present the exact restore commands and request approval.
 Keep the media stack stopped.
-Copy from `/mnt/media-staging/` to `/mnt/media/`.
+Send the verified staging dataset into `media/data` via `zfs send`/`zfs recv` (D-08) rather than a file-level copy.
 
 The intended command shape is:
 
 ```bash
-sudo rsync -aHAXx --numeric-ids --info=progress2 \
-  /mnt/media-staging/ /mnt/media/
+sudo zfs snapshot backup/media-staging@verified
+sudo zfs send -s backup/media-staging@verified | sudo zfs recv -u media/data
+sudo zfs set mountpoint=/mnt/media media/data
+sudo zfs mount media/data
 ```
-
-Do not use `--delete` on the first restore pass unless the destination is confirmed empty and the user approves that exact option.
 
 Exit criteria:
 
-- Restore exits successfully.
+- `zfs recv` exits successfully with no stream errors.
 - No pool or device errors occur.
 - The media stack remains stopped.
 
-### Step 5.2: Perform Full Restore Verification
+### Step 5.2: Confirm Restore Integrity and Mount
 
-Mutation class: read-only but potentially long-running.
+Mutation class: read-only.
 
 Present the exact verification commands and request approval.
-Compare staging with the new mirror using counts, bytes, metadata, ACLs, extended attributes, and full checksums.
-Use staging as the authoritative source for this comparison.
+Verify the `zfs recv` from Step 5.1 exited `0` with no stream errors.
+Verify `zfs get mountpoint,mounted media/data` shows `mountpoint=/mnt/media` and `mounted=yes`.
+Verify `mount | grep /mnt/media` shows a ZFS filesystem, not `fuse.mergerfs` or ext4.
 
-The intended command shape is:
-
-```bash
-sudo rsync -aHAXxnc --numeric-ids --delete --itemize-changes \
-  /mnt/media-staging/ /mnt/media/
-```
-
-Treat any output as a discrepancy that must be resolved before service startup.
+Full content verification is now intrinsic to the block-checksummed `zfs send`/`recv` stream (D-08); this step does not perform a second full file-by-file comparison.
+The first clean scrub (Step 5.5) is the remaining integrity gate, not a second full comparison.
 
 Exit criteria:
 
-- Verification reports zero unexplained differences.
+- `zfs recv` exit status and stream logs show no errors.
+- `media/data` mount and mountpoint match the expected values.
 - `zpool status media` remains online.
-- Read, write, and checksum error counters remain zero.
 
 ### Step 5.3: Start the Full Media Stack
 
@@ -931,8 +943,10 @@ Status at document creation:
 - Restore: not started
 - Cutover: not started
 - Staging deletion: not started
-- qBittorrent and wgnord blocker: unresolved
-- Radarr root-folder cleanup: unresolved
+- qBittorrent and wgnord blocker: resolved — Phase 12 deleted the stack (`.planning/phases/12-fleet-repair/`)
+- Radarr root-folder cleanup: resolved — Phase 12 API cleanup (`.planning/phases/12-fleet-repair/`)
+
+Phase 13 execution is now underway per `.planning/phases/13-zfs-mirror-migration/`.
 
 The next action is Step 0.1.
 The fresh implementer must present the Step 0.1 inspection commands and wait for explicit approval before running them.

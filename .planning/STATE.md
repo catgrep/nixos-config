@@ -5,15 +5,15 @@ milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 13
 current_phase_name: zfs-mirror-migration
 status: executing
-stopped_at: Completed 13-04-PLAN.md (gate 3.3 sampled + metadata verification PASS, ZFS-01 satisfied)
-last_updated: "2026-08-24T18:33:04.649Z"
+stopped_at: "Completed 13-05-PLAN.md (destructive cutover: erase, mirror create, mask, activate, merge to main)"
+last_updated: "2026-08-24T20:47:50.929Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 ## Current Position
 
 Phase: 13 (zfs-mirror-migration) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-08-23 — Phase 13 execution started
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Phase 13 P02 | ~20min | 3 tasks | 5 files |
 | Phase 13 P03 | ~10h47m (~45min active) | 4 tasks | 1 files |
 | Phase 13 P04 | ~18min | 2 tasks | 4 files |
+| Phase 13 P05 | ~1h20m | 7 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Still-operative decisions for future work:
 - [Phase ?]: [Phase 13, Plan 04]: scripts/sampled-verify.sh implements D-07 sampling in 1-MiB-block-index space (not byte-offset-then-divide) so head/tail samples always land on a file's true first/last bytes regardless of size alignment -- fixed as a Rule 1 bug against the plan's literal dd formula
 - [Phase ?]: [Phase 13, Plan 04]: Gate 3.3 PASS -- 3,478 files sampled, 0 differences between frozen /mnt/media and backup/media-staging on ser8, independently re-verified against the manifest file content (not systemctl exit status or a coordinator report alone); ZFS-01 fully satisfied across Plans 13-01/13-03/13-04
 - [Phase ?]: [Phase 13, Plan 04]: Task 2's checkpoint auto-approved per operator checkpoint policy (read-only mutation class against ser8); dispatched as a detached systemd-run unit (--setenv=PATH fix required, systemd-run's default env excludes /run/current-system/sw/bin) and tracked via .planning/async-jobs/gate-3.3-sampled-verify.json rather than polled, per the >10min async-dispatch threshold
+- [Phase ?]: [Phase 13, Plan 05]: Destructive cutover executed with a mandatory human checkpoint for every disk-mutating step (unmount, erase, mirror create, activate) per operator policy, overriding this plan's own gate=blocking default; both approved WWNs (a81a/3a87) erased and repartitioned, empty two-disk media mirror created ONLINE with media/data mounted at /mnt/media, all 19 freeze-set units masked, ser8 activated as generation 282 (persistent boot default), zfs-media-mirror merged to main (PR #1, dec09b3)
+- [Phase ?]: [Phase 13, Plan 05]: NixOS masking discovery -- systemctl mask (incl. --runtime) cannot override a store-backed unit on ser8 since /etc/systemd/system resolves into read-only /nix/store and outranks /run/systemd/system; masking now goes through /etc/systemd/system.control/ instead. Also found zfs-mount.service (unchanged oneshot) doesn't remount a brand-new dataset after a fresh pool import -- requires an explicit systemctl restart
+- [Phase ?]: [Phase 13, Plan 05]: Operator decision for Plan 13-06 -- the live /etc/systemd/system.control/ masks do not survive a real reboot (impermanence wipes rpool/local/root); Plan 13-06's FIRST task must add a Nix-config-level declarative disable of the 19 freeze-set units (repo change + activation) before the ~10.7h restore starts, removed only at 13-06's documented service-start step. ZFS-02 marked complete; ZFS-05 remains open (staging deletion approval is still pending, spans through Plan 13-07)
 
 ### Pending Todos
 
@@ -157,8 +161,8 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T18:33:04.640Z
-Stopped at: Completed 13-04-PLAN.md (gate 3.3 sampled + metadata verification PASS, ZFS-01 satisfied)
+Last session: 2026-08-24T20:47:50.920Z
+Stopped at: Completed 13-05-PLAN.md (destructive cutover: erase, mirror create, mask, activate, merge to main)
 Resume file: None
 
 ## Operator Next Steps

@@ -105,14 +105,14 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
   4. MergerFS is gone from the active configuration, disko declares the mirror, and the full media stack (Jellyfin, Sonarr, Radarr, Bazarr, SABnzbd, NZBGet, Samba) runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working import-write ownership check
   5. Every destructive step was individually approved per the migration doc's per-step approval contract, and `backup/media-staging` is destroyed only after post-cutover observation and a separate approval
 
-**Plans**: 4/7 plans executed (one per migration-doc stage, per D-10 — session boundaries align with the multi-hour unattended operations)
+**Plans**: 5/7 plans executed (one per migration-doc stage, per D-10 — session boundaries align with the multi-hour unattended operations)
 **Wave 1** *(sequential — each plan gates the next; this is a strictly sequential live storage migration, not a parallelizable phase)*
 
 - [x] 13-01-PLAN.md — Preflight & doc reconciliation: amend the migration doc first (D-01), short SMART gate, source inventory manifest
 - [x] 13-02-PLAN.md — Repository storage declaration: disko/configuration/impermanence changes on a feature branch, new pool-health smoketest
 - [x] 13-03-PLAN.md — Freeze the app stack and run the single frozen staging copy (D-03 quiesce timing)
 - [x] 13-04-PLAN.md — Gate 3.3: sampled + metadata verification of staging vs the frozen source (D-07)
-- [ ] 13-05-PLAN.md — Destructive cutover: disk erase, mirror creation, masked activation, branch merge
+- [x] 13-05-PLAN.md — Destructive cutover: disk erase, mirror creation, masked activation, branch merge
 - [ ] 13-06-PLAN.md — zfs send/recv restore, ordered service startup, application/storage tests (D-08)
 - [ ] 13-07-PLAN.md — First scrub, staging destroy, MergerFS doc sweep, downloads relocation to NVMe (D-19/D-20/D-21)
 

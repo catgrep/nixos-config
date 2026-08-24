@@ -17,7 +17,6 @@ let
     "prowlarr.service"
     "sabnzbd.service"
     "nzbget.service"
-    "qbittorrent-nox.service"
     "frigate.service"
     "home-assistant.service"
     "caddy.service"
@@ -93,10 +92,6 @@ in
       {
         name = "nzbget";
         comm = [ "nzbget" ];
-      }
-      {
-        name = "qbittorrent";
-        comm = [ "qbittorrent-nox" ];
       }
       # Automation
       {

@@ -72,7 +72,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 **Requirements**: FLEET-01, FLEET-02, FLEET-03, FLEET-04
 **Success Criteria** (what must be TRUE):
 
-  1. qBittorrent stays active with a working internet path through the NordVPN namespace, with no recurring wgnord restart loop
+  1. The NordVPN + qBittorrent stack is removed from code and state; the download path is usenet-only (SABnzbd/NZBGet) with no drift or restart-loop recurrence
   2. `sabnzbd.service` is active and the firebat gateway's `https_sabnzbd` route is healthy again
   3. Live ser8 media user/group identities match the repo's declarations with no blind recursive re-chown, and the reconciliation approach is recorded in PROJECT.md Key Decisions
   4. Radarr reports `/mnt/media/movies` as its only root folder, with every previously registered movie file still present
@@ -102,7 +102,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
   1. Both approved 12 TB disks pass extended SMART self-tests, and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
   2. `zpool status media` shows one online `mirror-0` vdev with exactly the two approved WWNs, and `media/data` is mounted at `/mnt/media` with the documented pool and dataset properties
   3. The restore from staging into the new mirror verifies checksum-identical against the frozen source, and the first scrub completes with zero data errors
-  4. MergerFS is gone from the active configuration, disko declares the mirror, and the full media stack (Jellyfin, Sonarr, Radarr, Bazarr, qBittorrent, SABnzbd, NZBGet, Samba) runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working cross-directory hardlink
+  4. MergerFS is gone from the active configuration, disko declares the mirror, and the full media stack (Jellyfin, Sonarr, Radarr, Bazarr, SABnzbd, NZBGet, Samba) runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working cross-directory hardlink
   5. Every destructive step was individually approved per the migration doc's per-step approval contract, and `backup/media-staging` is destroyed only after post-cutover observation and a separate approval
 
 **Plans**: TBD
@@ -116,7 +116,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 **Success Criteria** (what must be TRUE):
 
   1. A nightly backup job runs on ser8 against a dedicated dedup-off dataset on the backup pool, covering Mealie (pg_dump plus the recipe image/upload directory), every SQLite-backed service (via `sqlite3 .backup`/`VACUUM INTO` with `PRAGMA integrity_check`, never a raw copy), and Actual Budget (`account.sqlite` plus the entire `user-files/` tree)
-  2. Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, qBittorrent, SABnzbd, NZBGet) is covered by the same nightly engine using the correct backup method per state store
+  2. Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet) is covered by the same nightly engine using the correct backup method per state store
   3. A Mealie restore into a scratch instance has been performed and documented
   4. A restore of one SQLite-backed service and of Actual Budget has been demonstrated
 
@@ -131,8 +131,8 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 
   1. Nixflix is pinned as a flake input to a reviewed commit with a ser8 adapter forcing live identities and existing state paths; PostgreSQL, local proxy, VPN, and qBittorrent service management stay disabled, and ser8 builds without activation
   2. A full pre-cutover API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, a state snapshot exists, and a tested state-aware rollback has been proven before reconciliation is enabled
-  3. All retained root folders, download clients (qBittorrent, NZBGet, SABnzbd), and Prowlarr objects are declared, reconciliation is enabled for Sonarr/Radarr/Prowlarr with no retained object removed, and the overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are gone
-  4. Post-cutover, existing databases, history, and monitored items are intact; imports succeed from all three download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative torrent import creates a verified hardlink on `media/data`
+  3. All retained root folders, download clients (NZBGet, SABnzbd), and Prowlarr objects are declared, reconciliation is enabled for Sonarr/Radarr/Prowlarr with no retained object removed, and the overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are gone
+  4. Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import creates a verified hardlink on `media/data`
   5. Jellyfin runs under Nixflix with a dedicated SOPS API key, preserved database/users/libraries, firebat known-proxy handling, and a healthy exporter
 
 **Plans**: TBD

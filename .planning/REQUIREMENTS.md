@@ -9,7 +9,7 @@
 
 Prerequisites sitting on the storage and cutover critical paths.
 
-- [ ] **FLEET-01**: The wgnord/qBittorrent restart loop is diagnosed and durably fixed in Nix; qBittorrent stays active with a working internet path through the NordVPN namespace
+- [ ] **FLEET-01**: Torrents are retired; the download path is usenet-only (SABnzbd/NZBGet). The NordVPN + qBittorrent stack is removed entirely from code and state with no restart loop recurrence
 - [x] **FLEET-02**: sabnzbd's uid-drifted state is repaired; `sabnzbd.service` is active and the gateway `https_sabnzbd` route is healthy again
 - [x] **FLEET-03**: Repo `media` user/group declarations are reconciled to live ser8 identities with no blind recursive re-chown; the drift resolution is recorded in Key Decisions
 - [ ] **FLEET-04**: Radarr root folders are cleaned via API to the single canonical `/mnt/media/movies` with no media files deleted
@@ -34,7 +34,7 @@ BKP-01..06 unparked from the v1.2 descope, extended to the media stack.
 - [ ] **BKP-04**: Actual backup captures `account.sqlite` plus the entire `user-files/` blob tree
 - [ ] **BKP-05**: A Mealie restore into a scratch instance is demonstrated and documented
 - [ ] **BKP-06**: A restore of one SQLite service and of Actual is demonstrated
-- [ ] **BKP-07**: Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, qBittorrent, SABnzbd, NZBGet) is covered by the nightly engine using the correct method per state store
+- [ ] **BKP-07**: Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet) is covered by the nightly engine using the correct method per state store
 
 ### Nixflix
 
@@ -42,9 +42,9 @@ Foundation and cutover, per `.planning/SER8-NIXFLIX-MIGRATION.md`.
 
 - [ ] **NIX-01**: Nixflix is pinned as a flake input to a reviewed commit with a ser8 adapter forcing live identities and existing state paths; PostgreSQL, local proxy, VPN, and qBittorrent service management stay disabled; ser8 builds without activation
 - [ ] **NIX-02**: The full API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, and a pre-cutover state snapshot with a tested state-aware rollback exists before reconciliation is enabled
-- [ ] **NIX-03**: All retained root folders, download clients (qBittorrent, NZBGet, SABnzbd), and Prowlarr objects are declared, and reconciliation is enabled for Sonarr, Radarr, and Prowlarr without removing any retained object
+- [ ] **NIX-03**: All retained root folders, download clients (NZBGet, SABnzbd), and Prowlarr objects are declared, and reconciliation is enabled for Sonarr, Radarr, and Prowlarr without removing any retained object
 - [ ] **NIX-04**: The overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are removed, with Nixflix owning that glue
-- [ ] **NIX-05**: Post-cutover, existing databases, history, and monitored items are intact; imports succeed from all three download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative torrent import creates a verified hardlink on `media/data`
+- [ ] **NIX-05**: Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import creates a verified hardlink on `media/data`
 - [ ] **NIX-06**: Jellyfin runs under Nixflix with a dedicated SOPS API key, preserved database/users/libraries, firebat known-proxy handling, and a healthy exporter
 
 ### New Services

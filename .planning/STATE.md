@@ -5,8 +5,8 @@ milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 13
 current_phase_name: ZFS Mirror Migration
 status: planning
-stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-08-24T02:18:50.764Z"
+stopped_at: Phase 13 context gathered (power mode, 17/17 decisions)
+last_updated: "2026-08-24T03:48:28.190Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
@@ -143,9 +143,9 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T02:05:30.832Z
-Stopped at: Completed 12-05-PLAN.md
-Resume file: None
+Last session: 2026-08-24T03:48:28.181Z
+Stopped at: Phase 13 context gathered (power mode, 17/17 decisions)
+Resume file: .planning/phases/13-zfs-mirror-migration/13-CONTEXT.md
 
 ## Operator Next Steps
 

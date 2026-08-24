@@ -5,15 +5,15 @@ milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 13
 current_phase_name: zfs-mirror-migration
 status: executing
-stopped_at: Completed 13-02-PLAN.md (repository storage declaration, on zfs-media-mirror branch)
-last_updated: "2026-08-24T07:23:29.811Z"
+stopped_at: Completed 13-03-PLAN.md (freeze + initial staging copy, media stack frozen and outage in progress on ser8)
+last_updated: "2026-08-24T18:12:28.403Z"
 last_activity: 2026-08-23
 last_activity_desc: v1.3 ROADMAP.md created (Phases 12-16, 25/25 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-23)
 ## Current Position
 
 Phase: 13 (zfs-mirror-migration) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-08-23 — Phase 13 execution started
 
-Progress: [██████░░░░] 58%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Phase 12 P05 | ~15min | 3 tasks | 4 files |
 | Phase 13 P01 | 25min | 4 tasks | 5 files |
 | Phase 13 P02 | ~20min | 3 tasks | 5 files |
+| Phase 13 P03 | ~10h47m (~45min active) | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Still-operative decisions for future work:
 - [Phase ?]: [Phase 13, Plan 01]: Live media usage ~2.06 TB lower than doc's 2026-08-13 snapshot (5.73TB vs 7.79TB), likely from Phase 12 qBittorrent/wgnord deletion; favorable for staging capacity margin
 - [Phase ?]: [Phase 13, Plan 02]: zfs-media-mirror branch declares the media zpool mirror (disko/config), removes MergerFS, and ships a six-check smoketest (D-19/D-22 import-write test); validated by make build-ser8, zero live ser8 state changed
 - [Phase ?]: [Phase 13, Plan 02]: Both checkpoint:decision tasks auto-approved per operator's explicit checkpoint policy (repo-only/build-only mutations); ZFS-02/ZFS-04 not marked complete since both describe live-state outcomes only reached after Plan 13-05's cutover
+- [Phase ?]: [Phase 13, Plan 03]: All 18 freeze-set services stopped and zero writers confirmed under /mnt/media (D-02/D-03) -- the sole freeze window for the whole migration; total app downtime clock started here
+- [Phase ?]: [Phase 13, Plan 03]: backup/media-staging created and verified within the D-17 capacity floor; single frozen rsync pass completed (7h43m, systemd-run detached unit) with exact structural match to source (3,478 files, 5,727,815,651,227 bytes both sides); ZFS-01 not yet marked complete pending Plan 13-04's checksum verification gate
 
 ### Pending Todos
 
@@ -150,8 +153,8 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-24T07:23:29.802Z
-Stopped at: Completed 13-02-PLAN.md (repository storage declaration, on zfs-media-mirror branch)
+Last session: 2026-08-24T18:12:28.395Z
+Stopped at: Completed 13-03-PLAN.md (freeze + initial staging copy, media stack frozen and outage in progress on ser8)
 Resume file: None
 
 ## Operator Next Steps

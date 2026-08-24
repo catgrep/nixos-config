@@ -181,6 +181,10 @@ Plan 13-03 (staging and initial copy) can proceed. It must `git checkout zfs-med
 
 **Rollback matrix:** unchanged from the "Before Step 3.1" row in `.planning/SER8-ZFS-MIRROR-MIGRATION.md` -- this plan touched only the git repository (a new branch and its commits), no live ser8 state. Reverting is `git branch -D zfs-media-mirror` on any clone that hasn't pulled it, or reverting the two commits on the branch itself; `main` was never touched.
 
+## Self-Check: PASSED
+
+All 7 created/modified files confirmed present on disk; all 3 commits (`d5529b7`, `624162f`, `fcdddd3`) confirmed in git log.
+
 ---
 *Phase: 13-zfs-mirror-migration*
 *Completed: 2026-08-24*

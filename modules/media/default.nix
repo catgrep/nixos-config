@@ -10,7 +10,6 @@
     ./radarr.nix
     ./bazarr.nix
     ./prowlarr.nix
-    ./qbittorrent.nix
     ./sabnzbd.nix
     ./nzbget.nix
   ];

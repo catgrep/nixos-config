@@ -200,25 +200,11 @@
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
-      # NordVPN WireGuard configuration
-      "nordvpn_access_token" = {
-        owner = "root";
-        group = "root";
-        mode = "0600";
-      };
       # Gmail SMTP password for msmtp (ZFS zed email alerts)
       "gmail_smtp_password" = {
         mode = "0400";
       };
     };
-  };
-
-  # Enable NordVPN for anonymized torrenting
-  nordvpn = {
-    enable = true;
-    accessTokenFile = config.sops.secrets.nordvpn_access_token.path;
-    dnsServers = [ config.networking.internal.adguard.address ]; # Use local AdGuard DNS
-    localNetworkAccess = "192.168.68.0/24"; # Local network subnet
   };
 
   # Enable specific media services

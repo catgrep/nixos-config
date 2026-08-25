@@ -108,7 +108,6 @@ help:
 	$(call help_option,"sops-edit-HOST","Edit secrets for './secrets/HOST.yaml'")
 	$(call help_option,"sops-edit-shared","Edit shared secrets './secrets/shared.yaml'")
 	$(call help_option,"sops-gen-hash","Generate a PBKDF2-SHA512 hashed password to use in declarative-jellyfin")
-	$(call help_option,"sops-gen-hash-qbittorrent","Generate PBKDF2-SHA512 hash for qBittorrent WebUI password")
 	$(call help_option,"sops-gen-api-key","Generate API keys for services")
 	$(call help_option,"sops-status","Check host age keys and whether './secrets/secrets.yaml' can be decrypted")
 	@echo
@@ -386,9 +385,6 @@ sops-status:
 
 sops-gen-hash:
 	@./scripts/sops/gen-hash.py
-
-sops-gen-hash-qbittorrent:
-	@./scripts/sops/gen-hash-qbittorrent.py
 
 sops-gen-api-key:
 	@./scripts/sops/gen-api-key.py

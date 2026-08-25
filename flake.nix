@@ -197,7 +197,6 @@
           modules = [
             ./modules/media
             ./modules/household
-            ./modules/nordvpn
             ./modules/automation
           ];
         };

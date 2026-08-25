@@ -143,7 +143,6 @@
               "http://192.168.68.65:8989" # Sonarr (ser8)
               "http://192.168.68.65:7878" # Radarr (ser8)
               "http://192.168.68.65:9696" # Prowlarr (ser8)
-              "http://192.168.68.65:8080" # qBittorrent via nginx (ser8)
               "http://192.168.68.65:8085" # SABnzbd (ser8)
               "http://192.168.68.65:6789" # NZBGet (ser8)
               "http://192.168.68.65:80" # Frigate via nginx (ser8)

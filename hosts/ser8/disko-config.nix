@@ -110,25 +110,18 @@ _:
         };
       };
 
-      # Media storage disks (2 x 12TB) - For MergerFS
+      # Media storage disks (2 x 12TB) - ZFS mirror for the media pool
       media-disk1 = {
         type = "disk";
         device = "/dev/disk/by-id/wwn-0x5000c500b56ea81a";
         content = {
           type = "gpt";
           partitions = {
-            # Using ext4 for MergerFS compatibility
-            media = {
+            zfs = {
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/mnt/disk1";
-                mountOptions = [
-                  "defaults"
-                  "nofail"
-                  "noatime"
-                ];
+                type = "zfs";
+                pool = "media";
               };
             };
           };
@@ -141,18 +134,11 @@ _:
         content = {
           type = "gpt";
           partitions = {
-            # Using ext4 for MergerFS compatibility
-            media = {
+            zfs = {
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/mnt/disk2";
-                mountOptions = [
-                  "defaults"
-                  "nofail"
-                  "noatime"
-                ];
+                type = "zfs";
+                pool = "media";
               };
             };
           };
@@ -284,6 +270,45 @@ _:
             type = "zfs_fs";
             options = {
               quota = "5T";
+            };
+          };
+        };
+      };
+
+      # Media pool (two-disk mirror, replacing the old ext4 + MergerFS pair).
+      # media/data is a single dataset holding the media libraries (movies,
+      # tv, music, books). One dataset, not one per library, because the old
+      # reason for that split -- letting hardlinks cross directories -- no
+      # longer applies now that torrents are retired; imports copy in from
+      # NVMe download staging instead of hardlinking. Compression (lz4) and a
+      # 1M recordsize suit the mostly-large media files. No auto-snapshots:
+      # the operator manages backup lifecycle by hand, and media content is
+      # deliberately outside the backup engine's scope -- the mirror is its
+      # own redundancy.
+      media = {
+        type = "zpool";
+        mode = "mirror";
+        options = {
+          ashift = "12";
+          autotrim = "on";
+        };
+        rootFsOptions = {
+          acltype = "posixacl";
+          compression = "lz4";
+          recordsize = "1M";
+          atime = "off";
+          xattr = "sa";
+          normalization = "formD";
+          dedup = "off";
+          mountpoint = "none";
+          canmount = "off";
+        };
+        datasets = {
+          "data" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "/mnt/media";
+              "com.sun:auto-snapshot" = "false";
             };
           };
         };

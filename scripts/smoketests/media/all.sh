@@ -117,4 +117,11 @@ else
 fi
 pass "Bazarr can read files and write directories in media libraries"
 
+if ./scripts/smoketests/media/test-zfs-media.sh "$host"; then
+	pass "ZFS media storage smoketest passed"
+else
+	fail "ZFS media storage smoketest failed"
+	exit 1
+fi
+
 pass "All media services smoketests passed"

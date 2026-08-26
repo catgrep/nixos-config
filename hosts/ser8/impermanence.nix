@@ -160,22 +160,19 @@
     "d /mnt/media 0775 media media -"
     "d /mnt/media/movies 2775 media media -"
     "d /mnt/media/tv 2775 media media -"
-    "d /mnt/media/music 0775 media media -"
-    "d /mnt/media/books 0775 media media -"
+    "d /mnt/media/music 2775 media media -"
+    "d /mnt/media/books 2775 media media -"
 
-    # Ensure download directories exist with proper media group permissions
-    "d /mnt/media/downloads 2775 media media -"
-    "d /mnt/media/downloads/tv 2775 media media -"
-    "d /mnt/media/downloads/movies 2775 media media -"
-
-    # SABnzbd Usenet downloads (setgid bit ensures files inherit media group)
-    "d /mnt/media/downloads/usenet 2775 media media -"
-    "d /mnt/media/downloads/usenet/incomplete 2775 media media -"
-    "d /mnt/media/downloads/usenet/complete 2775 media media -"
-    "d /mnt/media/downloads/usenet/complete/tv 2775 media media -"
-    "d /mnt/media/downloads/usenet/complete/movies 2775 media media -"
-    "d /mnt/media/downloads/usenet/complete/prowlarr 2775 media media -"
-    "d /mnt/media/downloads/usenet/complete/default 2775 media media -"
+    # NVMe download staging (rpool/safe/downloads, 500G quota). SABnzbd
+    # and NZBGet write here directly; Radarr/Sonarr import from here into
+    # the media mirror, mirroring the category structure above.
+    "d /mnt/downloads 2775 media media -"
+    "d /mnt/downloads/incomplete 2775 media media -"
+    "d /mnt/downloads/complete 2775 media media -"
+    "d /mnt/downloads/complete/tv 2775 media media -"
+    "d /mnt/downloads/complete/movies 2775 media media -"
+    "d /mnt/downloads/complete/prowlarr 2775 media media -"
+    "d /mnt/downloads/complete/default 2775 media media -"
 
     # Service-specific directories with proper permissions
     "d /persist/var/lib/sonarr 0755 sonarr media -"

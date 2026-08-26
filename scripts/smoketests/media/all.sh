@@ -73,7 +73,7 @@ pass "Media-facing services use the media primary group"
 
 info "testing completed download permissions"
 if bad_path=$(ssh "$user@$ipaddr" \
-	'find /mnt/media/downloads/complete /mnt/media/downloads/usenet/complete \
+	'find /mnt/downloads/complete \
     \( -type d \( ! -group media -o ! -perm 2775 \) \
     -o -type f \( ! -group media -o ! -perm 0664 \) \) \
     -print -quit'); then

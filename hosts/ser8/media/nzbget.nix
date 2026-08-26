@@ -24,8 +24,8 @@ in
   sops.templates."nzbget.conf" = {
     content = ''
       MainDir=/var/lib/nzbget
-      DestDir=/mnt/media/downloads/usenet/complete/default
-      InterDir=/mnt/media/downloads/usenet/incomplete
+      DestDir=/mnt/downloads/complete/default
+      InterDir=/mnt/downloads/incomplete
       NzbDir=/var/lib/nzbget/nzb
       QueueDir=/var/lib/nzbget/queue
       TempDir=/var/lib/nzbget/tmp
@@ -61,25 +61,25 @@ in
       Server1.IpVersion=auto
 
       Category1.Name=tv
-      Category1.DestDir=/mnt/media/downloads/usenet/complete/tv
+      Category1.DestDir=/mnt/downloads/complete/tv
       Category1.Unpack=yes
       Category1.Extensions=nzbget-normalize-permissions
       Category1.Aliases=
 
       Category2.Name=movies
-      Category2.DestDir=/mnt/media/downloads/usenet/complete/movies
+      Category2.DestDir=/mnt/downloads/complete/movies
       Category2.Unpack=yes
       Category2.Extensions=nzbget-normalize-permissions
       Category2.Aliases=
 
       Category3.Name=prowlarr
-      Category3.DestDir=/mnt/media/downloads/usenet/complete/prowlarr
+      Category3.DestDir=/mnt/downloads/complete/prowlarr
       Category3.Unpack=yes
       Category3.Extensions=nzbget-normalize-permissions
       Category3.Aliases=
 
       Category4.Name=default
-      Category4.DestDir=/mnt/media/downloads/usenet/complete/default
+      Category4.DestDir=/mnt/downloads/complete/default
       Category4.Unpack=yes
       Category4.Extensions=nzbget-normalize-permissions
       Category4.Aliases=
@@ -87,6 +87,15 @@ in
     owner = "nzbget";
     group = config.services.nzbget.group;
     mode = "0600";
+    # Without this, a content-only change to the rendered template (e.g. a
+    # download-path edit) never reaches the live nzbget.conf: media-config's
+    # cp only runs when systemd decides to (re)start it, and nzbget.service
+    # itself never re-reads the file on its own. Restarting media-config
+    # first redeploys the copy, then restarting nzbget picks it up.
+    restartUnits = [
+      "media-config.service"
+      "nzbget.service"
+    ];
   };
 
   systemd.services.media-config = {

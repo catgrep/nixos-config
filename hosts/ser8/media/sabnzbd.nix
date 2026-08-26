@@ -58,8 +58,8 @@
         nzb_key = ${config.sops.placeholder."sabnzbd_nzb_key"}
         username = admin
         password = ${config.sops.placeholder."sabnzbd_admin_password"}
-        download_dir = /mnt/media/downloads/usenet/incomplete
-        complete_dir = /mnt/media/downloads/usenet/complete/default
+        download_dir = /mnt/downloads/incomplete
+        complete_dir = /mnt/downloads/complete/default
         script_dir =
         log_dir = /var/lib/sabnzbd/logs
         admin_dir = /var/lib/sabnzbd/admin
@@ -163,7 +163,7 @@
         order = 0
         pp = 3
         script = Default
-        dir = /mnt/media/downloads/usenet/complete/tv
+        dir = /mnt/downloads/complete/tv
         newzbin =
         priority = 0
 
@@ -172,7 +172,7 @@
         order = 1
         pp = 3
         script = Default
-        dir = /mnt/media/downloads/usenet/complete/movies
+        dir = /mnt/downloads/complete/movies
         newzbin =
         priority = 0
 
@@ -181,7 +181,7 @@
         order = 2
         pp = 3
         script = Default
-        dir = /mnt/media/downloads/usenet/complete/prowlarr
+        dir = /mnt/downloads/complete/prowlarr
         newzbin =
         priority = 0
 
@@ -190,13 +190,22 @@
         order = 2
         pp = 3
         script = Default
-        dir = /mnt/media/downloads/usenet/complete/default
+        dir = /mnt/downloads/complete/default
         newzbin =
         priority = 0
       '';
       owner = "sabnzbd";
       group = config.services.sabnzbd.group;
       mode = "0600";
+      # Without this, a content-only change to the rendered template (e.g. a
+      # download-path edit) never reaches the live sabnzbd.ini: media-config's
+      # cp only runs when systemd decides to (re)start it, and sabnzbd.service
+      # itself never re-reads the file on its own. Restarting media-config
+      # first redeploys the copy, then restarting sabnzbd picks it up.
+      restartUnits = [
+        "media-config.service"
+        "sabnzbd.service"
+      ];
     };
   };
 

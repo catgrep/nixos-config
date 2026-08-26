@@ -216,6 +216,22 @@ _:
             };
             mountpoint = "/persist";
           };
+          # NVMe staging for download and unpack churn. Quota is the hard
+          # cap on download-client disk usage: a stuck or oversized import
+          # can never again bloat the media mirror the way it once did.
+          # Imports copy from here into the media mirror rather than
+          # hardlinking, because nothing seeds anymore.
+          "safe/downloads" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "/mnt/downloads";
+              quota = "500G";
+              compression = "lz4";
+              recordsize = "128K";
+              atime = "off";
+              dedup = "off";
+            };
+          };
         };
       };
 

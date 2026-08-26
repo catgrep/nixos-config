@@ -25,8 +25,10 @@ let
     "sonarr.service"
   ];
   mediaRoots = [
-    "/mnt/media/downloads"
+    "/mnt/downloads"
+    "/mnt/media/books"
     "/mnt/media/movies"
+    "/mnt/media/music"
     "/mnt/media/tv"
   ];
 in
@@ -43,7 +45,10 @@ in
     before = mediaServices;
     requiredBy = mediaServices;
 
-    unitConfig.RequiresMountsFor = [ "/mnt/media" ];
+    unitConfig.RequiresMountsFor = [
+      "/mnt/media"
+      "/mnt/downloads"
+    ];
 
     serviceConfig = {
       Type = "oneshot";

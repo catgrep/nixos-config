@@ -30,6 +30,7 @@ APPROVED_WWN_2="wwn-0x5000c500b3733a87"
 
 MEDIA_POOL="media"
 MEDIA_MOUNT="/mnt/media"
+# Shared media account uid, pinned in modules/common/users.nix
 MEDIA_UID="1100"
 
 # Track test results
@@ -159,13 +160,14 @@ test_canonical_dirs() {
 
 # Test 5: media group can read the canonical libraries
 test_service_access() {
-	info "checking media-group read access to $MEDIA_MOUNT/movies and $MEDIA_MOUNT/tv"
+	info "checking media-group read access to all canonical libraries"
 
 	# Empty output here means "no directory failed the check" -- a real pass,
 	# not an unreachable-host signal (find always exits 0 on a reachable host,
 	# with or without matches).
 	local bad_path
-	bad_path=$(remote find "$MEDIA_MOUNT/movies" "$MEDIA_MOUNT/tv" -maxdepth 0 \
+	bad_path=$(remote find "$MEDIA_MOUNT/movies" "$MEDIA_MOUNT/tv" \
+		"$MEDIA_MOUNT/books" "$MEDIA_MOUNT/music" -maxdepth 0 \
 		'(' ! -group media -o ! -perm -g+rx ')' -print)
 
 	if [ -n "$bad_path" ]; then

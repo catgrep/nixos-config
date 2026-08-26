@@ -15,7 +15,7 @@ if [ "${NZBPP_TOTALSTATUS:-}" != "SUCCESS" ]; then
 fi
 
 download_dir=${NZBPP_DIRECTORY:-}
-complete_root=${NZBGET_COMPLETE_ROOT:-/mnt/media/downloads/usenet/complete}
+complete_root=${NZBGET_COMPLETE_ROOT:-/mnt/downloads/complete}
 media_group=${NZBGET_MEDIA_GROUP:-media}
 directory_mode=${NZBGET_DIRECTORY_MODE:-2775}
 

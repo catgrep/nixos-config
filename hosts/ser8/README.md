@@ -1,3 +1,17 @@
+## Storage Architecture
+
+ser8 uses ZFS exclusively for persistent storage, split across four pools/datasets:
+
+- `rpool` — the system disk (NVMe).
+Holds the OS, the Nix store, and impermanence's rollback-on-boot root filesystem.
+- `backup` — a four-disk RAID-Z2 pool.
+Holds household application backups and Frigate's camera recordings and clips.
+- `media` — a two-disk mirror.
+Holds the full media library (movies, TV, music, books) as a single dataset, mounted at `/mnt/media`.
+It is one dataset rather than one per library because the old reason for that split — letting hardlinks cross directories for torrent seeding — no longer applies now that torrenting is retired; completed downloads are copied in during import instead of hardlinked.
+- `rpool/safe/downloads` — NVMe staging for in-progress and completed downloads, mounted at `/mnt/downloads`, with a hard quota so a stuck or oversized import can never again bloat the media mirror.
+SABnzbd and NZBGet write here; Radarr and Sonarr import from here into the mirror.
+
 ## Accessing Media Drive over SMB
 
 ### MacOS

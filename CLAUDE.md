@@ -27,7 +27,8 @@ The Pi hosts build from upstream `nixpkgs` with the pinned `nixos-hardware` boar
 The media host imports `modules/media/`, `modules/nordvpn/`, and `modules/automation/`.
 It runs Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, NZBGet, FlareSolverr, Frigate, Home Assistant, Mosquitto, and related exporters.
 qBittorrent runs in the NordVPN network namespace and is exposed locally through nginx.
-The host uses ZFS for the system and backup pool, MergerFS for `/mnt/media`, Samba for file sharing, and AMD hardware acceleration for media workloads.
+The host uses ZFS for all persistent storage: `rpool` (system disk, impermanence rollback), `backup` (RAID-Z2, archives and camera recordings), `media` (two-disk mirror, unified library mount at `/mnt/media`), and `rpool/safe/downloads` (NVMe staging with a hard quota, mounted at `/mnt/downloads`, used by SABnzbd and NZBGet before completed downloads are imported into the mirror).
+Samba exposes `/mnt/media` for shared access, and AMD hardware acceleration handles media workloads.
 Media configuration and service integration are coordinated by systemd units defined in `hosts/ser8/media.nix`.
 
 ### firebat

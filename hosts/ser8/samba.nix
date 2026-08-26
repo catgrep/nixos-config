@@ -98,7 +98,7 @@
         "directory mask" = "0775";
         "force create mode" = "0664";
         "force directory mode" = "0775";
-        comment = "Media Storage (MergerFS)";
+        comment = "Media Storage";
       };
     };
   };

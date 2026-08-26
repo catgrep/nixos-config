@@ -1,13 +1,16 @@
 {
   "mode": "interactive",
+  "model_profile": "budget",
   "parallelization": true,
   "commit_docs": true,
-  "model_profile": "budget",
   "workflow": {
     "research": false,
     "plan_check": false,
     "verifier": false,
     "_auto_chain_active": false
   },
-  "granularity": "coarse"
+  "granularity": "coarse",
+  "git": {
+    "create_tag": false
+  }
 }

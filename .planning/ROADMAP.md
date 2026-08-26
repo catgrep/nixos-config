@@ -1,17 +1,18 @@
-# Roadmap: NixOS Homelab Household Stack
+# Roadmap: NixOS Homelab Infrastructure
 
 ## Milestones
 
-- v1.0 Frigate-Home Assistant Integration - Phases 1-3 (shipped 2026-02-10)
-- v1.1 Monitoring & Alerting - Phases 4-8 (partially shipped; phases 5-7 shelved, see PROJECT.md Deferred)
-- **v1.2 Household Stack** - Phases 9-14 (in progress)
+- ✅ v1.0 Frigate-Home Assistant Integration - Phases 1-3 (shipped 2026-02-10)
+- ✅ v1.1 Monitoring & Alerting - Phases 4-8 (partially shipped; phases 5-7 shelved, see PROJECT.md Deferred)
+- ✅ v1.2 Household Stack - Phases 9-11 (shipped 2026-08-23)
+- 🚧 v1.3 ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 
 ## Phases
 
 **Phase Numbering:**
 
-- Integer phases (9, 10, 11): Planned milestone work
-- Decimal phases (10.1, 10.2): Urgent insertions (marked with INSERTED)
+- Integer phases (12, 13, 14): Planned milestone work
+- Decimal phases (12.1, 12.2): Urgent insertions (marked with INSERTED)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
@@ -39,145 +40,142 @@ Phase artifacts archived under `.planning/milestones/v1.1-phases/`.
 
 </details>
 
-### v1.2 Household Stack (In Progress)
+<details>
+<summary>v1.2 Household Stack (Phases 9-11) - SHIPPED 2026-08-23</summary>
 
-**Milestone Goal:** Four standalone self-hosted household services (Mealie, Donetick, Homebox, Actual Budget) on ser8, reachable through the firebat Caddy gateway on the tsnet pattern proven in Phase 10, with impermanence-safe persistence.
+- [x] **Phase 9: Channel Bump to NixOS 26.05** - Fleet off the EOL 25.11 channel; Pis re-platformed onto upstream nixpkgs + nixos-hardware (7/9 plans; gap-closure plans 09-08/09-09 deferred) — completed 2026-08-17
+- [x] **Phase 10: Household Foundation and Mealie** - Module scaffold, pinned PostgreSQL 17, Mealie in daily household use at `mealie.shad-bangus.ts.net` (5/8 plans; 3 dropped in the 2026-08-20 descope) — completed 2026-08-20
+- [x] **Phase 11: Homebox, Actual Budget, and Donetick** - All three remaining apps live on the Phase 10 household pattern, persistence proven by a real ser8 reboot (6/6 plans) — completed 2026-08-22
 
-Backups, `.vofi` TLS, the Google Tasks import, and the access-control acceptance gate were descoped on 2026-08-20 (operator decision: apps first, ceremony later). Their requirements are parked as Deferred in REQUIREMENTS.md.
+Backups, `.vofi` TLS, the Google Tasks import, and the access-control acceptance gate were descoped on 2026-08-20 (operator decision: apps first, ceremony later).
+Closed 2026-08-23 as an override closeout with 17 acknowledged deferred items (see STATE.md Deferred Items).
+Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifacts under `.planning/milestones/v1.2-phases/`.
 
-- [x] **Phase 9: Channel Bump to NixOS 26.05** - Move the flake off the EOL 25.11 channel and settle the Raspberry Pi input strategy
-- [x] **Phase 10: Household Foundation and Mealie** - Module scaffold, pinned PostgreSQL, and Mealie in daily household use at `mealie.shad-bangus.ts.net`
-- [x] **Phase 11: Homebox, Actual Budget, and Donetick** - All three remaining apps spun up on the Phase 10 household pattern (completed 2026-08-22)
+</details>
+
+### 🚧 v1.3 ZFS Mirror + Nixflix Migration (Phases 12-16, in progress)
+
+**Milestone Goal:** Rebuild ser8's media foundation in one milestone — storage first (MergerFS → two-disk ZFS mirror, paranoid and human-gated), then the full Nixflix migration through Recyclarr, Seerr, and Maintainerr, plus a nightly backup engine.
+
+- [x] **Phase 12: Fleet Repair** - Durably fix the wgnord/qBittorrent loop, sabnzbd uid drift, media UID/GID drift, and Radarr root-folder drift before the storage freeze (completed 2026-08-23)
+- [x] **Phase 13: ZFS Mirror Migration** - Migrate ser8 media storage from MergerFS to a two-disk ZFS mirror, human-gated per the migration doc's approval contract (completed 2026-08-25)
+- [ ] **Phase 14: Backup Engine** - Nightly application-aware backups to the ZFS backup pool for household and media app state, with demonstrated restores
+- [ ] **Phase 15: Nixflix Migration** - Adopt Nixflix as the declarative orchestration layer for Sonarr, Radarr, Prowlarr, and Jellyfin with full data retention
+- [ ] **Phase 16: New Services** - Stand up Recyclarr, Seerr, and Maintainerr (observation mode) on the migrated stack
 
 ## Phase Details
 
-### Phase 9: Channel Bump to NixOS 26.05
+### Phase 12: Fleet Repair
 
-**Goal**: The flake runs on a supported nixpkgs channel with all four hosts building cleanly, so the milestone can use the native 26.05 Mealie and Actual modules instead of overlay workarounds
-**Depends on**: Nothing (first phase of v1.2)
-**Requirements**: FOUND-01, FOUND-02
+**Goal**: The pre-existing fleet issues sitting on the storage and cutover critical paths are diagnosed and durably fixed in Nix, not just manually cleared.
+**Depends on**: Nothing (first phase of v1.3; builds on the v1.2-shipped fleet)
+**Requirements**: FLEET-01, FLEET-02, FLEET-03, FLEET-04
 **Success Criteria** (what must be TRUE):
 
-  1. `make check` passes on `nixos-26.05` and every host (ser8, firebat, pi4, pi5) dry-activates without evaluation errors
-  2. Both Raspberry Pi hosts build under a recorded input strategy — either the retained `nixos-raspberrypi` pin or upstream support (nixos-hardware for pi4, upstream nixpkgs for pi5) — with the decision and its test evidence in PROJECT.md Key Decisions
-  3. `services.actual` on ser8 evaluates with real `user`/`group`/`dataDir` options (the 26.05 module, not the 25.11 hard-coded `DynamicUser` one), confirming no unstable overlay is needed later in the milestone
-  4. ser8 activates the bumped configuration and the existing media, Frigate, and Home Assistant smoketests still pass
+  1. The NordVPN + qBittorrent stack is removed from code and state; the download path is usenet-only (SABnzbd/NZBGet) with no drift or restart-loop recurrence
+  2. `sabnzbd.service` is active and the firebat gateway's `https_sabnzbd` route is healthy again
+  3. Live ser8 media user/group identities match the repo's declarations with no blind recursive re-chown, and the reconciliation approach is recorded in PROJECT.md Key Decisions
+  4. Radarr reports `/mnt/media/movies` as its only root folder, with every previously registered movie file still present
 
-**Plans**: 7/9 plans executed (2 gap-closure plans added after verification)
-
-Plans:
+**Plans**: 5/5 plans executed
 **Wave 1**
 
-- [x] 09-01-PLAN.md — Bump nixpkgs to nixos-26.05; both x86 hosts evaluate and complete a remote activation preview
+- [x] 12-01-PLAN.md — Reconcile media user/group identity to live ser8 values (uid 1002 / gid 992) and audit for drift elsewhere
+- [x] 12-02-PLAN.md — Diagnose and repair sabnzbd's uid-drifted state with a static identity pin
+- [x] 12-03-PLAN.md — Delete the NordVPN + qBittorrent stack from code, wiring, monitoring, and docs
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [x] 09-02-PLAN.md — Re-platform both Pi hosts from the third-party fork onto upstream nixpkgs plus nixos-hardware
-- [x] 09-06-PLAN.md — Smoketest infrastructure: suite exit status, routine/disruptive VPN split, pi4 retirement from test and proxy paths
+- [x] 12-04-PLAN.md — Deploy the removal to ser8, archive-then-delete live state, remove secrets
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [x] 09-03-PLAN.md — ser8 regression checks: ZFS health, real VAAPI transcode, Frigate MQTT freshness, Home Assistant
-- [x] 09-04-PLAN.md — Align Home Manager with the channel, re-lock remaining inputs, and remove obsolete package-source workarounds
+- [x] 12-05-PLAN.md — Clean Radarr root folders and de-register dead qBittorrent download clients
 
-**Wave 4** *(blocked on Wave 3 completion)*
+### Phase 13: ZFS Mirror Migration
 
-- [x] 09-05-PLAN.md — Activate ser8, with the camera-dashboard check gating the permanent switch
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 09-07-PLAN.md — Activate firebat, confirm Grafana alert delivery before switching, record the FOUND-02 decision
-
-**Gap closure** *(from 09-VERIFICATION.md, status gaps_found)*
-
-- [ ] 09-08-PLAN.md — Remove the three always-passing checks from the regression gate: pi4/pi5 fake smoketest entries, the zero-route Caddy pass, the unreadable-journal pass
-- [ ] 09-09-PLAN.md — Human gates: revoke the installed third-party cache trust, decide the SC1 pi4/pi5 evidence bar, settle the ser8 reboot proofs
-
-### Phase 10: Household Foundation and Mealie
-
-**Goal**: Both household members plan recipes and share one shopping list at `mealie.shad-bangus.ts.net`, on a module, persistence, and gateway pattern the remaining three services reuse
-**Depends on**: Phase 9
-**Requirements**: FOUND-03, FOUND-04, MEAL-01, MEAL-02, MEAL-03, MEAL-04, MEAL-05, IMP-01
+**Goal**: ser8 media storage runs on a two-disk ZFS mirror with zero data loss, and MergerFS is fully retired, executed per the human-gated procedure in `.planning/SER8-ZFS-MIRROR-MIGRATION.md`.
+**Depends on**: Phase 12 (fleet must be stable and API-clean before the storage freeze)
+**Requirements**: ZFS-01, ZFS-02, ZFS-03, ZFS-04, ZFS-05
 **Success Criteria** (what must be TRUE):
 
-  1. Both household members log in to `https://mealie.shad-bangus.ts.net` through the firebat Caddy Tailscale (tsnet) vhost, with default admin credentials changed and registration closed
-  2. Both users see and edit the same single shared shopping list, and Foods and Units are seeded
-  3. Recipes, images, and uploads created before two consecutive ser8 reboots are all still present afterward
-  4. `modules/household/` plus `hosts/ser8/household/` exist following the reusable-module / host-policy split used by `modules/media/`, and PostgreSQL runs on ser8 on an explicitly pinned package version rather than one derived from `system.stateVersion`
-  5. The Google Takeout Tasks export has been requested and the delivered archive's real JSON structure is recorded for the later import, with no import code written yet
+  1. Both approved 12 TB disks pass a short SMART health test gate (self-test plus zero pending/reallocated/offline-uncorrectable sectors), and the full media tree is staged to `backup/media-staging` with a frozen, checksum-verified final sync reporting zero unexplained differences
+  2. `zpool status media` shows one online `mirror-0` vdev with exactly the two approved WWNs, and `media/data` is mounted at `/mnt/media` with the documented pool and dataset properties
+  3. The restore from staging into the new mirror verifies checksum-identical against the frozen source, and the first scrub completes with zero data errors
+  4. MergerFS is gone from the active configuration, disko declares the mirror, and the full media stack (Jellyfin, Sonarr, Radarr, Bazarr, SABnzbd, NZBGet, Samba) runs healthy on ZFS with smoketests asserting pool health, mirror membership, and a working import-write ownership check
+  5. Every destructive step was individually approved per the migration doc's per-step approval contract, and `backup/media-staging` is destroyed only after post-cutover observation and a separate approval
 
-**Plans**: 5/8 executed; 10-02, 10-07, 10-08 dropped at phase close (operator decision 2026-08-20)
+**Plans**: 7/7 plans executed (one per migration-doc stage, per D-10 — session boundaries align with the multi-hour unattended operations)
+**Wave 1** *(sequential — each plan gates the next; this is a strictly sequential live storage migration, not a parallelizable phase)*
 
-**Closed as-is on 2026-08-20.** Mealie is live and in household use.
-Dropped with the descope: the Google Takeout request/inspection (10-02, 10-08 — parked with IMP-01) and the formal two-reboot drill (10-07 — persistence is configured identically to the proven media services; MEAL-05's formal proof was waived).
-Success criterion 5 (Takeout) was waived; criterion 3 (reboot proof) accepted on configuration evidence.
-MEAL-04's shared list is proven server-side bidirectionally; the two-profile UI observation was accepted without formal re-verification.
+- [x] 13-01-PLAN.md — Preflight & doc reconciliation: amend the migration doc first (D-01), short SMART gate, source inventory manifest
+- [x] 13-02-PLAN.md — Repository storage declaration: disko/configuration/impermanence changes on a feature branch, new pool-health smoketest
+- [x] 13-03-PLAN.md — Freeze the app stack and run the single frozen staging copy (D-03 quiesce timing)
+- [x] 13-04-PLAN.md — Gate 3.3: sampled + metadata verification of staging vs the frozen source (D-07)
+- [x] 13-05-PLAN.md — Destructive cutover: disk erase, mirror creation, masked activation, branch merge
+- [x] 13-06-PLAN.md — zfs send/recv restore, ordered service startup, application/storage tests (D-08)
+- [x] 13-07-PLAN.md — First scrub, staging destroy, MergerFS doc sweep, downloads relocation to NVMe (D-19/D-20/D-21)
 
-Plans:
+**Human gate**: yes — every destructive step in this phase requires individual, separately-scoped approval per `.planning/SER8-ZFS-MIRROR-MIGRATION.md`'s Approval Contract; no step may be batch-approved.
 
-- [x] 10-01-PLAN.md — Tracer: household module scaffold, pinned PostgreSQL 17, Mealie 3.22.0, and the firebat tsnet vhost, locked behind an offline eval gate
-- [ ] 10-02-PLAN.md — DROPPED: Google Takeout export request (parked with IMP-01)
-- [x] 10-03-PLAN.md — Household smoketest area: service, endpoint, and both state stores, joined to the ser8 and gateway suites
-- [x] 10-04-PLAN.md — Activate ser8: pre-flight the empty-PostgreSQL premise, cross the one-way version thresholds, confirm the live schema
-- [x] 10-05-PLAN.md — Activate firebat, prove the mealie tsnet node registers, and confirm the endpoint end to end in a browser
-- [x] 10-06-PLAN.md — Mealie bootstrap: two accounts in one household, dead default credentials, seeded Foods and Units, shared shopping lists
-- [ ] 10-07-PLAN.md — DROPPED: formal two-reboot persistence drill (waived)
-- [ ] 10-08-PLAN.md — DROPPED: Takeout archive inspection (parked with IMP-01)
+### Phase 14: Backup Engine
 
-### Phase 11: Homebox, Actual Budget, and Donetick
-
-**Goal**: Homebox, Actual Budget, and Donetick run on ser8 and are reachable through the firebat gateway, each usable by both household members — the same shape as Mealie, three more times
-**Depends on**: Phase 10
-**Requirements**: HBX-01, HBX-02, HBX-03, ACT-01, ACT-02, ACT-03, DTK-01, DTK-02, DTK-03, DTK-04
+**Goal**: Every stateful service on ser8 — household apps and media apps alike — is protected by a nightly, application-aware backup with a demonstrated, working restore path.
+**Depends on**: Phase 13 (backup dataset properties and media-state coverage target the final ZFS topology)
+**Requirements**: BKP-01, BKP-02, BKP-03, BKP-04, BKP-05, BKP-06, BKP-07
 **Success Criteria** (what must be TRUE):
 
-  1. Homebox, Actual Budget, and Donetick each load at `<name>.shad-bangus.ts.net` through the firebat Caddy tsnet pattern proven in Phase 10 (supersedes the `.vofi`/AdGuard wording in the requirement text)
-  2. Each service has both household members set up (one shared group/circle where the app has one) and self-signup closed
-  3. Each service's state lives under the household persistence pattern (`modules/household/` + `hosts/ser8/household/`) and survives a ser8 reboot
+  1. A nightly backup job runs on ser8 against a dedicated dedup-off dataset on the backup pool, covering Mealie (pg_dump plus the recipe image/upload directory), every SQLite-backed service (via `sqlite3 .backup`/`VACUUM INTO` with `PRAGMA integrity_check`, never a raw copy), and Actual Budget (`account.sqlite` plus the entire `user-files/` tree)
+  2. Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet) is covered by the same nightly engine using the correct backup method per state store
+  3. A Mealie restore into a scratch instance has been performed and documented
+  4. A restore of one SQLite-backed service and of Actual Budget has been demonstrated
 
-**Plans**: 6/6 plans executed
+**Plans**: TBD
 
-Plans:
-**Wave 1**
+### Phase 15: Nixflix Migration
 
-- [x] 11-01-PLAN.md — Homebox: module, secret, persistence, gateway, both members bootstrapped, registration closed
+**Goal**: Nixflix is the declarative orchestration layer for Sonarr, Radarr, Prowlarr, and Jellyfin on ser8, with full data retention and no removed configuration, executed per the staged plan in `.planning/SER8-NIXFLIX-MIGRATION.md`.
+**Depends on**: Phase 14 (the pre-cutover snapshot and tested rollback ride on the backup engine; declarations target the final ZFS topology)
+**Requirements**: NIX-01, NIX-02, NIX-03, NIX-04, NIX-05, NIX-06
+**Success Criteria** (what must be TRUE):
 
-**Wave 2** *(blocked on Wave 1 completion)*
+  1. Nixflix is pinned as a flake input to a reviewed commit with a ser8 adapter forcing live identities and existing state paths; PostgreSQL, local proxy, VPN, and qBittorrent service management stay disabled, and ser8 builds without activation
+  2. A full pre-cutover API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, a state snapshot exists, and a tested state-aware rollback has been proven before reconciliation is enabled
+  3. All retained root folders, download clients (NZBGet, SABnzbd), and Prowlarr objects are declared, reconciliation is enabled for Sonarr/Radarr/Prowlarr with no retained object removed, and the overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are gone
+  4. Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import creates a verified hardlink on `media/data`
+  5. Jellyfin runs under Nixflix with a dedicated SOPS API key, preserved database/users/libraries, firebat known-proxy handling, and a healthy exporter
 
-- [x] 11-02-PLAN.md — Actual: static user, persistence, gateway, server password set
+**Plans**: TBD
+**Human gate**: yes — the cutover (criteria 2-4) requires a full inventory export, a state snapshot, and a tested rollback proven before reconciliation is enabled; treat enabling reconciliation as its own approved step, not implied by earlier declaration work.
 
-**Wave 3** *(blocked on Wave 2 completion)*
+### Phase 16: New Services
 
-- [x] 11-03-PLAN.md — Actual: create the one budget file (human-action), decline encryption, verify by SQL
+**Goal**: Recyclarr, Seerr, and Maintainerr are live on the migrated Nixflix stack, each conservatively scoped per its low-ceremony standup.
+**Depends on**: Phase 15 (all three attach to the Nixflix-managed Sonarr/Radarr/Jellyfin stack)
+**Requirements**: SVC-01, SVC-02, SVC-03
+**Success Criteria** (what must be TRUE):
 
-**Wave 4** *(blocked on Wave 3 completion)*
+  1. Recyclarr applies TRaSH-aligned quality profiles and custom formats to Sonarr and Radarr, with unmanaged-profile cleanup disabled, and scoring has been reviewed against representative media
+  2. Seerr is live with Jellyfin authentication and connected to Sonarr/Radarr; household members can request content, with firebat Caddy/Tailscale routing, monitoring, and smoketest coverage in place
+  3. Maintainerr runs in observation mode with all rules in preview/no-action, zero deletions, and visibility into what each rule would do
 
-- [x] 11-04-PLAN.md — Donetick: local package (`nix build .#donetick`), NixOS module, sops JWT secret, ser8 activation
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 11-05-PLAN.md — Donetick: gateway vhost, both members bootstrapped into one circle, signup closed
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 11-06-PLAN.md — Cross-app: reboot ser8 once, prove all three services' state survives
+**Plans**: TBD
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 9 -> 10 -> 11.
-Phases 11-14 of the original plan (backups, `.vofi` TLS, Tasks import, access-control gate) were descoped on 2026-08-20; their requirements are Deferred in REQUIREMENTS.md.
+| Milestone | Phases | Plans | Status | Shipped |
+|-----------|--------|-------|--------|---------|
+| v1.0 Frigate-HA Integration | 1-3 | 6/6 | Complete | 2026-02-10 |
+| v1.1 Monitoring & Alerting | 4-8 | 9/9 executed (phases 5-7 shelved) | Partial | 2026-02-12 |
+| v1.2 Household Stack | 9-11 | 18/23 (3 dropped, 2 deferred) | Complete | 2026-08-23 |
+| v1.3 ZFS Mirror + Nixflix Migration | 12-16 | 0/TBD | Not started | - |
 
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1. Integration Foundation | v1.0 | 2/2 | Complete | 2026-02-10 |
-| 2. Push Notifications | v1.0 | 2/2 | Complete | 2026-02-10 |
-| 3. Camera Dashboard | v1.0 | 2/2 | Complete | 2026-02-10 |
-| 4. Alert Delivery & Service Probes | v1.1 | 2/2 | Complete | 2026-02-12 |
-| 5. Hardware Alerts & Status Dashboard | v1.1 | 2/2 | Deferred (shelved to Future Requirements) | - |
-| 6. Log Aggregation | v1.1 | 0/TBD | Deferred (shelved to Future Requirements) | - |
-| 7. HA Monitoring | v1.1 | 0/TBD | Deferred (shelved to Future Requirements) | - |
-| 8. Reorganize ser8 media.nix | v1.1 | 7/7 | Complete (2 verification gaps recorded) | - |
-| 9. Channel Bump to NixOS 26.05 | v1.2 | 7/7 | Complete | 2026-08-17 |
-| 10. Household Foundation and Mealie | v1.2 | 5/8 | Complete (3 plans dropped at close) | 2026-08-20 |
-| 11. Homebox, Actual Budget, and Donetick | v1.2 | 6/6 | Complete    | 2026-08-22 |
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 12. Fleet Repair | 0/TBD | Not started | - |
+| 13. ZFS Mirror Migration | 0/7 | Not started | - |
+| 14. Backup Engine | 0/TBD | Not started | - |
+| 15. Nixflix Migration | 0/TBD | Not started | - |
+| 16. New Services | 0/TBD | Not started | - |
+
+Milestone in progress: v1.3 ZFS Mirror + Nixflix Migration (Phases 12-16). Next: `/gsd-plan-phase 12`.

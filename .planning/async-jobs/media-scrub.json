@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "job_id": "media-scrub",
+  "plan_id": "13-07",
+  "phase": "13",
+  "backend": "systemd-run",
+  "status": "completed-verified",
+  "submit_command": "ssh bdhill@192.168.68.65 'sudo systemd-run --unit=media-scrub --description=\"Phase 13: first scrub of media pool\" -- zpool scrub media'",
+  "expected_artifacts": [
+    "media zpool scrub completes with 0 errors and 0B (or fully explained nonzero) repaired, both mirror members remaining ONLINE (ZFS-03)"
+  ],
+  "verification_command": "ssh bdhill@192.168.68.65 'sudo zpool status media'",
+  "resume_command": "ssh bdhill@192.168.68.65 'systemctl status media-scrub --no-pager; journalctl -u media-scrub --no-pager | tail -80; sudo zpool status media'",
+  "resume_token_recovery": "zpool scrub has no resumable-stream concept -- if the host reboots mid-scrub, ZFS automatically resumes the scrub from its last checkpoint on the next pool import (visible as 'scan: scrub in progress' continuing, not restarting from 0%, unless the pool itself was exported/re-imported in a way that reset scan state). If the media-scrub unit is gone (garbage-collected as a transient unit after completion) but no scrub is shown by `zpool status media`, check for a completed scan line (`scan: scrub repaired ... on <date>`) before concluding the scrub needs to be relaunched.",
+  "submitted_at": "2026-08-25T15:16:30Z",
+  "terminal_details": {
+    "completed_at": "2026-08-25T15:59:52Z",
+    "wall_clock": "07h42m32s (per zpool status's own reported scrub duration; the unit's own start-to-exit window closely matches, finishing well under the ~11.7h throughput-based estimate at launch)",
+    "systemctl": "ActiveState=inactive SubState=dead Result=success ExecMainStatus=0 -- independently re-queried directly against ser8, not trusted from the relayed report alone",
+    "zpool_status": "scan: scrub repaired 0B in 07:42:32 with 0 errors on Tue Aug 25 15:59:52 2026; media ONLINE; both approved WWN mirror members ONLINE with 0/0/0 read/write/cksum; errors: No known data errors",
+    "zfs_03_disposition": "Satisfied -- restore verified intrinsically checksum-clean at receive time (Plan 13-06) plus this scrub's independent zero-error, zero-repair result across the full 5.24T dataset",
+    "staging_state_at_verification": "backup/media-staging still exists (5.05T used), untouched by this job or this plan -- destroy is deferred to the operator, see deferred-items.md and evidence/scrub-and-staging-destroy.md"
+  },
+  "notes": "Dispatched as a detached systemd-run transient unit on ser8 (D-13); survives SSH disconnect. Preconditions independently confirmed before launch: zpool status media ONLINE with 0 errors on both approved WWN mirror members, backup/media-staging still present (5.05T used, untouched), all freeze-set units (jellyfin, sonarr, radarr, sabnzbd, nzbget, prowlarr, samba-smbd) active. Launch confirmed via a brief settle period -- the zpool scrub command itself held in D-state (uninterruptible disk wait) for roughly 50s while acquiring the pool's config lock under live service I/O before returning; `zpool status media` then showed 'scan: scrub in progress since Tue Aug 25 08:17:20 2026' at 177M/s, 4.16G/5.24T scanned, 0B repaired. Estimated ~11.7h at measured throughput with services live, per the plan's Task 1 context. This session ends here per D-12 (detached, long-running job) -- the next task (verify scrub completion) must be run in a fresh session after the media-scrub unit reports exited/inactive, per that task's own <precondition>.\n\nOperator decision mid-plan: while this scrub ran, the operator approved proceeding out of order with the plan's remaining non-scrub-dependent work (all now complete and committed): the MergerFS doc sweep, and declaring/activating rpool/safe/downloads (500G quota, created imperatively matching the disko declaration, same pattern as Plan 13-05) plus migrating SABnzbd/NZBGet download paths onto it. The staging-destroy step (originally this plan's Step 6.1/6.2) is now permanently out of this plan's scope -- the operator will run `zfs destroy -r backup/media-staging` themselves after independently confirming this scrub's clean result; see deferred-items.md. Last observed scrub progress before this checkpoint: 3.34T/5.24T scanned (3.67% done), 0B repaired, ~10h19m remaining at 08:40 PDT 2026-08-25."
+}

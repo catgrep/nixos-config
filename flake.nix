@@ -78,6 +78,7 @@
             "~/.npm-global"
             "~/Library/Application Support"
             "~/AGENTS.md"
+            "~/github/experiments"
             "~/.ssh"
           ];
           extraWritePaths = [
@@ -98,6 +99,11 @@
           };
         };
 
+      # x86_64-darwin is dropped: nixpkgs stopped supporting it after 26.05, and
+      # the unstable input these are built from is past that. Its legacyPackages
+      # entry throws on evaluation rather than being absent, so leaving the key
+      # in place took down every command that walks the whole flake, `nix flake
+      # show` and `nix flake check` included.
       sagentPackages = builtins.mapAttrs (
         system: packages:
         let
@@ -105,11 +111,11 @@
           configuredSagent = sagentFor system;
         in
         packages
-        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
           sagent = configuredSagent;
           default = configuredSagent;
         }
-      ) sagent.packages;
+      ) (nixpkgs.lib.filterAttrs (system: _: system != "x86_64-darwin") sagent.packages);
 
       subgenPackagesFor =
         system:
@@ -170,7 +176,9 @@
           inherit system;
           specialArgs = {
             inherit inputs;
-            # Retained with no in-tree consumers: Phase 10 needs this plumbing.
+            # Retained with no in-tree consumers: keeps an unstable package one
+            # argument away from any host module, without rewiring specialArgs
+            # at the point someone first needs it.
             unstable = import nixpkgs-unstable {
               inherit system;
               config.allowUnfree = true;
@@ -249,7 +257,7 @@
 
       # kexec installers for nixos-anywhere. The Raspberry Pi sd-image entries were
       # removed with the third-party fork that built them; a minimal upstream
-      # bootstrap image is deferred (D-02).
+      # bootstrap image has not been built to replace them yet.
       installerConfigurations = {
         aarch64-kexec = nixos-images.packages.aarch64-linux.kexec-installer-nixos-unstable;
         x86_64-kexec = nixos-images.packages.x86_64-linux.kexec-installer-nixos-unstable;
@@ -295,7 +303,7 @@
                   sagent.packages.${system}.ast-bro
                   sagent.packages.${system}.treehouse
                 ]
-                ++ lib.optionals pkgs.stdenv.isDarwin [
+                ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
                   (sagentFor system)
                 ];
             };
@@ -303,8 +311,55 @@
         {
           x86_64-linux.default = makeDevShell "x86_64-linux";
           aarch64-darwin.default = makeDevShell "aarch64-darwin";
-          x86_64-darwin.default = makeDevShell "x86_64-darwin";
           aarch64-linux.default = makeDevShell "aarch64-linux";
+          # No x86_64-darwin: nixpkgs dropped the platform after 26.05, and the
+          # unstable input this shell is built from is past that. The key threw
+          # on evaluation rather than producing anything, which took the whole
+          # flake down with it whenever every output was walked.
+        };
+
+      # Virtual-machine tests. These boot a real NixOS guest with real ZFS pools,
+      # so they answer questions activation never does.
+      #
+      # backup-behavior builds the pools by hand and exercises what the engine
+      # does with them: whether a recursive snapshot really lands the whole tree
+      # in one transaction group, whether a replicated dataset can mount over
+      # live service state, and whether state copied out of a snapshot actually
+      # comes back.
+      #   nix build .#checks.x86_64-linux.backup-behavior
+      #
+      # backup-layout asks the prior question, and the one activation is worst
+      # at: whether the storage declarations would build the tree at all. It
+      # installs from a reduced copy of ser8's disk configuration, boots the
+      # result, and checks every dataset, mountpoint and tuned property against
+      # what was declared. Activation never runs the create logic, so a dataset
+      # can be declared for months while nothing exists and the service quietly
+      # writes to a root filesystem that gets rolled back at boot. That has
+      # happened here twice.
+      #   nix build .#checks.x86_64-linux.backup-layout
+      #
+      # Both run under `nix flake check`, and therefore under `make check`,
+      # which is materially slower for it. That is the trade.
+      #
+      # x86_64-linux only -- the tests need a Linux guest, and a darwin key that
+      # can never evaluate is worse than no key at all.
+      checks =
+        let
+          makeChecks =
+            system:
+            let
+              pkgs = nixpkgs.legacyPackages.${system};
+            in
+            {
+              backup-behavior = import ./tests/backup-behavior.nix { inherit pkgs; };
+              backup-layout = import ./tests/backup-layout.nix {
+                inherit pkgs;
+                diskoLib = disko.lib;
+              };
+            };
+        in
+        {
+          x86_64-linux = makeChecks "x86_64-linux";
         };
 
       # Service discovery - maps enabled services to their packages per host

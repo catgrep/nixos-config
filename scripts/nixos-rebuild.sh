@@ -93,7 +93,12 @@ nixos_rebuild() {
 	build_logs="./logs/nixos-rebuild.log-$(date +%Y%m%d-%H%M%S)"
 	info "build logs will be at: '$build_logs'"
 
-	nixos-rebuild "${args[@]}" | tee -a "$build_logs"
+	# nixos-rebuild-ng places its SSH ControlPath socket under $TMPDIR. macOS
+	# caps Unix socket paths at 104 bytes, and the nix dev shell's TMPDIR
+	# (/tmp/nix-shell.XXXXXX) pushes the socket path over that limit:
+	#   unix_listener: path "..." too long for Unix domain socket
+	# Pin TMPDIR to /tmp for this invocation so the socket path stays short.
+	TMPDIR=/tmp nixos-rebuild "${args[@]}" | tee -a "$build_logs"
 }
 
 nixos_generate_config() {

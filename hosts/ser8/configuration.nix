@@ -13,6 +13,7 @@
     ./disko-config.nix
     ./media
     ./household
+    ./backup
   ];
 
   # Media server networking configuration
@@ -115,14 +116,6 @@
     autoScrub = {
       enable = true;
       interval = "weekly";
-    };
-    autoSnapshot = {
-      enable = true;
-      frequent = 4; # Keep 4 15-minute snapshots
-      hourly = 24; # Keep 24 hourly snapshots
-      daily = 7; # Keep 7 daily snapshots
-      weekly = 4; # Keep 4 weekly snapshots
-      monthly = 12; # Keep 12 monthly snapshots
     };
     # ZFS Event Daemon -- sends email on scrub errors, resilver events, etc.
     zed = {

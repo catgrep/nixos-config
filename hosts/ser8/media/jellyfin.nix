@@ -61,6 +61,15 @@ in
   services.declarative-jellyfin = {
     enable = lib.mkDefault true;
 
+    # Off, because every activation tarred the whole Jellyfin state -- roughly
+    # 1.8 GB a time, five of them on one day -- into the same tree that gets
+    # snapshotted and replicated. That churn dominated everything else on the
+    # persisted disk and would dominate every snapshot delta and every
+    # replication stream. What the tarballs were for, rolling back a bad
+    # configuration, is already covered by the snapshots of this state and by
+    # the system's own generations.
+    backups = false;
+
     users = {
       admin = householdUser {
         isAdministrator = true;

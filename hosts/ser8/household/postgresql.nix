@@ -13,7 +13,7 @@
   # /var/lib/postgresql/17.
   #
   # Changing this major after data exists requires a manual pg_upgrade against
-  # the impermanence-persisted data directory under /persist/var/lib/postgresql;
+  # the data directory under /var/lib/postgresql, which is its own dataset;
   # the server refuses to start on a data directory written by another major.
   services.postgresql.package = pkgs.postgresql_17;
 }

@@ -1,0 +1,647 @@
+{
+  "phase": "14-backup-engine",
+  "generated_at": "2026-08-26T01:35:19Z",
+  "stats": {
+    "total": 21,
+    "answered": 21,
+    "chat_more": 9,
+    "remaining": 0
+  },
+  "sections": [
+    {
+      "id": "engine-architecture",
+      "title": "Engine Architecture",
+      "questions": [
+        {
+          "id": "Q-01",
+          "title": "Storage format on the backup dataset",
+          "context": "BKP-01 locks 'nightly job writes to a dedicated dedup-off dataset on the backup pool'. The existing backup/backups dataset has dedup=on (disko-config.nix), so a NEW dataset is needed regardless. Open question: what do the backup artifacts look like on it? Nightly payload is small (pg_dump + a dozen SQLite dumps, likely MBs to low GBs) on an 11 TB pool.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Plain dated directories",
+              "description": "e.g. <dataset>/<service>/<date>/. Dumps land as ordinary files; restore is cp/sqlite3/pg_restore with zero extra tooling; human- and agent-greppable; ZFS lz4 compresses. Tradeoff: no cross-night dedup (full copies each night) \u2014 likely irrelevant at this payload size on this pool."
+            },
+            {
+              "id": "b",
+              "label": "restic repository",
+              "description": "Content-addressed dedup, encryption, and retention (forget --prune) built in; restic is already installed. Tradeoff: opaque repo (every restore needs restic), a repo password to manage in SOPS, and a heavier moving part for a local-only target."
+            },
+            {
+              "id": "c",
+              "label": "Plain dirs + nightly zfs snapshot",
+              "description": "Engine writes/overwrites a 'latest' tree; retention = ZFS snapshots of the dataset, pruned on schedule. History browsable via .zfs/snapshot; no new tools. Tradeoff: retention logic lives in ZFS-land; restore of older nights goes through snapshot paths, slightly less obvious than dated dirs."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "We should have a sliding window for how long snapshots are retained. We can get remote backups working later, which can be used to store indefinitely.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-02",
+          "title": "Orchestration shape",
+          "context": "The repo already splits per-service host modules under hosts/ser8/media/ and hosts/ser8/household/. The engine must cover ~12 services with 3 different methods (pg_dump, sqlite3 .backup, file copy).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Per-service systemd units + one nightly timer",
+              "description": "backup-mealie.service, backup-sonarr.service, ... pulled in by a backup-nightly.target. Failures isolated per service; systemctl status is legible per app; matches the repo's per-service module layout. Tradeoff: more units to declare (mitigated by a Nix helper function)."
+            },
+            {
+              "id": "b",
+              "label": "Single orchestrator script/unit",
+              "description": "One backup-nightly.service walking all services in sequence. One place to read the whole flow. Tradeoff: one failure blob (needs careful continue-on-error logic), one giant script, per-service status less visible to systemd/monitoring."
+            },
+            {
+              "id": "c",
+              "label": "Nix module with per-service options",
+              "description": "A homelab.backup.services.<name> = { method = \"sqlite\"; paths = [...]; } option set that generates the per-service units. Most idiomatic and reusable (future hosts, Phase 15 path changes become one-line edits). Tradeoff: most upfront design; risks over-abstraction for a single host \u2014 but Phase 15 WILL move paths, so declarative coverage pays off next phase."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "I like c, but doesn't need to be per-service option but per domain.\n\nI'm not sure where this should be registered, either. The current flake structure isn't well-suited for flake-parts / modular options.\n\nWe also need to explore restore behavior -- this also makes me think, is there a flake / app / service that already supports this kind of workflow with a nice UI? \n\nLike backing up a sqlite db has nothing to do with the service that uses, we just generate a new backup service for the target.\n\nWe can also think about systemd targets here, like sshd-keygen uses for parameterized key generation targets.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-03",
+          "title": "Nightly schedule and missed-run policy",
+          "context": "ser8 is busiest overnight: SABnzbd/NZBGet imports and Frigate camera writes run 24/7. systemd Persistent=true replays a missed run after downtime (relevant \u2014 ser8 reboots happen during phases).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Fixed 03:00 + Persistent=true",
+              "description": "Simple, predictable, easy to reason about in logs and alerts. Tradeoff: may collide with overnight download/import churn (app-consistency is fine \u2014 dumps are transactional \u2014 it's just I/O contention)."
+            },
+            {
+              "id": "b",
+              "label": "03:00 + RandomizedDelaySec + Persistent=true",
+              "description": "Spreads I/O within a window to avoid a thundering herd of per-service units. Tradeoff: 'when did last night's backup run' becomes fuzzy by up to the delay window."
+            },
+            {
+              "id": "c",
+              "label": "Planner picks the quiet window",
+              "description": "Let the planner measure ser8's actual overnight I/O pattern (download schedules, Frigate churn) and pick the time. Tradeoff: one more research task, but grounded in evidence \u2014 matches the Phase 13 measured-data posture."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-04",
+          "title": "Retention policy",
+          "context": "Retention interacts with Q-01 (dirs pruned by the engine vs snapshots vs restic forget). Payload is small, pool is 11 TB \u2014 space is not the constraint; recovery-window coverage is.",
+          "options": [
+            {
+              "id": "a",
+              "label": "14 nightlies, flat",
+              "description": "Two weeks of point-in-time recovery, dead-simple pruning. Tradeoff: silent data corruption discovered after 2 weeks is unrecoverable."
+            },
+            {
+              "id": "b",
+              "label": "GFS: 7 daily + 4 weekly + 6 monthly",
+              "description": "Long tail for slow-burn problems (corrupted recipe found months later) at ~17 retained sets. Tradeoff: slightly more pruning logic (trivial with restic/zfs snapshot naming, manual-ish with plain dirs)."
+            },
+            {
+              "id": "c",
+              "label": "30 nightlies, flat",
+              "description": "A month of dailies, still simple pruning. Tradeoff: no long tail beyond 30 days; 2x the sets of option (a) for marginal gain over GFS."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-05",
+          "title": "Fate of the stale backup scaffolding",
+          "context": "modules/servers/backup.nix (imported by ser8 via flake.nix) is a dead template: installs borg+restic+rsync, creates an unused 'backup' user, and ships a placeholder script to /etc/backup/. Repo philosophy: 'replace, don't deprecate'. Separately, the legacy backup/backups dataset (dedup=on, /mnt/backups) may hold manually-placed data \u2014 needs a live check before touching.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Delete template; leave legacy dataset alone",
+              "description": "Remove the dead module (and its unused user) as part of this phase; new engine gets its own module. backup/backups stays as-is for manual use after verifying contents. Tradeoff: dedup=on lingers on a dataset the engine doesn't use \u2014 harmless but a standing footgun."
+            },
+            {
+              "id": "b",
+              "label": "Delete template AND rationalize the legacy dataset",
+              "description": "Also audit /mnt/backups contents, migrate anything real into the new layout, then flip dedup off (or retire the dataset). Cleanest end state, single backup surface. Tradeoff: touches live data \u2014 needs its own gated step and an inventory first."
+            },
+            {
+              "id": "c",
+              "label": "Leave template in place",
+              "description": "Ship the new engine alongside the old scaffolding. Tradeoff: violates the repo's no-dead-code stance; the placeholder script and unused user keep misleading future readers. Not recommended."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "coverage",
+      "title": "Coverage Inventory",
+      "questions": [
+        {
+          "id": "Q-06",
+          "title": "Arr apps method (Sonarr/Radarr/Prowlarr/Bazarr)",
+          "context": "BKP-03 locks sqlite3 .backup + PRAGMA integrity_check for SQLite services; BKP-07 says 'correct method per state store'. The arr apps ALSO have a built-in Backup API (zip of DB + config.xml) \u2014 Phase 12 proved API access works and keys are in SOPS.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Direct sqlite3 .backup + config.xml copy",
+              "description": "Uniform with every other SQLite service; works on the live DB via the backup API of sqlite itself (WAL-safe); no app API keys needed in the backup path. Tradeoff: bypasses the app's own blessed export; must enumerate the right .db files per app (sonarr.db, logs.db etc.) and keep that list current through Phase 15."
+            },
+            {
+              "id": "b",
+              "label": "Built-in arr Backup API",
+              "description": "App-consistent zip made by the app itself (DB + config), the restore path arr documentation describes. Tradeoff: internally it's the app's own DB copy (not your locked sqlite3 method \u2014 BKP-03 would need reading as 'SQLite-backed household services'); needs API keys wired into backup units; zip contents opaque to integrity_check."
+            },
+            {
+              "id": "c",
+              "label": "Both",
+              "description": "sqlite3 .backup for the locked-method guarantee plus the app zip for the app-blessed restore path. Tradeoff: double the artifacts and moving parts for four apps; restore drill should still pick ONE canonical path."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "Can we validate whether or not anything special is done by the arr apps when creating backups? I think its better to just integrate with the arr apps in this case; we use their APIs which may change backup behavior between releases, so better to not assume and cause silent drift between expected vs actual backup behavior.\n\nWe can still have a generic SQLite backup method for services that do not have bespoke backup implementation / behavior.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-07",
+          "title": "Jellyfin backup scope",
+          "context": "/var/lib/jellyfin holds SQLite DBs (library, users, playback state), config, plus large re-fetchable metadata/artwork caches and transcode temp. DB+config is MBs; full state can be many GBs.",
+          "options": [
+            {
+              "id": "a",
+              "label": "DBs + config only",
+              "description": "sqlite3 .backup of the DBs plus the config dirs; exclude metadata/cache/transcodes. Small and fast; users/watch-state/library structure preserved. Tradeoff: restore triggers a metadata/artwork re-fetch and library re-scan (hours of background work, cosmetic gaps meanwhile)."
+            },
+            {
+              "id": "b",
+              "label": "Everything except cache/transcodes",
+              "description": "DBs (via sqlite3 .backup) + config + metadata/artwork. Turnkey restore, no re-scan. Tradeoff: nightly working set jumps by GBs of mostly-static images; with plain dated dirs (Q-01a) that's GBs duplicated per night \u2014 really wants an incremental format (Q-01 b/c) to be sane."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "I like (B), and this makes me think: Can dedup be an option in the backup module? Can we make it per-service?",
+          "status": "answered"
+        },
+        {
+          "id": "Q-08",
+          "title": "SABnzbd/NZBGet scope",
+          "context": "Both are config-file services (sabnzbd.ini, nzbget.conf \u2014 both contain secrets, both partly SOPS-templated already). Queues/history live in their state dirs; queue contents are transient downloads by design (D-21: failed/incomplete items are disposable).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Config files only",
+              "description": "The reproducible-state position: config is the only thing that can't be regenerated (and much of it is already in the repo/SOPS); an in-flight queue lost in a restore just means re-grabbing. Smallest surface."
+            },
+            {
+              "id": "b",
+              "label": "Config + history/queue state",
+              "description": "Also capture download history DBs and queues (SABnzbd history1.db is SQLite \u2192 locked method applies). Restores preserve 'what was downloaded when' forensics and mid-flight queues. Tradeoff: nightly churn on files whose loss costs almost nothing."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "Small churn though.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-09",
+          "title": "PostgreSQL dump strategy",
+          "context": "PostgreSQL 17 currently serves exactly one DB (Mealie, via database.createLocally). BKP-02 requires pg_dump of Mealie. Roles/globals live outside per-DB dumps.",
+          "options": [
+            {
+              "id": "a",
+              "label": "pg_dump -Fc mealie only",
+              "description": "Exactly the requirement; custom format is pg_restore-able with reordering/partial restore. Tradeoff: role/ownership globals not captured \u2014 scratch restore must recreate the mealie role first (fine: the NixOS module does this declaratively)."
+            },
+            {
+              "id": "b",
+              "label": "Per-DB pg_dump -Fc for ALL DBs + pg_dumpall --globals-only",
+              "description": "Future-proof: any DB added later (Phase 15+ services) is covered automatically if the unit globs pg_databases; globals dump captures roles. Tradeoff: slightly more script; globals dump is near-trivial today."
+            },
+            {
+              "id": "c",
+              "label": "pg_dumpall (everything, plain SQL)",
+              "description": "One artifact, roles included. Tradeoff: plain-SQL only (no pg_restore selectivity), all-or-nothing restores, scales worst as DBs grow."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-10",
+          "title": "Services beyond the named list (HA, Frigate, Mosquitto, Samba)",
+          "context": "The phase goal says 'Every stateful service on ser8'; the success criteria enumerate only household + media apps. Also stateful: Home Assistant (SQLite + .storage YAML), Frigate (frigate.db event index; recordings are media-content-class), Mosquitto (persistence db), Samba (user password tdb under /var/lib/samba/private).",
+          "options": [
+            {
+              "id": "a",
+              "label": "Include all four now",
+              "description": "Goal-literal. HA via sqlite3 .backup + .storage copy, frigate.db, mosquitto persistence, samba tdb export. Tradeoff: grows the phase surface ~30% and the restore-drill matrix; HA DB can be GBs of recorder history."
+            },
+            {
+              "id": "b",
+              "label": "Named list only; document exclusions",
+              "description": "Criteria-literal: ship the 11 named services, record HA/Frigate/Mosquitto/Samba as explicit, reasoned exclusions + a deferred follow-up. Tradeoff: 'every stateful service' isn't literally true this phase; HA state (automations, zigbee pairings in .storage) stays unprotected."
+            },
+            {
+              "id": "c",
+              "label": "Add the cheap, irreplaceable ones: HA + Samba secrets",
+              "description": "HA .storage + DB and the samba passdb are genuinely irreplaceable (pairings, credentials); frigate.db (rebuildable event index) and mosquitto (retained MQTT topics) are not. Middle path: +2 small units, skips the rebuildables with documented rationale."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "failure-observability",
+      "title": "Failure Handling & Observability",
+      "questions": [
+        {
+          "id": "Q-11",
+          "title": "Partial failure semantics",
+          "context": "~12 per-service backups per night. The failure mode that hurts: one flaky service silently costing you every OTHER service's backup for that night.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Independent: continue on failure, report per service",
+              "description": "Each service backup succeeds/fails on its own; the night's run is 'partial' not 'absent'; alerting reports exactly which services failed. Natural fit with per-service units (Q-02 a/c)."
+            },
+            {
+              "id": "b",
+              "label": "Fail-fast: first error aborts the run",
+              "description": "Loud and unambiguous \u2014 a red night forces immediate attention. Tradeoff: one broken app blanks all other services' recovery points for the night; effectively couples unrelated services."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "Can't we have a \"parent\" systemd backup service that spawns the independent child ones?\n\nThat way the failures are independent, but can be sent an alert / digest from the parent service (similar to how I get email alerts for ZFS now).",
+          "status": "answered"
+        },
+        {
+          "id": "Q-12",
+          "title": "Failure alerting channel",
+          "context": "Existing surfaces: ZED already emails catgrep@sudomail.com from ser8; firebat runs Prometheus + Alertmanager (email) scraping ser8's node exporter; no textfile collector is currently enabled. Project core value: 'I know about it before it becomes a problem.'",
+          "options": [
+            {
+              "id": "a",
+              "label": "OnFailure email from ser8",
+              "description": "systemd OnFailure= hook sending mail via the existing ser8 mail path. Immediate, no cross-host dependency. Tradeoff: catches loud failures only \u2014 a timer that silently never fires sends no email; no dashboard/history."
+            },
+            {
+              "id": "b",
+              "label": "Freshness metric + firebat alert rule",
+              "description": "node exporter textfile collector exports backup_last_success_timestamp per service; firebat alerts when any service's backup is >26h stale. Catches BOTH failures and silent never-rans; fits the established monitoring pattern; graphable. Tradeoff: needs textfile collector enablement; alert arrives on the next scrape, not instantly."
+            },
+            {
+              "id": "c",
+              "label": "Both (recommended shape for the core value)",
+              "description": "OnFailure email for immediate loud failures + freshness metric/alert as the safety net for silent ones. Tradeoff: two mechanisms to maintain \u2014 but they cover disjoint failure classes."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-13",
+          "title": "Per-run verification depth",
+          "context": "BKP-03 already locks PRAGMA integrity_check on every SQLite backup. Question is what else each nightly run verifies about its own artifacts before declaring success.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Existence + size sanity",
+              "description": "Artifact exists, non-empty, size within a tolerance band of the previous run. Catches truncated/empty dumps. Cheapest."
+            },
+            {
+              "id": "b",
+              "label": "(a) + pg_restore --list on the pg dump",
+              "description": "Also proves the PostgreSQL dump is structurally readable (the pg equivalent of integrity_check). Near-free; recommended baseline."
+            },
+            {
+              "id": "c",
+              "label": "(a) + (b) + periodic automated test-restore",
+              "description": "Monthly job restores one rotating service into a throwaway dir and sanity-checks it \u2014 backups are only real when restored. Tradeoff: real machinery; could equally be a deferred follow-up once the manual drills (BKP-05/06) have proven the paths."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "d",
+          "chat_more": "(a) + (b) is sufficient I think.\n\nNot sure if its worth it to have an automated test running on the live system.\n\nIf anything, we should have VM tests for verifying this that can be run pre-deployment.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-14",
+          "title": "Run manifest",
+          "context": "systemd/journald already captures per-unit logs. A manifest is a per-night machine-readable record ON the backup dataset itself (what was backed up, sizes, checksums, durations).",
+          "options": [
+            {
+              "id": "a",
+              "label": "journald only",
+              "description": "Zero extra artifacts; history lives in the journal (bounded retention). Tradeoff: at restore time \u2014 possibly on a dead or reinstalled host \u2014 the journal may be gone; the dataset alone doesn't say what a complete night looks like."
+            },
+            {
+              "id": "b",
+              "label": "journald + per-night MANIFEST on the dataset",
+              "description": "Self-describing backups: the restore-time picker ('what do I have, from when, is it complete') travels with the data; enables the size-band check (Q-13) and drift audits. Tradeoff: one more small artifact per night."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "restore-drills",
+      "title": "Restore Drills & Documentation",
+      "questions": [
+        {
+          "id": "Q-15",
+          "title": "Mealie scratch-restore mechanics (BKP-05)",
+          "context": "BKP-05: a Mealie restore into a scratch instance, demonstrated and documented. Mealie = Postgres DB + image/upload tree; the NixOS module can stand up both.",
+          "options": [
+            {
+              "id": "a",
+              "label": "NixOS container on ser8",
+              "description": "Declarative systemd-nspawn container (containers.mealie-scratch) with its own postgres + mealie on a scratch port; easy teardown; runs where the backups live. Tradeoff: container shares the host kernel/nix store \u2014 less of a 'bare metal died' rehearsal; ser8 gains a temporary container definition."
+            },
+            {
+              "id": "b",
+              "label": "Second instance on ser8 (different port/state dir)",
+              "description": "No container machinery \u2014 a parallel mealie-scratch service + scratch postgres cluster. Tradeoff: pollutes the host's service/state namespace, teardown is manual, easy to leave residue on an impermanence host (which does auto-clean unpersisted state on reboot \u2014 mildly self-correcting)."
+            },
+            {
+              "id": "c",
+              "label": "Local VM (nixos-rebuild build-vm) on the workstation",
+              "description": "Fully isolated, closest rehearsal of real disaster recovery ('ser8 is gone, restore elsewhere from the backup pool'). Tradeoff: needs the backup artifacts copied off ser8 (itself a useful drill), and an x86 VM on the Apple-silicon workstation means emulation or a linux builder \u2014 the broken dev-machine remote-builder finding (Phase 11) is adjacent here."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "> Tradeoff: needs the backup artifacts copied off ser8 (itself a useful drill), and an x86 VM on the Apple-silicon workstation means emulation or a linux builder \u2014 the broken dev-machine remote-builder finding (Phase 11) is adjacent here.\n\nWe can use limactl / colima, there are other probably better options that can use apple's virtualization framework natively.\n\n[Added via chat 2026-08-26] Reference repo using lima with Nix: ~/github/experiments/nix (readable from future sessions \u2014 operator added it to sagent extraReadPaths in flake.nix; restart the session to pick it up). Also research whether Determinate Nix's macOS linux-builder has matured (was experimental/poor when the operator last tried it) as an alternative to lima/colima for running the restore-drill VM.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-16",
+          "title": "Which SQLite service for the BKP-06 restore demo",
+          "context": "BKP-06 requires demonstrating a restore of ONE SQLite-backed service (plus Actual, which is fixed). The choice sets which restore path gets battle-tested first.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Sonarr (or Radarr)",
+              "description": "Validates the arr restore path \u2014 the one Phase 15's pre-cutover snapshot/rollback will actually lean on. Highest downstream value; medium-size DB with real history to verify against."
+            },
+            {
+              "id": "b",
+              "label": "Donetick or Homebox",
+              "description": "Smallest, most self-contained DBs; cheapest drill with the least at stake if the drill misbehaves. Tradeoff: proves the least about the harder restores."
+            },
+            {
+              "id": "c",
+              "label": "Jellyfin",
+              "description": "The scariest DB (users, watch state, library) \u2014 proving it restorable buys the most peace of mind and de-risks Phase 15's Jellyfin move. Tradeoff: most complex drill; multi-DB service."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-17",
+          "title": "Restore path form",
+          "context": "The drills (BKP-05/06) will exercise whatever form this takes. Repo philosophy favors verification at every level and no speculative tooling.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Runbook only",
+              "description": "A RESTORE doc with exact per-service steps, validated by executing them during the drills. Tradeoff: docs drift silently as paths/services change (Phase 15 will change paths); nothing executable to smoke-test."
+            },
+            {
+              "id": "b",
+              "label": "Per-service restore scripts + short runbook",
+              "description": "backup-restore-<service> scripts in the repo (the drills run THESE), runbook explains when/how to invoke. Scripts are shellcheck-linted, reviewable, and fail loudly when drift breaks them. Tradeoff: ~12 small scripts to maintain (or one script parameterized per service)."
+            },
+            {
+              "id": "c",
+              "label": "Single parameterized restore tool",
+              "description": "One backup-restore <service> <date> entry point driven by the same per-service definitions as the backup units (pairs naturally with Q-02c). Symmetric with the engine, single source of truth for methods. Tradeoff: most design work; a bug is shared by all services."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "We should research to see what's available for (c) -- this seems like a common feature to want.",
+          "status": "answered"
+        },
+        {
+          "id": "Q-18",
+          "title": "Restore documentation location",
+          "context": "Must survive milestone archiving (.planning/ artifacts get archived) and be findable during an actual incident. GSD terminology is banned outside .planning/ (D-23).",
+          "options": [
+            {
+              "id": "a",
+              "label": "docs/ at repo root (e.g. docs/RESTORE.md)",
+              "description": "Top-level, incident-findable, host-agnostic home; the repo currently has no docs/ dir \u2014 this starts one. Tradeoff: new top-level convention for a single doc."
+            },
+            {
+              "id": "b",
+              "label": "hosts/ser8/README.md section",
+              "description": "Colocated with the host the backups protect; README already documents host specifics. Tradeoff: buried for incident response; awkward if a restore ever targets a different host."
+            },
+            {
+              "id": "c",
+              "label": "Module-adjacent (modules/backup/README.md)",
+              "description": "Lives next to the engine code it documents; moves with the module. Tradeoff: less discoverable than repo-root docs during an incident."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "c",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    },
+    {
+      "id": "repo-integration",
+      "title": "Repo Integration",
+      "questions": [
+        {
+          "id": "Q-19",
+          "title": "Module placement",
+          "context": "Established pattern from Phase 10 (recorded in STATE.md): reusable module + host-policy slice. Backup engine is currently ser8-only, but firebat has no snapshot-capable storage and ser8's backup pool is 'the fleet's only durable target' (Phase 09 decision).",
+          "options": [
+            {
+              "id": "a",
+              "label": "modules/backup/ role group",
+              "description": "Reusable engine module imported by ser8, like modules/media/ and modules/household/. Tradeoff: only one host will import it for the foreseeable future \u2014 reusability is speculative until a second host needs it."
+            },
+            {
+              "id": "b",
+              "label": "hosts/ser8/backup/ host slice",
+              "description": "Backup policy is inherently ser8-shaped (its pool, its services); matches the hosts/ser8/media/ per-service split. Tradeoff: if firebat state ever needs shipping to ser8's pool, engine code gets promoted later (cheap, mechanical)."
+            },
+            {
+              "id": "c",
+              "label": "Hybrid: engine in modules/, coverage in hosts/ser8/",
+              "description": "The Phase 10 household pattern applied to backups: generic engine (units/timer/manifest generation) in modules/backup/, the per-service coverage list as ser8 host policy. Cleanest separation; pairs naturally with Q-02c. Tradeoff: two places to read; most structure for a one-host feature."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "b",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-20",
+          "title": "Smoketest scope",
+          "context": "Repo rule: changed deployed services need smoketests; deploy.yaml drives area entry points (all.sh). The deferred-items table already records several always-pass smoketests as a known sore point \u2014 this phase should not add another.",
+          "options": [
+            {
+              "id": "a",
+              "label": "New scripts/smoketests/backup/ area",
+              "description": "all.sh + test-*.sh asserting: timer scheduled, last run succeeded, every covered service has an artifact fresher than 26h, spot integrity_check on one artifact, manifest complete. Wired into deploy.yaml. Full pattern-conformant coverage."
+            },
+            {
+              "id": "b",
+              "label": "Fold into scripts/smoketests/ser8/",
+              "description": "One test-backup.sh beside test-zfs-health.sh \u2014 fewer moving parts, no deploy.yaml change. Tradeoff: backup checks run only with the ser8 area; less granular failure output."
+            },
+            {
+              "id": "c",
+              "label": "Minimal: timer-active check only",
+              "description": "Cheapest possible check. Tradeoff: exactly the always-pass-adjacent shape the deferred-items table warns about \u2014 a scheduled timer whose runs all fail would still pass. Not recommended."
+            },
+            {
+              "id": "d",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        },
+        {
+          "id": "Q-21",
+          "title": "ZFS auto-snapshots and the new backup dataset",
+          "context": "CORRECTED after live verification (2026-08-26): services.zfs.autoSnapshot is enabled in ser8's config but currently INERT \u2014 the NixOS tooling only snapshots datasets that opt in via com.sun:auto-snapshot=true, and no ser8 dataset does (live ser8 has zero auto-snapshots; the only 4 snapshots are manual: impermanence @blank, pre-26.05, and Phase 13's media/data@verified). So the question is whether the new backup dataset becomes the FIRST user of that machinery (opt in = a second retention layer over the engine's own) or stays out.",
+          "options": [
+            {
+              "id": "a",
+              "label": "Engine owns retention; dataset stays out",
+              "description": "Do not opt in (optionally set com.sun:auto-snapshot=false explicitly for clarity, matching cameras and media/data). Single retention authority, predictable space, deletions actually delete. The autoSnapshot config block stays dead \u2014 worth a cleanup note either way."
+            },
+            {
+              "id": "b",
+              "label": "Opt in: auto-snapshots as an extra safety layer",
+              "description": "Set com.sun:auto-snapshot=true on the new dataset \u2014 snapshots would protect backup artifacts against accidental deletion/tampering, and the dead config block gains its first real user. Tradeoff: two overlapping retention systems; engine pruning stops reclaiming space until snapshots age out; 15-min 'frequent' snapshots are pointless churn for a once-nightly dataset (per-interval opt-out properties like com.sun:auto-snapshot:frequent=false can restrict it, but that's more properties to manage)."
+            },
+            {
+              "id": "c",
+              "label": "Custom",
+              "description": ""
+            }
+          ],
+          "answer": "a",
+          "chat_more": "",
+          "status": "answered"
+        }
+      ]
+    }
+  ]
+}

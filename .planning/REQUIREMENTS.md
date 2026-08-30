@@ -28,13 +28,19 @@ MergerFS → two-disk ZFS mirror, per `.planning/SER8-ZFS-MIRROR-MIGRATION.md`.
 
 BKP-01..06 unparked from the v1.2 descope, extended to the media stack.
 
-- [ ] **BKP-01**: A nightly backup job on ser8 writes to a dedup-off dataset on the backup pool
-- [ ] **BKP-02**: Mealie backup captures pg_dump plus the recipe image/upload directory
-- [ ] **BKP-03**: SQLite-backed services are backed up via `sqlite3 .backup`/`VACUUM INTO` with `PRAGMA integrity_check`, never a raw copy
-- [ ] **BKP-04**: Actual backup captures `account.sqlite` plus the entire `user-files/` blob tree
-- [ ] **BKP-05**: A Mealie restore into a scratch instance is demonstrated and documented
-- [ ] **BKP-06**: A restore of one SQLite service and of Actual is demonstrated
-- [ ] **BKP-07**: Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet) is covered by the nightly engine using the correct method per state store
+**Amended 2026-08-26** after the Phase 14 architecture pivot from a per-service dump engine to atomic ZFS snapshots plus replication.
+The original wording encoded the dump-engine mechanism into the requirement text; the amended wording states the outcome and names the mechanism the pivot actually adopts.
+The substantive change is in BKP-03: the failure mode the original wording targeted is a **non-atomic** live file copy (`cp`/`rsync` walking `db`, `-wal`, and `-shm` at different instants), which corrupts.
+An atomic ZFS snapshot is a single-transaction-group image — precisely the crash image SQLite and PostgreSQL are designed to recover from — and is therefore the sanctioned mechanism, not the forbidden one.
+BKP-07 is broadened from a named application list to whole-of-persist coverage so that adding a service can never silently leave it unprotected.
+
+- [x] **BKP-01**: A nightly atomic ZFS snapshot of ser8's persisted service state is replicated to a dedup-off dataset on the backup pool, with source retention pruned to a 30-night sliding window by an established snapshot policy tool rather than hand-rolled units
+- [x] **BKP-02**: Mealie is covered by the nightly snapshot, including its recipe image and upload tree, and its PostgreSQL database is additionally captured as a portable `pg_dump -Fc` archive written inside the snapshotted tree by a generic catalog-driven job that requires no per-application registration
+- [x] **BKP-03**: Service state is never captured by a non-atomic live file copy; the mechanism is an atomic ZFS snapshot, verified nightly by `PRAGMA integrity_check`/`quick_check` run against a copy taken out of the snapshot, never against the live file
+- [x] **BKP-04**: Actual's state is captured whole by the snapshot of its persisted state directory, covering `server-files/account.sqlite` and the entire `user-files/` blob tree
+- [x] **BKP-05**: A Mealie restore into a scratch VM is demonstrated and documented using the parameterized restore tool
+- [ ] **BKP-06**: A restore of one SQLite-backed service (Donetick) and of Actual is demonstrated with that same tool, and a VM test suite exercises the restore path across every covered service
+- [x] **BKP-07**: Backup coverage is everything persisted on ser8 rather than a named application list — household apps, media apps (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet), Home Assistant, Frigate, Mosquitto, Samba, and any unregistered persisted state — so that adding a service never requires remembering to register it for backup
 
 ### Nixflix
 
@@ -44,7 +50,7 @@ Foundation and cutover, per `.planning/SER8-NIXFLIX-MIGRATION.md`.
 - [ ] **NIX-02**: The full API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, and a pre-cutover state snapshot with a tested state-aware rollback exists before reconciliation is enabled
 - [ ] **NIX-03**: All retained root folders, download clients (NZBGet, SABnzbd), and Prowlarr objects are declared, and reconciliation is enabled for Sonarr, Radarr, and Prowlarr without removing any retained object
 - [ ] **NIX-04**: The overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are removed, with Nixflix owning that glue
-- [ ] **NIX-05**: Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import creates a verified hardlink on `media/data`
+- [ ] **NIX-05**: Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import lands a verified copy on `media/data` (downloads stage on the NVMe pool, so imports copy — hardlinks cannot cross pools)
 - [ ] **NIX-06**: Jellyfin runs under Nixflix with a dedicated SOPS API key, preserved database/users/libraries, firebat known-proxy handling, and a healthy exporter
 
 ### New Services
@@ -93,8 +99,8 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| ZFS child datasets for movies/tv/downloads | Hardlinks cannot cross dataset boundaries; single `media/data` dataset is the point |
-| ZFS deduplication | Memory cost, no benefit for media workload |
+| ZFS child datasets for movies/tv/downloads | Single `media/data` dataset kept for simplicity (per-dataset split buys nothing here); the original hardlink-crossing rationale is obsolete since torrent retirement — imports copy in from NVMe download staging (D-21/D-22) |
+| ZFS deduplication | DDT costs ~GBs of RAM per TB and taxes every write/free; media blocks are unique and nightly DB dumps aren't block-stable, so realized ratio is ~1.0x — compression covers the real redundancy |
 | RAID-Z2 media pool / adding the 6 TB disks | Final topology is the two-disk mirror only; backup pool stays as-is |
 | Off-host backup | Same-host staging and backup pool only this milestone |
 | Nixflix-managed VPN or qBittorrent service | Working NordVPN namespace topology preserved; repaired, not replaced |
@@ -119,13 +125,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ZFS-03 | Phase 13 | Complete |
 | ZFS-04 | Phase 13 | Complete |
 | ZFS-05 | Phase 13 | Complete |
-| BKP-01 | Phase 14 | Pending |
-| BKP-02 | Phase 14 | Pending |
-| BKP-03 | Phase 14 | Pending |
-| BKP-04 | Phase 14 | Pending |
-| BKP-05 | Phase 14 | Pending |
+| BKP-01 | Phase 14 | Complete |
+| BKP-02 | Phase 14 | Complete |
+| BKP-03 | Phase 14 | Complete |
+| BKP-04 | Phase 14 | Complete |
+| BKP-05 | Phase 14 | Complete |
 | BKP-06 | Phase 14 | Pending |
-| BKP-07 | Phase 14 | Pending |
+| BKP-07 | Phase 14 | Complete |
 | NIX-01 | Phase 15 | Pending |
 | NIX-02 | Phase 15 | Pending |
 | NIX-03 | Phase 15 | Pending |
@@ -144,4 +150,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-08-23*
-*Last updated: 2026-08-23 after roadmap creation (Phases 12-16)*
+*Last updated: 2026-08-26 — BKP-01..07 reworded for the Phase 14 snapshot-model pivot (see the note under Backups)*

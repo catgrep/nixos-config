@@ -120,17 +120,40 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 
 ### Phase 14: Backup Engine
 
-**Goal**: Every stateful service on ser8 — household apps and media apps alike — is protected by a nightly, application-aware backup with a demonstrated, working restore path.
-**Depends on**: Phase 13 (backup dataset properties and media-state coverage target the final ZFS topology)
+**Goal**: Every stateful service on ser8 is protected by nightly atomic ZFS snapshots of persisted state, replicated to the backup pool, with generic integrity verification and a demonstrated, working restore path.
+**Depends on**: Phase 13 (backup dataset properties and replication target the final ZFS topology)
 **Requirements**: BKP-01, BKP-02, BKP-03, BKP-04, BKP-05, BKP-06, BKP-07
 **Success Criteria** (what must be TRUE):
 
-  1. A nightly backup job runs on ser8 against a dedicated dedup-off dataset on the backup pool, covering Mealie (pg_dump plus the recipe image/upload directory), every SQLite-backed service (via `sqlite3 .backup`/`VACUUM INTO` with `PRAGMA integrity_check`, never a raw copy), and Actual Budget (`account.sqlite` plus the entire `user-files/` tree)
-  2. Media application state (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet) is covered by the same nightly engine using the correct backup method per state store
-  3. A Mealie restore into a scratch instance has been performed and documented
-  4. A restore of one SQLite-backed service and of Actual Budget has been demonstrated
+  1. Nightly atomic ZFS snapshots cover all persisted service state on ser8 (household apps, media apps, Home Assistant, Frigate, Mosquitto once persisted, Samba, and misc persisted state), are replicated to a dedup-off dataset on the backup pool, and are pruned to a 30-night sliding window by an established policy tool
+  2. A generic nightly job captures `pg_dump -Fc` of every discovered PostgreSQL database into the snapshotted tree before the snapshot, and verifies the new snapshot afterward (`PRAGMA integrity_check` on every discovered SQLite file, `pg_restore --list` on the dumps), emitting a per-night manifest and digest; staleness alerting on firebat fires within 26 h of a missed snapshot, replication, or verify run, including when the metric series is absent
+  3. A Mealie restore into a scratch VM has been performed and documented using the parameterized restore tool
+  4. A restore of one SQLite-backed service (Donetick) and of Actual Budget has been demonstrated with the same tool, and a VM test suite exercises dataset layout, snapshot/prune behavior, and per-service restore
 
-**Plans**: TBD
+**Plans**: 6/6 plans executed
+
+**Wave 1**
+
+- [x] 14-01-PLAN.md — Tracer: one service end to end through child dataset, atomic recursive snapshot, replication and restore, proven by the repository's first `checks` VM test; workstation Linux build capability repaired; stale backup scaffolding deleted
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 14-02-PLAN.md — Coverage expansion to sixteen child datasets (every unit-backed service), impermanence entries retired, Jellyfin activation tarballs disabled at source, disko layout proven from scratch in a VM
+- [x] 14-03-PLAN.md — Generic catalog-driven PostgreSQL dump, snapshot-read verification with write-ahead-log replay and per-dataset last-verified holds, hardened verify unit, nightly manifest, digest and freshness metrics, failure-mail unit, crash-resilience VM tests
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 14-04-PLAN.md — Metric exporter wired to the freshness directory, three absence-safe staleness alerts, nine fail-closed backup smoketests
+
+**Wave 4** *(blocked on Wave 3 — live host, human-gated)*
+
+- [x] 14-05-PLAN.md — Live storage cutover: replication target and sixteen child datasets created, state migrated and compared, configuration activated and proven across a real reboot
+
+**Wave 5** *(blocked on Wave 4 — live host, human-gated)*
+
+- [x] 14-06-PLAN.md — Restore tool completed, first replication out of band, one observed unattended nightly cycle, three executed restore drills, operator runbook, phase closeout
+
+**Human gate**: yes — every live-host mutation (dataset creation and per-service child-dataset migration, each configuration activation, deletion of the Jellyfin tarball directory) is a separately-scoped blocking checkpoint; repository and documentation changes are not gated.
 
 ### Phase 15: Nixflix Migration
 
@@ -142,7 +165,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
   1. Nixflix is pinned as a flake input to a reviewed commit with a ser8 adapter forcing live identities and existing state paths; PostgreSQL, local proxy, VPN, and qBittorrent service management stay disabled, and ser8 builds without activation
   2. A full pre-cutover API inventory (root folders, download clients, Prowlarr apps/indexers/proxies, Jellyfin) is exported, a state snapshot exists, and a tested state-aware rollback has been proven before reconciliation is enabled
   3. All retained root folders, download clients (NZBGet, SABnzbd), and Prowlarr objects are declared, reconciliation is enabled for Sonarr/Radarr/Prowlarr with no retained object removed, and the overlapping local orchestration units (`media-config`, `servarrs-setup`, `download-clients-setup`) are gone
-  4. Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import creates a verified hardlink on `media/data`
+  4. Post-cutover, existing databases, history, and monitored items are intact; imports succeed from both download clients with group/setgid permissions preserved; Bazarr reads imported files; a representative usenet import lands a verified copy on `media/data` (downloads stage on the NVMe pool, so imports copy — hardlinks cannot cross pools)
   5. Jellyfin runs under Nixflix with a dedicated SOPS API key, preserved database/users/libraries, firebat known-proxy handling, and a healthy exporter
 
 **Plans**: TBD
@@ -174,7 +197,7 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 |-------|----------------|--------|-----------|
 | 12. Fleet Repair | 0/TBD | Not started | - |
 | 13. ZFS Mirror Migration | 0/7 | Not started | - |
-| 14. Backup Engine | 0/TBD | Not started | - |
+| 14. Backup Engine | 6/6 | Planned |  |
 | 15. Nixflix Migration | 0/TBD | Not started | - |
 | 16. New Services | 0/TBD | Not started | - |
 

@@ -1,6 +1,6 @@
 {
   "mode": "interactive",
-  "model_profile": "budget",
+  "model_profile": "adaptive",
   "parallelization": true,
   "commit_docs": true,
   "workflow": {

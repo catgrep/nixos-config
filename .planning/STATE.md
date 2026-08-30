@@ -3,17 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: ZFS Mirror + Nixflix Migration - Phases 12-16 (in progress)
 current_phase: 14
-current_phase_name: Backup Engine
-status: planning
-stopped_at: Completed 13-07-PLAN.md and Phase 13 (all 7 plans, ZFS-01..05 complete). Operator independently destroyed backup/media-staging after the scrub; discovered and confirmed via this plan's own final self-check.
-last_updated: "2026-08-26T00:11:56.249Z"
-last_activity: 2026-08-25
-last_activity_desc: Phase 13 complete, transitioned to Phase 14
+current_phase_name: backup-engine
+status: verifying
+stopped_at: Completed 14-06-PLAN.md
+last_updated: "2026-08-29T19:15:12.894Z"
+last_activity: 2026-08-27
+last_activity_desc: Phase 14 execution started
+state_head: 3fde311e2843aed32ab0cffa3690bd1d371b370c
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 18
+  completed_plans: 18
   percent: 40
 ---
 
@@ -24,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-23)
 
 **Core value:** The homelab runs reliably without manual intervention -- when something needs attention, I know about it before it becomes a problem.
-**Current focus:** Phase 13 — zfs-mirror-migration
+**Current focus:** Phase 14 — backup-engine
 
 ## Current Position
 
-Phase: 14 — Backup Engine
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-25 — Phase 13 complete, transitioned to Phase 14
+Phase: 14 (backup-engine) — EXECUTING
+Plan: 6 of 6
+Status: Phase complete — ready for verification
+Last activity: 2026-08-27 — Phase 14 execution started
 
-Progress: [██████████] 100%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -69,6 +70,12 @@ Pre-v1.2 metrics are archived in `.planning/milestones/`.
 | Phase 13 P05 | ~1h20m | 7 tasks | 0 files |
 | Phase 13 P06 | ~18h25m (~1h45m active) | 5 tasks | 4 files |
 | Phase 13 P07 | ~8h25m (~50min active, ~7h42m scrub) | 5 tasks | 9 files |
+| Phase 14 P01 | ~3h | 3 tasks | 12 files |
+| Phase 14 P02 | ~4h | 2 tasks | 11 files |
+| Phase 14 P03 | ~5h | 3 tasks | 7 files |
+| Phase 14 P04 | ~2h | 3 tasks | 13 files |
+| Phase 14 P05 | ~6h (5h20m downtime) | 4 tasks | 5 files |
+| Phase 14 P06 | ~8h | 4 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -113,6 +120,24 @@ Still-operative decisions for future work:
 - [Phase ?]: [Phase 13, Plan 07]: Operator decision -- backup/media-staging's destroy is permanently out of this plan's/phase's automated scope; the operator will run it themselves after reviewing the scrub evidence. ZFS-05 stays Pending until then (intentional, not an oversight -- see 13-07-SUMMARY.md's ZFS-05 evaluation).
 - [Phase ?]: [Phase 13, Plan 07]: MergerFS swept from CLAUDE.md/hosts/ser8/README.md/samba.nix; rpool/safe/downloads (500G quota) created imperatively matching its disko declaration (same pattern as Plan 13-05) and activated; SABnzbd/NZBGet migrated onto it. Found and fixed a Rule 1 bug: sops.templates for both services needed explicit restartUnits for media-config.service's cp-based config deploy to actually take effect.
 - [Phase ?]: [Phase 13, Plan 07]: Post-completion self-check discovered the operator had already run zfs destroy -r backup/media-staging (zpool history: 2026-08-25 16:39:47 PDT), independently of and shortly after the scrub evidence became available -- corrected the just-written SUMMARY/evidence file (which had assumed staging still existed, matching the coordinator's earlier accurate-at-the-time report) rather than leaving stale claims in permanent docs. ZFS-05 marked complete; all five v1.3 Storage requirements (ZFS-01..05) now done. Phase 13 functionally complete.
+- [Phase ?]: Replica dataset is not declared in disko: replication must create its own target or the first send is refused
+- [Phase ?]: Receive-side mountpoint exclusion is latent insurance; send options carry no properties by default
+- [Phase ?]: Ownership tmpfiles rules retargeted from /persist/var/lib/<svc> to /var/lib/<svc>, not deleted: only Jellyfin had both halves of the pair the plan assumed
+- [Phase ?]: Layout test asserts each dataset property's source (local vs inherited), not just its value; an inherited value is right for the wrong reason
+- [Phase ?]: x86_64-darwin dropped from devShells and packages: nixpkgs removed the platform after 26.05 and the key threw, breaking nix flake show and nix flake check
+- [Phase 14]: A refused destroy is not fatal to the prune run: sanoid logs the held snapshot and exits 0, so a long-failing verification produces no prune-side signal
+- [Phase 14]: A digest that cannot be delivered fails the verification run, which suppresses the metric stamp; the staleness alert travels over a different host so it is not circular
+- [Phase 14]: Staleness alert absence arms are scoped to the expected instance so absent() synthesises a label the summary can name
+- [Phase 14]: The replica smoketest asserts mountpoint=none rather than readonly or canmount, because nothing in the repository sets those
+- [Phase 14]: The verification never-ran signal is read from the timer's last-trigger stamp, since a oneshot service defaults to Result=success
+- [Phase 14]: 14-05: backup/persist-replica must never be pre-created; syncoid refuses an existing target without matching snapshots
+- [Phase 14]: 14-05: Jellyfin activation tarballs (8.4 GB) deleted permanently; the first-send saving did not materialise because the pre-upgrade snapshot still carries them
+- [Phase 14]: 14-05: on gated live-host plans, estimate the outage in approval round trips, not bytes moved (5h20m actual vs 30-50min estimate)
+- [Phase 14]: Databases are identified by their file header, not by the .db filename
+- [Phase 14]: A SQLite sidecar without the header is damage, not a foreign file
+- [Phase 14]: The whole nightly cycle is anchored to UTC so both halves share one clock
+- [Phase 14]: system.autoUpgrade removed from every host rather than repointed
+- [Phase 14]: The fifteen pre-migration state directories were deleted
 
 ### Pending Todos
 
@@ -132,6 +157,9 @@ Open items carried into the next milestone (resolved and phase-scoped entries pr
 - Both Mealie accounts carry admin=true (unplanned privilege), and MEAL-04's two-profile UI confirmation remains operator-deferred — resolve both before a SEC-02-style audit.
 - v1.1 leftovers: Alloy HCL config format unverified; firebat impermanence status unclear (both shelved with phases 5-7).
 - v1.3 Phase 12 (Fleet Repair) now owns the NordVPN tunnel, sabnzbd uid drift, and media UID/GID drift items previously listed below as deferred; see Deferred Items for their FLEET-01..03 mapping.
+- Workstation /nix is on a case-insensitive volume, so guest initrds cannot build locally; all VM tests build remotely on ser8
+- 14-05: recvOptions readonly=on is rejected on receive (permission denied, 18 lines/run) because syncoid runs unprivileged; revert to 'u x mountpoint' or delegate the permission
+- 14-05: make smoketests-ser8 has 3 failing suites; backup is expected (verify not yet run), media (279 bazarr-unwritable dirs) and household (homebox/donetick signup tests) are pre-existing and unrelated to the cutover
 
 ### Roadmap Evolution
 
@@ -171,8 +199,8 @@ Radarr root-folder drift (FLEET-04) was recorded separately in `.planning/SER8-Z
 
 ## Session Continuity
 
-Last session: 2026-08-25T23:45:22.267Z
-Stopped at: Completed 13-07-PLAN.md and Phase 13 (all 7 plans, ZFS-01..05 complete). Operator independently destroyed backup/media-staging after the scrub; discovered and confirmed via this plan's own final self-check.
+Last session: 2026-08-29T19:15:05.301Z
+Stopped at: Completed 14-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

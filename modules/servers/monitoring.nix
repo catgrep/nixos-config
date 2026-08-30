@@ -44,6 +44,25 @@ in
     ]
     ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
     openFirewall = true;
+
+    # The textfile collector is one of the exporter's own defaults and is
+    # already scraping on every host, so it is deliberately absent from the
+    # list above. Only the directory it reads was missing.
+    #
+    # Two properties of this path are load-bearing and neither is visible from
+    # here. It sits under the persisted tree because a host with a boot-time
+    # rollback would otherwise erase the metrics on every reboot, which reads
+    # downstream as "the batch job has not run since the reboot". And it sits
+    # outside any home directory because this exporter runs with home
+    # directories hidden, where it would simply find nothing and report no
+    # error. The writer declares the same path; the two must not drift, because
+    # a mismatch produces no metrics and no error anywhere.
+    #
+    # Harmless on a host that never writes there: the collector finds an empty
+    # directory and exports nothing.
+    extraFlags = lib.mkDefault [
+      "--collector.textfile.directory=/persist/var/lib/node-exporter-textfile"
+    ];
   };
 
   # systemd exporter for unit state, restart counts, and network traffic per service

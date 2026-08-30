@@ -10,7 +10,6 @@
 {
   imports = [
     ./monitoring.nix
-    ./backup.nix
     ./security.nix
     ./tailscale.nix
   ];

@@ -273,12 +273,12 @@
         },
         "textMode": "auto"
       },
-      "title": "qBittorrent",
+      "title": "NZBGet",
       "type": "stat",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg_over_time(probe_success{job=\"blackbox-http\",instance=\"http://192.168.68.65:8080\"}[24h]) * 100",
+          "expr": "avg_over_time(probe_success{job=\"blackbox-http-auth\",instance=\"http://192.168.68.65:6789\"}[24h]) * 100",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -463,8 +463,8 @@
             "properties": [{ "id": "displayName", "value": "Prowlarr" }]
           },
           {
-            "matcher": { "id": "byName", "options": "http://192.168.68.65:8080" },
-            "properties": [{ "id": "displayName", "value": "qBittorrent" }]
+            "matcher": { "id": "byName", "options": "http://192.168.68.65:6789" },
+            "properties": [{ "id": "displayName", "value": "NZBGet" }]
           },
           {
             "matcher": { "id": "byName", "options": "http://192.168.68.65:8085" },
@@ -495,7 +495,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "probe_success{job=\"blackbox-http\"}",
+          "expr": "probe_success{job=~\"blackbox-http|blackbox-http-auth\"}",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
@@ -611,7 +611,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://jellyfin.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"jellyfin.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -655,7 +655,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://sonarr.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"sonarr.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -699,7 +699,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://radarr.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"radarr.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -743,7 +743,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://prowlarr.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"prowlarr.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -787,7 +787,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://sabnzbd.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"sabnzbd.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -831,7 +831,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://frigate.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"frigate.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -875,7 +875,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://hass.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"hass.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -919,7 +919,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://grafana.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"grafana.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }
@@ -963,7 +963,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"https://prom.shad-bangus.ts.net\"} - time()) / 86400",
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"blackbox-tls\",instance=\"prom.shad-bangus.ts.net:443\"} - time()) / 86400",
           "legendFormat": "__auto",
           "refId": "A"
         }

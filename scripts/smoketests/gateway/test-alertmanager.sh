@@ -25,6 +25,7 @@ user=$(get_user "$host")
 
 ALERTMANAGER_URL="http://localhost:9093"
 PROMETHEUS_URL="http://localhost:9090"
+GRAFANA_URL="http://localhost:3000"
 
 tests_run=0
 tests_passed=0
@@ -149,12 +150,39 @@ test_mail_configured_without_leaking() {
 	return 1
 }
 
+# Test 5: Grafana carries no alert rules of its own.
+# Prometheus is meant to be the single rule-evaluation path, but Grafana keeps
+# file-provisioned rules until told to delete them -- a rules block removed
+# from provisioning can quietly keep evaluating and mailing. grafana.nix
+# provisions explicit deletions; this checks they actually took.
+test_grafana_has_no_alert_rules() {
+	info "checking that Grafana evaluates no alert rules of its own"
+
+	local payload
+	payload=$(remote "curl -sf --max-time 8 ${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" || true)
+
+	if [ -z "$payload" ]; then
+		fail "Grafana did not answer its rules endpoint on $host"
+		return 1
+	fi
+
+	if printf '%s' "$payload" | grep -q '"groups":\[\]'; then
+		pass "Grafana carries no alert rules; Prometheus is the single evaluation path"
+		return 0
+	fi
+
+	fail "Grafana still evaluates alert rules of its own"
+	fail "  the mirrored rules were meant to be deleted with the consolidation"
+	return 1
+}
+
 echo
 info "=== Alertmanager Delivery Tests ==="
 run_test "alertmanager_active" test_alertmanager_active || true
 run_test "alertmanager_healthy" test_alertmanager_healthy || true
 run_test "prometheus_knows_the_alertmanager" test_prometheus_knows_the_alertmanager || true
 run_test "mail_configured_without_leaking" test_mail_configured_without_leaking || true
+run_test "grafana_has_no_alert_rules" test_grafana_has_no_alert_rules || true
 
 echo
 if [ $tests_run -eq 0 ]; then

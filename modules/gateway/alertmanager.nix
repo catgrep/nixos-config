@@ -19,11 +19,11 @@ in
   # staleness alert that has been "firing" for a day without a human hearing
   # about it is not an alert, it is a log line.
   #
-  # The other two mail paths on this network are narrower than they look and
-  # neither covers this: the storage host mails on a unit that *failed*, which
-  # is the loud case within seconds, and Grafana mails on its own separate
-  # rules. What arrives here is the quiet case -- a job that stopped running, so
-  # nothing failed and nothing was stamped.
+  # The mail paths on the storage host are narrower than they look and neither
+  # covers this: it mails on a unit that *failed*, which is the loud case
+  # within seconds, and ZED mails on ZFS events. What arrives here is
+  # everything a rule can express -- including the quiet case of a job that
+  # stopped running, so nothing failed and nothing was stamped.
   services.prometheus.alertmanager = {
     enable = true;
 
@@ -85,13 +85,14 @@ in
     };
   };
 
+  # The encrypted key in secrets/firebat.yaml is named grafana_smtp_password;
+  # renaming it to match its consumer would mean re-encrypting the sops file
+  # for no functional gain.
+  sops.secrets.grafana_smtp_password = { };
+
   # Rendered by the secret manager as root, which is what systemd needs: the
   # unit runs under a transient user that could not read a file owned by a
   # named one, and EnvironmentFile is read before privileges are dropped.
-  #
-  # The value is the same Gmail application password Grafana already sends
-  # through, referenced rather than duplicated so there is one credential to
-  # rotate rather than two that can disagree.
   sops.templates."alertmanager.env" = {
     content = ''
       ALERTMANAGER_SMTP_PASSWORD=${config.sops.placeholder.grafana_smtp_password}

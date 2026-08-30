@@ -32,6 +32,10 @@
           }
         ];
       }
+      # pi4 has been physically disconnected since 2026-06-15. Its targets are
+      # commented out rather than deleted so reconnecting it is an uncomment,
+      # not an archaeology dig; a listed target for an unplugged host raises a
+      # permanent HostDown from every job that scrapes it.
       {
         job_name = "node-exporter";
         static_configs = [
@@ -39,7 +43,7 @@
             targets = [
               "ser8.local:9100" # Beelink node exporter
               "firebat.local:9100" # Firebat node exporter
-              "pi4.local:9100" # Pi4 node exporter
+              # "pi4.local:9100" # Pi4 node exporter (host disconnected)
             ];
           }
         ];
@@ -85,7 +89,7 @@
             targets = [
               "ser8.local:9558"
               "firebat.local:9558"
-              "pi4.local:9558"
+              # "pi4.local:9558" # host disconnected
             ];
           }
         ];
@@ -99,7 +103,7 @@
             targets = [
               "ser8.local:9256"
               "firebat.local:9256"
-              "pi4.local:9256"
+              # "pi4.local:9256" # host disconnected
             ];
           }
         ];
@@ -130,15 +134,15 @@
         scrape_interval = "60s";
       }
       # AdGuard Home DNS metrics
-      {
-        job_name = "adguard";
-        static_configs = [
-          {
-            targets = [ "pi4.local:9618" ];
-          }
-        ];
-        scrape_interval = "30s";
-      }
+      # {
+      #   job_name = "adguard";
+      #   static_configs = [
+      #     {
+      #       targets = [ "pi4.local:9618" ]; # host disconnected
+      #     }
+      #   ];
+      #   scrape_interval = "30s";
+      # }
       # Blackbox HTTP probes -- check service availability via direct HTTP ports
       {
         job_name = "blackbox-http";
@@ -154,9 +158,41 @@
               "http://192.168.68.65:7878" # Radarr (ser8)
               "http://192.168.68.65:9696" # Prowlarr (ser8)
               "http://192.168.68.65:8085" # SABnzbd (ser8)
-              "http://192.168.68.65:6789" # NZBGet (ser8)
               "http://192.168.68.65:80" # Frigate via nginx (ser8)
               "http://192.168.68.65:8123" # Home Assistant (ser8)
+            ];
+          }
+        ];
+        scrape_interval = "60s";
+        relabel_configs = [
+          {
+            source_labels = [ "__address__" ];
+            target_label = "__param_target";
+          }
+          {
+            source_labels = [ "__param_target" ];
+            target_label = "instance";
+          }
+          {
+            target_label = "__address__";
+            replacement = "localhost:9115";
+          }
+        ];
+      }
+      # Blackbox HTTP probes for services whose UI requires authentication.
+      # Same liveness intent as blackbox-http, but through the module that
+      # accepts 401: NZBGet demands credentials on every request, so 401 is
+      # what "up" looks like from an unauthenticated prober.
+      {
+        job_name = "blackbox-http-auth";
+        metrics_path = "/probe";
+        params = {
+          module = [ "http_2xx_401" ];
+        };
+        static_configs = [
+          {
+            targets = [
+              "http://192.168.68.65:6789" # NZBGet (ser8)
             ];
           }
         ];
@@ -188,7 +224,7 @@
             targets = [
               "192.168.68.65" # ser8
               "192.168.68.63" # firebat
-              "192.168.68.56" # pi4
+              # "192.168.68.56" # pi4 (host disconnected)
             ];
           }
         ];
@@ -208,7 +244,9 @@
           }
         ];
       }
-      # Blackbox TLS probes -- check certificate expiry on Tailscale URLs
+      # Blackbox TLS probes -- check certificate expiry on Tailscale vhosts.
+      # host:port form because the module is a TCP prober: it completes the
+      # handshake, records the certificate, and asks nothing of HTTP.
       {
         job_name = "blackbox-tls";
         metrics_path = "/probe";
@@ -218,17 +256,17 @@
         static_configs = [
           {
             targets = [
-              "https://jellyfin.shad-bangus.ts.net"
-              "https://sonarr.shad-bangus.ts.net"
-              "https://radarr.shad-bangus.ts.net"
-              "https://bazarr.shad-bangus.ts.net"
-              "https://prowlarr.shad-bangus.ts.net"
-              "https://sabnzbd.shad-bangus.ts.net"
-              "https://nzbget.shad-bangus.ts.net"
-              "https://frigate.shad-bangus.ts.net"
-              "https://hass.shad-bangus.ts.net"
-              "https://grafana.shad-bangus.ts.net"
-              "https://prom.shad-bangus.ts.net"
+              "jellyfin.shad-bangus.ts.net:443"
+              "sonarr.shad-bangus.ts.net:443"
+              "radarr.shad-bangus.ts.net:443"
+              "bazarr.shad-bangus.ts.net:443"
+              "prowlarr.shad-bangus.ts.net:443"
+              "sabnzbd.shad-bangus.ts.net:443"
+              "nzbget.shad-bangus.ts.net:443"
+              "frigate.shad-bangus.ts.net:443"
+              "hass.shad-bangus.ts.net:443"
+              "grafana.shad-bangus.ts.net:443"
+              "prom.shad-bangus.ts.net:443"
             ];
           }
         ];
@@ -263,9 +301,14 @@
         groups:
           - name: homelab
             rules:
+              # 10m rather than 5m: a ser8 deploy restarts its exporters, and
+              # the small ones (exportarr among them) take just over five
+              # minutes to come back, so a tighter window pages on every
+              # deploy. A genuinely dead exporter still alerts inside eleven
+              # minutes.
               - alert: HostDown
                 expr: up == 0
-                for: 5m
+                for: 10m
                 labels:
                   severity: critical
                 annotations:
@@ -295,13 +338,18 @@
                 annotations:
                   summary: "Memory usage is above 90% on {{ $labels.instance }}"
 
+              # node_zfs_zpool_state is one series per (pool, state) with the
+              # active state at 1 -- so matching non-online states above zero
+              # is the alert. A wrong metric name here fails silently: the
+              # rule evaluates an empty vector and never fires, which is
+              # indistinguishable from healthy pools.
               - alert: ZFSPoolUnhealthy
-                expr: node_zfs_zpool_health_state{state!="online"} > 0
+                expr: node_zfs_zpool_state{state!="online"} > 0
                 for: 5m
                 labels:
                   severity: critical
                 annotations:
-                  summary: "ZFS pool {{ $labels.pool }} is not healthy on {{ $labels.instance }}"
+                  summary: "ZFS pool {{ $labels.zpool }} is {{ $labels.state }} on {{ $labels.instance }}"
 
               - alert: HighCPUTemperature
                 expr: node_hwmon_temp_celsius > 80
@@ -326,6 +374,47 @@
                   severity: warning
                 annotations:
                   summary: "CPU usage above 90% sustained for 5+ minutes on {{ $labels.instance }}"
+
+              # Blackbox probe rules. These watch what a user would experience
+              # (an HTTP answer, a ping reply, a valid certificate) rather
+              # than what an exporter reports about itself, so they live
+              # alongside the exporter rules instead of replacing them.
+
+              - alert: ServiceDown
+                expr: probe_success{job=~"blackbox-http|blackbox-http-auth"} == 0
+                for: 2m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Service {{ $labels.instance }} is unreachable"
+
+              - alert: HostUnreachable
+                expr: probe_success{job="blackbox-icmp"} == 0
+                for: 2m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Host {{ $labels.instance }} is unreachable via ICMP"
+
+              - alert: TLSCertExpiringSoon
+                expr: (probe_ssl_earliest_cert_expiry{job="blackbox-tls"} - time()) / 86400 < 14
+                for: 1h
+                labels:
+                  severity: warning
+                annotations:
+                  summary: 'TLS certificate for {{ $labels.instance }} expires in {{ printf "%.1f" $value }} days'
+
+              # Expiry above is measured from a metric the probe only writes
+              # when its handshake succeeds, so a vhost that stops answering
+              # TLS entirely would otherwise vanish from the expiry rule
+              # rather than trip it.
+              - alert: TLSProbeFailed
+                expr: probe_success{job="blackbox-tls"} == 0
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "TLS handshake with {{ $labels.instance }} is failing"
 
               # The three rules below deliberately do NOT follow the shape of
               # every rule above them, and copying a neighbour here would

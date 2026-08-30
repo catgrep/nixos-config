@@ -14,8 +14,13 @@
 # the activation. `run_suite` runs every entry and returns non-zero if any
 # failed.
 #
-# The household area joined this fan-out in Phase 10; it owns the Mealie checks
-# and the household services that follow it in Phases 12-13.
+# The household area owns the checks for the household-facing services.
+#
+# The backup area owns the checks for the snapshot, replication and
+# verification engine. It is listed here rather than in deploy.yaml on purpose:
+# deploy.yaml names exactly one script per host, and that script is this file,
+# so an area is added to the deploy path by adding it to the array below and
+# nowhere else.
 
 set -euo pipefail
 
@@ -28,6 +33,7 @@ SUITE_NAME="ser8"
 TESTS=(
 	./scripts/smoketests/media/all.sh
 	./scripts/smoketests/household/all.sh
+	./scripts/smoketests/backup/all.sh
 	./scripts/smoketests/ser8/test-zfs-health.sh
 	./scripts/smoketests/ser8/test-vaapi.sh
 	./scripts/smoketests/ser8/test-frigate.sh

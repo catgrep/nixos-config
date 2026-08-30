@@ -6,10 +6,10 @@ set -euo pipefail
 # Donetick endpoint smoketest.
 #
 # Covers the things that are wrong even when the service is up and the
-# homepage renders: public signup re-opened by a hand-edited unit, and the
-# tsnet vhost unreachable despite Caddy reporting healthy. Neither has a
-# visible symptom until a stranger registers or a household member's link
-# 404s.
+# homepage renders: public signup silently refused despite being deliberately
+# open (Tailscale-only exposure), and the tsnet vhost unreachable despite
+# Caddy reporting healthy. Neither has a visible symptom until a household
+# member cannot register or their link 404s.
 #
 # Takes the ser8 host as its argument. The tsnet probes run from the gateway
 # host instead, resolved through deploy.yaml the same way.
@@ -102,37 +102,43 @@ test_local_endpoint() {
 	return 1
 }
 
-# Test 2: public signup is closed
+# Test 2: public signup is open
 #
-# The runtime counterpart to the two-stage deploy DTK-03 asks for. A
-# connection failure counts as a failure, not a pass: a down service also
-# rejects this request, and treating that as evidence of closed signup is how
-# an unchanged default survives a green suite.
-test_signup_closed() {
-	info "checking that public signup is rejected"
+# Signup is deliberately open — Donetick is reachable only through Tailscale.
+# The probe sends an invalid payload (empty username) so no account is ever
+# created: an open signup path rejects it with a 400 validation error, while
+# a disabled one short-circuits with 403 before validating. A connection
+# failure counts as a failure, not a pass.
+test_signup_open() {
+	info "checking that public signup validates rather than refuses"
 
 	local response
 	response=$(remote curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 15 \
 		-X POST -H 'Content-Type: application/json' \
-		-d '{"username":"stranger1","password":"whatever123","email":"stranger@household.internal"}' \
+		-d '{"username":""}' \
 		"http://127.0.0.1:${DONETICK_PORT}/api/v1/auth/")
 
 	if ! [[ "$response" =~ ^[0-9]{3}$ ]]; then
-		fail "signup request returned '${response:-no response}'; a down service is not evidence signup is closed"
-		return 1
-	fi
-
-	if [ "$response" = "201" ]; then
-		fail "public signup still succeeds (HTTP 201); DT_IS_USER_CREATION_DISABLED did not reach the running process"
+		fail "signup request returned '${response:-no response}'; a down service is not evidence signup is open"
 		return 1
 	fi
 
 	if [ "$response" = "403" ]; then
-		pass "public signup rejected with HTTP 403"
+		fail "public signup rejected with HTTP 403; DT_IS_USER_CREATION_DISABLED=false did not reach the running process"
+		return 1
+	fi
+
+	if [ "$response" = "201" ]; then
+		fail "an empty username was accepted (HTTP 201); signup validation is broken"
+		return 1
+	fi
+
+	if [ "$response" = "400" ]; then
+		pass "signup path is open: invalid payload drew a 400 validation error, not a 403 refusal"
 		return 0
 	fi
 
-	fail "signup returned unexpected HTTP $response, expected 403"
+	fail "signup returned unexpected HTTP $response, expected 400"
 	return 1
 }
 
@@ -179,7 +185,7 @@ run_test "local_endpoint" test_local_endpoint || true
 
 echo
 info "=== Donetick Signup Tests ==="
-run_test "signup_closed" test_signup_closed || true
+run_test "signup_open" test_signup_open || true
 
 echo
 info "=== Donetick Tsnet Tests ==="

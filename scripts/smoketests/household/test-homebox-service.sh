@@ -33,8 +33,10 @@ HOMEBOX_PORT="7745"
 # modules/household/homebox.nix's StateDirectoryMode override.
 HOMEBOX_DATA_DIR="/var/lib/homebox"
 
-# The impermanence side of the same directory, created by a tmpfiles rule.
-HOMEBOX_PERSIST_DIR="/persist/var/lib/homebox"
+# The durable state directory. Homebox's state is its own ZFS dataset mounted
+# here, so the state path and the persisted path are one and the same; there is
+# no longer a second copy under /persist to check separately.
+HOMEBOX_PERSIST_DIR="$HOMEBOX_DATA_DIR"
 
 # Track test results
 tests_run=0
@@ -159,28 +161,23 @@ test_homebox_state_dir_shape() {
 	return 1
 }
 
-# Test 5: the persist side of the bind mount agrees
+# Test 5: the persisted path is its own mounted ZFS dataset
 #
-# Proves the impermanence directory entry and the tmpfiles rule describe the
-# same thing. A mismatch here is invisible until the next reboot discards
-# every item, photo, and location Homebox wrote.
+# Since the dataset migration, HOMEBOX_PERSIST_DIR and HOMEBOX_DATA_DIR are the
+# same path (see the definition above), so this no longer compares two
+# directories against each other -- it proves the one path really is a mounted
+# ZFS dataset rather than a plain directory riding the parent dataset's
+# storage, which is what would let a reboot silently discard every item,
+# photo, and location Homebox wrote.
 test_homebox_persist_dir() {
-	info "checking the persisted state directory $(fmt_bold "$HOMEBOX_PERSIST_DIR")"
+	info "checking that $(fmt_bold "$HOMEBOX_PERSIST_DIR") is a mounted ZFS dataset"
 
-	if ! remote_ok test -d "$HOMEBOX_PERSIST_DIR"; then
-		fail "$HOMEBOX_PERSIST_DIR does not exist; Homebox state is not being persisted"
-		return 1
-	fi
-
-	local stat_out
-	stat_out=$(remote stat -c '%U %G %a' "$HOMEBOX_PERSIST_DIR")
-
-	if [ "$stat_out" = "homebox homebox 750" ]; then
-		pass "$HOMEBOX_PERSIST_DIR exists and is owned homebox:homebox mode 750"
+	if remote_ok findmnt -rn -t zfs "$HOMEBOX_PERSIST_DIR"; then
+		pass "$HOMEBOX_PERSIST_DIR is a mounted ZFS dataset"
 		return 0
 	fi
 
-	fail "$HOMEBOX_PERSIST_DIR is '${stat_out:-unreadable}', expected 'homebox homebox 750'"
+	fail "$HOMEBOX_PERSIST_DIR is not a mounted ZFS dataset"
 	return 1
 }
 

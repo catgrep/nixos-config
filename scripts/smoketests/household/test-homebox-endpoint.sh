@@ -6,10 +6,10 @@ set -euo pipefail
 # Homebox endpoint smoketest.
 #
 # Covers the things that are wrong even when the service is up and the
-# homepage renders: self-registration re-opened by a hand-edited unit, and
-# the tsnet vhost unreachable despite Caddy reporting healthy. Neither has a
-# visible symptom until a stranger registers or a household member's share
-# link 404s.
+# homepage renders: self-registration silently refused despite being
+# deliberately open (Tailscale-only exposure), and the tsnet vhost
+# unreachable despite Caddy reporting healthy. Neither has a visible symptom
+# until a household member cannot register or their share link 404s.
 #
 # Takes the ser8 host as its argument. The tsnet probes run from the gateway
 # host instead, resolved through deploy.yaml the same way.
@@ -102,38 +102,36 @@ test_local_endpoint() {
 	return 1
 }
 
-# Test 2: self-registration is closed
+# Test 2: self-registration is open
 #
-# The runtime counterpart to the offline eval assertion in
-# scripts/validation/test-homebox-module.sh. A connection failure counts as
-# a failure, not a pass: a down service also rejects this request, and
-# treating that as evidence of closed registration is how an unchanged
-# default survives a green suite.
-test_registration_closed() {
-	info "checking that self-registration without an invite token is rejected"
+# Registration is deliberately open — Homebox is reachable only through
+# Tailscale. The status endpoint reports the running instance's own
+# allowRegistration flag, so this needs no mutating request. An empty
+# response counts as a failure, not a pass: a down service proves nothing
+# about the deployed setting.
+test_registration_open() {
+	info "checking that the running instance reports registration open"
 
-	local response
-	response=$(remote curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 15 \
-		-X POST -H 'Content-Type: application/json' \
-		-d '{"email":"stranger@household.internal","name":"Stranger","password":"whatever123"}' \
-		"http://127.0.0.1:${HOMEBOX_PORT}/api/v1/users/register")
+	local body
+	body=$(remote curl -s --connect-timeout 5 --max-time 15 \
+		"http://127.0.0.1:${HOMEBOX_PORT}/api/v1/status")
 
-	if ! [[ "$response" =~ ^[0-9]{3}$ ]]; then
-		fail "registration request returned '${response:-no response}'; a down service is not evidence registration is closed"
+	if [ -z "$body" ]; then
+		fail "status endpoint returned nothing; a down service is not evidence registration is open"
 		return 1
 	fi
 
-	if [ "$response" = "204" ]; then
-		fail "self-registration without an invite token still succeeds (HTTP 204); HBOX_OPTIONS_ALLOW_REGISTRATION did not reach the unit"
-		return 1
-	fi
-
-	if [ "$response" = "403" ]; then
-		pass "self-registration without an invite token rejected with HTTP 403"
+	if printf '%s' "$body" | grep -q '"allowRegistration":true'; then
+		pass "status endpoint reports allowRegistration true"
 		return 0
 	fi
 
-	fail "registration returned unexpected HTTP $response, expected 403"
+	if printf '%s' "$body" | grep -q '"allowRegistration":false'; then
+		fail "status endpoint reports allowRegistration false; HBOX_OPTIONS_ALLOW_REGISTRATION=true did not reach the unit"
+		return 1
+	fi
+
+	fail "status endpoint answered without an allowRegistration field: ${body:0:120}"
 	return 1
 }
 
@@ -180,7 +178,7 @@ run_test "local_endpoint" test_local_endpoint || true
 
 echo
 info "=== Homebox Registration Tests ==="
-run_test "registration_closed" test_registration_closed || true
+run_test "registration_open" test_registration_open || true
 
 echo
 info "=== Homebox Tsnet Tests ==="

@@ -45,8 +45,10 @@ ACTUAL_PORT="3000"
 # settings.dataDir, left at the module's own default (modules/household/actual.nix)
 ACTUAL_DATA_DIR="/var/lib/actual"
 
-# The impermanence side of the same directory, created by a tmpfiles rule
-ACTUAL_PERSIST_DIR="/persist/var/lib/actual"
+# The durable state directory. Actual's state is its own ZFS dataset mounted
+# here, so the state path and the persisted path are one and the same; there is
+# no longer a second copy under /persist to check separately.
+ACTUAL_PERSIST_DIR="$ACTUAL_DATA_DIR"
 
 # The single point of truth for ACT-02: settings.serverFiles/account.sqlite
 ACTUAL_ACCOUNT_DB="/var/lib/actual/server-files/account.sqlite"
@@ -198,28 +200,23 @@ test_actual_state_dir_shape() {
 	return 1
 }
 
-# Test 5: the persist side of the bind mount agrees
+# Test 5: the persisted path is its own mounted ZFS dataset
 #
-# Proves the impermanence directory entry and the tmpfiles rule describe the
-# same thing. A mismatch here is invisible until the next reboot discards the
-# one budget file this plan just proved exists.
+# Since the dataset migration, ACTUAL_PERSIST_DIR and ACTUAL_DATA_DIR are the
+# same path (see the definition above), so this no longer compares two
+# directories against each other -- it proves the one path really is a mounted
+# ZFS dataset rather than a plain directory riding the parent dataset's
+# storage, which is what would let a reboot silently discard the one budget
+# file this plan just proved exists.
 test_actual_persist_dir() {
-	info "checking the persisted state directory $(fmt_bold "$ACTUAL_PERSIST_DIR")"
+	info "checking that $(fmt_bold "$ACTUAL_PERSIST_DIR") is a mounted ZFS dataset"
 
-	if ! remote_ok test -d "$ACTUAL_PERSIST_DIR"; then
-		fail "$ACTUAL_PERSIST_DIR does not exist; Actual state is not being persisted"
-		return 1
-	fi
-
-	local stat_out
-	stat_out=$(remote stat -c '%U %G %a' "$ACTUAL_PERSIST_DIR")
-
-	if [ "$stat_out" = "actual actual 700" ]; then
-		pass "$ACTUAL_PERSIST_DIR exists and is owned actual:actual mode 700"
+	if remote_ok findmnt -rn -t zfs "$ACTUAL_PERSIST_DIR"; then
+		pass "$ACTUAL_PERSIST_DIR is a mounted ZFS dataset"
 		return 0
 	fi
 
-	fail "$ACTUAL_PERSIST_DIR is '${stat_out:-unreadable}', expected 'actual actual 700'"
+	fail "$ACTUAL_PERSIST_DIR is not a mounted ZFS dataset"
 	return 1
 }
 

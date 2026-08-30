@@ -22,9 +22,14 @@
 #
 # mealie ALLOW_SIGNUP: the module stringifies the whole settings attrset with
 # toString, and `toString false` is the empty string in Nix. A Nix boolean here
-# type-checks, builds, and silently leaves registration open. This assertion
-# compares against the quoted string "false" for exactly that reason, and must
-# never be relaxed to a JSON false.
+# type-checks, builds, and silently leaves registration open. What this
+# assertion pins is therefore the *type* -- a quoted string -- and it must never
+# be relaxed to a JSON literal, whichever way the answer goes.
+#
+# The expected value is "true" because signup is deliberately open: this
+# instance is reachable only over Tailscale, so profile creation is trusted.
+# Should that change, close it in the host configuration and change the
+# expectation here to the quoted string "false" -- never to a bare false.
 #
 # Evaluation failures are deliberately allowed to propagate. Wrapping these
 # eval calls in a fallback that substitutes a default on error would make the
@@ -72,7 +77,7 @@ check_eval \
 check_eval \
 	"MEAL-02 mealie ALLOW_SIGNUP" \
 	".#nixosConfigurations.${host}.config.services.mealie.settings.ALLOW_SIGNUP" \
-	'"false"'
+	'"true"'
 
 if [ "$failures" -ne 0 ]; then
 	echo "$failures assertion(s) failed: the Mealie/PostgreSQL configuration has drifted" >&2

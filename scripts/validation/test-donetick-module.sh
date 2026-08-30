@@ -57,18 +57,18 @@ else
 	failures=$((failures + 1))
 fi
 
-# A plain `nix eval --json .../directories` forces every submodule entry's
-# full attrset, including a `method` field the impermanence input removed
-# upstream (pre-existing across every household service's entry, not just
-# Donetick's -- see deferred-items.md). --apply plucks only `.directory` (or
-# the bare string) per entry, never touching `.method`, which sidesteps it.
+# What is being pinned is that Donetick's state survives the boot rollback,
+# which it does by being a filesystem of its own rather than by being listed
+# for the impermanence layer to carry. Asserting the mount is stronger than
+# asserting a list entry: this is the thing that actually has to be true, and
+# it is what the host is checked against after every deploy.
 if nix eval --json --apply \
-	'dirs: builtins.elem "/var/lib/donetick" (map (d: if builtins.isString d then d else d.directory) dirs)' \
-	".#nixosConfigurations.${host}.config.environment.persistence.\"/persist\".directories" |
+	'fs: fs.device == "rpool/safe/persist/donetick" && fs.fsType == "zfs"' \
+	".#nixosConfigurations.${host}.config.fileSystems.\"/var/lib/donetick\"" |
 	grep -q '^true$'; then
-	echo "ok: /var/lib/donetick is a persisted directory"
+	echo "ok: /var/lib/donetick is its own dataset, so it survives the rollback"
 else
-	echo "FAIL: /var/lib/donetick is not in environment.persistence./persist.directories" >&2
+	echo "FAIL: /var/lib/donetick is not mounted from rpool/safe/persist/donetick" >&2
 	failures=$((failures + 1))
 fi
 

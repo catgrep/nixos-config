@@ -12,7 +12,8 @@ set -euo pipefail
 #
 # None of these has a visible symptom. A share link that silently points at
 # http://localhost:9000 looks fine until somebody outside the house opens it;
-# an empty ALLOW_SIGNUP looks fine until a stranger registers.
+# an empty ALLOW_SIGNUP means the setting silently fell back to Mealie's own
+# default instead of the value this repo declares.
 #
 # Takes the ser8 host as its argument. The tsnet probes run from the gateway
 # host instead, resolved through deploy.yaml the same way.
@@ -173,11 +174,13 @@ test_base_url_not_module_default() {
 #
 # The runtime counterpart to the evaluation assertion in plan 10-01. Both are
 # worth having: the eval gate catches the mistake before a deploy, this one
-# catches a hand-edited unit after it. `toString false` is the empty string in
-# Nix, so an empty value here is the exact footprint of a boolean that was
-# meant to be the string "false" — and it leaves registration unconfigured.
-test_signup_closed() {
-	info "checking that ALLOW_SIGNUP is the non-empty string 'false'"
+# catches a hand-edited unit after it. `toString true` and `toString false`
+# both misbehave for booleans meant to be strings (false becomes the empty
+# string), so the real guard here is that the value is a non-empty, explicit
+# string. Signup is deliberately open — Mealie is reachable only through
+# Tailscale — so the expected value is the string "true".
+test_signup_configured() {
+	info "checking that ALLOW_SIGNUP is the non-empty string 'true'"
 
 	if ! unit_env_present ALLOW_SIGNUP; then
 		fail "ALLOW_SIGNUP is absent from the deployed unit environment"
@@ -192,12 +195,12 @@ test_signup_closed() {
 		return 1
 	fi
 
-	if [ "$value" = "false" ]; then
-		pass "ALLOW_SIGNUP is the string 'false'"
+	if [ "$value" = "true" ]; then
+		pass "ALLOW_SIGNUP is the string 'true'"
 		return 0
 	fi
 
-	fail "ALLOW_SIGNUP is '$value', expected the string 'false'"
+	fail "ALLOW_SIGNUP is '$value', expected the string 'true'"
 	return 1
 }
 
@@ -274,7 +277,7 @@ echo
 info "=== Mealie Deployed Settings Tests ==="
 run_test "base_url_is_tsnet" test_base_url_is_tsnet || true
 run_test "base_url_not_module_default" test_base_url_not_module_default || true
-run_test "signup_closed" test_signup_closed || true
+run_test "signup_configured" test_signup_configured || true
 
 echo
 info "=== Mealie Authentication Tests ==="

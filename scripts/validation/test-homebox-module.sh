@@ -24,10 +24,10 @@
 # is.
 #
 # homebox HBOX_OPTIONS_ALLOW_REGISTRATION: must be the literal string
-# "false" now that both household accounts exist. Closing self-registration
-# is T-11-02's mitigation and this is its offline half; the live half is
-# scripts/smoketests/household/test-homebox-endpoint.sh asserting a real
-# POST /api/v1/users/register with no invite token returns 403.
+# "true". Registration is deliberately open because Homebox is reachable
+# only through Tailscale; this is the offline half of that decision, and
+# the live half is scripts/smoketests/household/test-homebox-endpoint.sh
+# asserting the status endpoint reports allowRegistration true.
 #
 # Evaluation failures are deliberately allowed to propagate. Wrapping these
 # eval calls in a fallback that substitutes a default on error would make the
@@ -70,7 +70,7 @@ check_eval \
 check_eval \
 	"HBX-02 homebox HBOX_OPTIONS_ALLOW_REGISTRATION" \
 	".#nixosConfigurations.${host}.config.services.homebox.settings.HBOX_OPTIONS_ALLOW_REGISTRATION" \
-	'"false"'
+	'"true"'
 
 if [ "$failures" -ne 0 ]; then
 	echo "$failures assertion(s) failed: the Homebox configuration has drifted" >&2

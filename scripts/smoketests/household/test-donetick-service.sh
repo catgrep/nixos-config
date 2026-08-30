@@ -33,8 +33,10 @@ DONETICK_PORT="2021"
 # modules/household/donetick.nix's StateDirectoryMode override.
 DONETICK_DATA_DIR="/var/lib/donetick"
 
-# The impermanence side of the same directory, created by a tmpfiles rule.
-DONETICK_PERSIST_DIR="/persist/var/lib/donetick"
+# The durable state directory. Donetick's state is its own ZFS dataset mounted
+# here, so the state path and the persisted path are one and the same; there is
+# no longer a second copy under /persist to check separately.
+DONETICK_PERSIST_DIR="$DONETICK_DATA_DIR"
 
 # Track test results
 tests_run=0
@@ -159,28 +161,23 @@ test_donetick_state_dir_shape() {
 	return 1
 }
 
-# Test 5: the persist side of the bind mount agrees
+# Test 5: the persisted path is its own mounted ZFS dataset
 #
-# Proves the impermanence directory entry and the tmpfiles rule describe the
-# same thing. A mismatch here is invisible until the next reboot discards
-# every chore, circle, and account Donetick wrote.
+# Since the dataset migration, DONETICK_PERSIST_DIR and DONETICK_DATA_DIR are
+# the same path (see the definition above), so this no longer compares two
+# directories against each other -- it proves the one path really is a mounted
+# ZFS dataset rather than a plain directory riding the parent dataset's
+# storage, which is what would let a reboot silently discard every chore,
+# circle, and account Donetick wrote.
 test_donetick_persist_dir() {
-	info "checking the persisted state directory $(fmt_bold "$DONETICK_PERSIST_DIR")"
+	info "checking that $(fmt_bold "$DONETICK_PERSIST_DIR") is a mounted ZFS dataset"
 
-	if ! remote_ok test -d "$DONETICK_PERSIST_DIR"; then
-		fail "$DONETICK_PERSIST_DIR does not exist; Donetick state is not being persisted"
-		return 1
-	fi
-
-	local stat_out
-	stat_out=$(remote stat -c '%U %G %a' "$DONETICK_PERSIST_DIR")
-
-	if [ "$stat_out" = "donetick donetick 750" ]; then
-		pass "$DONETICK_PERSIST_DIR exists and is owned donetick:donetick mode 750"
+	if remote_ok findmnt -rn -t zfs "$DONETICK_PERSIST_DIR"; then
+		pass "$DONETICK_PERSIST_DIR is a mounted ZFS dataset"
 		return 0
 	fi
 
-	fail "$DONETICK_PERSIST_DIR is '${stat_out:-unreadable}', expected 'donetick donetick 750'"
+	fail "$DONETICK_PERSIST_DIR is not a mounted ZFS dataset"
 	return 1
 }
 

@@ -50,11 +50,13 @@ MEALIE_PORT="9000"
 # DATA_DIR, hardcoded in the NixOS module's environment block
 MEALIE_DATA_DIR="/var/lib/mealie"
 
-# The impermanence side of the same directory, created by a tmpfiles rule
-MEALIE_PERSIST_DIR="/persist/var/lib/mealie"
+# The durable state directory. Mealie's state is its own ZFS dataset mounted
+# here, so the state path and the persisted path are one and the same; there is
+# no longer a second copy under /persist to check separately.
+MEALIE_PERSIST_DIR="$MEALIE_DATA_DIR"
 
 # Where Mealie writes per-recipe image trees under DATA_DIR
-MEALIE_PERSIST_RECIPE_DIR="/persist/var/lib/mealie/recipes"
+MEALIE_PERSIST_RECIPE_DIR="$MEALIE_DATA_DIR/recipes"
 
 # Follows services.postgresql.package = pkgs.postgresql_17
 PG_DATA_DIR="/var/lib/postgresql/17"
@@ -293,28 +295,23 @@ test_mealie_state_dir_shape() {
 	return 1
 }
 
-# Test 8: the persist side of the bind mount agrees
+# Test 8: the persisted path is its own mounted ZFS dataset
 #
-# Proves the impermanence directory entry and the tmpfiles rule describe the
-# same thing. A mismatch here is invisible until the next reboot discards
-# everything Mealie wrote.
+# Since the dataset migration, MEALIE_PERSIST_DIR and MEALIE_DATA_DIR are the
+# same path (see the definition above), so this no longer compares two
+# directories against each other -- it proves the one path really is a mounted
+# ZFS dataset rather than a plain directory riding the parent dataset's
+# storage, which is what would let a reboot silently discard everything Mealie
+# wrote.
 test_mealie_persist_dir() {
-	info "checking the persisted state directory $(fmt_bold "$MEALIE_PERSIST_DIR")"
+	info "checking that $(fmt_bold "$MEALIE_PERSIST_DIR") is a mounted ZFS dataset"
 
-	if ! remote_ok test -d "$MEALIE_PERSIST_DIR"; then
-		fail "$MEALIE_PERSIST_DIR does not exist; Mealie state is not being persisted"
-		return 1
-	fi
-
-	local stat_out
-	stat_out=$(remote stat -c '%U %G' "$MEALIE_PERSIST_DIR")
-
-	if [ "$stat_out" = "mealie mealie" ]; then
-		pass "$MEALIE_PERSIST_DIR exists and is owned mealie:mealie"
+	if remote_ok findmnt -rn -t zfs "$MEALIE_PERSIST_DIR"; then
+		pass "$MEALIE_PERSIST_DIR is a mounted ZFS dataset"
 		return 0
 	fi
 
-	fail "$MEALIE_PERSIST_DIR is owned '${stat_out:-unreadable}', expected 'mealie mealie'"
+	fail "$MEALIE_PERSIST_DIR is not a mounted ZFS dataset"
 	return 1
 }
 
@@ -359,7 +356,7 @@ assert_table_non_empty() {
 # Test 12: the on-disk half of MEAL-05
 #
 # Asserted alongside the recipe row count rather than instead of it. The row
-# count alone is green while every thumbnail under /persist/var/lib/mealie is
+# count alone is green while every thumbnail under the state directory is
 # gone, because Mealie's images never enter PostgreSQL. sudo is required
 # because the recipe tree is mode 0750 mealie:mealie.
 test_mealie_recipe_images_present() {

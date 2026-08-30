@@ -13,6 +13,16 @@
     port = 9090;
 
     # Scrape configs for monitoring homelab hosts
+    # Where a firing rule is sent. Without this list Prometheus evaluates every
+    # rule below, marks them firing, and delivers them nowhere -- a failure mode
+    # that is invisible from the rules page, which shows exactly the same thing
+    # either way.
+    alertmanagers = [
+      {
+        static_configs = [ { targets = [ "127.0.0.1:9093" ]; } ];
+      }
+    ];
+
     scrapeConfigs = [
       {
         job_name = "prometheus";
@@ -316,6 +326,55 @@
                   severity: warning
                 annotations:
                   summary: "CPU usage above 90% sustained for 5+ minutes on {{ $labels.instance }}"
+
+              # The three rules below deliberately do NOT follow the shape of
+              # every rule above them, and copying a neighbour here would
+              # produce a rule that cannot fire in the case it was written for.
+              #
+              # Each of these watches a nightly batch job through a timestamp
+              # the job itself writes. The interesting failure is not a job that
+              # runs and reports a stale time -- that one also mails on failure.
+              # It is a job that stops running and says nothing. When that
+              # happens the series is not stale, it is gone: the job never wrote
+              # it, or the host was rebuilt, or the writer and the exporter
+              # disagree about the directory.
+              #
+              # A bare "time() - metric > threshold" evaluates over an empty
+              # vector when the series is absent and yields nothing at all, so
+              # it stays silent through exactly the outage it exists to catch.
+              # Hence each expression is a disjunction: an age arm over whatever
+              # host exports the series, and an absence arm scoped to the host
+              # expected to export it. The absence arm carries the instance
+              # matcher so absent() synthesises that label and the summary can
+              # still name a host -- an unscoped absent() returns a series with
+              # no labels and the alert arrives blaming nobody.
+              #
+              # 26h is the nightly interval plus two hours of margin for a long
+              # replication run or a catch-up after an outage.
+
+              - alert: BackupSnapshotStale
+                expr: time() - backup_last_snapshot_timestamp_seconds > (26 * 3600) or absent(backup_last_snapshot_timestamp_seconds{instance="ser8.local:9100"})
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "No fresh persist snapshot on {{ $labels.instance }} in over 26 hours, or the snapshot job has stopped reporting entirely"
+
+              - alert: BackupReplicaStale
+                expr: time() - backup_last_replica_timestamp_seconds > (26 * 3600) or absent(backup_last_replica_timestamp_seconds{instance="ser8.local:9100"})
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "No fresh replica snapshot on {{ $labels.instance }} in over 26 hours, or replication has stopped reporting entirely"
+
+              - alert: BackupVerifyStale
+                expr: time() - backup_last_verify_timestamp_seconds > (26 * 3600) or absent(backup_last_verify_timestamp_seconds{instance="ser8.local:9100"})
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "No passing backup verification on {{ $labels.instance }} in over 26 hours, or the verification has stopped reporting entirely"
       '')
     ];
   };

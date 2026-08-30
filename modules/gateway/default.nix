@@ -6,6 +6,7 @@
   imports = [
     ./caddy.nix
     ./prometheus.nix
+    ./alertmanager.nix
     ./grafana.nix
     ./tailscale.nix
     ./blackbox.nix

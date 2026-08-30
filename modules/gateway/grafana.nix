@@ -182,9 +182,18 @@ in
 
       # Alerting: Grafana-managed alert rules mirroring existing Prometheus ruleFiles
       # These rules query the Prometheus datasource with the same PromQL expressions.
-      # Existing Prometheus ruleFiles are kept as defense-in-depth (visible in Prometheus UI)
-      # but cannot deliver notifications without a standalone Alertmanager.
-      # Grafana's built-in Alertmanager handles ONLY Grafana-managed rules.
+      #
+      # The two sets are now genuinely independent paths to the same address, and
+      # that is the reason for keeping both. Grafana's built-in Alertmanager
+      # handles only Grafana-managed rules; the rules in prometheus.nix deliver
+      # through the standalone Alertmanager in alertmanager.nix. Either one going
+      # quiet still leaves the other reporting.
+      #
+      # Until that standalone Alertmanager existed, the Prometheus rules could
+      # not notify anyone at all -- they evaluated, showed as firing, and were
+      # handed to an empty receiver list. If it is ever removed, they go back to
+      # being decoration, so remove these mirrored rules with it rather than
+      # leaving the appearance of two paths where there is one.
       alerting.rules.settings = {
         apiVersion = 1;
         # Delete rules removed from provisioning (Grafana doesn't auto-delete file-provisioned rules)

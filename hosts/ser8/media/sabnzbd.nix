@@ -54,6 +54,17 @@
         umask = 002
         host = 0.0.0.0
         port = 8085
+        # SABnzbd refuses requests whose Host header names a machine it does
+        # not recognize (403, "hostname verification failed"). Both reverse
+        # proxies forward the browser's hostname, so each proxied name must be
+        # listed here; direct IP access is always allowed and needs no entry.
+        host_whitelist = sabnzbd.shad-bangus.ts.net, sabnzbd.vofi
+        # SABnzbd separately refuses clients it considers "internet" (403,
+        # "external internet access denied"), judged by the forwarded client
+        # address. Setting local_ranges replaces the built-in private-range
+        # default entirely, so the LAN must be listed alongside the Tailscale
+        # IPv4 (100.64/10 CGNAT) and IPv6 (fd7a:115c:a1e0::/48) ranges.
+        local_ranges = 192.168., 100., fd7a:
         api_key = ${config.sops.placeholder."sabnzbd_api_key"}
         nzb_key = ${config.sops.placeholder."sabnzbd_nzb_key"}
         username = admin

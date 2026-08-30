@@ -1,0 +1,535 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Puts one service's state directory back from a ZFS snapshot.
+#
+# The same three steps for every service: stop the unit, replace the state
+# directory from the chosen snapshot, start the unit again. Everything else
+# here -- the listing, reading from the replica, restoring a single database,
+# the destructive rollback, the preview -- is a variation on those three steps
+# rather than a procedure of its own, so an operator who has done one restore
+# has done all of them.
+
+set -euo pipefail
+
+# Injected at package time as a space-separated list of <service>=<unit> pairs.
+# It carries the allowlist and the unit map together, so the tool never has to
+# guess a unit name from a directory name. Failing loudly here means a
+# mis-packaged tool cannot reach any of the code below.
+: "${BACKUP_COVERED_SERVICES:?built without its covered-service list}"
+
+# From the pinned server package rather than the path, so the archive is read by
+# a client of the same major version that wrote it.
+: "${PG_RESTORE_BIN:?built without a pg_restore path}"
+: "${PG_SUPERUSER:?built without a database superuser name}"
+
+readonly SOURCE_ROOT=rpool/safe/persist
+readonly REPLICA_ROOT=backup/persist-replica
+readonly HOLD_TAG=last-verified
+readonly MANIFEST=/persist/var/lib/backup-manifests/latest.tsv
+
+# Where the nightly job writes the portable archives, relative to the root of
+# the snapshotted tree. They live in the parent dataset rather than inside any
+# service's directory, so a per-service restore reaches them through the parent
+# snapshot of the same name.
+readonly DUMP_SUBPATH=var/lib/backup-dumps
+
+read -r -a covered_pairs <<<"$BACKUP_COVERED_SERVICES"
+
+covered_names() {
+	local pair
+	for pair in "${covered_pairs[@]}"; do
+		printf '%s ' "${pair%%=*}"
+	done
+}
+
+usage() {
+	cat <<-EOF
+		usage: backup-restore <service> [options]
+
+		  --snapshot <name>   restore from this snapshot instead of the last verified one
+		  --force             replace the live directory even when it is not empty
+		  --list              print the snapshots available for the service, then exit
+		  --from source|replica
+		                      read from the source pool (default) or from the replica
+		  --rollback          use the fast destructive mechanism; requires --force
+		  --pg-database <db>  also restore this database from the archive in the snapshot
+		  --dry-run           resolve and print what would happen, then exit having done none of it
+
+		With no --snapshot the tool restores the last snapshot the nightly
+		verification proved good, not the newest one. The newest snapshot is the
+		one most likely to contain whatever went wrong.
+
+		Examples:
+		  backup-restore donetick --list
+		  backup-restore donetick --force
+		  backup-restore donetick --force --dry-run
+		  backup-restore donetick --force --from replica
+		  backup-restore mealie --force --pg-database mealie
+
+		Covered services: $(covered_names)
+	EOF
+}
+
+die() {
+	printf '[ERROR] %s\n' "$@" >&2
+	exit 1
+}
+
+service=""
+snapshot=""
+from=source
+force=0
+list=0
+rollback=0
+dry_run=0
+pg_database=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--snapshot)
+		[ $# -ge 2 ] || die "--snapshot needs a snapshot name"
+		snapshot=$2
+		shift 2
+		;;
+	--from)
+		[ $# -ge 2 ] || die "--from needs source or replica"
+		from=$2
+		shift 2
+		;;
+	--pg-database)
+		[ $# -ge 2 ] || die "--pg-database needs a database name"
+		pg_database=$2
+		shift 2
+		;;
+	--force)
+		force=1
+		shift
+		;;
+	--list)
+		list=1
+		shift
+		;;
+	# The destructive mechanism, and copy stays the default because of what
+	# this one removes: `zfs rollback -r` destroys every snapshot newer than
+	# the target, which on a restore that turns out to be the wrong choice
+	# takes both the evidence and the retry options with it. Two flags rather
+	# than one, so it cannot be reached by a single typo.
+	--rollback)
+		rollback=1
+		shift
+		;;
+	--dry-run)
+		dry_run=1
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-*)
+		printf '[ERROR] Unknown option: %s\n' "$1" >&2
+		usage >&2
+		exit 1
+		;;
+	*)
+		if [ -n "$service" ]; then
+			die "Only one service may be given, got '$service' and '$1'"
+		fi
+		service=$1
+		shift
+		;;
+	esac
+done
+
+if [ -z "$service" ]; then
+	printf '[ERROR] No service given\n' >&2
+	usage >&2
+	exit 1
+fi
+
+case "$from" in
+source | replica) ;;
+*)
+	printf '[ERROR] --from takes source or replica, not %s\n' "$from" >&2
+	usage >&2
+	exit 1
+	;;
+esac
+
+# Resolve the unit from the injected map, and refuse anything that is not in it.
+# This happens before any dataset path or unit name is built, which is what
+# keeps an arbitrary argument from being interpolated into a zfs or systemctl
+# command.
+unit=""
+for pair in "${covered_pairs[@]}"; do
+	if [ "${pair%%=*}" = "$service" ]; then
+		unit=${pair#*=}
+		break
+	fi
+done
+
+if [ -z "$unit" ]; then
+	die "Not a covered service: $service" "Covered services: $(covered_names)"
+fi
+
+trap 'echo "[ERROR] Could not restore $service" >&2' ERR
+
+source_dataset="$SOURCE_ROOT/$service"
+if [ "$from" = replica ]; then
+	root="$REPLICA_ROOT"
+else
+	root="$SOURCE_ROOT"
+fi
+dataset="$root/$service"
+live="/var/lib/$service"
+
+zfs list -H -o name "$dataset" >/dev/null 2>&1 ||
+	die "No such dataset: $dataset"
+
+# ---------------------------------------------------------------------------
+# Mounting the replica.
+#
+# The replica is deliberately not mountable on its own: it carries no
+# mountpoint, so a receive can never land a copy on top of a live service
+# directory. Reading from it therefore means mounting it by hand, which is
+# exactly the incantation an operator should not have to remember at the moment
+# the source pool is the thing that failed. The tool does it, read-only, under a
+# scratch path on the tmpfs, and puts the dataset back the way it found it --
+# including whether the mountpoint was inherited or set locally.
+# ---------------------------------------------------------------------------
+
+mounted_datasets=()
+mounted_previous=()
+
+release_mounts() {
+	local index dataset_name
+	for index in "${!mounted_datasets[@]}"; do
+		dataset_name=${mounted_datasets[$index]}
+		zfs unmount "$dataset_name" 2>/dev/null || true
+		if [ -n "${mounted_previous[$index]}" ]; then
+			zfs set -u mountpoint="${mounted_previous[$index]}" "$dataset_name" 2>/dev/null || true
+		else
+			zfs inherit mountpoint "$dataset_name" 2>/dev/null || true
+		fi
+	done
+	mounted_datasets=()
+	mounted_previous=()
+}
+
+trap release_mounts EXIT
+
+mount_readonly() {
+	local dataset_name=$1 dir value origin
+	value=$(zfs get -H -o value mountpoint "$dataset_name")
+	origin=$(zfs get -H -o source mountpoint "$dataset_name")
+	dir="/run/backup-restore/${dataset_name//\//-}"
+
+	mkdir -p -- "$dir"
+	# -u sets the property without acting on it, so the dataset is never
+	# mounted read-write for the instant between the two commands below.
+	zfs set -u mountpoint="$dir" "$dataset_name"
+	mounted_datasets+=("$dataset_name")
+	case "$origin" in
+	local | received) mounted_previous+=("$value") ;;
+	*) mounted_previous+=("") ;;
+	esac
+	zfs mount -o ro "$dataset_name"
+
+	READABLE_ROOT=$dir
+}
+
+# Where a dataset's files are readable from right now, mounting it first if it
+# carries no mountpoint of its own. The answer comes back in a global rather
+# than on standard output because the mount has to be recorded for the cleanup
+# to undo, and a command substitution would record it in a subshell that exits
+# immediately afterwards.
+READABLE_ROOT=""
+readable_root() {
+	local dataset_name=$1 value
+	value=$(zfs get -H -o value mountpoint "$dataset_name")
+
+	# A legacy mountpoint means ZFS is not tracking where this dataset is
+	# mounted; the system's filesystem table is, so ask the kernel where it
+	# actually landed.
+	if [ "$value" = legacy ]; then
+		value=$(findmnt -n -o TARGET -S "$dataset_name" | head -1)
+	fi
+
+	if [ -z "$value" ] || [ "$value" = none ]; then
+		mount_readonly "$dataset_name"
+		return
+	fi
+
+	if [ "$(zfs get -H -o value mounted "$dataset_name")" != yes ]; then
+		die "$dataset_name is not mounted, so its snapshots cannot be read"
+	fi
+
+	READABLE_ROOT=$value
+}
+
+# ---------------------------------------------------------------------------
+# Which snapshot.
+# ---------------------------------------------------------------------------
+
+# The snapshot the source dataset's hold sits on, or nothing. Holds are local
+# metadata and do not travel in a send stream, so this is always asked of the
+# source dataset even when the read is from the replica.
+pool_hold() {
+	local dataset_name=$1 snap tag
+	local -a snaps=()
+	mapfile -t snaps < <(zfs list -H -t snapshot -o name "$dataset_name" 2>/dev/null || true)
+	[ "${#snaps[@]}" -gt 0 ] || return 0
+	while IFS=$'\t' read -r snap tag _; do
+		if [ "$tag" = "$HOLD_TAG" ]; then
+			printf '%s\n' "${snap#*@}"
+		fi
+	done < <(zfs holds -H "${snaps[@]}" 2>/dev/null || true)
+}
+
+# The snapshot the newest manifest records this dataset as having been verified
+# on, or nothing.
+manifest_hold() {
+	local kind subject hold
+	[ -r "$MANIFEST" ] || return 0
+	while IFS=$'\t' read -r kind subject _ _ _ hold; do
+		if [ "$kind" = dataset ] && [ "$subject" = "$source_dataset" ]; then
+			[ "$hold" = "-" ] || printf '%s\n' "$hold"
+			return 0
+		fi
+	done <"$MANIFEST"
+}
+
+snapshot_exists() {
+	zfs list -H -o name -t snapshot "$1@$2" >/dev/null 2>&1
+}
+
+resolve_default_snapshot() {
+	local recorded held
+
+	[ -r "$MANIFEST" ] ||
+		die "No verification manifest at $MANIFEST" \
+			"Nothing has proven a snapshot good, so there is no safe default." \
+			"Choose one explicitly: backup-restore $service --list"
+
+	recorded=$(manifest_hold)
+	[ -n "$recorded" ] ||
+		die "$MANIFEST records no verified snapshot for $source_dataset" \
+			"Choose one explicitly: backup-restore $service --list"
+
+	# The one case where the hold cannot be consulted: the source dataset is
+	# gone, which is the disaster the replica exists for. Say so rather than
+	# refusing, and say it loudly enough that nobody mistakes this restore for
+	# one whose snapshot was proven good against the pool.
+	if ! zfs list -H -o name "$source_dataset" >/dev/null 2>&1; then
+		printf '[WARN] %s does not exist, so the %s hold cannot be checked.\n' \
+			"$source_dataset" "$HOLD_TAG" >&2
+		printf '[WARN] Using %s on the manifest alone.\n' "$recorded" >&2
+		printf '%s\n' "$recorded"
+		return 0
+	fi
+
+	# The hold is what makes this default an enforceable guarantee rather than
+	# a convention: a held snapshot cannot be destroyed, so the snapshot named
+	# here is still there no matter how much pruning has happened since. A
+	# disagreement means either the manifest is stale or a hold was released by
+	# hand, and both are things to know before restoring rather than after.
+	held=$(pool_hold "$source_dataset" | head -1)
+	if [ "$held" != "$recorded" ]; then
+		die "The manifest and the pool disagree about the last verified snapshot for $service" \
+			"  manifest ($MANIFEST): $recorded" \
+			"  pool ($source_dataset $HOLD_TAG hold): ${held:-none}" \
+			"Refusing to prefer either. Re-run the verification, or choose a snapshot explicitly."
+	fi
+
+	printf '%s\n' "$recorded"
+}
+
+# ---------------------------------------------------------------------------
+# Listing.
+#
+# The snapshot listing is the restore-time picker, and the mark is what saves
+# the operator from cross-referencing the manifest by hand at the one moment
+# that is least convenient.
+# ---------------------------------------------------------------------------
+
+if [ "$list" -eq 1 ]; then
+	verified=$(pool_hold "$source_dataset" | head -1)
+
+	printf '%-38s  %-24s  %8s  %s\n' SNAPSHOT CREATED USED VERIFIED
+	while IFS=$'\t' read -r name created used; do
+		snap=${name#*@}
+		mark="-"
+		if [ -n "$verified" ] && [ "$snap" = "$verified" ]; then
+			mark="<- last verified"
+		fi
+		printf '%-38s  %-24s  %8s  %s\n' "$snap" "$created" "$used" "$mark"
+	done < <(zfs list -H -t snapshot -o name,creation,used -s creation "$dataset")
+
+	if [ "$from" = replica ]; then
+		printf '\nHolds are source-side metadata and are not replicated; the mark above is read\n'
+		printf 'from %s.\n' "$source_dataset"
+	fi
+	exit 0
+fi
+
+resolution="explicitly given"
+if [ -z "$snapshot" ]; then
+	snapshot=$(resolve_default_snapshot)
+	resolution="last verified, from the manifest"
+fi
+
+snapshot_exists "$dataset" "$snapshot" ||
+	die "No such snapshot: $dataset@$snapshot"
+
+# ---------------------------------------------------------------------------
+# Guards, all evaluated before anything is stopped or written.
+# ---------------------------------------------------------------------------
+
+if [ "$rollback" -eq 1 ]; then
+	# Rolling the receive side back diverges it from the source, and the next
+	# replication would silently repair that divergence by discarding the
+	# rollback. Refused outright rather than warned about, in every flag
+	# combination.
+	if [ "$from" = replica ]; then
+		die "--rollback is refused against the replica" \
+			"Rolling the receive side back diverges it from the source, and the next" \
+			"replication would discard the rollback to repair that divergence." \
+			"Restore from the replica by copy instead: backup-restore $service --force --from replica"
+	fi
+
+	if [ "$force" -ne 1 ]; then
+		die "--rollback also requires --force" \
+			"It destroys every snapshot newer than $snapshot, including the ones a failed" \
+			"restore would be retried from. Permitted only as: --rollback --force"
+	fi
+fi
+
+aside="$live.pre-restore-$(date +%Y%m%dT%H%M%S)"
+occupied=0
+if [ -d "$live" ] && [ -n "$(find "$live" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+	occupied=1
+fi
+
+if [ "$occupied" -eq 1 ] && [ "$rollback" -ne 1 ] && [ "$force" -ne 1 ]; then
+	die "Refusing to replace non-empty $live without --force"
+fi
+
+doomed=()
+if [ "$rollback" -eq 1 ]; then
+	# Everything created after the target, which is exactly what the rollback
+	# would take with it. Collected by walking the creation-ordered list past
+	# the target rather than by comparing timestamps, so the answer is the
+	# pool's own ordering and not a reconstruction of it.
+	past_target=0
+	while IFS= read -r name; do
+		if [ "$past_target" -eq 1 ]; then
+			doomed+=("${name#*@}")
+		elif [ "${name#*@}" = "$snapshot" ]; then
+			past_target=1
+		fi
+	done < <(zfs list -H -o name -t snapshot -s creation "$dataset")
+fi
+
+# ---------------------------------------------------------------------------
+# Preview.
+# ---------------------------------------------------------------------------
+
+if [ "$dry_run" -eq 1 ]; then
+	printf 'Would restore %s from %s@%s (%s)\n' "$service" "$dataset" "$snapshot" "$resolution"
+	printf '  read from:  %s\n' "$from"
+	printf '  unit:       %s (stopped, then started again)\n' "$unit"
+	printf '  target:     %s\n' "$live"
+
+	if [ "$rollback" -eq 1 ]; then
+		printf '  mechanism:  rollback, which is destructive\n'
+		if [ "${#doomed[@]}" -eq 0 ]; then
+			printf '  would destroy: no snapshot is newer than %s\n' "$snapshot"
+		else
+			printf '  would destroy %s snapshot(s) newer than %s:\n' "${#doomed[@]}" "$snapshot"
+			printf '    %s\n' "${doomed[@]}"
+		fi
+	else
+		printf '  mechanism:  copy, which preserves what it replaces\n'
+		if [ "$occupied" -eq 1 ]; then
+			printf '  move aside: %s is not empty; its contents would move to %s\n' "$live" "$aside"
+		else
+			printf '  move aside: %s is empty; %s would be created and left empty\n' "$live" "$aside"
+		fi
+	fi
+
+	if [ -n "$pg_database" ]; then
+		readable_root "$root"
+		preview_dump="$READABLE_ROOT/.zfs/snapshot/$snapshot/$DUMP_SUBPATH/$pg_database.dump"
+		[ -f "$preview_dump" ] ||
+			die "No archive for $pg_database inside $root@$snapshot: $preview_dump"
+		printf '  database:   %s, from <tree>/%s/%s.dump inside %s\n' \
+			"$pg_database" "$DUMP_SUBPATH" "$pg_database" "$snapshot"
+	fi
+
+	printf 'Nothing was changed.\n'
+	exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# The restore itself.
+# ---------------------------------------------------------------------------
+
+readable_root "$dataset"
+source_dir="$READABLE_ROOT/.zfs/snapshot/$snapshot"
+[ -d "$source_dir" ] || die "No such snapshot directory: $source_dir"
+source_dir=$(realpath -e -- "$source_dir")
+
+dump=""
+if [ -n "$pg_database" ]; then
+	readable_root "$root"
+	dump="$READABLE_ROOT/.zfs/snapshot/$snapshot/$DUMP_SUBPATH/$pg_database.dump"
+	[ -f "$dump" ] || die "No archive for $pg_database inside $root@$snapshot: $dump"
+	dump=$(realpath -e -- "$dump")
+fi
+
+systemctl stop "$unit"
+
+if [ "$rollback" -eq 1 ]; then
+	zfs rollback -r "$dataset@$snapshot"
+else
+	# The previous state is moved aside rather than deleted, because a restore
+	# that turns out to be the wrong choice needs something to go back to. Its
+	# contents move rather than the directory itself: the live path is a ZFS
+	# mountpoint and cannot be renamed while it is mounted.
+	mkdir -p -- "$aside"
+	find "$live" -mindepth 1 -maxdepth 1 -exec mv -t "$aside" -- {} +
+
+	cp -a --reflink=auto -- "$source_dir/." "$live/"
+fi
+
+if [ -n "$dump" ]; then
+	# The server has to be up to receive the restore, and it is not necessarily
+	# the unit that was just stopped. Starting it here covers both cases: for
+	# every other service it is a no-op, and for a restore of the database host
+	# itself it is the start that would otherwise happen below.
+	systemctl start postgresql.service
+
+	# Clean first and tolerate what is missing, so a second attempt is not
+	# blocked by the objects the first one managed to create.
+	runuser -u "$PG_SUPERUSER" -- \
+		"$PG_RESTORE_BIN" --clean --if-exists --dbname="$pg_database" -- "$dump"
+fi
+
+systemctl start "$unit"
+systemctl is-active --quiet "$unit"
+
+release_mounts
+
+if [ "$rollback" -eq 1 ]; then
+	printf 'Rolled %s back to %s@%s\n' "$service" "$dataset" "$snapshot"
+	printf 'Previous state was destroyed by the rollback, along with %s newer snapshot(s)\n' \
+		"${#doomed[@]}"
+else
+	printf 'Restored %s from %s@%s\n' "$service" "$dataset" "$snapshot"
+	printf 'Previous state preserved at: %s\n' "$aside"
+fi
+
+if [ -n "$dump" ]; then
+	printf 'Restored database %s from %s\n' "$pg_database" "$dump"
+fi

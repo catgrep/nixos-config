@@ -28,7 +28,9 @@
     restartUnits = [ "donetick.service" ];
     content = ''
       DT_NAME=selfhosted
-      DT_IS_USER_CREATION_DISABLED=true
+      # Signup stays open: donetick is reachable only through Tailscale
+      # (see modules/gateway/Caddyfile), so UI profile creation is trusted.
+      DT_IS_USER_CREATION_DISABLED=false
       DT_DATABASE_TYPE=sqlite
       DT_SQLITE_PATH=/var/lib/donetick/donetick.db
       DT_JWT_SECRET=${config.sops.placeholder.donetick_jwt_secret}

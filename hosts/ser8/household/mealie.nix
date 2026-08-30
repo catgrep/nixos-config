@@ -19,7 +19,9 @@
       # with toString, and `toString false` is the empty string in Nix, which
       # would silently reopen registration.
       BASE_URL = "https://mealie.shad-bangus.ts.net";
-      ALLOW_SIGNUP = "false";
+      # Signup stays open: mealie is reachable only through Tailscale
+      # (see modules/gateway/Caddyfile), so UI profile creation is trusted.
+      ALLOW_SIGNUP = "true";
       TZ = "America/Los_Angeles";
     };
 

@@ -141,6 +141,7 @@ Still-operative decisions for future work:
 
 ### Pending Todos
 
+- Consolidate alerting onto the standalone Alertmanager: drop the Grafana-mirrored rules so Prometheus rules are evaluated once, keeping the ser8-local mail paths (`.planning/todos/pending/2026-08-29-consolidate-alerting-onto-standalone-alertmanager.md`).
 - Convert gateway, media, DNS, and NordVPN smoketest behavior into NixOS Python integration tests.
 - Retain deployment scripts only for checks that require live hardware or external services.
 - Request the Google Takeout Tasks export before any import milestone (long-lead, hours-to-days).

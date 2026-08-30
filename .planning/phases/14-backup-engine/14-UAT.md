@@ -22,7 +22,13 @@ awaiting: user response
 
 ### 1. BKP-06 VM restore coverage — accept or extend
 expected: REQUIREMENTS.md's amended wording asks that "a VM test suite exercises the restore path across every covered service." The suite drives the generic restore path against 2 of 16 services (tests/backup-behavior.nix:149). The phase's ROADMAP Success Criterion #4 is satisfied by current evidence; the stricter requirement text is not. Decide: accept as met by substance, or require extended VM coverage first.
-result: [pending]
+result: |
+  decided (2026-08-29): extend. The guest's services are cheap stand-in units
+  (sleep infinity) and every per-service assertion already iterates a list, so
+  the fix is to derive both the stand-in units and the SERVICES list from
+  hosts/ser8/backup/services.nix. Coverage then tracks the covered set
+  automatically, including the irregular unit names (hass, tailscale) that are
+  currently untested. BKP-06 stays open until that lands.
 
 ### 2. BKP-01 live pruning — time-dependent observation
 expected: The 30-night sliding window is declared and mechanism-proven in the VM suite (including the retention floor), but only ~3 nightlies exist on the live host, so live pruning has never removed anything. Nothing to check today; confirm once the window fills (~2026-09-27) that nightly count holds at 30 and the oldest nightly ages out. The staleness alerts and verification digest provide interim coverage.

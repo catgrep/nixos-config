@@ -21,6 +21,18 @@ in
 {
   services.nzbget.enable = true;
 
+  # NZBGet 26 write-tests ScriptDir during its system-health checks and its
+  # extension manager installs extensions there, so pointing ScriptDir at
+  # the read-only /nix/store surfaces "Failed to write ...: Read-only file
+  # system" in the web UI. Keep the script itself store-managed and expose
+  # it through a writable directory via a symlink instead. NZBGet resolves
+  # the symlink as a legacy single-file extension, so the
+  # Category*.Extensions name below keeps matching the symlink's filename.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/nzbget/scripts 0755 nzbget media -"
+    "L+ /var/lib/nzbget/scripts/nzbget-normalize-permissions - - - - ${permissionNormalizer}/bin/nzbget-normalize-permissions"
+  ];
+
   sops.templates."nzbget.conf" = {
     content = ''
       MainDir=/var/lib/nzbget
@@ -29,7 +41,7 @@ in
       NzbDir=/var/lib/nzbget/nzb
       QueueDir=/var/lib/nzbget/queue
       TempDir=/var/lib/nzbget/tmp
-      ScriptDir=${permissionNormalizer}/bin
+      ScriptDir=/var/lib/nzbget/scripts
       LogFile=/var/lib/nzbget/nzbget.log
 
       ControlIP=0.0.0.0

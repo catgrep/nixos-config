@@ -17,6 +17,42 @@ let
 
   manifestDir = "/persist/var/lib/backup-manifests";
   metricsDir = "/persist/var/lib/node-exporter-textfile";
+
+  # The unit's ExecCondition: exit 0 starts the verification, exit 1 skips it
+  # without marking the unit failed, so OnFailure= stays quiet on the passes
+  # that carry nothing. The copier pulls verification in behind every pass,
+  # and most passes are no-ops; this guard is what keeps the heavy walk to
+  # one run per new replica snapshot.
+  #
+  # It keys on the #replica_snapshot line of the latest manifest because the
+  # manifest records which replica snapshot the last run saw. Comparing
+  # against that makes verification idempotent per snapshot -- one attempt
+  # per nightly, even when that attempt failed, since a failing run still
+  # writes its manifest. A missing manifest reads as "nothing verified yet",
+  # which runs the verification.
+  #
+  # No replica snapshot at all is a skip, not a failure: a copy that never
+  # lands is the copier's own failure mail and the staleness alert's absence
+  # arm, and a verification of nothing would bury that signal under a second
+  # one. A gate that cannot run at all also lands on the skip side, and the
+  # verify-staleness alert is what reports that within a day.
+  verifyGate = pkgs.writeShellScript "backup-verify-gate" ''
+    set -euo pipefail
+
+    newest=$(${pkgs.zfs}/bin/zfs list -H -t snapshot -o name -s creation backup/persist-replica 2>/dev/null | grep '@autosnap_.*_daily$' | tail -1 || true)
+    if [ -z "$newest" ]; then
+      echo "no replica daily snapshot exists; skipping verification"
+      exit 1
+    fi
+    newest=''${newest#*@}
+
+    last=$(grep -m1 '^#replica_snapshot=' ${manifestDir}/latest.tsv 2>/dev/null | cut -d= -f2 || true)
+
+    if [ "$newest" = "$last" ]; then
+      echo "replica snapshot $newest is already recorded; skipping verification"
+      exit 1
+    fi
+  '';
 in
 
 {
@@ -41,12 +77,24 @@ in
     "d ${metricsDir} 0755 root root -"
   ];
 
+  # The copier pulls verification in behind itself, completing the nightly
+  # chain: dump, snapshot, copy, verify -- one sequence hanging off sanoid's
+  # hourly pass, with the guard above deciding which pass pays for the heavy
+  # walk. This ordering is also what covers a machine that was off over the
+  # nightly hour: the catch-up snapshot triggers a copy and then a
+  # verification minutes after boot, at the moment there is something real to
+  # verify, where a wall-clock trigger fires blind and can land before the
+  # catch-up snapshot exists.
+  systemd.services."syncoid-rpool-safe-persist".wants = [ "backup-verify.service" ];
+
   systemd.services.backup-verify = {
     description = "Verify the databases inside the newest persist snapshot";
     onFailure = [ "backup-failure-mail@%n.service" ];
+    after = [ "syncoid-rpool-safe-persist.service" ];
 
     serviceConfig = {
       Type = "oneshot";
+      ExecCondition = "${verifyGate}";
 
       # Root, and not negotiable. A snapshot preserves the live tree's
       # permissions, so this walk crosses owner-only directories belonging to
@@ -114,36 +162,4 @@ in
     '';
   };
 
-  systemd.timers.backup-verify = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      # Half an hour after the nightly snapshot: enough for a steady-state
-      # replication run to finish. Do not move it pre-emptively -- every run
-      # records its own duration in the manifest, so move it when a measurement
-      # asks for it.
-      #
-      # The timezone suffix is what makes "half an hour after" true, and leaving
-      # it off is a mistake that hides rather than announces itself. The snapshot
-      # tool's unit runs with the clock forced to UTC so its snapshot names stay
-      # monotonic across daylight-saving changes, which means the nightly hour it
-      # is configured with is a UTC hour. A bare time here would be read in local
-      # time, and the two halves of one nightly cycle would sit seven or eight
-      # hours apart -- far enough for the run to still pass its freshness window
-      # and for nothing to ever report the drift.
-      #
-      # This must stay half an hour behind the snapshot hour in policy.nix. The
-      # pair is local 03:30 in summer and 02:30 in winter, which is the quiet
-      # window. Note the margin before the nightly upgrade is not fixed: that
-      # timer is on local time and this one is not, so the gap is thirty minutes
-      # in summer and ninety in winter. Judge it against the duration each run
-      # records in the manifest rather than against this comment.
-      OnCalendar = "10:30 UTC";
-
-      # Only meaningful because the timer stamp directory is on persisted
-      # storage. Before that, the stamps systemd reads at boot to notice a
-      # missed run were erased before it looked, so a persistent timer here
-      # quietly never replayed anything -- which reads as working.
-      Persistent = true;
-    };
-  };
 }

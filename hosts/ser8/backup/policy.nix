@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-_:
+{ lib, ... }:
 
 {
   services.sanoid = {
@@ -55,9 +55,10 @@ _:
       # also makes the date in a snapshot's name agree with the local date it
       # was taken on rather than running a day ahead.
       #
-      # The verification timer is anchored to the same clock half an hour later.
-      # Moving one without the other silently uncouples the two halves of a
-      # nightly cycle, which is a failure that reports nothing.
+      # Replication and verification hang off this same pass as unit
+      # dependencies rather than owning clocks of their own, so the hour set
+      # here is the only clock in the whole nightly cycle: move it and
+      # everything downstream moves with it.
       daily_hour = 10;
       daily_min = 0;
 
@@ -108,7 +109,6 @@ _:
 
   services.syncoid = {
     enable = true;
-    interval = "hourly";
 
     # sanoid owns snapshot creation. Without this, syncoid takes its own
     # snapshot before each send, leaving a second set of snapshots on a second
@@ -154,5 +154,27 @@ _:
       # snapshot it would have used was pruned in the meantime.
       extraArgs = [ "--create-bookmark" ];
     };
+  };
+
+  # The copier follows the snapshot pass instead of owning a clock. sanoid
+  # wakes hourly and decides from the pool whether tonight's snapshot is due,
+  # so running the copy as a completion barrier behind that same pass means
+  # the pass that produces a snapshot is the pass that copies it -- catch-up
+  # after an outage included. Most passes find nothing new and exit in
+  # seconds. Two independent hourly timers firing at the shared tick would
+  # race, and the copy would slide a full hour past the snapshot -- far
+  # enough for the verification behind it to read the replica as a day old.
+  #
+  # wants + after, the same idiom that orders the database dump ahead of the
+  # snapshot in dump.nix; both units are oneshot, which is what makes after a
+  # completion barrier rather than a launch order.
+  systemd.services.sanoid.wants = [ "syncoid-rpool-safe-persist.service" ];
+  systemd.services."syncoid-rpool-safe-persist" = {
+    after = [ "sanoid.service" ];
+
+    # An empty startAt is how "no timer of its own" is spelled: the syncoid
+    # module derives a timer unit from this option, and the chain above is
+    # the only trigger this unit is meant to have.
+    startAt = lib.mkForce [ ];
   };
 }

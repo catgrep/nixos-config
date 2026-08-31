@@ -2,12 +2,31 @@
 
 ## What runs, and when
 
-Every night the host dumps every PostgreSQL database into the persisted tree, takes one atomic snapshot of that whole tree, and sends the snapshot to the `backup` pool.
-Half an hour later a verification job opens every database inside the new snapshot, proves it recovers, writes a manifest, mails a digest, and places a hold on the snapshot it proved good for each service.
+One clock drives everything: a timer wakes the snapshot job every hour, and the job asks the pool whether a nightly snapshot exists since the last 10:00 UTC boundary.
+Twenty-three passes a day find one and end there.
+The pass that does not first runs the PostgreSQL dumps to completion, takes one atomic snapshot of the whole persisted tree, sends it to the `backup` pool, and then verifies it.
+Each step is a systemd unit pulled in by the one before it with `wants` plus `after`, and every unit is a oneshot, so "after" is a completion barrier: the snapshot contains finished dumps, the copy sees the snapshot the same pass just took, and the verification reads a replica the copy has already updated.
+
+The verification opens every database inside the new snapshot, proves it recovers, writes a manifest, mails a digest, and places a hold on the snapshot it proved good for each service.
+It sits behind a gate that runs it once per new replica snapshot: when the newest daily on the replica already matches the `#replica_snapshot` line of the latest manifest, or the replica holds no snapshot at all, the gate skips the run.
 Snapshots are kept for thirty nights on the system disk and ninety on the backup pool.
 
-The nightly hour is 10:00 UTC and the verification is at 10:30 UTC, which is 03:00 and 03:30 local in summer, an hour earlier in winter.
-Both are UTC because the snapshot tool names its snapshots in UTC; setting either in local time silently pulls the two halves of one night apart.
+The nightly hour is 10:00 UTC, which is 03:00 local in summer and an hour earlier in winter.
+The hour is UTC because the snapshot tool names its snapshots in UTC; a local-time hour would produce two snapshots with the same name in autumn and a gap in spring.
+
+A machine that was off at the nightly hour heals through the same chain: the first hourly pass after boot finds no nightly since the boundary and takes one, and the copy and the verification follow within minutes.
+A catch-up night and a normal night are the same trace at a different hour, so there is no separate catch-up path to reason about.
+
+```mermaid
+graph TD
+    T(["sanoid.timer<br>hourly - the only clock"]) -->|"starts the pass"| D
+    D["backup-pgdump.service<br>pg_dump of every database"] -->|"wants + after on sanoid:<br>dumps complete before the snapshot"| S
+    S["sanoid.service<br>snapshot when the pool says one is due"] -->|"wants + after:<br>the copy sees the fresh snapshot"| C
+    C["syncoid-rpool-safe-persist.service<br>incremental send to the backup pool"] -->|"wants + after,<br>gate: new replica snapshot?"| V
+    V["backup-verify.service<br>opens and proves every database"] -->|"every run"| G["nightly digest mail"]
+    V -->|"clean run only"| P["metrics textfile<br>read by Prometheus on firebat<br>26h staleness backstop"]
+    D & S & C & V -->|"OnFailure"| M["backup-failure-mail@<br>journal excerpt within seconds"]
+```
 
 ## Which snapshots exist for a service
 
@@ -157,7 +176,7 @@ The second arm matters more than the first: a job that never ran publishes nothi
 
 - **BackupSnapshotStale** — no new nightly snapshot. Check `systemctl status sanoid.service` first; the snapshot job also runs the database dumps, so a failed dump can be what you actually find.
 - **BackupReplicaStale** — snapshots are being taken but not reaching the backup pool. Check `systemctl status syncoid-rpool-safe-persist.service`, then that the `backup` pool is online and has room.
-- **BackupVerifyStale** — snapshots exist but nothing has proven them good. Check `systemctl status backup-verify.service`. This is the one that is silently important: the snapshots look fine and nothing has opened them.
+- **BackupVerifyStale** — snapshots exist but nothing has proven them good. Check `systemctl status backup-verify.service`. This is the one that is silently important: the snapshots look fine and nothing has opened them. A verification skipped by its gate is not a failure of the verifier: it means no new replica snapshot arrived, the cause is upstream in the copy, and BackupReplicaStale will be firing alongside.
 
 A failing job also mails immediately, so the alerts are the slow backstop for a job that stopped running rather than one that ran and failed.
 

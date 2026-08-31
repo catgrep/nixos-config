@@ -16,6 +16,18 @@ let
     ];
     text = builtins.readFile ./nzbget-normalize-permissions.sh;
   };
+  # unrar and p7zip match what the NixOS nzbget module already puts on the
+  # service PATH for NZBGet's own unpack step.
+  nestedExtractor = pkgs.writeShellApplication {
+    name = "nzbget-extract-nested";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.unrar
+      pkgs.p7zip
+    ];
+    text = builtins.readFile ./nzbget-extract-nested.sh;
+  };
 in
 
 {
@@ -31,6 +43,7 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/nzbget/scripts 0755 nzbget media -"
     "L+ /var/lib/nzbget/scripts/nzbget-normalize-permissions - - - - ${permissionNormalizer}/bin/nzbget-normalize-permissions"
+    "L+ /var/lib/nzbget/scripts/nzbget-extract-nested - - - - ${nestedExtractor}/bin/nzbget-extract-nested"
   ];
 
   sops.templates."nzbget.conf" = {
@@ -43,6 +56,21 @@ in
       TempDir=/var/lib/nzbget/tmp
       ScriptDir=/var/lib/nzbget/scripts
       LogFile=/var/lib/nzbget/nzbget.log
+
+      # NZBGet's compiled-in defaults disable both of these; the "yes"
+      # values in its shipped config template are only settings-UI
+      # suggestions and are never applied. Without Unpack the daemon
+      # reports "Unpacking is disabled" (only the per-category Unpack
+      # flags below kept extraction working), and without
+      # UnpackCleanupDisk it never deletes archive volumes after a
+      # successful unpack, so they pile up in /mnt/downloads/complete.
+      Unpack=yes
+      UnpackCleanupDisk=yes
+      ExtCleanupDisk=.par2, .sfv
+
+      # Extraction must run before permission normalization so the files it
+      # creates are covered by the chmod/chgrp pass.
+      ScriptOrder=nzbget-extract-nested, nzbget-normalize-permissions
 
       ControlIP=0.0.0.0
       ControlPort=6789
@@ -75,25 +103,25 @@ in
       Category1.Name=tv
       Category1.DestDir=/mnt/downloads/complete/tv
       Category1.Unpack=yes
-      Category1.Extensions=nzbget-normalize-permissions
+      Category1.Extensions=nzbget-extract-nested, nzbget-normalize-permissions
       Category1.Aliases=
 
       Category2.Name=movies
       Category2.DestDir=/mnt/downloads/complete/movies
       Category2.Unpack=yes
-      Category2.Extensions=nzbget-normalize-permissions
+      Category2.Extensions=nzbget-extract-nested, nzbget-normalize-permissions
       Category2.Aliases=
 
       Category3.Name=prowlarr
       Category3.DestDir=/mnt/downloads/complete/prowlarr
       Category3.Unpack=yes
-      Category3.Extensions=nzbget-normalize-permissions
+      Category3.Extensions=nzbget-extract-nested, nzbget-normalize-permissions
       Category3.Aliases=
 
       Category4.Name=default
       Category4.DestDir=/mnt/downloads/complete/default
       Category4.Unpack=yes
-      Category4.Extensions=nzbget-normalize-permissions
+      Category4.Extensions=nzbget-extract-nested, nzbget-normalize-permissions
       Category4.Aliases=
     '';
     owner = "nzbget";

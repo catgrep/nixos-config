@@ -1,5 +1,6 @@
 ---
 created: 2026-08-30T06:18:51.869Z
+completed: 2026-08-30
 title: Consolidate alerting onto the standalone Alertmanager
 area: gateway
 severity: minor
@@ -22,3 +23,12 @@ Make Prometheus→Alertmanager the single rule-evaluation path: delete the Grafa
 Keep the ser8-local mail paths untouched: backup-failure-mail@ (loud unit failures, seconds latency, journal excerpt in body) and ZED (ZFS event detail) cover cases the firebat Alertmanager structurally cannot, such as ser8 failing while firebat or the network is down.
 Update scripts/smoketests/gateway/test-alertmanager.sh if routing expectations change, and export the dashboard/rule JSON diff per repo PR guidance.
 User assessment (2026-08-29): wants this next, considered easy.
+
+## Outcome (2026-08-30)
+
+Landed in `gateway: consolidate alerting onto standalone Alertmanager` and deployed (switch) to firebat.
+Grafana carries zero alert rules (explicit deleteRules/deleteContactPoints/resetPolicies provisioning); Prometheus->Alertmanager is the single path.
+The Grafana-only probe rules were ported to prometheus.nix (ServiceDown, HostUnreachable, TLSCertExpiringSoon, plus a new TLSProbeFailed guard).
+Extras surfaced by the alert-history review, all fixed in the same pass:
+ZFSPoolUnhealthy watched a nonexistent metric (now node_zfs_zpool_state); the tls_connect probe demanded HTTP 2xx (now a TCP+TLS handshake); NZBGet's 401 now probes through an auth-aware module; pi4 targets commented out while the host is disconnected; HostDown raised to 10m; SABnzbd host_whitelist/local_ranges fixed on ser8.
+Smoketest test-alertmanager.sh now asserts Grafana evaluates zero rules.

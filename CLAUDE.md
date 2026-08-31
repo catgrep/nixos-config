@@ -24,12 +24,12 @@ The Pi hosts build from upstream `nixpkgs` with the pinned `nixos-hardware` boar
 
 ### ser8
 
-The media host imports `modules/media/`, `modules/nordvpn/`, and `modules/automation/`.
-It runs Jellyfin, Sonarr, Radarr, Prowlarr, qBittorrent, SABnzbd, NZBGet, FlareSolverr, Frigate, Home Assistant, Mosquitto, and related exporters.
-qBittorrent runs in the NordVPN network namespace and is exposed locally through nginx.
+The media host's role-specific configuration lives in `hosts/ser8/media/`, `hosts/ser8/household/`, and `hosts/ser8/backup/`, with home automation services from `modules/automation/`.
+It runs Jellyfin, Sonarr, Radarr, Bazarr, Prowlarr, SABnzbd, NZBGet, FlareSolverr, Frigate, Home Assistant, Mosquitto, household apps (Actual, Donetick, Homebox, Mealie) backed by PostgreSQL, and related exporters.
+The nightly backup engine in `hosts/ser8/backup/` snapshots, replicates, and verifies `rpool/safe/persist`; see its `README.md`.
 The host uses ZFS for all persistent storage: `rpool` (system disk, impermanence rollback), `backup` (RAID-Z2, archives and camera recordings), `media` (two-disk mirror, unified library mount at `/mnt/media`), and `rpool/safe/downloads` (NVMe staging with a hard quota, mounted at `/mnt/downloads`, used by SABnzbd and NZBGet before completed downloads are imported into the mirror).
 Samba exposes `/mnt/media` for shared access, and AMD hardware acceleration handles media workloads.
-Media configuration and service integration are coordinated by systemd units defined in `hosts/ser8/media.nix`.
+Media configuration and service integration are coordinated by systemd units defined in `hosts/ser8/media/orchestration.nix`.
 
 ### firebat
 
@@ -149,7 +149,6 @@ make sops-edit-ser8
 make sops-edit-shared
 make sops-gen-api-key
 make sops-gen-hash
-make sops-gen-hash-qbittorrent
 ```
 
 Host-specific encrypted data lives in `secrets/<host>.yaml`, and shared encrypted data lives in `secrets/shared.yaml`.

@@ -176,6 +176,38 @@ test_grafana_has_no_alert_rules() {
 	return 1
 }
 
+# Test 6: the watcher is itself watched.
+# Prometheus must scrape Alertmanager's own metrics (so delivery failures are
+# visible and a dead Alertmanager shows as a down target), and the two rules
+# that read those metrics must be loaded. A rule that was never loaded looks
+# exactly like a rule with nothing to report.
+test_alertmanager_is_monitored() {
+	info "checking that Prometheus scrapes Alertmanager and loads its rules"
+
+	local up rules
+	up=$(remote "curl -sf --max-time 8 '${PROMETHEUS_URL}/api/v1/query?query=up%7Bjob%3D%22alertmanager%22%7D'" || true)
+
+	if printf '%s' "$up" | grep -q '"value":\[[0-9.]*,"1"\]'; then
+		pass "Prometheus scrapes the Alertmanager target and it is up"
+	else
+		fail "Prometheus has no healthy alertmanager scrape target"
+		return 1
+	fi
+
+	rules=$(remote "curl -sf --max-time 8 '${PROMETHEUS_URL}/api/v1/rules?type=alert'" || true)
+
+	local name missing=0
+	for name in AlertmanagerUnreachable AlertmanagerDeliveryFailing; do
+		if printf '%s' "$rules" | grep -q "\"name\":\"$name\""; then
+			pass "rule $name is loaded"
+		else
+			fail "rule $name is not loaded"
+			missing=1
+		fi
+	done
+	[ "$missing" -eq 0 ]
+}
+
 echo
 info "=== Alertmanager Delivery Tests ==="
 run_test "alertmanager_active" test_alertmanager_active || true
@@ -183,6 +215,7 @@ run_test "alertmanager_healthy" test_alertmanager_healthy || true
 run_test "prometheus_knows_the_alertmanager" test_prometheus_knows_the_alertmanager || true
 run_test "mail_configured_without_leaking" test_mail_configured_without_leaking || true
 run_test "grafana_has_no_alert_rules" test_grafana_has_no_alert_rules || true
+run_test "alertmanager_is_monitored" test_alertmanager_is_monitored || true
 
 echo
 if [ $tests_run -eq 0 ]; then

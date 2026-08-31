@@ -177,6 +177,16 @@ https://prom.shad-bangus.ts.net {
 	reverse_proxy 192.168.68.63:9090
 }
 
+https://alertmanager.shad-bangus.ts.net {
+	log tailscale {
+		level DEBUG
+	}
+	bind tailscale/alertmanager
+	# Loopback: Alertmanager listens on 127.0.0.1 only and Caddy runs on the
+	# same host, so this vhost is the one way in from anywhere else.
+	reverse_proxy 127.0.0.1:9093
+}
+
 # -- Smart home devices
 https://frigate.shad-bangus.ts.net {
 	log tailscale {

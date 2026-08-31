@@ -71,6 +71,18 @@
         ];
         scrape_interval = "30s";
       }
+      # Alertmanager's own metrics, over loopback (it binds 127.0.0.1 only and
+      # runs on this host). Scraping it also folds it into the HostDown
+      # catch-all, so a dead Alertmanager at least shows as a down target.
+      {
+        job_name = "alertmanager";
+        static_configs = [
+          {
+            targets = [ "127.0.0.1:9093" ];
+          }
+        ];
+        scrape_interval = "30s";
+      }
       # Caddy reverse proxy metrics (admin API)
       {
         job_name = "caddy";
@@ -267,6 +279,7 @@
               "hass.shad-bangus.ts.net:443"
               "grafana.shad-bangus.ts.net:443"
               "prom.shad-bangus.ts.net:443"
+              "alertmanager.shad-bangus.ts.net:443"
             ];
           }
         ];
@@ -415,6 +428,30 @@
                   severity: warning
                 annotations:
                   summary: "TLS handshake with {{ $labels.instance }} is failing"
+
+              # Watching the watcher, within its structural limit: a dead
+              # Alertmanager cannot deliver an alert about itself, and every
+              # rule here delivers through it. What these two catch is the
+              # degraded-but-alive middle -- Prometheus with nobody to hand
+              # alerts to, and deliveries failing while the process is up.
+              # The storage host's own mail paths are the backstop for the
+              # states this pair structurally cannot report.
+
+              - alert: AlertmanagerUnreachable
+                expr: prometheus_notifications_alertmanagers_discovered < 1
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Prometheus has no Alertmanager to deliver alerts to; firing rules reach nobody"
+
+              - alert: AlertmanagerDeliveryFailing
+                expr: increase(alertmanager_notifications_failed_total[1h]) > 0
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Alertmanager {{ $labels.integration }} notification deliveries are failing"
 
               # The three rules below deliberately do NOT follow the shape of
               # every rule above them, and copying a neighbour here would

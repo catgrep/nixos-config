@@ -36,6 +36,7 @@ let
     caddy = ../../dashboards/caddy.json;
     services = ../../dashboards/services.json; # Per-service CPU/memory/IO from process-exporter
     uptime = ../../dashboards/uptime.json; # Service uptime, host reachability, TLS cert expiry
+    alert-history = ../../dashboards/alert-history.json; # Hand-written: 30d ALERTS state timeline + active alerts
   };
 in
 {
@@ -91,6 +92,21 @@ in
             url = "http://localhost:9090";
             uid = "prometheus"; # Stable UID so dashboard JSON can reference it by uid
             isDefault = true;
+          }
+          # Read-only window onto the external Alertmanager so Grafana's
+          # Alerting page can list currently active alerts and silences.
+          # History is not here -- Alertmanager keeps none; the Alert History
+          # dashboard reads the ALERTS series from Prometheus for that.
+          {
+            name = "Alertmanager";
+            type = "alertmanager";
+            access = "proxy";
+            url = "http://localhost:9093";
+            uid = "alertmanager";
+            jsonData = {
+              implementation = "prometheus";
+              handleGrafanaManagedAlerts = false;
+            };
           }
         ];
       };
@@ -178,6 +194,7 @@ in
     "L+ /var/lib/grafana/dashboards/caddy.json - - - - ${dashboards.caddy}"
     "L+ /var/lib/grafana/dashboards/services.json - - - - ${dashboards.services}"
     "L+ /var/lib/grafana/dashboards/uptime.json - - - - ${dashboards.uptime}"
+    "L+ /var/lib/grafana/dashboards/alert-history.json - - - - ${dashboards.alert-history}"
   ];
 
   # Automatically restart Grafana when dashboard files change

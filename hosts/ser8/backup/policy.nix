@@ -166,11 +166,20 @@
   # enough for the verification behind it to read the replica as a day old.
   #
   # wants + after, the same idiom that orders the database dump ahead of the
-  # snapshot in dump.nix; both units are oneshot, which is what makes after a
-  # completion barrier rather than a launch order.
-  systemd.services.sanoid.wants = [ "syncoid-rpool-safe-persist.service" ];
+  # snapshot in dump.nix. after= is only a completion barrier against a unit
+  # whose start job lasts as long as its process, which is what Type=oneshot
+  # means; both tools ship as simple services, whose start job ends the
+  # moment the process forks. Left simple, the copy starts while the snapshot
+  # is still being taken, and the verification behind the copy reads the
+  # replica mid-send, finds nothing new, and skips the night -- so both are
+  # forced oneshot, and the ordering below becomes real.
+  systemd.services.sanoid = {
+    wants = [ "syncoid-rpool-safe-persist.service" ];
+    serviceConfig.Type = lib.mkForce "oneshot";
+  };
   systemd.services."syncoid-rpool-safe-persist" = {
     after = [ "sanoid.service" ];
+    serviceConfig.Type = lib.mkForce "oneshot";
 
     # An empty startAt is how "no timer of its own" is spelled: the syncoid
     # module derives a timer unit from this option, and the chain above is

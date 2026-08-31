@@ -3,6 +3,22 @@
 { pkgs }:
 
 let
+  inherit (pkgs) lib;
+
+  # The covered set, imported from the same file the engine reads. The guest
+  # stands up one unit per entry under the entry's real unit name -- the two
+  # names that do not follow from their directories (hass ->
+  # home-assistant.service, tailscale -> tailscaled.service) are exactly the
+  # ones a hand-written list drifts on -- and the test script derives its
+  # service list from the same attrset, so a service added to services.nix
+  # extends this suite without edits here.
+  coveredServices = import ../hosts/ser8/backup/services.nix;
+
+  # postgresql is covered but gets no stand-in: the guest runs the real
+  # server, because the dump, archive-verification and single-database
+  # restore paths need a live catalog behind them.
+  standIns = lib.filterAttrs (_: cfg: cfg.unit != "postgresql.service") coveredServices;
+
   # Leaves a database behind with a live write-ahead log beside it. Closing the
   # last connection cleanly checkpoints the log and deletes it, so the writer is
   # killed instead. That is the only way to get a log into a snapshot, and it is
@@ -65,13 +81,15 @@ pkgs.testers.runNixOSTest {
         ../hosts/ser8/backup/verify.nix
       ];
 
-      # Eight gigabytes each because the interrupted-replication assertion sends
-      # a gigabyte of incompressible data and both pools have to hold it
-      # alongside everything the rest of the script accumulates. The images are
-      # sparse, so the headroom costs nothing until it is used.
+      # Twelve gigabytes each: the interrupted-replication assertion sends a
+      # gigabyte of incompressible data, the crash-during-verification one
+      # spreads another gigabyte of database copies, and both pools have to
+      # hold all of it alongside the snapshots the rest of the script
+      # accumulates. The images are sparse, so the headroom costs nothing
+      # until it is used.
       virtualisation.emptyDiskImages = [
-        8192
-        8192
+        12288
+        12288
       ];
       boot.supportedFilesystems = [ "zfs" ];
       # Matching the host's setting rather than the module default, which warns.
@@ -113,27 +131,45 @@ pkgs.testers.runNixOSTest {
         ensureDatabases = [ "mealie" ];
       };
 
-      # Stand-ins for two covered services. The restore path needs units it can
-      # stop and start and nothing more, and two of them is what makes the
-      # per-dataset hold behaviour distinguishable from per-run behaviour.
-      # Pulling in the real services would drag their packages along without
-      # making any assertion here stronger.
-      systemd.services.donetick = {
-        description = "Stand-in for the donetick service";
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
-          Restart = "always";
+      # One stand-in per covered service, under the covered unit's real name.
+      # The restore path needs units it can stop and start and nothing more;
+      # pulling in the real services would drag their packages along without
+      # making any assertion here stronger. What matters is the name: the
+      # restore tool stops the unit services.nix records, so a stand-in under
+      # any other name would let the mapping rot while every test stayed green.
+      systemd.services =
+        lib.mapAttrs' (
+          name: cfg:
+          lib.nameValuePair (lib.removeSuffix ".service" cfg.unit) {
+            description = "Stand-in for the ${name} service";
+            wantedBy = [ "multi-user.target" ];
+            serviceConfig = {
+              ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
+              Restart = "always";
+            };
+          }
+        ) standIns
+        // {
+          # The real server must not start before its covered dataset exists:
+          # the script starts it once the pool is built, so the first start
+          # runs initdb into the dataset rather than into a root filesystem
+          # the test never snapshots. Emptying the service's own wantedBy is
+          # not enough -- postgresql.target is what multi-user pulls in, and
+          # the target drags the service with it, initdb and all; a dataset
+          # mounted over that datadir leaves a running server writing through
+          # open handles into a directory nothing can see or snapshot.
+          postgresql.wantedBy = lib.mkForce [ ];
         };
-      };
-      systemd.services.mealie = {
-        description = "Stand-in for the mealie service";
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
-          Restart = "always";
-        };
-      };
+      systemd.targets.postgresql.wantedBy = lib.mkForce [ ];
+
+      # The script moves the clock by weeks and reboots the guest with crashes,
+      # and the pass's persistent timer fires within seconds of every boot --
+      # early enough to run a whole chain pass before any test code can stop
+      # it, stamping metrics and consuming resume tokens the crash assertions
+      # are about to read. The timer unit still exists (the wiring subtest
+      # reads it), but nothing activates it: every pass in here is driven by
+      # hand.
+      systemd.timers.sanoid.wantedBy = lib.mkForce [ ];
     };
 
   testScript = ''
@@ -143,23 +179,32 @@ pkgs.testers.runNixOSTest {
     MANIFEST = "/persist/var/lib/backup-manifests/latest.tsv"
     DUMPS = "var/lib/backup-dumps"
 
-    # The services this guest stands up. Every per-service assertion below is
-    # driven from this list rather than from a hardcoded name, so adding a
-    # service to the guest extends the coverage without editing the assertion.
-    SERVICES = ["donetick", "mealie"]
+    # Service name -> unit name, generated from services.nix itself. Every
+    # per-service assertion below iterates this mapping, so the suite's
+    # coverage is the covered set by construction, irregular unit names
+    # included.
+    SERVICES = ${builtins.toJSON (lib.mapAttrs (_: cfg: cfg.unit) coveredServices)}
 
 
-    def quiesce_timers():
-        """Drive every job by hand.
+    def settle_chain():
+        """Wait until a started pass has fully drained.
 
-        The script moves the clock by weeks, and a persistent timer that fired
-        on its own in the middle of that would insert snapshots and verification
-        runs the assertions did not ask for. Each unit is still started
-        explicitly below, so nothing here is left untested -- only untimed.
+        Starting the snapshot pass queues the copy behind it and the
+        verification behind that, so the moment the snapshot unit returns is
+        not the moment the night is over. Every assertion that reads state the
+        chain writes has to wait for the queue to empty, or it measures a race
+        instead of the engine.
         """
-        machine.succeed(
-            "systemctl stop sanoid.timer syncoid-rpool-safe-persist.timer backup-verify.timer"
+        machine.wait_until_succeeds(
+            "! systemctl list-jobs | grep -qE 'sanoid|syncoid|backup-'",
+            timeout=600,
         )
+
+
+    def sanoid_pass():
+        """One full pass of the chain: snapshot decision, copy, verification."""
+        machine.systemctl("start --wait sanoid.service")
+        settle_chain()
 
 
     def crash_and_boot():
@@ -180,7 +225,10 @@ pkgs.testers.runNixOSTest {
         # script on scratch disks -- so nothing imports them automatically.
         machine.succeed("zpool import -f -a || true")
         machine.succeed("zfs mount -a")
-        quiesce_timers()
+        # The real server is started by this script, not by the boot, so a
+        # reboot has to bring it back the same way.
+        machine.succeed("systemctl start postgresql.target")
+        machine.wait_for_unit("postgresql.service")
 
 
     def snapshot_names(dataset, prefix=""):
@@ -225,6 +273,20 @@ pkgs.testers.runNixOSTest {
         return None
 
 
+    def release_all_holds():
+        """Unpin every last-verified hold.
+
+        The verification pins the newest snapshot it proved good, and that
+        pinning has subtests of its own. The retention assertions ask a
+        different question -- what the window destroys -- and a hold left in
+        place would answer it for them.
+        """
+        for dataset in tree_datasets():
+            held = hold_of(dataset)
+            if held:
+                machine.succeed(f"zfs release last-verified {dataset}@{held}")
+
+
     def tree_fingerprint(service):
         """Content, not just presence. Two restores that produce the same bytes
         are the same restore; a listing or a preview that changed one byte is
@@ -266,31 +328,37 @@ pkgs.testers.runNixOSTest {
 
 
     def nightly():
-        """One night: the clock moves on, the snapshot is taken, the replica
-        catches up. Returns the snapshot that night produced.
+        """One night: the clock moves on and the pass runs -- snapshot, copy
+        and verification in one chain. Returns the snapshot that night
+        produced.
 
         The clock has to move. The policy decides from pool state whether a
         nightly is still due, so two runs inside the same day produce one
         snapshot -- and an assertion about "the new snapshot" would quietly be
         about the old one, which is how a test certifies a change it never saw.
-        The replication is here because the verification checks the replica's
-        freshness too, so a night that skipped it would fail for a reason that
-        has nothing to do with what is being asserted.
         """
         before = set(dailies())
         advance_clock(1)
-        machine.systemctl("start --wait sanoid.service")
+        sanoid_pass()
         taken = set(dailies()) - before
         assert taken, "the policy took no snapshot on a new night"
-        machine.systemctl("start --wait syncoid-rpool-safe-persist.service")
         return sorted(taken)[-1]
 
 
     def run_verification():
-        """Run the verification and return its status alongside its own account
-        of what happened. The unit names the step it failed at, so carrying the
-        journal into the assertion message is the difference between a failure
-        that explains itself and one that needs a second run to investigate."""
+        """Run the verification on demand and return its status alongside its
+        own account of what happened.
+
+        The gate holds the verification to one run per replica snapshot by
+        comparing against the latest manifest, so an on-demand re-run has to
+        clear that memory first. The gate's own behaviour is asserted in its
+        dedicated subtest; here it is deliberately opened so the assertions
+        measure the verification, not the gate.
+
+        The unit names the step it failed at, so carrying the journal into the
+        assertion message is the difference between a failure that explains
+        itself and one that needs a second run to investigate."""
+        machine.succeed(f"rm -f {MANIFEST}")
         status, _ = machine.systemctl("start --wait backup-verify.service")
         journal = machine.succeed("journalctl -u backup-verify.service --no-pager -n 80")
         return status, journal
@@ -344,8 +412,49 @@ pkgs.testers.runNixOSTest {
 
 
     machine.wait_for_unit("multi-user.target")
-    machine.wait_for_unit("postgresql.service")
-    quiesce_timers()
+
+    with subtest("the snapshot pass owns the only timer and pulls everything else"):
+        # The nightly cycle is one chain hanging off one clock. Each edge is
+        # asserted from the loaded units rather than from the configuration
+        # that generated them, so a refactor that drops an edge fails here and
+        # not on the host.
+        machine.succeed("systemctl cat sanoid.timer > /dev/null")
+        machine.fail("systemctl cat syncoid-rpool-safe-persist.timer 2> /dev/null")
+        machine.fail("systemctl cat backup-verify.timer 2> /dev/null")
+
+        wants = machine.succeed("systemctl show -p Wants --value sanoid.service")
+        assert "backup-pgdump.service" in wants, "the pass does not pull the dumps"
+        assert "syncoid-rpool-safe-persist.service" in wants, (
+            "the pass does not pull the copy"
+        )
+        after = machine.succeed(
+            "systemctl show -p After --value syncoid-rpool-safe-persist.service"
+        )
+        assert "sanoid.service" in after, "the copy is not ordered behind the snapshot"
+        wants = machine.succeed(
+            "systemctl show -p Wants --value syncoid-rpool-safe-persist.service"
+        )
+        assert "backup-verify.service" in wants, "the copy does not pull the verification"
+        after = machine.succeed("systemctl show -p After --value backup-verify.service")
+        assert "syncoid-rpool-safe-persist.service" in after, (
+            "the verification is not ordered behind the copy"
+        )
+
+        # after= is a completion barrier only against a oneshot unit; against a
+        # simple one it is a launch order, and the copy would start mid-snapshot
+        # while the verification gate reads the replica mid-send and skips the
+        # night. Every link in the chain therefore has to be oneshot.
+        for unit in [
+            "backup-pgdump.service",
+            "sanoid.service",
+            "syncoid-rpool-safe-persist.service",
+            "backup-verify.service",
+        ]:
+            kind = machine.succeed(f"systemctl show -p Type --value {unit}").strip()
+            assert kind == "oneshot", (
+                f"{unit} is Type={kind}; the ordering behind it is a launch order, "
+                f"not a completion barrier"
+            )
 
     # Pin the guest to midday UTC before anything asks the policy for a
     # snapshot. The policy only takes a nightly once the clock is past its
@@ -371,15 +480,29 @@ pkgs.testers.runNixOSTest {
         "zpool create -O mountpoint=none -O compression=lz4 backup /dev/vdc1",
         "zfs create rpool/safe",
         "zfs create -o mountpoint=/persist rpool/safe/persist",
-        "zfs create -o mountpoint=/var/lib/donetick -o atime=off rpool/safe/persist/donetick",
-        "zfs create -o mountpoint=/var/lib/mealie -o atime=off rpool/safe/persist/mealie",
-        "udevadm settle",
     )
+    # One dataset per covered service, exactly as the layout declares on the
+    # host. The loop runs off the derived mapping, so a service added to the
+    # covered set gets a dataset here without edits.
+    for service in SERVICES:
+        machine.succeed(
+            f"zfs create -o mountpoint=/var/lib/{service} -o atime=off "
+            f"rpool/safe/persist/{service}"
+        )
+    machine.succeed("udevadm settle")
 
     # The dump and manifest directories were created at boot under the root
     # filesystem, which the persist dataset has just mounted over. Re-run the
     # rules now that the real tree is there.
     machine.succeed("systemd-tmpfiles --create")
+
+    # The mountpoint arrives root-owned from the pool, and the server's first
+    # start refuses a data directory it cannot write. The target rather than
+    # the service, so the setup unit that creates the declared databases runs
+    # with it.
+    machine.succeed("chown postgres:postgres /var/lib/postgresql")
+    machine.succeed("systemctl start postgresql.target")
+    machine.wait_for_unit("postgresql.service")
 
     # A snapshot whose name does not carry sanoid's automatic prefix. It stands
     # in for the impermanence rollback anchor on the real host, which must
@@ -395,8 +518,21 @@ pkgs.testers.runNixOSTest {
     machine.succeed("seed-wal-database /var/lib/donetick/app.db 2000")
     machine.succeed("seed-wal-database /var/lib/mealie/app.db 20000")
 
+    with subtest("a restore with no verification evidence refuses rather than guessing"):
+        # A snapshot exists, but nothing has ever verified one, so there is no
+        # manifest and no hold for the default to resolve. The newest snapshot
+        # is the one most likely to contain whatever went wrong, so the tool
+        # must not silently fall back to it; refusing is the only honest
+        # answer. This runs before the first pass on purpose -- the pass
+        # verifies as part of its chain, and evidence, once written, cannot be
+        # unwritten.
+        probe = f"autosnap_{today}_00:00:01_daily"
+        take_daily(probe)
+        machine.fail("backup-restore donetick --force")
+        machine.succeed(f"zfs destroy -r rpool/safe/persist@{probe}")
+
     with subtest("one recursive snapshot covers parent and child in one transaction group"):
-        machine.systemctl("start --wait sanoid.service")
+        sanoid_pass()
         parent = autosnaps("rpool/safe/persist")
         child = autosnaps("rpool/safe/persist/donetick")
         assert parent, "sanoid took no snapshot of rpool/safe/persist"
@@ -404,8 +540,46 @@ pkgs.testers.runNixOSTest {
             f"recursive snapshot names diverged: parent={parent} child={child}"
         )
 
+    with subtest("one pass replicates and verifies with no further trigger, then the gate skips"):
+        # Nothing here starts the copy or the verification; the pass above did.
+        snap = newest_daily()
+        assert snap in snapshot_names("backup/persist-replica", "autosnap"), (
+            "the pass did not replicate its own snapshot"
+        )
+        header = manifest_header()
+        assert header["snapshot"] == snap and header["status"] == "ok", (
+            f"the pass did not verify its own snapshot: {header}"
+        )
+
+        # The same replica snapshot again: the gate must skip, and a skip is
+        # not a failure -- the unit ends condition-failed, so the failure mail
+        # hooked to OnFailure= stays quiet. The skip is read from the journal
+        # rather than from unit properties: systemd unloads an idle unit, and
+        # the properties of an unloaded unit read as defaults.
+        def gate_skips():
+            return int(machine.succeed(
+                "journalctl -u backup-verify.service --no-pager "
+                "| grep -c \"Skipped due to 'exec-condition'\" || true"
+            ).strip())
+
+        metrics_before = machine.succeed(f"cat {METRICS}")
+        skips = gate_skips()
+        machine.systemctl("start --wait backup-verify.service")
+        assert gate_skips() == skips + 1, "the gate re-ran an already-recorded snapshot"
+        machine.fail("systemctl is-failed --quiet backup-verify.service")
+        metrics_after = machine.succeed(f"cat {METRICS}")
+        assert metrics_before == metrics_after, "a skipped run still stamped the metrics"
+        mail_started = machine.succeed(
+            "systemctl show -p ActiveEnterTimestamp --value "
+            "'backup-failure-mail@backup-verify.service.service'"
+        ).strip()
+        assert mail_started in ("", "n/a"), (
+            f"a gate skip raised the failure mail at {mail_started}"
+        )
+
     with subtest("replication leaves the replica unmounted"):
         machine.systemctl("start --wait syncoid-rpool-safe-persist.service")
+        settle_chain()
         mounted = machine.succeed(
             "zfs get -H -o value mounted backup/persist-replica/donetick"
         ).strip()
@@ -439,18 +613,16 @@ pkgs.testers.runNixOSTest {
         assert len(residue) == 0, f"delegation residue on the source: {residue!r}"
 
     with subtest("pruning ignores snapshots it did not create"):
-        machine.systemctl("start --wait sanoid.service")
+        sanoid_pass()
         machine.succeed("zfs list -H -t snapshot rpool/safe/persist/donetick@keep-me-anchor")
 
     with subtest("a service's state survives the round trip out of a snapshot"):
         machine.succeed("rm -f /var/lib/donetick/sentinel")
         machine.fail("test -e /var/lib/donetick/sentinel")
 
-        # Named explicitly because nothing has verified a snapshot yet. The
-        # tool's default resolves the last snapshot the nightly verification
-        # proved good, and no verification has run at this point in the script,
-        # so there is deliberately nothing for it to resolve to. The default is
-        # exercised later, after a verification run has placed the holds.
+        # Named explicitly on purpose: this asserts the copy path on its own,
+        # independent of how the default resolves a snapshot. The default has
+        # its refusal asserted above and its resolution asserted further down.
         early_snapshot = newest_daily("rpool/safe/persist/donetick")
         machine.succeed(f"backup-restore donetick --force --snapshot {early_snapshot}")
 
@@ -466,17 +638,11 @@ pkgs.testers.runNixOSTest {
 
         machine.fail(f"backup-restore not-a-service --force --snapshot {early_snapshot}")
 
-    with subtest("a restore with no verified snapshot to resolve refuses rather than guessing"):
-        # The newest snapshot is the one most likely to contain whatever went
-        # wrong, so the tool must not silently fall back to it when there is no
-        # verification evidence. Refusing is the only honest answer here.
-        machine.fail("backup-restore donetick --force")
-
     with subtest("the dumps ride inside the snapshot"):
         # The dump job is ordered ahead of the snapshot rather than clocked
         # separately, so simply running the snapshot unit is what produces
         # them -- there is no dump timer to start here, and that is the point.
-        machine.systemctl("start --wait sanoid.service")
+        sanoid_pass()
         snap = newest_daily()
         view = f"/persist/.zfs/snapshot/{snap}/{DUMPS}"
 
@@ -490,6 +656,10 @@ pkgs.testers.runNixOSTest {
         for database in catalog:
             machine.succeed(f"test -s {view}/{database}.dump")
             machine.succeed(f"pg_restore --list {view}/{database}.dump > /dev/null")
+
+    # The retention assertions below measure the window on its own, so the
+    # pinning the pass's verification has already applied is lifted first.
+    release_all_holds()
 
     with subtest("retention destroys nothing while the floor is unmet"):
         # Every existing nightly is now well over the thirty-day window, and
@@ -522,7 +692,7 @@ pkgs.testers.runNixOSTest {
         with subtest("a missed nightly is taken on the next run rather than at the next slot"):
             before_catchup = set(dailies())
             advance_clock(2)
-            machine.systemctl("start --wait sanoid.service")
+            sanoid_pass()
             appeared = set(dailies()) - before_catchup
             assert appeared, "no snapshot was taken after a missed nightly slot"
             survivors = dailies()
@@ -530,6 +700,9 @@ pkgs.testers.runNixOSTest {
         # The assertions from here on are about verification and holds, not
         # retention, and a full window would let pruning interfere with them.
         # Clear it deliberately rather than leaving the interaction implicit.
+        # The catch-up pass just verified its own snapshot and holds it, so
+        # the pins come off before the destroy.
+        release_all_holds()
         for name in survivors:
             machine.succeed(f"zfs destroy -r rpool/safe/persist@{name}")
 
@@ -594,6 +767,9 @@ pkgs.testers.runNixOSTest {
         )
         machine.succeed("systemctl start donetick.service")
 
+        # The night's own chained verification fails on the damage too; the
+        # on-demand run below is what the assertions read, so the failure is
+        # measured with the journal in hand.
         corrupt_snapshot = nightly()
         assert corrupt_snapshot != clean_snapshot, (
             "the damage never reached a snapshot, so nothing new was checked"
@@ -649,6 +825,7 @@ pkgs.testers.runNixOSTest {
         # verification's own failure mail, which by then has fired every night
         # for thirty nights, so nothing is actually silent.
         prune_status, prune_output = machine.systemctl("start --wait sanoid.service")
+        settle_chain()
         partial = [
             name
             for name in set().union(*(set(dailies(ds)) for ds in tree_datasets()))
@@ -717,17 +894,22 @@ pkgs.testers.runNixOSTest {
                 f"{dataset} is not held at {verified_snapshot}, so the default cannot resolve"
             )
 
-    with subtest("the restore path round-trips every covered service the guest runs"):
-        for service in SERVICES:
+    with subtest("the restore path round-trips every covered service"):
+        # Every entry in the covered set, through its real unit name. The
+        # postgresql entry restores a crash-consistent data directory under a
+        # live server's feet -- stopped by the tool, recovered on start --
+        # which is exactly the drill the manifest promises an operator.
+        for service, unit in SERVICES.items():
             machine.succeed(f"rm -f /var/lib/{service}/restore-sentinel")
             # No --snapshot. The default has to reach the verified snapshot
             # through the manifest and prove the pool still holds it.
-            machine.succeed(f"backup-restore {service} --force")
+            status, out = machine.execute(f"backup-restore {service} --force 2>&1")
+            assert status == 0, f"backup-restore {service} --force failed:\n{out}"
             restored = machine.succeed(f"cat /var/lib/{service}/restore-sentinel").strip()
             assert restored == f"{service}-sentinel", (
                 f"{service} restored the wrong content: {restored!r}"
             )
-            machine.succeed(f"systemctl is-active {service}.service")
+            machine.succeed(f"systemctl is-active {unit}")
         machine.succeed("rm -rf /var/lib/*.pre-restore-*")
 
     with subtest("the default refuses when the manifest and the pool disagree"):
@@ -903,7 +1085,7 @@ pkgs.testers.runNixOSTest {
                 tree_fingerprint(service),
                 snapshot_fingerprint(f"rpool/safe/persist/{service}"),
                 snapshot_fingerprint(f"backup/persist-replica/{service}"),
-                machine.succeed(f"systemctl is-active {service}.service").strip(),
+                machine.succeed(f"systemctl is-active {SERVICES[service]}").strip(),
                 machine.succeed(
                     f"zfs get -H -o value mounted backup/persist-replica/{service}"
                 ).strip(),
@@ -1053,21 +1235,22 @@ pkgs.testers.runNixOSTest {
         # 300 MB/s in here a gigabyte takes several seconds, which is wide enough
         # that a poll cannot step over the whole window.
         machine.succeed("dd if=/dev/urandom of=/var/lib/donetick/bulk bs=1M count=1024")
-        before = set(dailies())
-        advance_clock(1)
-        machine.systemctl("start --wait sanoid.service")
-        pending = sorted(set(dailies()) - before)[-1]
 
-        # Measured on the child rather than on the whole replica. The tree is
-        # sent one dataset at a time, so growth of the parent's total says only
-        # that some dataset is receiving -- and the one being asserted about
-        # below may already be finished by then.
+        # Measured on the child rather than on the whole replica, and before
+        # the pass starts: the copy is queued behind the snapshot by the chain
+        # itself, so the transfer is already moving by the time the snapshot
+        # unit returns. The tree is sent one dataset at a time, so growth of
+        # the parent's total says only that some dataset is receiving -- and
+        # the one being asserted about below may already be finished by then.
         used_before = int(
             machine.succeed(
                 "zfs get -Hp -o value used backup/persist-replica/donetick"
             ).strip()
         )
-        machine.succeed("systemctl start --no-block syncoid-rpool-safe-persist.service")
+        before = set(dailies())
+        advance_clock(1)
+        machine.systemctl("start --wait sanoid.service")
+        pending = sorted(set(dailies()) - before)[-1]
 
         # Crash once data is provably in flight rather than after a guessed
         # delay, which in a virtual machine is not a signal at all.
@@ -1092,29 +1275,42 @@ pkgs.testers.runNixOSTest {
         assert pending in snapshot_names("backup/persist-replica/donetick"), (
             f"the replica never reached {pending}"
         )
+        # The manual copy pulled the verification in behind it, exactly as the
+        # nightly pass does; let it drain before the next subtest measures
+        # anything.
+        settle_chain()
 
         assert_snapshot_names_are_all_or_none("after the interrupted replication")
 
     with subtest("a crash before the verification finishes leaves the metric unstamped"):
-        # Two more copies of the large database, so the run has a few hundred
-        # megabytes to copy out and check and is unambiguously still in flight
-        # when the power goes. Without them the verification finishes inside a
-        # second and the crash lands after it, which would make this assertion
-        # pass without ever testing anything.
-        for extra in ["second", "third"]:
-            machine.succeed(f"cp /var/lib/mealie/app.db /var/lib/mealie/{extra}.db")
+        # A dozen more copies of the large database -- about a gigabyte -- so
+        # the run has enough to copy out and check that it is unambiguously
+        # still in flight when the power goes. With less, the caches are warm
+        # from the night's own verification and the run finishes before the
+        # crash lands, which would make this assertion pass without ever
+        # testing anything.
+        for extra in range(12):
+            machine.succeed(f"cp /var/lib/mealie/app.db /var/lib/mealie/extra{extra:02d}.db")
         nightly()
         metrics_before = machine.succeed(f"cat {METRICS}")
+        # The stamp just read was written seconds ago and the crash below cuts
+        # power before the pool would commit it on its own; without forcing it
+        # to stable storage, the comparison after boot measures transaction
+        # rollback instead of the verification's stamping discipline.
+        machine.succeed("sync && zpool sync")
 
         # The power goes immediately after the job is queued rather than after
-        # waiting to observe it mid-run: the run takes about a second even with
-        # a few hundred megabytes to check, so any wait long enough to be
-        # reliable is also long enough to miss it.
+        # waiting to observe it mid-run: any wait long enough to be reliable is
+        # also long enough to miss the run. The gate is opened by hand first,
+        # because the night's own pass has already recorded this replica
+        # snapshot and would otherwise skip the run this crash needs to land in.
         #
         # Crashing early cannot make this pass vacuously. The metrics recorded
-        # above name the previous night's snapshot, so a run that did finish
-        # would have replaced them with tonight's -- the comparison below fails
-        # in exactly the case where the crash landed too late to prove anything.
+        # above carry the finished pass's verification timestamp, so a run that
+        # did finish before the crash would have replaced them -- the
+        # comparison below fails in exactly the case where the crash landed too
+        # late to prove anything.
+        machine.succeed(f"rm -f {MANIFEST}")
         machine.succeed("systemctl start --no-block backup-verify.service")
         crash_and_boot()
 
@@ -1124,6 +1320,24 @@ pkgs.testers.runNixOSTest {
         )
 
         assert_snapshot_names_are_all_or_none("after the crash during verification")
+
+    with subtest("the pass after a crash heals the whole cycle with no timer involved"):
+        # The catch-up case: after an outage, the first pass takes the
+        # snapshot, the chain copies and verifies it, and the metrics come back
+        # fresh -- with nothing having replayed a wall-clock trigger at boot.
+        metrics_before = machine.succeed(f"cat {METRICS} || true")
+        healed = nightly()
+        assert healed in snapshot_names("backup/persist-replica", "autosnap"), (
+            "the catch-up pass did not replicate its snapshot"
+        )
+        header = manifest_header()
+        assert header["snapshot"] == healed and header["status"] == "ok", (
+            f"the catch-up pass did not verify its snapshot: {header}"
+        )
+        metrics_after = machine.succeed(f"cat {METRICS}")
+        assert metrics_after != metrics_before, (
+            "the catch-up pass left the freshness metrics stale"
+        )
 
     with subtest("a crash during the policy run leaves no snapshot on part of the tree"):
         advance_clock(1)

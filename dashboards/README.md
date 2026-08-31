@@ -26,6 +26,8 @@ All `${DS_*}` variables have been replaced with `Prometheus`:
 | adguard | Grafana Labs | 13330 | 3 |
 | caddy | Grafana Labs | 22870 | 3 |
 | services | Grafana Labs | 22161 | 1 |
+| uptime | hand-written (this repo) | N/A | N/A |
+| alert-history | hand-written (this repo) | N/A | N/A |
 
 ## Updating Dashboards
 

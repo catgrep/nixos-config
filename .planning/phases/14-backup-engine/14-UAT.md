@@ -3,20 +3,17 @@ status: testing
 phase: 14-backup-engine
 source: [14-VERIFICATION.md]
 started: 2026-08-29T20:05:00Z
-updated: 2026-08-29T20:05:00Z
+updated: 2026-08-30T19:40:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: BKP-06 VM restore coverage — accept or extend
+number: 2
+name: BKP-01 live pruning — time-dependent observation
 expected: |
-  A decision: accept the current evidence as sufficient (service-agnostic restore
-  implementation, three real drills — Donetick from replica, Actual from source,
-  Mealie in a scratch VM — plus a two-service VM proof in tests/backup-behavior.nix),
-  or require the VM guest to stand up more or all sixteen covered services before
-  BKP-06 is marked complete in REQUIREMENTS.md.
-awaiting: user response
+  Confirm once the 30-night window fills (~2026-09-27) that the nightly count
+  holds at 30 and the oldest nightly ages out.
+awaiting: time (window fills ~2026-09-27)
 
 ## Tests
 
@@ -29,6 +26,18 @@ result: |
   hosts/ser8/backup/services.nix. Coverage then tracks the covered set
   automatically, including the irregular unit names (hass, tailscale) that are
   currently untested. BKP-06 stays open until that lands.
+
+  closed (2026-08-30): landed. tests/backup-behavior.nix now imports
+  hosts/ser8/backup/services.nix, generates a stand-in unit per entry under the
+  entry's real unit name (postgresql runs for real), and derives the test
+  script's service list from the same attrset — all sixteen covered services
+  round-trip through backup-restore, hass and tailscaled included. The suite
+  also covers the chained pipeline (single timer, wants+after completion
+  barriers, the verify gate both ways, post-crash catch-up) and caught a real
+  ordering bug while landing: sanoid and syncoid ship as Type=simple, so the
+  chain's after= edges were launch orders, not completion barriers — both are
+  now forced oneshot in policy.nix. Suite passes; guest script ≈11 min.
+  BKP-06 marked complete in REQUIREMENTS.md.
 
 ### 2. BKP-01 live pruning — time-dependent observation
 expected: The 30-night sliding window is declared and mechanism-proven in the VM suite (including the retention floor), but only ~3 nightlies exist on the live host, so live pruning has never removed anything. Nothing to check today; confirm once the window fills (~2026-09-27) that nightly count holds at 30 and the oldest nightly ages out. The staleness alerts and verification digest provide interim coverage.
@@ -48,9 +57,9 @@ result: [pending]
 ## Summary
 
 total: 3
-passed: 0
+passed: 1
 issues: 0
-pending: 3
+pending: 2
 skipped: 0
 blocked: 0
 

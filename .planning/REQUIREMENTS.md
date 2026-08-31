@@ -39,7 +39,7 @@ BKP-07 is broadened from a named application list to whole-of-persist coverage s
 - [x] **BKP-03**: Service state is never captured by a non-atomic live file copy; the mechanism is an atomic ZFS snapshot, verified nightly by `PRAGMA integrity_check`/`quick_check` run against a copy taken out of the snapshot, never against the live file
 - [x] **BKP-04**: Actual's state is captured whole by the snapshot of its persisted state directory, covering `server-files/account.sqlite` and the entire `user-files/` blob tree
 - [x] **BKP-05**: A Mealie restore into a scratch VM is demonstrated and documented using the parameterized restore tool
-- [ ] **BKP-06**: A restore of one SQLite-backed service (Donetick) and of Actual is demonstrated with that same tool, and a VM test suite exercises the restore path across every covered service
+- [x] **BKP-06**: A restore of one SQLite-backed service (Donetick) and of Actual is demonstrated with that same tool, and a VM test suite exercises the restore path across every covered service
 - [x] **BKP-07**: Backup coverage is everything persisted on ser8 rather than a named application list — household apps, media apps (Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, SABnzbd, NZBGet), Home Assistant, Frigate, Mosquitto, Samba, and any unregistered persisted state — so that adding a service never requires remembering to register it for backup
 
 ### Nixflix
@@ -130,7 +130,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BKP-03 | Phase 14 | Complete |
 | BKP-04 | Phase 14 | Complete |
 | BKP-05 | Phase 14 | Complete |
-| BKP-06 | Phase 14 | Pending |
+| BKP-06 | Phase 14 | Complete |
 | BKP-07 | Phase 14 | Complete |
 | NIX-01 | Phase 15 | Pending |
 | NIX-02 | Phase 15 | Pending |

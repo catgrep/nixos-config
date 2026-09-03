@@ -141,8 +141,8 @@ Still-operative decisions for future work:
 
 ### Pending Todos
 
-- Derive backup VM test coverage from services.nix so all 16 covered services are exercised; closes BKP-06 (`.planning/todos/pending/2026-08-29-derive-backup-vm-test-coverage-from-services-nix.md`).
-- Consolidate alerting onto the standalone Alertmanager: drop the Grafana-mirrored rules so Prometheus rules are evaluated once, keeping the ser8-local mail paths (`.planning/todos/pending/2026-08-29-consolidate-alerting-onto-standalone-alertmanager.md`).
+- 10 pending in `.planning/todos/pending/` — review with `/gsd-capture --list`.
+- rdt-client onboarding promoted to Phase 17 on 2026-09-03; its todo moved to completed.
 - Convert gateway, media, DNS, and NordVPN smoketest behavior into NixOS Python integration tests.
 - Retain deployment scripts only for checks that require live hardware or external services.
 - Request the Google Takeout Tasks export before any import milestone (long-lead, hours-to-days).
@@ -170,6 +170,7 @@ Open items carried into the next milestone (resolved and phase-scoped entries pr
 - v1.2 shipped 2026-08-23 (override closeout); archives under `.planning/milestones/v1.2-*`
 - v1.1 phases 5-7 shelved to Future Requirements; phase artifacts archived under `.planning/milestones/v1.1-phases/`
 - v1.3 phases 12-16 added 2026-08-23: fleet repair, ZFS mirror migration (human-gated), backup engine, Nixflix migration (arr/Prowlarr/Jellyfin), new services (Recyclarr/Seerr/Maintainerr) — 25/25 v1.3 requirements mapped, no orphans
+- Phase 17 added 2026-09-03: onboard rdt-client as a debrid download client (from todo 2026-08-30-onboard-rdt-client)
 
 ## Deferred Items
 

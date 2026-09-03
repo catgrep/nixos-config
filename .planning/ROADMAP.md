@@ -202,3 +202,14 @@ Phase details archived in `.planning/milestones/v1.2-ROADMAP.md`; phase artifact
 | 16. New Services | 0/TBD | Not started | - |
 
 Milestone in progress: v1.3 ZFS Mirror + Nixflix Migration (Phases 12-16). Next: `/gsd-plan-phase 12`.
+
+### Phase 17: Onboard rdt-client as a debrid download client
+
+**Goal:** The media stack gains debrid downloads: rdt-client fronts Real-Debrid behind a qBittorrent-compatible API, packaged/moduled on ser8 (custom derivation if nixpkgs lacks it), wired into Sonarr/Radarr as a qBittorrent-type download client, with download paths on the existing staging dataset and the permission conventions the other clients follow. Real-Debrid account and API token are a human checkpoint (Bobby provides the token for sops).
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 17 to break down)

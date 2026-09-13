@@ -102,7 +102,7 @@ in
       ast-bro = fixedAstBroFor system;
       treehouse = treehouseFor system;
     }
-    // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+    // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       inherit sagent;
       default = sagent;
     }

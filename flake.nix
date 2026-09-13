@@ -44,6 +44,12 @@
       url = "github:vincentbernat/caddy-nix";
     };
 
+    # Tailscale v1.102.3
+    # Found using https://nixmultiverse.com/?pkg=tailscale&ver=1.102.3
+    tailscale-unstable = {
+      url = "github:NixOS/nixpkgs/eaad089433ca2bb662274377d33df3d0e51ef28b";
+    };
+
     sagent = {
       url = "path:./tools/sagent";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -64,6 +70,7 @@
       home-manager,
       caddy-nix,
       sagent,
+      tailscale-unstable,
       ...
     }@inputs:
     let
@@ -187,7 +194,12 @@
           modules = [
             # Apply caddy-nix overlay for Caddy with plugins support
             {
-              nixpkgs.overlays = [ caddy-nix.overlays.default ];
+              nixpkgs.overlays = [
+                caddy-nix.overlays.default
+                (final: prev: {
+                  tailscale = tailscale-unstable.legacyPackages.${system}.tailscale;
+                })
+              ];
             }
             ./hosts/${hostname}
           ]

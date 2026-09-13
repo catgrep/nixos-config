@@ -11,12 +11,10 @@ let
   caddyWithTailscale = pkgs.caddy.withPlugins {
     plugins = [
       # Tailscale plugin for automatic HTTPS certificate provisioning
-      # Using latest from main branch for Caddy 2.11.x compatibility
-      "github.com/tailscale/caddy-tailscale@v0.0.0-20260106222316-bb080c4414ac"
+      # Tailscale v1.102.2
+      "github.com/tailscale/caddy-tailscale@v0.0.0-20260826180304-de41b249af4f"
     ];
-    # Vendor-tree hash. Derived from the pinned plugin ref plus the channel's
-    # caddy and go versions, so it moves whenever caddy does; 26.05 took caddy
-    # 2.10.x -> 2.11.4. Not a trust anchor -- every input is locked.
+    # Caddy v2.11.4
     hash = "sha256-tP/ZQjZvfb+e3322dzd3I89Y9QwujcyqV1fbNWyw08g=";
   };
 in

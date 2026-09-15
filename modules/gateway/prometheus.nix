@@ -501,6 +501,23 @@
                   severity: critical
                 annotations:
                   summary: "No passing backup verification on {{ $labels.instance }} in over 26 hours, or the verification has stopped reporting entirely"
+
+              # Warning, not critical: this series is stamped only when the
+              # nightly digest actually left the backup host, so its staleness
+              # means the mail path is broken, not the backups -- the three
+              # series above keep advancing and keep their own alerts. What a
+              # broken mail path does cost is the fast path: the immediate
+              # failure mail rides the same channel, so this rule is the one
+              # that says "a failure tonight would not have been mailed to
+              # you", and it names the mail path instead of letting that fault
+              # page as three stale-backup criticals.
+              - alert: BackupDigestStale
+                expr: time() - backup_last_digest_timestamp_seconds > (26 * 3600) or absent(backup_last_digest_timestamp_seconds{instance="ser8.local:9100"})
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "No nightly backup digest delivered from {{ $labels.instance }} in over 26 hours -- the mail path from the backup host is broken, or verification has stopped running"
       '')
     ];
   };

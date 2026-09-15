@@ -46,6 +46,11 @@
     adguard = {
       enabled = true;
       mode = "failover"; # default
+      # pi4, the AdGuard host, is powered off with no return date. A dead
+      # primary makes cold lookups stall through its timeout, which is enough
+      # to fail the 03:00 backup digest's SMTP resolution. Point the primary
+      # at the router and drop this override when pi4 is back.
+      address = "192.168.68.1";
     };
     # Network forwarding for VPN namespace
     # forwarding = true;

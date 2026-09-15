@@ -169,7 +169,9 @@ with lib;
                   if cfg.adguard.mode == "strict" then
                     [ cfg.adguard.address ]
                   else
-                    [
+                    # Deduplicated so pointing the AdGuard address at the
+                    # router does not render the router twice.
+                    unique [
                       cfg.adguard.address
                       "192.168.68.1"
                     ] # failover mode

@@ -37,6 +37,11 @@
     adguard = {
       enabled = true;
       mode = "failover"; # AdGuard primary, with fallback for Tailscale DNS bootstrap
+      # pi4, the AdGuard host, is powered off with no return date. A dead
+      # primary makes cold lookups stall through its timeout, and this host
+      # sends the alert mail that must not stall. Point the primary at the
+      # router and drop this override when pi4 is back.
+      address = "192.168.68.1";
     };
   };
 

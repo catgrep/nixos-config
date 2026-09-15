@@ -501,7 +501,59 @@ mv -f -- "$manifest.partial" "$manifest"
 ln -sfn -- "$manifest" "$manifest_dir/latest.tsv"
 
 # ---------------------------------------------------------------------------
-# 9. Send the digest.
+# 9. Write the metrics.
+# ---------------------------------------------------------------------------
+
+# Stamped before the digest on purpose. These series answer "are the backups
+# healthy", and the digest below rides the most fragile link this job touches:
+# outbound mail, which needs DNS and a remote SMTP server to both cooperate at
+# three in the morning. Stamping after delivery would let a broken mail path
+# freeze every freshness series at once and page as three critical backup
+# alerts naming subsystems that are provably fine. The mail path has its own
+# series, written beside the digest below, and its own alert.
+#
+# The guard preserves the invariant that makes the staleness rules mean
+# something: a fresh timestamp never sits beside a verification that did not
+# pass, so an unstamped metric is a real answer, not a missing one.
+if [ "$run_status" = "ok" ]; then
+	operation="writing the metrics"
+	metrics=/persist/var/lib/node-exporter-textfile/backup.prom
+	{
+		echo '# HELP backup_last_snapshot_timestamp_seconds Newest nightly snapshot, created.'
+		echo '# TYPE backup_last_snapshot_timestamp_seconds gauge'
+		echo "backup_last_snapshot_timestamp_seconds $snapshot_epoch"
+		echo '# HELP backup_last_replica_timestamp_seconds Newest replica snapshot, created.'
+		echo '# TYPE backup_last_replica_timestamp_seconds gauge'
+		echo "backup_last_replica_timestamp_seconds $replica_epoch"
+		echo '# HELP backup_last_verify_timestamp_seconds Last passing verification, finished.'
+		echo '# TYPE backup_last_verify_timestamp_seconds gauge'
+		echo "backup_last_verify_timestamp_seconds $(date +%s)"
+		echo '# HELP backup_verified_files Files verified in the last run, by kind and result.'
+		echo '# TYPE backup_verified_files gauge'
+		echo "backup_verified_files{kind=\"sqlite\",result=\"ok\"} $sqlite_ok"
+		echo "backup_verified_files{kind=\"sqlite\",result=\"fail\"} $sqlite_fail"
+		echo "backup_verified_files{kind=\"sqlite\",result=\"not_a_database\"} $sqlite_other"
+		echo "backup_verified_files{kind=\"pgdump\",result=\"ok\"} $pgdump_ok"
+		echo "backup_verified_files{kind=\"pgdump\",result=\"fail\"} $pgdump_fail"
+		echo '# HELP backup_persist_written_bytes Bytes written since the newest snapshot.'
+		echo '# TYPE backup_persist_written_bytes gauge'
+		echo "backup_persist_written_bytes $written_total"
+		echo '# HELP backup_persist_usedbysnapshots_bytes Bytes held only by snapshots.'
+		echo '# TYPE backup_persist_usedbysnapshots_bytes gauge'
+		echo "backup_persist_usedbysnapshots_bytes $usedsnap_total"
+	} >"$metrics.partial"
+
+	# The mode is explicit because the umask above is not what the collector
+	# needs: it runs as its own user and can only read what is readable to it.
+	# The rename is what keeps it from ever reading half a file.
+	chmod 0644 -- "$metrics.partial"
+	mv -f -- "$metrics.partial" "$metrics"
+else
+	echo "[ERROR] Verification failed; the freshness metrics were left unstamped" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# 10. Send the digest.
 # ---------------------------------------------------------------------------
 
 # Paths, check names, results and sizes. Never file contents: this walks every
@@ -533,60 +585,35 @@ compose_digest() {
 	printf '\nManifest: %s\n' "$manifest"
 }
 
-# A delivery failure is a failure of the run, and that is not circular: the
-# staleness alert that notices the unstamped metric below is evaluated on
-# another host entirely, so it still reaches someone on a night when mail from
-# this one does not.
+# A delivery failure is still a failure of the run: the unit goes red and the
+# immediate failure mail is attempted, for whatever that attempt is worth on a
+# night when mail itself is what broke. What it no longer does is freeze the
+# freshness stamps above. The mail path proves itself through its own series
+# instead, stamped only when a digest actually left the host, and the alert
+# watching it is evaluated on another host entirely -- so a night when this
+# one cannot send still reaches someone, under the name of the thing that
+# actually failed.
+#
+# The stamp is earned by any delivered digest, including one that reports a
+# failed verification: what it measures is that mail leaves this host, and a
+# delivered failure report is that fact demonstrated.
 operation="sending the nightly digest"
-if ! compose_digest | "$SENDMAIL_BIN" -t; then
+if compose_digest | "$SENDMAIL_BIN" -t; then
+	operation="writing the digest metric"
+	digest_metrics=/persist/var/lib/node-exporter-textfile/backup-digest.prom
+	{
+		echo '# HELP backup_last_digest_timestamp_seconds Last nightly digest, delivered.'
+		echo '# TYPE backup_last_digest_timestamp_seconds gauge'
+		echo "backup_last_digest_timestamp_seconds $(date +%s)"
+	} >"$digest_metrics.partial"
+	chmod 0644 -- "$digest_metrics.partial"
+	mv -f -- "$digest_metrics.partial" "$digest_metrics"
+else
 	record_failure "Could not deliver the nightly digest"
 fi
 
-# ---------------------------------------------------------------------------
-# 10. Write the metrics, last.
-# ---------------------------------------------------------------------------
-
-# Being last is the entire point. Under strict error handling a failure anywhere
-# above aborts before this runs, and a failure that was recorded rather than
-# fatal is caught by the guard here, so a fresh timestamp can never sit beside a
-# run that did not pass. That is what makes the absence arm of the staleness
-# rule mean something: an unstamped metric is a real answer, not a missing one.
 if [ "$run_status" != "ok" ]; then
-	echo "[ERROR] Verification failed; the freshness metrics were left unstamped" >&2
 	exit 1
 fi
-
-operation="writing the metrics"
-metrics=/persist/var/lib/node-exporter-textfile/backup.prom
-{
-	echo '# HELP backup_last_snapshot_timestamp_seconds Newest nightly snapshot, created.'
-	echo '# TYPE backup_last_snapshot_timestamp_seconds gauge'
-	echo "backup_last_snapshot_timestamp_seconds $snapshot_epoch"
-	echo '# HELP backup_last_replica_timestamp_seconds Newest replica snapshot, created.'
-	echo '# TYPE backup_last_replica_timestamp_seconds gauge'
-	echo "backup_last_replica_timestamp_seconds $replica_epoch"
-	echo '# HELP backup_last_verify_timestamp_seconds Last passing verification, finished.'
-	echo '# TYPE backup_last_verify_timestamp_seconds gauge'
-	echo "backup_last_verify_timestamp_seconds $(date +%s)"
-	echo '# HELP backup_verified_files Files verified in the last run, by kind and result.'
-	echo '# TYPE backup_verified_files gauge'
-	echo "backup_verified_files{kind=\"sqlite\",result=\"ok\"} $sqlite_ok"
-	echo "backup_verified_files{kind=\"sqlite\",result=\"fail\"} $sqlite_fail"
-	echo "backup_verified_files{kind=\"sqlite\",result=\"not_a_database\"} $sqlite_other"
-	echo "backup_verified_files{kind=\"pgdump\",result=\"ok\"} $pgdump_ok"
-	echo "backup_verified_files{kind=\"pgdump\",result=\"fail\"} $pgdump_fail"
-	echo '# HELP backup_persist_written_bytes Bytes written since the newest snapshot.'
-	echo '# TYPE backup_persist_written_bytes gauge'
-	echo "backup_persist_written_bytes $written_total"
-	echo '# HELP backup_persist_usedbysnapshots_bytes Bytes held only by snapshots.'
-	echo '# TYPE backup_persist_usedbysnapshots_bytes gauge'
-	echo "backup_persist_usedbysnapshots_bytes $usedsnap_total"
-} >"$metrics.partial"
-
-# The mode is explicit because the umask above is not what the collector needs:
-# it runs as its own user and can only read what is readable to it. The rename
-# is what keeps it from ever reading half a file.
-chmod 0644 -- "$metrics.partial"
-mv -f -- "$metrics.partial" "$metrics"
 
 echo "Verified $snapshot_name: $sqlite_ok database(s), $pgdump_ok archive(s), all clean ($sqlite_other named like one but are not)"

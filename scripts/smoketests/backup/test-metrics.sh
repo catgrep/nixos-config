@@ -37,11 +37,14 @@ user=$(get_user "$host")
 # The node exporter's port, matching modules/servers/monitoring.nix
 METRICS_URL="http://localhost:9100/metrics"
 
-# Every series the nightly verification publishes
+# Every series the nightly verification publishes. The digest stamp lives in
+# its own file, written only when the digest was delivered, but it is served
+# from the same directory by the same collector.
 EXPECTED_METRICS=(
 	backup_last_snapshot_timestamp_seconds
 	backup_last_replica_timestamp_seconds
 	backup_last_verify_timestamp_seconds
+	backup_last_digest_timestamp_seconds
 	backup_verified_files
 	backup_persist_written_bytes
 	backup_persist_usedbysnapshots_bytes

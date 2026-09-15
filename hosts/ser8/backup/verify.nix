@@ -111,8 +111,8 @@ in
       ProtectSystem = "strict";
 
       # Both directories must be listed. Omitting the metrics directory breaks
-      # the run at its final step -- which is the step whose absence the
-      # staleness alert reports, so the failure would be detected correctly and
+      # the run at its stamping steps -- which are the steps whose absence the
+      # staleness alerts report, so the failure would be detected correctly and
       # attributed to the wrong thing entirely.
       ReadWritePaths = [
         manifestDir

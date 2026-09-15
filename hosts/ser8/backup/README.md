@@ -169,16 +169,20 @@ To see which services are not held at the newest snapshot:
 sudo awk -F'\t' '$1=="dataset"{print $2, $4, $6}' /persist/var/lib/backup-manifests/latest.tsv
 ```
 
-## The three alerts
+## The four alerts
 
-All three fire either when a timestamp stops advancing for twenty-six hours or when the series disappears entirely.
+All four fire either when a timestamp stops advancing for twenty-six hours or when the series disappears entirely.
 The second arm matters more than the first: a job that never ran publishes nothing, and a rule written only as a threshold would stay quiet forever.
 
 - **BackupSnapshotStale** — no new nightly snapshot. Check `systemctl status sanoid.service` first; the snapshot job also runs the database dumps, so a failed dump can be what you actually find.
 - **BackupReplicaStale** — snapshots are being taken but not reaching the backup pool. Check `systemctl status syncoid-rpool-safe-persist.service`, then that the `backup` pool is online and has room.
 - **BackupVerifyStale** — snapshots exist but nothing has proven them good. Check `systemctl status backup-verify.service`. This is the one that is silently important: the snapshots look fine and nothing has opened them. A verification skipped by its gate is not a failure of the verifier: it means no new replica snapshot arrived, the cause is upstream in the copy, and BackupReplicaStale will be firing alongside.
+- **BackupDigestStale** — the verification runs but its digest is not being delivered.
+The freshness stamps above keep advancing, so the backups themselves are proven good; what is broken is outbound mail from the host, and the immediate failure mail rides that same channel.
+Check `journalctl -u backup-verify.service` for the sendmail error — a name-resolution failure there points at DNS, not at msmtp.
 
 A failing job also mails immediately, so the alerts are the slow backstop for a job that stopped running rather than one that ran and failed.
+BackupDigestStale is the exception that watches the mail channel itself, which is exactly the part a failure mail cannot report on.
 
 ## When the verification fails
 

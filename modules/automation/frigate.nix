@@ -36,7 +36,7 @@ let
   #                 already running (select the stream, then reload).
   cameraHosts = {
     driveway = "192.168.68.88";
-    front_door = "192.168.68.86";
+    front_door = "192.168.68.64";
     garage = "192.168.68.66";
     backyard_side_gate = "192.168.68.52";
     backyard_charger = "192.168.68.58";

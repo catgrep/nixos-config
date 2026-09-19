@@ -20,10 +20,20 @@ let
   # model_cache here the documented location.
   detectionModelPath = "/var/lib/frigate/model_cache/yolov8s.onnx";
 
-  # Tapo camera addresses. Each camera yields a <name>_main stream (record
-  # and live view, with a tapo:// source for the two-way-audio backchannel
-  # and an on-demand opus transcode for WebRTC audio) and a <name>_sub
-  # stream (detection).
+  # Tapo camera addresses. Each camera yields these streams:
+  #   <name>_main - record and live view, plus an on-demand opus
+  #                 transcode (the cameras produce PCMA audio, which MSE
+  #                 playback cannot decode)
+  #   <name>_sub  - detection (RTSP low-res)
+  #   <name>_talk - two-way talk (tapo:// only), for cameras not listed
+  #                 in tapoMainCameras. Frigate shows the mic button only
+  #                 for streams whose go2rtc producer currently reports
+  #                 an "audio, sendonly" backchannel. go2rtc dials
+  #                 sources lazily and forgets their tracks when idle, so
+  #                 the tapo source needs a stream of its own that
+  #                 viewing forces go2rtc to connect - and the button
+  #                 still only shows up reliably when the producer is
+  #                 already running (select the stream, then reload).
   cameraHosts = {
     driveway = "192.168.68.88";
     front_door = "192.168.68.86";
@@ -32,22 +42,48 @@ let
     backyard_charger = "192.168.68.58";
   };
 
+  # Cameras whose main stream is sourced from tapo:// instead of RTSP.
+  # Frigate's recorder consumes the main stream around the clock, which
+  # keeps the tapo producer connected, so its two-way-audio backchannel
+  # is always visible to Frigate: the mic button appears directly on the
+  # Main live stream, with none of the _talk stream's warm-up dance.
+  # The cost is that recording depends on TP-Link's proprietary protocol
+  # instead of RTSP (RTSP remains as a fallback source). Trialing on
+  # front_door only - prove recording stays stable there before
+  # extending to other cameras.
+  tapoMainCameras = [ "front_door" ];
+
   # The stream list is rendered twice because go2rtc and Frigate expand
   # environment variables with different syntaxes (${VAR} vs {VAR}):
   # go2rtc gets the real sources it connects to, and Frigate gets a mirror
-  # so its live view knows the restreams exist — without it Frigate shows
+  # so its live view knows the restreams exist - without it Frigate shows
   # "Restreaming is not enabled" and falls back to low-res jsmpeg with no
   # audio or two-way talk.
   mkStreams =
     wrap:
-    lib.concatMapAttrs (name: host: {
-      "${name}_main" = [
-        "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream1"
-        "tapo://${wrap "FRIGATE_TAPO_PASS"}@${host}"
-        "ffmpeg:${name}_main#audio=opus"
-      ];
-      "${name}_sub" = "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream2";
-    }) cameraHosts;
+    lib.concatMapAttrs (
+      name: host:
+      let
+        rtspMain = "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream1";
+        tapo = "tapo://${wrap "FRIGATE_TAPO_PASS"}@${host}";
+        tapoMain = lib.elem name tapoMainCameras;
+      in
+      {
+        "${name}_main" =
+          (
+            if tapoMain then
+              [
+                tapo
+                rtspMain
+              ]
+            else
+              [ rtspMain ]
+          )
+          ++ [ "ffmpeg:${name}_main#audio=opus" ];
+        "${name}_sub" = "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream2";
+      }
+      // lib.optionalAttrs (!tapoMain) { "${name}_talk" = tapo; }
+    ) cameraHosts;
 
   go2rtcStreams = mkStreams (var: "\${${var}}");
   frigateGo2rtcStreams = mkStreams (var: "{${var}}");
@@ -295,6 +331,7 @@ in
             streams = {
               Main = "driveway_main";
               Sub = "driveway_sub";
+              "Two-way talk" = "driveway_talk";
             };
           };
           zones = {
@@ -355,6 +392,8 @@ in
             enabled = true;
           };
           live = {
+            # Main is tapo-sourced (see tapoMainCameras), so two-way talk
+            # is available on it directly - no separate talk stream.
             streams = {
               Main = "front_door_main";
               Sub = "front_door_sub";
@@ -420,6 +459,7 @@ in
             streams = {
               Main = "garage_main";
               Sub = "garage_sub";
+              "Two-way talk" = "garage_talk";
             };
           };
           zones = {
@@ -477,6 +517,7 @@ in
             streams = {
               Main = "backyard_side_gate_main";
               Sub = "backyard_side_gate_sub";
+              "Two-way talk" = "backyard_side_gate_talk";
             };
           };
           zones = {
@@ -534,6 +575,7 @@ in
             streams = {
               Main = "backyard_charger_main";
               Sub = "backyard_charger_sub";
+              "Two-way talk" = "backyard_charger_talk";
             };
           };
           zones = {
@@ -558,7 +600,7 @@ in
     };
   };
 
-  # go2rtc streaming server — single RTSP connection per camera, restreamed
+  # go2rtc streaming server - single RTSP connection per camera, restreamed
   # internally so Frigate's record and detect roles share one connection.
   # Tapo cameras have a low concurrent-connection limit; this prevents
   # instability from multiple ffmpeg processes connecting simultaneously.
@@ -566,11 +608,11 @@ in
   # Credentials come from the shared frigate.env via EnvironmentFile so no
   # separate SOPS template is needed.
   #
-  # Each main stream has a tapo:// source: TP-Link's proprietary protocol,
-  # which carries the audio backchannel the RTSP streams lack. It enables
+  # The _talk streams use tapo://, TP-Link's proprietary protocol, which
+  # carries the audio backchannel the RTSP streams lack. It enables
   # two-way talk from Frigate's WebRTC live view (browser mic requires
   # HTTPS, which Caddy provides). Auth is the TP-Link cloud account
-  # password, verified locally by the camera — nothing talks to the cloud.
+  # password, verified locally by the camera - nothing talks to the cloud.
   services.go2rtc = lib.mkIf config.services.frigate.enable {
     enable = true;
     settings.streams = go2rtcStreams;

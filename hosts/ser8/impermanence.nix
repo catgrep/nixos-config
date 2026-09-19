@@ -181,8 +181,9 @@
     "d /mnt/backups 0755 root root -"
     "d /persist 0755 root root -"
 
-    # Frigate NVR
-    "d /var/lib/frigate 0755 frigate frigate -"
+    # Frigate NVR. 0750, matching the frigate module's StateDirectoryMode --
+    # a 0755 rule here would be cosmetic and get re-stamped on every start.
+    "d /var/lib/frigate 0750 frigate frigate -"
 
     # Home Assistant needs no rule here: modules/automation/home-assistant.nix
     # already owns /var/lib/hass and the subdirectories under it.

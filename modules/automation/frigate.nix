@@ -191,6 +191,13 @@ in
   # SOPS template for Frigate environment file
   sops.templates = lib.mkIf config.services.frigate.enable {
     "frigate.env" = {
+      # Credentials are read from the environment at service startup, so a
+      # rendered-content change without a restart leaves both consumers
+      # running on stale values.
+      restartUnits = [
+        "go2rtc.service"
+        "frigate.service"
+      ];
       content = ''
         FRIGATE_CAM_USER=${config.sops.placeholder."frigate_cam_user"}
         FRIGATE_CAM_PASS=${config.sops.placeholder."frigate_cam_pass"}
@@ -740,7 +747,9 @@ in
     "d /mnt/cameras 0755 frigate frigate -"
     "d /mnt/cameras/recordings 0755 frigate frigate -"
     "d /mnt/cameras/clips 0755 frigate frigate -"
-    "d /var/lib/frigate 0755 frigate frigate -"
+    # 0750, matching the frigate module's StateDirectoryMode -- a 0755
+    # rule here would be cosmetic and get re-stamped on every start.
+    "d /var/lib/frigate 0750 frigate frigate -"
     "d /var/lib/frigate/model_cache 0755 frigate frigate -"
     "L+ /var/lib/frigate/recordings - - - - /mnt/cameras/recordings"
     "L+ /var/lib/frigate/clips - - - - /mnt/cameras/clips"

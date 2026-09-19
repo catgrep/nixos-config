@@ -12,6 +12,14 @@
   ...
 }:
 
+let
+  # Detection model location. This must stay under /var/lib/frigate (the
+  # persisted, nightly-backed-up ZFS dataset): /var/cache is rolled back by
+  # impermanence on reboot, which deletes anything placed there by hand.
+  # /var/lib/frigate is also what Frigate's docs call /config, making
+  # model_cache here the documented location.
+  detectionModelPath = "/var/lib/frigate/model_cache/yolov8s.onnx";
+in
 {
   # SOPS secrets for camera credentials (only when Frigate is enabled)
   sops.secrets = lib.mkIf config.services.frigate.enable {
@@ -95,10 +103,13 @@
         };
       };
 
-      # YOLOv8s ONNX model (320x320, exported via ultralytics)
+      # YOLOv8s ONNX model (320x320, exported via ultralytics):
+      #   nix shell --impure --expr \
+      #     'with import <nixpkgs> {}; python3.withPackages (p: [ p.ultralytics p.onnx ])' \
+      #     -c yolo export model=yolov8s.pt format=onnx imgsz=320
       # model_type "yolo-generic" supports v3/v4/v7/v8/v9 architectures
       model = {
-        path = "/var/cache/frigate/model_cache/yolov8s.onnx";
+        path = detectionModelPath;
         model_type = "yolo-generic";
         width = 320;
         height = 320;
@@ -500,6 +511,7 @@
     "d /mnt/cameras/recordings 0755 frigate frigate -"
     "d /mnt/cameras/clips 0755 frigate frigate -"
     "d /var/lib/frigate 0755 frigate frigate -"
+    "d /var/lib/frigate/model_cache 0755 frigate frigate -"
     "L+ /var/lib/frigate/recordings - - - - /mnt/cameras/recordings"
     "L+ /var/lib/frigate/clips - - - - /mnt/cameras/clips"
   ];
@@ -567,6 +579,17 @@
       EnvironmentFile = config.sops.templates."frigate.env".path;
       Restart = "on-failure";
       RestartSec = 10;
+      # Refuse to start without the detection model. A missing model does not
+      # stop Frigate: the detector subprocess dies while cameras keep
+      # streaming, so detection is silently gone and recordings degrade.
+      # Failing the unit makes the problem loud and alertable instead.
+      ExecStartPre = pkgs.writeShellScript "frigate-require-model" ''
+        if [ ! -s "${detectionModelPath}" ]; then
+          echo "detection model ${detectionModelPath} is missing or empty" >&2
+          echo "regenerate it with the yolo export command in modules/automation/frigate.nix" >&2
+          exit 1
+        fi
+      '';
     };
   };
 }

@@ -93,6 +93,67 @@ let
 
   go2rtcStreams = mkStreams (var: "\${${var}}");
   frigateGo2rtcStreams = mkStreams (var: "{${var}}");
+
+  yamlFormat = pkgs.formats.yaml { };
+
+  # "backyard_side_gate" -> "Backyard Side Gate"
+  homekitCameraName = name: lib.concatMapStringsSep " " lib.toSentenceCase (lib.splitString "_" name);
+
+  # Apple Home export: go2rtc advertises every camera's _main stream as a
+  # native HomeKit accessory. The cameras' H264 video passes through
+  # unmodified and the opus transcode above satisfies HomeKit's OPUS-only
+  # audio requirement. The integration is live view with listen-only
+  # audio: go2rtc implements neither a motion sensor nor HomeKit Secure
+  # Video recording, and its HomeKit output has no return-audio path, so
+  # recordings stay in Frigate and two-way talk stays in Frigate's WebRTC
+  # live view.
+  #
+  # Accessory identity (device id, device key, setup id) is derived
+  # deterministically from the stream ID, so pairings survive restarts
+  # and rebuilds without any key material here. Renaming a camera changes
+  # the stream ID, which presents a brand-new accessory that must be
+  # paired again in the Home app.
+  homekitSettings = {
+    homekit = lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair "${name}_main" {
+        # Expanded from frigate.env by go2rtc at config load. Eight
+        # digits; Apple rejects trivial codes such as 12345678.
+        pin = "\${FRIGATE_HOMEKIT_PIN}";
+        name = homekitCameraName name;
+      }
+    ) cameraHosts;
+  };
+
+  # When an Apple device pairs, go2rtc records the pairing by patching
+  # the first config file on its command line. The nix-generated config
+  # is a read-only store path, so the homekit block lives in this
+  # writable state file instead, refreshed from homekitSettings on every
+  # start. It sits under /var/lib/frigate because that dataset survives
+  # the impermanence rollback and rides the nightly backup, while
+  # go2rtc's own /var/lib/go2rtc is wiped on reboot.
+  homekitStateFile = "/var/lib/frigate/go2rtc-homekit.yaml";
+  homekitDeclaredConfig = yamlFormat.generate "go2rtc-homekit.yaml" homekitSettings;
+
+  # yq deep-merge: declared fields (pin, name) stay authoritative while
+  # the pairings arrays go2rtc appended are preserved. Entries for
+  # removed cameras also survive until the state file is deleted; go2rtc
+  # logs a "missing stream" warning for them and carries on.
+  mergeHomekitState = pkgs.writeShellScript "go2rtc-merge-homekit-state" ''
+    set -euo pipefail
+    if [ -s ${homekitStateFile} ]; then
+      yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+        ${homekitStateFile} ${homekitDeclaredConfig} > ${homekitStateFile}.next
+      mv ${homekitStateFile}.next ${homekitStateFile}
+    else
+      install -m 0644 ${homekitDeclaredConfig} ${homekitStateFile}
+    fi
+  '';
+
+  # The nixpkgs go2rtc module keeps its generated config file internal,
+  # so the ExecStart override below regenerates an identical one to pass
+  # alongside the writable state file.
+  go2rtcConfigFile = yamlFormat.generate "go2rtc.yaml" config.services.go2rtc.settings;
 in
 {
   # SOPS secrets for camera credentials (only when Frigate is enabled)
@@ -117,6 +178,14 @@ in
       group = "root";
       mode = "0600";
     };
+    # HomeKit pairing PIN for go2rtc's accessory server. Kept out of the
+    # repo, though its protection is thin by design: go2rtc's own API
+    # shows the setup code for any accessory that is not yet paired.
+    "homekit_pin" = {
+      owner = "root";
+      group = "root";
+      mode = "0600";
+    };
   };
 
   # SOPS template for Frigate environment file
@@ -126,6 +195,7 @@ in
         FRIGATE_CAM_USER=${config.sops.placeholder."frigate_cam_user"}
         FRIGATE_CAM_PASS=${config.sops.placeholder."frigate_cam_pass"}
         FRIGATE_TAPO_PASS=${config.sops.placeholder."tapo_cloud_pass"}
+        FRIGATE_HOMEKIT_PIN=${config.sops.placeholder."homekit_pin"}
       '';
       owner = "frigate";
       group = "frigate";
@@ -641,13 +711,27 @@ in
   # Override go2rtc service: run as frigate user so it can read frigate.env,
   # and wait for SOPS secrets before starting.
   systemd.services.go2rtc = lib.mkIf config.services.frigate.enable {
-    after = [ "sops-nix.service" ];
+    after = [
+      "sops-nix.service"
+      # The HomeKit pairing state lives on the /var/lib/frigate dataset.
+      "zfs-mount.service"
+    ];
     wants = [ "sops-nix.service" ];
+    requires = [ "zfs-mount.service" ];
+    path = [
+      pkgs.coreutils
+      pkgs.yq-go
+    ];
     serviceConfig = {
       DynamicUser = lib.mkForce false;
       User = lib.mkForce "frigate";
       Group = lib.mkForce "frigate";
       EnvironmentFile = config.sops.templates."frigate.env".path;
+      ExecStartPre = "${mergeHomekitState}";
+      # The upstream unit passes only the store config. HomeKit pairing
+      # persistence needs the writable state file first on the command
+      # line, because the first config file is the one go2rtc patches.
+      ExecStart = lib.mkForce "${config.services.go2rtc.package}/bin/go2rtc -config ${homekitStateFile} -config ${go2rtcConfigFile}";
     };
   };
 
@@ -667,11 +751,19 @@ in
     80 # Frigate web UI (nginx serves on port 80)
     8554 # RTSP restream
     8555 # WebRTC
+    # go2rtc API port; the HomeKit accessory protocol is served on it,
+    # so Apple devices must be able to reach it. This also exposes the
+    # unauthenticated go2rtc admin API to the LAN, consistent with
+    # Frigate's own auth-disabled UI on port 80.
+    1984
   ];
   # WebRTC negotiates UDP first and only falls back to TCP; without this
   # port live view and two-way talk depend on the flakier TCP path.
+  # HomeKit discovery also needs mDNS (UDP 5353), which Avahi's default
+  # openFirewall already opens on this host.
   networking.firewall.allowedUDPPorts = lib.mkIf config.services.frigate.enable [
     8555 # WebRTC
+    8443 # HomeKit media (SRTP from go2rtc to Apple devices)
   ];
 
   # Service dependencies - wait for MQTT broker, storage, and secrets

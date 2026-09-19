@@ -37,6 +37,7 @@ TESTS=(
 	./scripts/smoketests/ser8/test-zfs-health.sh
 	./scripts/smoketests/ser8/test-vaapi.sh
 	./scripts/smoketests/ser8/test-frigate.sh
+	./scripts/smoketests/ser8/test-homekit.sh
 	./scripts/smoketests/ser8/test-home-assistant.sh
 )
 

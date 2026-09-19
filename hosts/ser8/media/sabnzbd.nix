@@ -14,6 +14,9 @@
         owner = "root";
         group = "root";
         mode = "0600";
+        # The setup oneshot pushes this key into the arr services only
+        # when it runs; a rotated key otherwise never propagates.
+        restartUnits = [ "download-clients-setup.service" ];
       };
 
       "sabnzbd_nzb_key" = {
@@ -26,6 +29,8 @@
         owner = "root";
         group = "root";
         mode = "0600";
+        # The setup oneshot reads this only when it runs.
+        restartUnits = [ "download-clients-setup.service" ];
       };
 
       "sabnzbd_usenet_username" = {

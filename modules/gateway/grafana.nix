@@ -45,6 +45,11 @@ in
     owner = "grafana";
     group = "grafana";
     mode = "0400";
+    # Grafana expands $__file{} providers once at config load. Note the
+    # restart only re-reads the file: Grafana seeds admin_password into
+    # its database on first init, so rotating it also needs
+    # `grafana-cli admin reset-password`.
+    restartUnits = [ "grafana.service" ];
   };
 
   # SOPS secret for Grafana secret_key. 26.05 removed the option's default; this
@@ -54,6 +59,8 @@ in
     owner = "grafana";
     group = "grafana";
     mode = "0400";
+    # Expanded from $__file{} once at config load.
+    restartUnits = [ "grafana.service" ];
   };
 
   services.grafana = {

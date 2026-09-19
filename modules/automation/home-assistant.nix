@@ -201,15 +201,21 @@ in
 {
   # SOPS secrets for family HA user (only when HA is enabled)
   sops.secrets = lib.mkIf config.services.home-assistant.enable {
+    # Read by the preStart user-provisioning script. That script only
+    # creates the user when the username does not exist yet, so a
+    # password rotation still needs a manual reset inside Home
+    # Assistant; the restart covers username changes and fresh installs.
     "hass_family_username" = {
       owner = "hass";
       group = "hass";
       mode = "0400";
+      restartUnits = [ "home-assistant.service" ];
     };
     "hass_family_password" = {
       owner = "hass";
       group = "hass";
       mode = "0400";
+      restartUnits = [ "home-assistant.service" ];
     };
   };
 

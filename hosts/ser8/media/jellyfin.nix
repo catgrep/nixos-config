@@ -12,6 +12,9 @@ let
     owner = config.services.jellyfin.user;
     group = config.services.jellyfin.group;
     mode = "0400";
+    # declarative-jellyfin's init script reads every credential file at
+    # service start; without a restart a rotated secret never reaches it.
+    restartUnits = [ "jellyfin.service" ];
   };
 
   jellyfinInitLog = "/var/log/jellyfin.txt";
@@ -103,7 +106,13 @@ in
     jellyfin_admin_password = jellyfinCredentialSecret;
     jellyfin_jordan_password = jellyfinCredentialSecret;
     jellyfin_sawnia_password = jellyfinCredentialSecret;
-    jellyfin_api_key = jellyfinCredentialSecret;
+    # The exporter also snapshots the key at start via LoadCredential.
+    jellyfin_api_key = jellyfinCredentialSecret // {
+      restartUnits = [
+        "jellyfin.service"
+        "jellyfin-exporter.service"
+      ];
+    };
   };
 
   systemd = {

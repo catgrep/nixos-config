@@ -47,6 +47,8 @@ in
     owner = "root";
     group = "root";
     mode = "0400";
+    # The wrapper snapshots the password into ADGUARD_PASSWORDS at start.
+    restartUnits = [ "adguard-exporter.service" ];
   };
 
   systemd.services.adguard-exporter = {

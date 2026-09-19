@@ -119,17 +119,21 @@
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
+      # Not neededForUsers: nothing consumes these during user creation,
+      # only the samba-password-sync oneshot below. That oneshot applies
+      # the passwords via smbpasswd only when it runs, so a rotated
+      # secret must re-trigger it.
       "samba_bdhill_password" = {
-        neededForUsers = true;
         owner = "root";
         group = "root";
         mode = "0600";
+        restartUnits = [ "samba-password-sync.service" ];
       };
       "samba_media_password" = {
-        neededForUsers = true;
         owner = "root";
         group = "root";
         mode = "0600";
+        restartUnits = [ "samba-password-sync.service" ];
       };
     };
   };

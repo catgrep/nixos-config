@@ -24,6 +24,10 @@ in
     owner = "caddy";
     group = "caddy";
     mode = "0400";
+    # The key is exported as TS_AUTHKEY in the ExecStart wrapper, so a
+    # rotated key is invisible to the running process; new tsnet node
+    # registrations would keep failing with the expired key.
+    restartUnits = [ "caddy.service" ];
   };
 
   services.caddy = {

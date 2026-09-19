@@ -20,6 +20,14 @@
       owner = "root";
       group = "root";
       mode = "0600";
+      # Consumers snapshot the key at start: exportarr loads it via
+      # LoadCredential, and the setup oneshots push it into peer
+      # services only when they run.
+      restartUnits = [
+        "prometheus-exportarr-sonarr-exporter.service"
+        "servarrs-setup.service"
+        "download-clients-setup.service"
+      ];
     };
   };
 
@@ -45,6 +53,13 @@
     owner = "sonarr";
     group = config.services.sonarr.group;
     mode = "0600";
+    # Without this, a re-rendered config.xml never reaches the live file:
+    # media-config's cp only runs when systemd (re)starts it, and sonarr
+    # parses config.xml once at startup.
+    restartUnits = [
+      "media-config.service"
+      "sonarr.service"
+    ];
   };
 
   services.prometheus.exporters.exportarr-sonarr = {

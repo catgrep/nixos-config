@@ -27,4 +27,8 @@ Also add rules for the silent-degradation class found on 2026-09-18 (model wiped
 `FrigateDetectStalled`: `frigate_skipped_fps > 0.9 * frigate_camera_fps` sustained for 30m catches a stalled detect pipeline regardless of cause (dead detector, wedged process).
 `SystemdUnitFailed`: alert on failed units from the systemd exporter (ser8/firebat:9558, already scraped); frigate.nix now has an ExecStartPre that fails the unit when the detection model is missing, and this rule is what turns that fail-fast into an email — it also catches every other service that dies without its exporter noticing.
 Together the layers are: fail-fast at startup (unit failure), stall detection at runtime (skipped_fps), and connectivity (camera_fps), each covering what the others cannot.
+`FrigateRecordingsQuotaHigh` (added 2026-09-19): the recordings dataset `backup/cameras/recordings` has a 600G ZFS quota; alert when usage exceeds 80% (480G) via node exporter filesystem metrics for mountpoint `/mnt/cameras/recordings` (ZFS reports the quota as the filesystem size), with `for: 1h`.
+When the quota fills, Frigate's storage maintainer silently evicts the oldest retained footage - including the 180-day alert archive - so quota pressure must page before eviction starts.
+Sizing basis 2026-09-19: ~15-20G/day rolling 7-day window across five cameras plus 180-day alert retention; steady state estimated 300-450G.
+The `FrigateCameraDown` rule and timeline panel predate the two backyard cameras; drop the `camera_name` filter entirely so current and future cameras are covered by default.
 Complementary to 2026-08-30-revive-home-assistant-monitoring.md, which covers HA-side push notifications; this todo is the pure Prometheus/Grafana path with no new collection.

@@ -295,6 +295,11 @@ in
       };
 
       # Camera configurations
+      #
+      # Zone and motion-mask polygons are drawn in the Frigate UI, which
+      # saves them to /run/frigate/frigate.yml - a tmpfs copy that every
+      # deploy or service restart regenerates from this file. Copy UI
+      # edits back here or they are lost.
       # Credentials injected via environment variables from SOPS:
       #   {FRIGATE_CAM_USER} - Camera RTSP username
       #   {FRIGATE_CAM_PASS} - Camera RTSP password
@@ -343,8 +348,7 @@ in
           };
           zones = {
             driveway_zone = {
-              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
-              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              coordinates = "0.079,0.027,0.989,0.033,1,0.611,0.292,1";
               objects = [
                 "person"
                 "car"
@@ -352,6 +356,9 @@ in
               ];
               inertia = 3;
             };
+          };
+          motion = {
+            mask = "0.025,0.163,0.118,0.118,0.207,0.183,0.313,0.12,0.325,0.012,0.005,0.006";
           };
           review = {
             alerts = {
@@ -380,13 +387,7 @@ in
             enabled = true;
             width = 640;
             height = 360;
-            fps = 10;
-            stationary = {
-              # 3000 frames = 5 min at 10 fps (5 min × 60 s × 10 fps)
-              threshold = 3000;
-              # 864000 frames = 24 h at 10 fps (24 h × 3600 s × 10 fps)
-              interval = 864000;
-            };
+            fps = 5;
           };
           record = {
             enabled = true;
@@ -408,11 +409,12 @@ in
           };
           zones = {
             front_door_zone = {
-              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
-              coordinates = "0.10,0.35,0.90,0.35,0.90,0.90,0.10,0.90";
+              coordinates = "0.013,0.189,0.919,0.034,0.97,0.835,0.105,0.988";
               objects = [
                 "person"
                 "package"
+                "dog"
+                "cat"
               ];
               inertia = 3;
             };
@@ -444,13 +446,7 @@ in
             enabled = true;
             width = 640;
             height = 360;
-            fps = 10;
-            stationary = {
-              # 3000 frames = 5 min at 10 fps (5 min × 60 s × 10 fps)
-              threshold = 3000;
-              # 864000 frames = 24 h at 10 fps (24 h × 3600 s × 10 fps)
-              interval = 864000;
-            };
+            fps = 5;
           };
           record = {
             enabled = true;
@@ -471,12 +467,13 @@ in
           };
           zones = {
             garage_zone = {
-              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
-              coordinates = "0.10,0.25,0.90,0.25,0.90,0.90,0.10,0.90";
+              coordinates = "0.144,0,1,0,1,1,0.158,1";
               objects = [
                 "person"
                 "car"
                 "package"
+                "dog"
+                "cat"
               ];
               inertia = 3;
             };
@@ -529,15 +526,21 @@ in
           };
           zones = {
             backyard_side_gate_zone = {
-              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
-              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              coordinates = "0.053,0.023,0.953,0.023,0.833,0.829,0.428,0.982,0.114,0.361";
               objects = [
                 "person"
-                "car"
-                "package"
+                "dog"
+                "cat"
               ];
               inertia = 3;
             };
+          };
+          motion = {
+            mask = [
+              "0.181,0.157,0.258,0.253,0.288,0.452,0.281,0.974,0.097,0.959,0.013,0.495"
+              "0.811,0.986,0.994,0.568,0.998,0.994"
+              "0.853,0.014,0.993,0.546,0.997,0.014"
+            ];
           };
           review = {
             alerts = {
@@ -587,15 +590,18 @@ in
           };
           zones = {
             backyard_charger_zone = {
-              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
-              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              coordinates = "0.336,0.011,0.819,0.035,0.671,0.932,0.195,0.915";
               objects = [
                 "person"
                 "car"
-                "package"
+                "cat"
+                "dog"
               ];
               inertia = 3;
             };
+          };
+          motion = {
+            mask = "0.717,0.874,0.829,0.841,0.937,0.809,0.935,0.301,0.782,0.254,0.689,0.446";
           };
           review = {
             alerts = {

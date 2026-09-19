@@ -19,6 +19,38 @@ let
   # /var/lib/frigate is also what Frigate's docs call /config, making
   # model_cache here the documented location.
   detectionModelPath = "/var/lib/frigate/model_cache/yolov8s.onnx";
+
+  # Tapo camera addresses. Each camera yields a <name>_main stream (record
+  # and live view, with a tapo:// source for the two-way-audio backchannel
+  # and an on-demand opus transcode for WebRTC audio) and a <name>_sub
+  # stream (detection).
+  cameraHosts = {
+    driveway = "192.168.68.88";
+    front_door = "192.168.68.86";
+    garage = "192.168.68.66";
+    backyard_side_gate = "192.168.68.52";
+    backyard_charger = "192.168.68.58";
+  };
+
+  # The stream list is rendered twice because go2rtc and Frigate expand
+  # environment variables with different syntaxes (${VAR} vs {VAR}):
+  # go2rtc gets the real sources it connects to, and Frigate gets a mirror
+  # so its live view knows the restreams exist — without it Frigate shows
+  # "Restreaming is not enabled" and falls back to low-res jsmpeg with no
+  # audio or two-way talk.
+  mkStreams =
+    wrap:
+    lib.concatMapAttrs (name: host: {
+      "${name}_main" = [
+        "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream1"
+        "tapo://${wrap "FRIGATE_TAPO_PASS"}@${host}"
+        "ffmpeg:${name}_main#audio=opus"
+      ];
+      "${name}_sub" = "rtsp://${wrap "FRIGATE_CAM_USER"}:${wrap "FRIGATE_CAM_PASS"}@${host}:554/stream2";
+    }) cameraHosts;
+
+  go2rtcStreams = mkStreams (var: "\${${var}}");
+  frigateGo2rtcStreams = mkStreams (var: "{${var}}");
 in
 {
   # SOPS secrets for camera credentials (only when Frigate is enabled)
@@ -34,6 +66,15 @@ in
       group = "root";
       mode = "0600";
     };
+    # TP-Link cloud account password, used by go2rtc's tapo:// source for
+    # two-way audio. Auth happens directly against the camera on the LAN
+    # (the camera stores a hash of the cloud password), so cloud 2FA does
+    # not apply and nothing is sent to TP-Link.
+    "tapo_cloud_pass" = {
+      owner = "root";
+      group = "root";
+      mode = "0600";
+    };
   };
 
   # SOPS template for Frigate environment file
@@ -42,6 +83,7 @@ in
       content = ''
         FRIGATE_CAM_USER=${config.sops.placeholder."frigate_cam_user"}
         FRIGATE_CAM_PASS=${config.sops.placeholder."frigate_cam_pass"}
+        FRIGATE_TAPO_PASS=${config.sops.placeholder."tapo_cloud_pass"}
       '';
       owner = "frigate";
       group = "frigate";
@@ -202,13 +244,11 @@ in
       #   timezone = "America/Los_Angeles";
       # };
 
-      # go2rtc for WebRTC live view (streams managed by services.go2rtc below)
+      # Mirror of the go2rtc stream list (see mkStreams above). The actual
+      # go2rtc process is configured by services.go2rtc below; Frigate only
+      # reads this to offer the restreams in live view.
       go2rtc = {
-        webrtc = {
-          candidates = [
-            "192.168.68.65:8555"
-          ];
-        };
+        streams = frigateGo2rtcStreams;
       };
 
       # Camera configurations
@@ -219,7 +259,6 @@ in
       #   stream1 = Main stream (2K/1080p for recording)
       #   stream2 = Sub stream (360p for detection)
       cameras = {
-        # OUTDOOR CAMERAS (4x) - Detection enabled, 5-day retention
         driveway = {
           enabled = true;
           ffmpeg = {
@@ -251,6 +290,12 @@ in
           };
           snapshots = {
             enabled = true;
+          };
+          live = {
+            streams = {
+              Main = "driveway_main";
+              Sub = "driveway_sub";
+            };
           };
           zones = {
             driveway_zone = {
@@ -309,6 +354,12 @@ in
           snapshots = {
             enabled = true;
           };
+          live = {
+            streams = {
+              Main = "front_door_main";
+              Sub = "front_door_sub";
+            };
+          };
           zones = {
             front_door_zone = {
               # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
@@ -365,6 +416,12 @@ in
           snapshots = {
             enabled = true;
           };
+          live = {
+            streams = {
+              Main = "garage_main";
+              Sub = "garage_sub";
+            };
+          };
           zones = {
             garage_zone = {
               # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
@@ -384,18 +441,17 @@ in
           };
         };
 
-        # PLACEHOLDERS (no cameras yet)
-        side_gate = {
-          enabled = false;
+        backyard_side_gate = {
+          enabled = true;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://127.0.0.1:8554/side_gate_main";
+                path = "rtsp://127.0.0.1:8554/backyard_side_gate_main";
                 input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
               }
               {
-                path = "rtsp://127.0.0.1:8554/side_gate_sub";
+                path = "rtsp://127.0.0.1:8554/backyard_side_gate_sub";
                 input_args = "preset-rtsp-restream";
                 roles = [ "detect" ];
               }
@@ -417,49 +473,84 @@ in
           snapshots = {
             enabled = true;
           };
-        };
-
-        # INDOOR CAMERAS (2x) - No detection, 3-day retention
-        living_room = {
-          enabled = false;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/living_room_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-            ];
+          live = {
+            streams = {
+              Main = "backyard_side_gate_main";
+              Sub = "backyard_side_gate_sub";
+            };
           };
-          detect = {
-            enabled = false;
+          zones = {
+            backyard_side_gate_zone = {
+              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
+              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              objects = [
+                "person"
+                "car"
+                "package"
+              ];
+              inertia = 3;
+            };
           };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
+          review = {
+            alerts = {
+              required_zones = [ "backyard_side_gate_zone" ];
             };
           };
         };
 
-        basement = {
-          enabled = false;
+        backyard_charger = {
+          enabled = true;
           ffmpeg = {
             inputs = [
               {
-                path = "rtsp://127.0.0.1:8554/basement_main";
+                path = "rtsp://127.0.0.1:8554/backyard_charger_main";
                 input_args = "preset-rtsp-restream";
                 roles = [ "record" ];
+              }
+              {
+                path = "rtsp://127.0.0.1:8554/backyard_charger_sub";
+                input_args = "preset-rtsp-restream";
+                roles = [ "detect" ];
               }
             ];
           };
           detect = {
-            enabled = false;
+            enabled = true;
+            width = 640;
+            height = 360;
+            fps = 5;
           };
           record = {
             enabled = true;
             retain = {
               days = 7;
+              mode = "motion";
+            };
+          };
+          snapshots = {
+            enabled = true;
+          };
+          live = {
+            streams = {
+              Main = "backyard_charger_main";
+              Sub = "backyard_charger_sub";
+            };
+          };
+          zones = {
+            backyard_charger_zone = {
+              # PLACEHOLDER: Replace with actual coordinates from Frigate UI zone editor
+              coordinates = "0.05,0.30,0.95,0.30,0.95,0.95,0.05,0.95";
+              objects = [
+                "person"
+                "car"
+                "package"
+              ];
+              inertia = 3;
+            };
+          };
+          review = {
+            alerts = {
+              required_zones = [ "backyard_charger_zone" ];
             };
           };
         };
@@ -472,24 +563,17 @@ in
   # Tapo cameras have a low concurrent-connection limit; this prevents
   # instability from multiple ffmpeg processes connecting simultaneously.
   #
-  # Streams use go2rtc's ${ENV_VAR} substitution syntax (not Frigate's
-  # {VAR} syntax). Credentials come from the shared frigate.env via
-  # EnvironmentFile so no separate SOPS template is needed.
+  # Credentials come from the shared frigate.env via EnvironmentFile so no
+  # separate SOPS template is needed.
+  #
+  # Each main stream has a tapo:// source: TP-Link's proprietary protocol,
+  # which carries the audio backchannel the RTSP streams lack. It enables
+  # two-way talk from Frigate's WebRTC live view (browser mic requires
+  # HTTPS, which Caddy provides). Auth is the TP-Link cloud account
+  # password, verified locally by the camera — nothing talks to the cloud.
   services.go2rtc = lib.mkIf config.services.frigate.enable {
     enable = true;
-    settings.streams = {
-      driveway_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.88:554/stream1";
-      driveway_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.88:554/stream2";
-      front_door_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
-      front_door_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
-      garage_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
-      garage_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
-      # Placeholders for future cameras
-      side_gate_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.104:554/stream1";
-      side_gate_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.104:554/stream2";
-      living_room_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.105:554/stream1";
-      basement_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.106:554/stream1";
-    };
+    settings.streams = go2rtcStreams;
   };
 
   # Override go2rtc service: run as frigate user so it can read frigate.env,
@@ -520,6 +604,11 @@ in
   networking.firewall.allowedTCPPorts = lib.mkIf config.services.frigate.enable [
     80 # Frigate web UI (nginx serves on port 80)
     8554 # RTSP restream
+    8555 # WebRTC
+  ];
+  # WebRTC negotiates UDP first and only falls back to TCP; without this
+  # port live view and two-way talk depend on the flakier TCP path.
+  networking.firewall.allowedUDPPorts = lib.mkIf config.services.frigate.enable [
     8555 # WebRTC
   ];
 

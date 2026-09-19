@@ -31,6 +31,7 @@ Matches the stated preference for long-term maintainability over development cos
 - modules/gateway/prometheus.nix / modules/gateway/grafana.nix — alert rules living away from the services they watch (Grafana mirror has its own consolidation todo, 2026-08-29).
 - flake.nix service metadata exports (enabledServices, servicePackages) — existing cross-host read-across that could carry per-service alert metadata without a full restructure; a cheap middle step to evaluate first.
 - Reference implementations: github.com/mightyiam/dendritic, drupol's infra, vic's dendrix.
+- .planning/todos/pending/2026-09-19-implicit-sops-restartunits.md — sops `restartUnits` is another cross-cutting per-service aspect maintained by hand (20 gaps fixed in 46fd7d4); a feature-organized module could derive or enforce the secret-to-consumer restart wiring instead. Counts toward this seed's "third cross-host aspect" trigger.
 
 ## Notes
 

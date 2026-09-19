@@ -203,9 +203,12 @@ in
           days = 7;
           mode = "motion";
         };
+        # Alert footage is the largest unbounded growth source (~2-3G/day
+        # accumulated before zones were tightened); 180 days keeps it well
+        # inside the 600G quota of backup/cameras/recordings.
         alerts = {
           retain = {
-            days = 36500;
+            days = 180;
             mode = "motion";
           };
         };
@@ -218,11 +221,13 @@ in
       };
 
       # Snapshot configuration
+      # Snapshot retention matches alert retention - a snapshot has little
+      # value once its alert footage is gone.
       snapshots = {
         enabled = true;
         bounding_box = true;
         retain = {
-          default = 36500;
+          default = 180;
         };
       };
 

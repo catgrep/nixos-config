@@ -141,7 +141,7 @@ Still-operative decisions for future work:
 
 ### Pending Todos
 
-- 10 pending in `.planning/todos/pending/` — review with `/gsd-capture --list`.
+- 11 pending in `.planning/todos/pending/` — review with `/gsd-capture --list`.
 - rdt-client onboarding promoted to Phase 17 on 2026-09-03; its todo moved to completed.
 - Convert gateway, media, DNS, and NordVPN smoketest behavior into NixOS Python integration tests.
 - Retain deployment scripts only for checks that require live hardware or external services.

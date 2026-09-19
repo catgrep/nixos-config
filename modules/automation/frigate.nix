@@ -274,6 +274,13 @@ in
         enabled = false;
       };
 
+      # With auth disabled, every request gets this role. Frigate 0.16+
+      # falls back to viewer otherwise, which hides all admin UI
+      # (settings, config editor, motion tuner).
+      proxy = {
+        default_role = "admin";
+      };
+
       # UI configuration
       # ui = {
       #   live_mode = "webrtc";

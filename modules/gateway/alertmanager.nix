@@ -94,6 +94,8 @@ in
   # unit runs under a transient user that could not read a file owned by a
   # named one, and EnvironmentFile is read before privileges are dropped.
   sops.templates."alertmanager.env" = {
+    # SMTP credentials are substituted at service startup, not on config reload.
+    restartUnits = [ "alertmanager.service" ];
     content = ''
       ALERTMANAGER_SMTP_PASSWORD=${config.sops.placeholder.grafana_smtp_password}
     '';

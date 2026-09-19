@@ -150,6 +150,33 @@ test_mail_configured_without_leaking() {
 	return 1
 }
 
+# EnvironmentFile changes only reach Alertmanager after a service restart.
+test_mail_credentials_loaded() {
+	info "checking that Alertmanager started after its credentials were rendered"
+
+	local started modified
+	# Expand the timestamp command on firebat, using its clock and GNU date.
+	# shellcheck disable=SC2016
+	started=$(remote '
+		started=$(systemctl show alertmanager -p ExecMainStartTimestamp --value)
+		date -d "$started" +%s
+	')
+	modified=$(remote 'sudo -n stat -Lc %Y /run/secrets/rendered/alertmanager.env')
+	if [[ ! "$started" =~ ^[0-9]+$ || ! "$modified" =~ ^[0-9]+$ ]]; then
+		fail "could not read Alertmanager startup or credential modification time"
+		return 1
+	fi
+
+	if ((started < modified)); then
+		fail "Alertmanager is running with credentials from before the last secret update"
+		fail "restart alertmanager.service to load the rendered SMTP credential"
+		return 1
+	fi
+
+	pass "Alertmanager started after its SMTP credentials were rendered"
+	return 0
+}
+
 # Test 5: Grafana carries no alert rules of its own.
 # Prometheus is meant to be the single rule-evaluation path, but Grafana keeps
 # file-provisioned rules until told to delete them -- a rules block removed
@@ -214,6 +241,7 @@ run_test "alertmanager_active" test_alertmanager_active || true
 run_test "alertmanager_healthy" test_alertmanager_healthy || true
 run_test "prometheus_knows_the_alertmanager" test_prometheus_knows_the_alertmanager || true
 run_test "mail_configured_without_leaking" test_mail_configured_without_leaking || true
+run_test "mail_credentials_loaded" test_mail_credentials_loaded || true
 run_test "grafana_has_no_alert_rules" test_grafana_has_no_alert_rules || true
 run_test "alertmanager_is_monitored" test_alertmanager_is_monitored || true
 

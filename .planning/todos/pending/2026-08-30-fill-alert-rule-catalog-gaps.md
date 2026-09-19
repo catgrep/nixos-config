@@ -20,3 +20,5 @@ Add the missing rules to prometheus.nix, but verify every metric name against th
 Candidate set: unit failed state and restart-count crash-loop rules from systemd-exporter; OOM kills from node-exporter vmstat; ZFS scrub errors and pool capacity warn/crit; graduated memory and temperature pairs replacing the single-threshold rules; disk read latency; /mnt/media availability; increase(prometheus_rule_evaluation_failures_total).
 Tune for: durations per the catalog (longer for warnings, shorter for criticals) and keep pi4-absent metrics scoped so rules do not fire on empty vectors.
 Update scripts/smoketests/gateway/ if rule-count assertions exist, and route everything through the standalone Alertmanager path per the 2026-08-30 consolidation.
+
+Ship this under the current layout; the systemd-exporter failed-state and crash-loop rules overlap the composable-monitoring design folded into 2026-09-19-dendritic-flake-parts-restructure.md, so coordinate rule shape with .planning/service-monitoring-proposal.md rather than inventing a divergent one.

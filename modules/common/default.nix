@@ -11,6 +11,7 @@
   imports = [
     ./banner.nix
     ./boot.nix
+    ./multiverse.nix
     ./networking.nix
     ./nix.nix
     ./packages.nix

@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ unstable, ... }:
+{ config, ... }:
 
 {
   services.mealie = {
     enable = true;
 
-    # Commit to the unstable 3.22.0 at first boot. Stable ships 3.16.0 and the
-    # NixOS module is identical across both branches, so a package-only
-    # override is safe. Alembic migrations are one-way, so this input only
-    # moves on a deliberate, backed-up flake update.
-    package = unstable.mealie;
+    # Version pinned in the repo-root multiverse.lock; stable ships an older
+    # mealie and the NixOS module is identical across branches, so a
+    # package-only override is safe. Alembic migrations are one-way, so the
+    # pin only moves through a deliberate, backed-up `mvs lock update mealie`.
+    package = config.multiverse.locked.mealie;
 
     database.createLocally = true;
 

@@ -240,6 +240,21 @@
         "type": "github"
       }
     },
+    "mvs": {
+      "locked": {
+        "lastModified": 1789738962,
+        "narHash": "sha256-Os1qMixaQ/9sVz8um0uSDg+B90iUnXv4FjaAlvHkIv8=",
+        "owner": "fzakaria",
+        "repo": "nixpkgs-multiverse",
+        "rev": "6cb34c95f3870eb6d603600c4552e541a71db557",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fzakaria",
+        "repo": "nixpkgs-multiverse",
+        "type": "github"
+      }
+    },
     "nix-fast-build": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -418,13 +433,13 @@
         "disko": "disko",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
+        "mvs": "mvs",
         "nixos-hardware": "nixos-hardware",
         "nixos-images": "nixos-images",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sagent": "sagent",
-        "sops-nix": "sops-nix",
-        "tailscale-unstable": "tailscale-unstable"
+        "sops-nix": "sops-nix"
       }
     },
     "sagent": {
@@ -492,22 +507,6 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
-        "type": "github"
-      }
-    },
-    "tailscale-unstable": {
-      "locked": {
-        "lastModified": 1789149629,
-        "narHash": "sha256-H6GwaZzZf+4npqv0tph94w9tZddSjFjmQrVsW0z78uk=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "eaad089433ca2bb662274377d33df3d0e51ef28b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "eaad089433ca2bb662274377d33df3d0e51ef28b",
         "type": "github"
       }
     },

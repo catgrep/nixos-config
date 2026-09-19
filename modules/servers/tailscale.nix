@@ -2,11 +2,7 @@
 
 # Shared Tailscale configuration for all servers
 # Enables remote SSH access via Tailnet with auto-authentication
-{
-  pkgs,
-  config,
-  ...
-}:
+{ config, ... }:
 
 {
   # SOPS secret for Tailscale auth key (from shared secrets)
@@ -16,7 +12,9 @@
 
   services.tailscale = {
     enable = true;
-    package = pkgs.tailscale;
+    # Version pinned in the repo-root multiverse.lock; move it with
+    # `mvs lock update tailscale`.
+    package = config.multiverse.locked.tailscale;
     # Auto-authenticate on startup using shared auth key
     authKeyFile = config.sops.secrets.tailscale_authkey.path;
   };

@@ -70,7 +70,7 @@ Enter the development shell before running repository tooling:
 make dev
 ```
 
-The shell includes `nixfmt-rfc-style`, `statix`, `shellcheck`, `sops`, `yq`, `caddy`, `nixos-anywhere`, `sb`, and `treehouse`.
+The shell includes `nixfmt-rfc-style`, `statix`, `shellcheck`, `sops`, `yq`, `caddy`, `nixos-anywhere`, `sb`, `treehouse`, and `mvs`.
 
 Use these commands for routine validation:
 
@@ -107,14 +107,16 @@ The `rollback-HOST` target is currently a placeholder and must not be presented 
 Package and service metadata can be inspected without deploying:
 
 ```bash
-make pkg-list-ser8
-make pkg-list-ser8 CATEGORY=services
-make pkg-version-ser8 PKG=jellyfin
-make pkg-eval-ser8 EXPR='config.services.jellyfin.enable'
 nix eval '.#enabledServices.ser8' --json
 nix eval '.#servicePackages.ser8' --json
-nix eval '.#packageInfo.ser8' --json
+nix eval '.#nixosConfigurations.ser8.config.services.jellyfin.enable'
+nix eval --raw '.#nixosConfigurations.ser8.pkgs.tailscale.version'
 ```
+
+Use `mvs` (in the dev shell) to query nixpkgs version history, for example `mvs query versions tailscale`.
+The repo-root `multiverse.lock` is the source of truth for application versions pinned from nixpkgs history; edit it only through `mvs lock` commands, never by hand.
+Hosts consume pins through `config.multiverse.locked.<attr>` (wired in `modules/common/multiverse.nix`).
+Moving a pin forward is two steps: `nix flake update mvs`, then `mvs lock update <attr>`.
 
 Build the Arm64 kexec installer with `make aarch64-kexec`.
 Raspberry Pi bootstrap-image and device-write targets do not currently exist and must not be presented as available.

@@ -44,15 +44,13 @@
       url = "github:vincentbernat/caddy-nix";
     };
 
-    # Tailscale v1.102.3
-    # Found using https://nixmultiverse.com/?pkg=tailscale&ver=1.102.3
-    tailscale-unstable = {
-      url = "github:NixOS/nixpkgs/eaad089433ca2bb662274377d33df3d0e51ef28b";
-    };
-
     sagent = {
       url = "path:./tools/sagent";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
+    mvs = {
+      url = "github:fzakaria/nixpkgs-multiverse";
     };
   };
 
@@ -70,7 +68,7 @@
       home-manager,
       caddy-nix,
       sagent,
-      tailscale-unstable,
+      mvs,
       ...
     }@inputs:
     let
@@ -196,9 +194,6 @@
             {
               nixpkgs.overlays = [
                 caddy-nix.overlays.default
-                (final: prev: {
-                  tailscale = tailscale-unstable.legacyPackages.${system}.tailscale;
-                })
               ];
             }
             ./hosts/${hostname}
@@ -314,6 +309,8 @@
                   # are owned and exported by the sagent subflake.
                   sagent.packages.${system}.ast-bro
                   sagent.packages.${system}.treehouse
+                  # nixpkgs version-history queries and pinning (nixmultiverse.com)
+                  mvs.packages.${system}.mvs
                 ]
                 ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
                   (sagentFor system)

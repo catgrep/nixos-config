@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "pins": {
+    "homebox": {
+      "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
+      "label": "2026-09-13-ef34387ddd75",
+      "version": "0.26.2",
+      "date": "2026-09-13"
+    },
+    "mealie": {
+      "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
+      "label": "2026-09-13-ef34387ddd75",
+      "version": "3.22.0",
+      "date": "2026-09-13",
+      "constraint": "3.22.0"
+    },
+    "tailscale": {
+      "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
+      "label": "2026-09-13-ef34387ddd75",
+      "version": "1.102.3",
+      "date": "2026-09-13",
+      "constraint": "1.102.3"
+    }
+  }
+}

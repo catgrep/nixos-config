@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ pkgs, ... }:
+{ config, ... }:
 
 {
   services.homebox = {
     enable = true;
-    package = pkgs.homebox;
+    # Version pinned in the repo-root multiverse.lock; move it with
+    # `mvs lock update homebox`.
+    package = config.multiverse.locked.homebox;
 
     settings = {
       HBOX_WEB_PORT = "7745";

@@ -478,10 +478,10 @@ in
   services.go2rtc = lib.mkIf config.services.frigate.enable {
     enable = true;
     settings.streams = {
-      driveway_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
-      driveway_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
-      front_door_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.64:554/stream1";
-      front_door_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.64:554/stream2";
+      driveway_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.88:554/stream1";
+      driveway_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.88:554/stream2";
+      front_door_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream1";
+      front_door_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.86:554/stream2";
       garage_main = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream1";
       garage_sub = "rtsp://\${FRIGATE_CAM_USER}:\${FRIGATE_CAM_PASS}@192.168.68.66:554/stream2";
       # Placeholders for future cameras

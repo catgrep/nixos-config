@@ -5,9 +5,9 @@ set -euo pipefail
 
 # Frigate smoketest for ser8.
 #
-# Asserts that the frigate unit is active, that its web interface answers over
-# HTTP, and — the assertion this script exists for — that Frigate is publishing
-# to the MQTT broker right now.
+# Asserts that the frigate unit is active, its web interface answers over HTTP,
+# its detector interprets YOLOv8s class IDs correctly, and it is publishing to
+# the MQTT broker right now.
 #
 # The MQTT coupling is proven by subscribing, never by reading configuration.
 # modules/automation/frigate.nix only establishes the intended broker settings;
@@ -118,6 +118,37 @@ test_frigate_http() {
 	return 1
 }
 
+# YOLOv8s emits contiguous COCO-80 IDs, unlike Frigate's default labelmap.
+test_detection_labelmap() {
+	info "checking that the deployed labelmap matches YOLOv8s class IDs"
+
+	local config
+	config=$(remote curl -fsS --connect-timeout 5 --max-time 15 \
+		"http://${MQTT_HOST}:5000/api/config")
+	if [ -z "$config" ]; then
+		fail "could not read the detector configuration from Frigate's API"
+		return 1
+	fi
+
+	if ! jq -e '
+		.detectors.onnx.model.labelmap as $labels
+		| ($labels | length) == 80
+		and all(range(0; 80); $labels[tostring] != null)
+		and $labels["0"] == "person" and $labels["2"] == "car"
+		and $labels["15"] == "cat" and $labels["16"] == "dog"
+		and all(.objects.track[],
+			(.cameras[] | .objects.track[], .zones[].objects[]);
+			. as $name | any($labels[]; . == $name))
+	' <<<"$config" >/dev/null; then
+		fail "detector labelmap does not match COCO-80 or configured object labels"
+		fail "deploy the YOLOv8s labelmap and remove unsupported tracking or zone labels"
+		return 1
+	fi
+
+	pass "YOLOv8s class IDs and configured tracking and zone labels match the labelmap"
+	return 0
+}
+
 # Test 3: resolve the MQTT subscriber from the running broker
 #
 # The nixpkgs mosquitto package ships the broker and the client tools in the
@@ -213,6 +244,7 @@ echo
 info "=== Frigate Service Tests ==="
 run_test "frigate_unit_active" test_frigate_unit_active || true
 run_test "frigate_http" test_frigate_http || true
+run_test "detection_labelmap" test_detection_labelmap || true
 
 echo
 info "=== Frigate MQTT Publication Tests ==="

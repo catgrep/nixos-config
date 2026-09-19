@@ -20,6 +20,12 @@ let
   # model_cache here the documented location.
   detectionModelPath = "/var/lib/frigate/model_cache/yolov8s.onnx";
 
+  # YOLOv8 uses 80 contiguous class IDs; the packaged default uses COCO-91
+  # class ordering and would interpret cats as birds and dogs as cats.
+  detectionLabelmap = pkgs.runCommand "frigate-coco-80-labelmap.txt" { } ''
+    cp ${pkgs.frigate.src}/docker/main/rootfs/labelmap/coco-80.txt "$out"
+  '';
+
   # Tapo camera addresses. Each camera yields these streams:
   #   <name>_main - record and live view, plus an on-demand opus
   #                 transcode (the cameras produce PCMA audio, which MSE
@@ -193,7 +199,7 @@ in
         height = 320;
         input_tensor = "nchw";
         input_dtype = "float";
-        labelmap_path = "${pkgs.frigate}/share/frigate/labelmap.txt";
+        labelmap_path = "${detectionLabelmap}";
       };
 
       # Recording configuration (global defaults)
@@ -251,7 +257,6 @@ in
           "car"
           "dog"
           "cat"
-          "package"
         ];
         filters = {
           person = {
@@ -357,7 +362,6 @@ in
               objects = [
                 "person"
                 "car"
-                "package"
               ];
               inertia = 3;
             };
@@ -417,7 +421,6 @@ in
               coordinates = "0.013,0.189,0.919,0.034,0.97,0.835,0.105,0.988";
               objects = [
                 "person"
-                "package"
                 "dog"
                 "cat"
               ];
@@ -476,7 +479,6 @@ in
               objects = [
                 "person"
                 "car"
-                "package"
                 "dog"
                 "cat"
               ];

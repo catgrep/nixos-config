@@ -81,19 +81,6 @@ help:
 	$(call help_option,"switch-test-HOST","Switch HOST and run smoketests after")
 	$(call help_option,"smoketests-HOST","Run HOST smoketests")
 	@echo
-	@$(call title_msg,"📦 Package Operations")
-	$(call help_option,"pkg-list-HOST [CATEGORY=x]","List packages (overlays/system/services/all)")
-	$(call help_option,"pkg-build-HOST PKG=x","Build single package for HOST")
-	$(call help_option,"pkg-version-HOST PKG=x","Show package version for HOST")
-	$(call help_option,"pkg-eval-HOST EXPR=x","Evaluate expression against HOST config")
-	@echo
-	@echo "  Examples:"
-	@echo "    make pkg-list-ser8                        # List all packages"
-	@echo "    make pkg-list-ser8 CATEGORY=overlays      # List only overlay packages"
-	@echo "    make pkg-build-ser8 PKG=jellyfin-ffmpeg   # Build single package"
-	@echo "    make pkg-version-ser8 PKG=lcevcdec        # Check version (debug overlays)"
-	@echo "    make pkg-eval-ser8 EXPR='config.services.jellyfin.enable'"
-	@echo
 	@$(call title_msg,"🍓 Arm64 Builds")
 	$(call help_option,"aarch64-kexec","Build the Arm64 kexec installer using Docker")
 	@echo
@@ -319,37 +306,6 @@ provision:
 # clean-reboot
 clean-reboot/%:
 	@echo TODO
-
-# =============================================================================
-# Package Operations
-# =============================================================================
-
-pkg-list-%:
-	@./scripts/nixos-rebuild.sh pkg-list $* $(CATEGORY)
-
-pkg-build-%:
-	@if [ -z "$(PKG)" ]; then \
-		$(call error_msg,"Usage: make pkg-build-$* PKG=<package>"); \
-		$(call info_msg,"Example: make pkg-build-$* PKG=jellyfin-ffmpeg"); \
-		exit 1; \
-	fi
-	@./scripts/nixos-rebuild.sh pkg-build $* $(PKG)
-
-pkg-version-%:
-	@if [ -z "$(PKG)" ]; then \
-		$(call error_msg,"Usage: make pkg-version-$* PKG=<package>"); \
-		$(call info_msg,"Example: make pkg-version-$* PKG=lcevcdec"); \
-		exit 1; \
-	fi
-	@./scripts/nixos-rebuild.sh pkg-version $* $(PKG)
-
-pkg-eval-%:
-	@if [ -z "$(EXPR)" ]; then \
-		$(call error_msg,"Usage: make pkg-eval-$* EXPR='<expression>'"); \
-		$(call info_msg,"Example: make pkg-eval-$* EXPR='config.services.jellyfin.enable'"); \
-		exit 1; \
-	fi
-	@./scripts/nixos-rebuild.sh pkg-eval $* "$(EXPR)"
 
 # SOPS targets
 sops-init:

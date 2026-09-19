@@ -23,5 +23,8 @@ The existing Alertmanager route already provides the summary behavior wanted: `g
 If twice a day is still too chatty, add a camera-specific child route with a longer `repeat_interval` (e.g. 24h) instead of changing the global default.
 Add a State timeline panel to dashboards/frigate.json: query `frigate_camera_fps{camera_name=~"driveway|front_door|garage"} > bool 0`, one lane per camera, value-mapped 1 = green "Connected", 0 = red "Down".
 Prometheus already holds the metric history, so the panel shows past outages retroactively the moment it is provisioned.
-Also add a pipeline-stall rule for the silent detector-death mode found on 2026-09-18 (model wiped, detection dead for 3 weeks, cameras "up" the whole time): `frigate_skipped_fps > 0.9 * frigate_camera_fps` sustained for 30m catches a stalled detect pipeline that `frigate_camera_fps` alone can never see.
+Also add rules for the silent-degradation class found on 2026-09-18 (model wiped, detection dead for 3 weeks, cameras "up" the whole time) — connectivity alerts alone can never see these:
+`FrigateDetectStalled`: `frigate_skipped_fps > 0.9 * frigate_camera_fps` sustained for 30m catches a stalled detect pipeline regardless of cause (dead detector, wedged process).
+`SystemdUnitFailed`: alert on failed units from the systemd exporter (ser8/firebat:9558, already scraped); frigate.nix now has an ExecStartPre that fails the unit when the detection model is missing, and this rule is what turns that fail-fast into an email — it also catches every other service that dies without its exporter noticing.
+Together the layers are: fail-fast at startup (unit failure), stall detection at runtime (skipped_fps), and connectivity (camera_fps), each covering what the others cannot.
 Complementary to 2026-08-30-revive-home-assistant-monitoring.md, which covers HA-side push notifications; this todo is the pure Prometheus/Grafana path with no new collection.

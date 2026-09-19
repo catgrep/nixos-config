@@ -17,7 +17,8 @@ The dead detect pipeline cascades: camera processes skip ~98% of frames (`proces
 
 ## Solution
 
-Provision the model declaratively instead of re-placing it by hand: vendor the exported yolov8s.onnx (or a fixed-output fetch of it) and materialize it into `/var/cache/frigate/model_cache/` via a tmpfiles rule or a pre-start step, so a rebuild or reboot can never silently remove it.
-Alternatively (or additionally) add `/var/cache/frigate` to the impermanence persist list; declarative provisioning is preferred because it also survives a fresh install.
-Restart Frigate and verify: detector pid alive, `frigate_detection_fps` > 0 under motion, `skipped_fps` near 0, record-maintainer warnings stop, live-view tiles update.
+Move the model to `/var/lib/frigate/model_cache/yolov8s.onnx`: this is Frigate's documented `/config/model_cache` location on a bare-metal install, and `/var/lib/frigate` is the persisted ZFS dataset (`rpool/safe/persist/frigate`) that the nightly backup engine snapshots, replicates to `backup/persist-replica/frigate`, and verifies — so the model survives reboots and is backed up.
+frigate.nix changes (done 2026-09-18): model.path points at the new location, a tmpfiles rule creates the directory, and an ExecStartPre check fails the unit loudly with the regeneration command when the model is missing, instead of letting the detector die silently.
+Regenerate the model with nixpkgs tooling (ultralytics 8.4.48 is packaged): `nix shell --impure --expr 'with import <nixpkgs> {}; python3.withPackages (p: [ p.ultralytics p.onnx ])' -c yolo export model=yolov8s.pt format=onnx imgsz=320`, then install to the model_cache path owned by frigate:frigate.
+Deploy with `make test-ser8` and verify: detector pid alive, `frigate_detection_fps` > 0 under motion, `skipped_fps` near 0, record-maintainer warnings stop, live-view tiles update.
 The companion alerting todo (2026-09-18-frigate-camera-down-alerting-and-status-panel.md) gains a detector-stall rule so this failure mode can never be silent again.

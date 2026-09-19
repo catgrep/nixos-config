@@ -14,7 +14,7 @@ set -euo pipefail
 #     HomeKit protocol is served on (proving the firewall opening, which
 #     is why this check runs from here and not over SSH),
 #   - every camera in Frigate's live configuration has an accessory,
-#   - unpaired accessories publish a real eight-digit setup code, which
+#   - unpaired accessories publish a real XXX-XX-XXX setup code, which
 #     fails if the FRIGATE_HOMEKIT_PIN placeholder was never expanded,
 #   - the pairing state file exists on the persisted Frigate dataset, so
 #     pairings survive the impermanence rollback on reboot.
@@ -146,9 +146,10 @@ test_homekit_covers_all_cameras() {
 # go2rtc only reveals the setup code while an accessory is unpaired, so a
 # fully paired household legitimately publishes none. What must never
 # appear is a non-numeric code: that means the FRIGATE_HOMEKIT_PIN
-# placeholder survived into the running config unexpanded.
+# placeholder survived into the running config unexpanded. go2rtc
+# normalizes valid PINs to Apple's dashed XXX-XX-XXX presentation.
 test_homekit_setup_codes_expanded() {
-	info "checking that published setup codes are expanded eight-digit PINs"
+	info "checking that published setup codes are expanded XXX-XX-XXX PINs"
 
 	if [ -z "$homekit_json" ]; then
 		fail "the accessory list was never fetched; cannot inspect setup codes"
@@ -158,7 +159,7 @@ test_homekit_setup_codes_expanded() {
 	local malformed
 	malformed=$(jq -r 'to_entries[]
 		| select(.value.setup_code != null)
-		| select(.value.setup_code | test("^[0-9]{8}$") | not)
+		| select(.value.setup_code | test("^[0-9]{3}-[0-9]{2}-[0-9]{3}$") | not)
 		| .key' <<<"$homekit_json")
 
 	if [ -n "$malformed" ]; then
@@ -167,16 +168,19 @@ test_homekit_setup_codes_expanded() {
 		return 1
 	fi
 
-	pass "all published setup codes are expanded eight-digit PINs"
+	pass "all published setup codes are expanded XXX-XX-XXX PINs"
 	return 0
 }
 
 # Test 5: the pairing state file sits on the persisted dataset
+#
+# sudo because Frigate's StateDirectoryMode keeps /var/lib/frigate at
+# 0750, which the deploy user cannot traverse.
 test_homekit_state_persisted() {
 	info "checking the pairing state file at $(fmt_bold "$HOMEKIT_STATE_FILE")"
 
 	local remote_command
-	local remote_args=(test -s "$HOMEKIT_STATE_FILE")
+	local remote_args=(sudo -n test -s "$HOMEKIT_STATE_FILE")
 	printf -v remote_command '%q ' "${remote_args[@]}"
 	# remote_command is intentionally expanded after printf %q shell escaping.
 	# shellcheck disable=SC2029

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ config, ... }:
+{ config, lib, ... }:
 
 let
   # The same address every other alerting path on this network already reaches,
@@ -82,6 +82,34 @@ in
           ];
         }
       ];
+
+      # Notification priority for the same unit is crash loop > failed >
+      # expected-activity-missing: a crash loop already implies the unit is
+      # unhealthy, and a hard failure already implies its expected activity
+      # can't be confirmed, so the more specific diagnosis is the one that
+      # should land in an inbox. `equal` on host+name means inhibition never
+      # crosses hosts or units -- a crash loop on ser8's jellyfin.service
+      # never silences a failure on firebat's caddy.service. This suppresses
+      # notifications only; the underlying alerts stay firing and inspectable
+      # on the rules page and in Grafana.
+      inhibit_rules = [
+        {
+          source_matchers = [ ''alertname="SystemdServiceCrashLooping"'' ];
+          target_matchers = [ ''alertname=~"SystemdUnitFailed|SystemdServiceNotActive"'' ];
+          equal = [
+            "host"
+            "name"
+          ];
+        }
+        {
+          source_matchers = [ ''alertname="SystemdUnitFailed"'' ];
+          target_matchers = [ ''alertname="SystemdServiceNotActive"'' ];
+          equal = [
+            "host"
+            "name"
+          ];
+        }
+      ];
     };
   };
 
@@ -100,5 +128,9 @@ in
       ALERTMANAGER_SMTP_PASSWORD=${config.sops.placeholder.grafana_smtp_password}
     '';
     mode = "0400";
+  };
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.prometheus.alertmanager.enable {
+    "alertmanager.service".expectedRunning = true;
   };
 }

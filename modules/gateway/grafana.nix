@@ -210,4 +210,8 @@ in
 
   # Open firewall port for Grafana
   networking.firewall.allowedTCPPorts = [ 3000 ];
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.grafana.enable {
+    "grafana.service".expectedRunning = true;
+  };
 }

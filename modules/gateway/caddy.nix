@@ -84,4 +84,8 @@ in
     443
     2019 # Caddy admin API (metrics)
   ];
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.caddy.enable {
+    "caddy.service".expectedRunning = true;
+  };
 }

@@ -9,6 +9,10 @@
 
 let
   monitoredHosts = import ./monitored-hosts.nix;
+  serviceAlertRules = import ./service-alert-rules.nix {
+    inherit pkgs;
+    hosts = map (h: h.host) monitoredHosts;
+  };
 in
 {
   services.prometheus = {
@@ -510,9 +514,14 @@ in
                 annotations:
                   summary: "No nightly backup digest delivered from {{ $labels.instance }} in over 26 hours -- the mail path from the backup host is broken, or verification has stopped running"
       '')
+      serviceAlertRules
     ];
   };
 
   # Open firewall port for Prometheus
   networking.firewall.allowedTCPPorts = [ 9090 ];
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.prometheus.enable {
+    "prometheus.service".expectedRunning = true;
+  };
 }

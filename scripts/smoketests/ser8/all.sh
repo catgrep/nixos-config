@@ -39,6 +39,7 @@ TESTS=(
 	./scripts/smoketests/ser8/test-frigate.sh
 	./scripts/smoketests/ser8/test-homekit.sh
 	./scripts/smoketests/ser8/test-home-assistant.sh
+	./scripts/smoketests/ser8/test-service-monitoring.sh
 )
 
 run_suite "$@"

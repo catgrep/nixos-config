@@ -14,6 +14,7 @@ TESTS=(
 	./scripts/smoketests/gateway/test-subgen.sh
 	./scripts/smoketests/gateway/test-tailscale.sh
 	./scripts/smoketests/gateway/test-alertmanager.sh
+	./scripts/smoketests/gateway/test-service-monitoring.sh
 )
 
 run_suite "$@"

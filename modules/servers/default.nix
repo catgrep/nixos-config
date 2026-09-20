@@ -11,6 +11,7 @@
   imports = [
     ./monitoring.nix
     ./security.nix
+    ./service-monitoring.nix
     ./tailscale.nix
   ];
 

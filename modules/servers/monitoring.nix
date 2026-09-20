@@ -7,26 +7,6 @@
   ...
 }:
 
-let
-  # systemd units to monitor for per-service resource metrics
-  # This list covers media services on ser8, gateway services on firebat, and DNS on pi4
-  monitoredUnits = lib.concatStringsSep "|" [
-    "jellyfin.service"
-    "sonarr.service"
-    "radarr.service"
-    "prowlarr.service"
-    "sabnzbd.service"
-    "nzbget.service"
-    "frigate.service"
-    "home-assistant.service"
-    "caddy.service"
-    "grafana.service"
-    "prometheus.service"
-    "adguardhome.service"
-    "nginx.service"
-    "mosquitto.service"
-  ];
-in
 {
   # Enable node exporter by default on all servers
   services.prometheus.exporters.node = {
@@ -44,36 +24,18 @@ in
     ]
     ++ lib.optional (config.boot.supportedFilesystems.zfs or false) "zfs";
     openFirewall = true;
-
-    # The textfile collector is one of the exporter's own defaults and is
-    # already scraping on every host, so it is deliberately absent from the
-    # list above. Only the directory it reads was missing.
-    #
-    # Two properties of this path are load-bearing and neither is visible from
-    # here. It sits under the persisted tree because a host with a boot-time
-    # rollback would otherwise erase the metrics on every reboot, which reads
-    # downstream as "the batch job has not run since the reboot". And it sits
-    # outside any home directory because this exporter runs with home
-    # directories hidden, where it would simply find nothing and report no
-    # error. The writer declares the same path; the two must not drift, because
-    # a mismatch produces no metrics and no error anywhere.
-    #
-    # Harmless on a host that never writes there: the collector finds an empty
-    # directory and exports nothing.
-    extraFlags = lib.mkDefault [
-      "--collector.textfile.directory=/persist/var/lib/node-exporter-textfile"
-    ];
+    # Textfile-directory flags live in service-monitoring.nix, which owns
+    # both the collection scope and the generated policy file that gets
+    # published into one of those directories.
   };
 
   # systemd exporter for unit state, restart counts, and network traffic per service
   # Note: systemd-exporter does NOT provide CPU/memory metrics - use process-exporter for that
+  # Unit-collection scope (extraFlags) lives in service-monitoring.nix.
   services.prometheus.exporters.systemd = {
     enable = lib.mkDefault true;
     port = 9558;
     openFirewall = true;
-    extraFlags = [
-      "--systemd.collector.unit-include=${monitoredUnits}"
-    ];
   };
 
   # process-exporter for per-service CPU/memory/IO metrics

@@ -15,6 +15,7 @@
     ./networking.nix
     ./nix.nix
     ./packages.nix
+    ./service-monitoring.nix
     ./ssh.nix
     ./users.nix
     ./locale.nix

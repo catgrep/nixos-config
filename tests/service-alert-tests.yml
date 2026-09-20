@@ -1,0 +1,497 @@
+rule_files:
+  - rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # SystemdUnitFailed: fires once the failed state has held for 1m, and
+  # clears once the unit stops reporting failed.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: &flat20 "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      # Every scenario keeps firebat fully healthy and boring: up, policy,
+      # a never-failing unit, and a flat restart counter. Without this,
+      # firebat would itself trip SystemdMonitoringDataMissing (its
+      # unit-state and restart-total families would be genuinely absent) and
+      # contaminate assertions that only mean to describe ser8.
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: &restartFlat "2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2"
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: "1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: SystemdUnitFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: systemd
+              host: ser8
+              name: foo.service
+              state: failed
+            exp_annotations:
+              summary: "Unit foo.service failed on ser8"
+      - eval_time: 13m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+
+  # SystemdServiceCrashLooping: an increasing restart counter fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="bar.service"}'
+        values: "0 1 2 3 4 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: systemd
+              host: ser8
+              name: bar.service
+            exp_annotations:
+              summary: "Unit bar.service on ser8 shows frequent automatic restarts; it may be retrying a failed startup"
+
+  # A counter reset (value drops, as on an exporter restart) must not be
+  # read as a burst of restarts.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="bar-reset.service"}'
+        values: "5 5 5 5 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts: []
+
+  # A flat counter (no restarts at all) never fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="bar-flat.service"}'
+        values: *restartFlat
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts: []
+
+  # A brand-new series with too little history to compute increase() over
+  # never fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="bar-new.service"}'
+        values: "0 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts: []
+
+  # SystemdServiceNotActive: an expected unit sitting inactive fires, an
+  # expected unit whose own state series vanish entirely (while a sibling
+  # unit's state series keep the host's aggregate non-zero) fires, and an
+  # expected unit that is actually active never fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'homelab_systemd_expected_running{job="node-exporter", host="ser8", name="baz.service"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="baz.service", state="inactive"}'
+        values: *flat20
+      - series: 'homelab_systemd_expected_running{job="node-exporter", host="ser8", name="qux.service"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="qux.service", state="active"}'
+        values: *flat20
+      - series: 'homelab_systemd_expected_running{job="node-exporter", host="ser8", name="vanished.service"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SystemdServiceNotActive
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: SystemdServiceNotActive
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node-exporter
+              host: ser8
+              name: baz.service
+            exp_annotations:
+              summary: "Expected-running unit baz.service on ser8: activity cannot be confirmed; missing telemetry does not prove the service is stopped"
+          - exp_labels:
+              severity: critical
+              job: node-exporter
+              host: ser8
+              name: vanished.service
+            exp_annotations:
+              summary: "Expected-running unit vanished.service on ser8: activity cannot be confirmed; missing telemetry does not prove the service is stopped"
+
+  # Eligibility guards: up{job="systemd"} == 0 (target scraped but reporting
+  # down) suppresses every unit alert, and produces no false
+  # SystemdMonitoringDataMissing either -- a merely-down target is HostDown's
+  # job, not this group's.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="bar.service"}'
+        values: "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 14 14 14 14 14"
+      - series: 'homelab_systemd_expected_running{job="node-exporter", host="ser8", name="baz.service"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SystemdServiceNotActive
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SystemdMonitoringDataMissing
+        exp_alerts: []
+
+  # Eligibility guards: up{job="systemd"} entirely absent for ser8 (the
+  # scrape target itself is gone, not merely failing) suppresses every unit
+  # alert and is instead reported by the per-host absent() rule.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: SystemdServiceCrashLooping
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: SystemdServiceNotActive
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: SystemdMonitoringDataMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              family: absent-systemd
+              job: systemd
+              host: ser8
+            exp_annotations:
+              summary: "No systemd exporter scrape recorded for host ser8; unit-level alerts for this host cannot fire"
+
+  # Policy missing: node-exporter is up but the monitoring policy textfile
+  # never got collected. Unit alerts are suppressed and the policy-missing
+  # variant of SystemdMonitoringDataMissing fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="placeholder.service"}'
+        values: *restartFlat
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SystemdMonitoringDataMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              family: policy
+              job: node-exporter
+              host: ser8
+            exp_annotations:
+              summary: "node-exporter scrape is healthy but the systemd monitoring policy textfile is missing; unit alerts cannot apply exclusions or expectations"
+
+  # systemd scrape healthy but the unit-state family is entirely absent:
+  # SystemdServiceNotActive is suppressed (nothing to confirm expectations
+  # against) and the unit-state-missing variant fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_service_restart_total{job="systemd", host="ser8", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'homelab_systemd_expected_running{job="node-exporter", host="ser8", name="baz.service"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SystemdServiceNotActive
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SystemdMonitoringDataMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              family: unit-state
+              job: systemd
+              host: ser8
+            exp_annotations:
+              summary: "systemd exporter scrape is healthy but no systemd_unit_state series are being collected; unit-state alerts cannot fire"
+
+  # Restart-family data loss must alert on its own without disabling
+  # SystemdUnitFailed, which carries no restart-family guard.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SystemdUnitFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: systemd
+              host: ser8
+              name: foo.service
+              state: failed
+            exp_annotations:
+              summary: "Unit foo.service failed on ser8"
+      - eval_time: 15m
+        alertname: SystemdMonitoringDataMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              family: restart-total
+              job: systemd
+              host: ser8
+            exp_annotations:
+              summary: "systemd exporter scrape is healthy but no systemd_service_restart_total series are being collected; crash-loop detection cannot fire"
+
+  # Exclusion: an excluded unit in the failed state does not page, while a
+  # non-excluded failed unit on the same host still does.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="excluded.service", state="failed"}'
+        values: *flat20
+      - series: 'homelab_systemd_alert_excluded{job="node-exporter", host="ser8", name="excluded.service"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SystemdUnitFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: systemd
+              host: ser8
+              name: foo.service
+              state: failed
+            exp_annotations:
+              summary: "Unit foo.service failed on ser8"
+
+  # Host isolation: a failure on ser8 never produces an alert labelled
+  # firebat, even though firebat is present and healthy in the same series set.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="systemd", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="ser8"}'
+        values: *flat20
+      - series: 'up{job="systemd", host="firebat"}'
+        values: *flat20
+      - series: 'up{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'homelab_systemd_monitoring_info{job="node-exporter", host="firebat"}'
+        values: *flat20
+      - series: 'systemd_unit_state{job="systemd", host="firebat", name="placeholder.service", state="active"}'
+        values: *flat20
+      - series: 'systemd_service_restart_total{job="systemd", host="firebat", name="placeholder.service"}'
+        values: *restartFlat
+      - series: 'systemd_unit_state{job="systemd", host="ser8", name="foo.service", state="failed"}'
+        values: *flat20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SystemdUnitFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: systemd
+              host: ser8
+              name: foo.service
+              state: failed
+            exp_annotations:
+              summary: "Unit foo.service failed on ser8"

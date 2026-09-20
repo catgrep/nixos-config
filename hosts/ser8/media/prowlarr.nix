@@ -73,6 +73,15 @@
     openFirewall = true;
   };
 
+  homelab.monitoring.systemd.units = lib.mkMerge [
+    (lib.mkIf config.services.prowlarr.enable {
+      "prowlarr.service".expectedRunning = true;
+    })
+    (lib.mkIf config.services.prometheus.exporters.exportarr-prowlarr.enable {
+      "prometheus-exportarr-prowlarr-exporter.service".expectedRunning = true;
+    })
+  ];
+
   systemd.services.media-config = {
     before = lib.mkOrder 400 [ "prowlarr.service" ];
     script = lib.mkOrder 400 (

@@ -70,6 +70,15 @@
     openFirewall = true;
   };
 
+  homelab.monitoring.systemd.units = lib.mkMerge [
+    (lib.mkIf config.services.radarr.enable {
+      "radarr.service".expectedRunning = true;
+    })
+    (lib.mkIf config.services.prometheus.exporters.exportarr-radarr.enable {
+      "prometheus-exportarr-radarr-exporter.service".expectedRunning = true;
+    })
+  ];
+
   systemd.services.media-config = {
     before = lib.mkOrder 300 [ "radarr.service" ];
     script = lib.mkOrder 300 (

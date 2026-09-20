@@ -33,6 +33,10 @@ in
 {
   services.nzbget.enable = true;
 
+  homelab.monitoring.systemd.units = lib.mkIf config.services.nzbget.enable {
+    "nzbget.service".expectedRunning = true;
+  };
+
   # NZBGet 26 write-tests ScriptDir during its system-health checks and its
   # extension manager installs extensions there, so pointing ScriptDir at
   # the read-only /nix/store surfaces "Failed to write ...: Read-only file

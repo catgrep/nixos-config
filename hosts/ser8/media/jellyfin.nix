@@ -61,6 +61,15 @@ in
     apiKeyFile = config.sops.secrets.jellyfin_api_key.path;
   };
 
+  homelab.monitoring.systemd.units = lib.mkMerge [
+    (lib.mkIf config.services.jellyfin.enable {
+      "jellyfin.service".expectedRunning = true;
+    })
+    (lib.mkIf config.services.jellyfin-exporter.enable {
+      "jellyfin-exporter.service".expectedRunning = true;
+    })
+  ];
+
   services.declarative-jellyfin = {
     enable = lib.mkDefault true;
 

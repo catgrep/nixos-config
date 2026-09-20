@@ -8,6 +8,10 @@
     configFile = "/var/lib/sabnzbd/sabnzbd.ini";
   };
 
+  homelab.monitoring.systemd.units = lib.mkIf config.services.sabnzbd.enable {
+    "sabnzbd.service".expectedRunning = true;
+  };
+
   sops = {
     secrets = {
       "sabnzbd_api_key" = {

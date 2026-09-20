@@ -22,6 +22,10 @@ let
   pythonEnv = pkgs.python3.withPackages (ps: with ps; [ prometheus-client ]);
 in
 {
+  homelab.monitoring.systemd.units = lib.mkIf config.services.frigate.enable {
+    "frigate-exporter.service".expectedRunning = true;
+  };
+
   systemd.services.frigate-exporter = lib.mkIf config.services.frigate.enable {
     description = "Prometheus exporter for Frigate NVR";
     wantedBy = [ "multi-user.target" ];

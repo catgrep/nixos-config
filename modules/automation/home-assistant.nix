@@ -404,6 +404,15 @@ in
     openFirewall = true;
   };
 
+  homelab.monitoring.systemd.units = lib.mkMerge [
+    (lib.mkIf config.services.home-assistant.enable {
+      "home-assistant.service".expectedRunning = true;
+    })
+    (lib.mkIf config.services.mosquitto.enable {
+      "mosquitto.service".expectedRunning = true;
+    })
+  ];
+
   # MQTT broker for Home Assistant <-> Frigate communication
   services.mosquitto = {
     enable = lib.mkDefault false;

@@ -775,6 +775,15 @@ in
     8443 # HomeKit media (SRTP from go2rtc to Apple devices)
   ];
 
+  # Units this module keeps running continuously, published to the
+  # Prometheus alerting policy. nginx exists on ser8 solely as Frigate's
+  # web frontend (see the frigate NixOS module), so it shares this guard.
+  homelab.monitoring.systemd.units = lib.mkIf config.services.frigate.enable {
+    "frigate.service".expectedRunning = true;
+    "go2rtc.service".expectedRunning = true;
+    "nginx.service".expectedRunning = true;
+  };
+
   # Service dependencies - wait for MQTT broker, storage, and secrets
   systemd.services.frigate = lib.mkIf config.services.frigate.enable {
     after = [

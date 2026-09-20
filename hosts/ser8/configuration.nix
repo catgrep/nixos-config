@@ -214,6 +214,15 @@
     };
   };
 
+  homelab.monitoring.systemd.units = lib.mkMerge [
+    (lib.mkIf config.services.flaresolverr.enable {
+      "flaresolverr.service".expectedRunning = true;
+    })
+    (lib.mkIf config.services.prometheus.exporters.zfs.enable {
+      "prometheus-zfs-exporter.service".expectedRunning = true;
+    })
+  ];
+
   # Hardware acceleration for media transcoding (AMD Ryzen 7 8845HS with Radeon 780M)
   hardware.graphics = {
     enable = true;

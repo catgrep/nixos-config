@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-_:
+{ config, lib, ... }:
 
 {
   services.actual = {
@@ -14,5 +14,9 @@ _:
     # conflicts exist on ser8's port map, and the freeform settings type
     # accepts arbitrary JSON but Actual's server only reads what its own
     # config schema (actualbudget.org/docs/config) defines.
+  };
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.actual.enable {
+    "actual.service".expectedRunning = true;
   };
 }

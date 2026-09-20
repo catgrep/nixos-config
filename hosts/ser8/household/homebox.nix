@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ config, ... }:
+{ config, lib, ... }:
 
 {
   # Homebox refuses to start without an API-key pepper of at least 32 bytes.
@@ -44,5 +44,9 @@
       # (see modules/gateway/Caddyfile), so UI profile creation is trusted.
       HBOX_OPTIONS_ALLOW_REGISTRATION = "true";
     };
+  };
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.homebox.enable {
+    "homebox.service".expectedRunning = true;
   };
 }

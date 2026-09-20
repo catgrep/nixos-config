@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   services.donetick = {
@@ -10,6 +15,10 @@
     # `nix build .#donetick` -- single source of truth, see
     # packages/donetick/default.nix.
     package = pkgs.callPackage ../../../packages/donetick { };
+  };
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.donetick.enable {
+    "donetick.service".expectedRunning = true;
   };
 
   # DT_JWT_SECRET is generated via `openssl rand -base64 32` (>=32 chars,

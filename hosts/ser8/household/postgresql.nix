@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # services.postgresql.enable arrives implicitly from
@@ -16,4 +21,10 @@
   # the data directory under /var/lib/postgresql, which is its own dataset;
   # the server refuses to start on a data directory written by another major.
   services.postgresql.package = pkgs.postgresql_17;
+
+  # enable arrives implicitly (see above), so this guard still holds: the
+  # expectation disappears if mealie's local database is ever turned off.
+  homelab.monitoring.systemd.units = lib.mkIf config.services.postgresql.enable {
+    "postgresql.service".expectedRunning = true;
+  };
 }

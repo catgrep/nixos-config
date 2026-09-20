@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ config, ... }:
+{ config, lib, ... }:
 
 {
   services.mealie = {
@@ -32,5 +32,9 @@
       "--forwarded-allow-ips"
       "192.168.68.63"
     ];
+  };
+
+  homelab.monitoring.systemd.units = lib.mkIf config.services.mealie.enable {
+    "mealie.service".expectedRunning = true;
   };
 }

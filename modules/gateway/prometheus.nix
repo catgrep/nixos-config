@@ -7,6 +7,9 @@
   ...
 }:
 
+let
+  monitoredHosts = import ./monitored-hosts.nix;
+in
 {
   services.prometheus = {
     enable = lib.mkDefault true;
@@ -32,21 +35,14 @@
           }
         ];
       }
-      # pi4 has been physically disconnected since 2026-06-15. Its targets are
-      # commented out rather than deleted so reconnecting it is an uncomment,
-      # not an archaeology dig; a listed target for an unplugged host raises a
-      # permanent HostDown from every job that scrapes it.
       {
         job_name = "node-exporter";
-        static_configs = [
-          {
-            targets = [
-              "ser8.local:9100" # Beelink node exporter
-              "firebat.local:9100" # Firebat node exporter
-              # "pi4.local:9100" # Pi4 node exporter (host disconnected)
-            ];
-          }
-        ];
+        # Explicit static labels, not relabel expressions, so host identity
+        # survives a hostname or address change.
+        static_configs = map (h: {
+          targets = [ "${h.address}:9100" ];
+          labels.host = h.host;
+        }) monitoredHosts;
         scrape_interval = "15s";
         metrics_path = "/metrics";
       }
@@ -96,15 +92,10 @@
       # systemd unit metrics from all hosts (state, restarts, network I/O per unit)
       {
         job_name = "systemd";
-        static_configs = [
-          {
-            targets = [
-              "ser8.local:9558"
-              "firebat.local:9558"
-              # "pi4.local:9558" # host disconnected
-            ];
-          }
-        ];
+        static_configs = map (h: {
+          targets = [ "${h.address}:9558" ];
+          labels.host = h.host;
+        }) monitoredHosts;
         scrape_interval = "30s";
       }
       # process-exporter for per-service CPU/memory/IO metrics

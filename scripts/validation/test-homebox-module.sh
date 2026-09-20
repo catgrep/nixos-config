@@ -6,9 +6,10 @@
 # successful `nix build` and a UI that loads, so nothing but an explicit
 # assertion catches them.
 #
-# homebox package version: the host pins services.homebox.package to
-# pkgs.homebox. A future nixpkgs bump could move this past HBX-01's pinned
-# 0.25.x line unless re-verified here.
+# homebox package version: the host pins services.homebox.package through
+# multiverse.lock. A future pin bump could move this past HBX-01's expected
+# 0.26.x line unless re-verified here; keep this expectation in step with
+# `mvs lock update homebox`.
 #
 # homebox HBOX_WEB_PORT: services.homebox.settings is a freeform
 # attrsOf (nullOr str) with no dedicated port option, and the upstream
@@ -55,7 +56,7 @@ check_eval() {
 check_eval \
 	"HBX-01 homebox package version" \
 	".#nixosConfigurations.${host}.config.services.homebox.package.version" \
-	'"0.25.0"'
+	'"0.26.2"'
 
 check_eval \
 	"HBX-01 homebox HBOX_WEB_PORT" \

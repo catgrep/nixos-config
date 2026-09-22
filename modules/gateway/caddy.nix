@@ -70,7 +70,7 @@ in
             in
             pkgs.writeShellScript "caddy-start" ''
               export TS_AUTHKEY="$(cat ${config.sops.secrets.tailscale_authkey.path})"
-              exec ${caddyBin} run --environ --config ${caddyConfig} --adapter caddyfile
+              exec ${caddyBin} run --config ${caddyConfig} --adapter caddyfile
             ''
           )
         ];

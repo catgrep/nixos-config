@@ -28,6 +28,7 @@ All `${DS_*}` variables have been replaced with `Prometheus`:
 | services | Grafana Labs | 22161 | 1 |
 | uptime | hand-written (this repo) | N/A | N/A |
 | alert-history | hand-written (this repo) | N/A | N/A |
+| litter-box | hand-written (this repo) | N/A | N/A |
 
 ## Updating Dashboards
 

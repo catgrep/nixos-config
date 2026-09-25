@@ -23,6 +23,7 @@ let
   # - systemd: https://grafana.com/grafana/dashboards/1617 (rev 1)
   # - adguard: https://grafana.com/grafana/dashboards/13330 (rev 3)
   # - caddy: https://grafana.com/grafana/dashboards/22870 (rev 3)
+  # - litter-box: hand-written, litter box visits from Frigate's events API
   dashboards = {
     node-exporter = ../../dashboards/node-exporter.json;
     zfs = ../../dashboards/zfs.json;
@@ -37,6 +38,7 @@ let
     services = ../../dashboards/services.json; # Per-service CPU/memory/IO from process-exporter
     uptime = ../../dashboards/uptime.json; # Service uptime, host reachability, TLS cert expiry
     alert-history = ../../dashboards/alert-history.json; # Hand-written: 30d ALERTS state timeline + active alerts
+    litter-box = ../../dashboards/litter-box.json; # Hand-written: cat visits to the litter box camera zone
   };
 in
 {
@@ -65,6 +67,11 @@ in
 
   services.grafana = {
     enable = lib.mkDefault true;
+
+    # This list is the whole plugin directory: any plugin Grafana should
+    # load beyond its built-ins has to appear here.
+    declarativePlugins = [ pkgs.grafanaPlugins.yesoreyeram-infinity-datasource ];
+
     settings = {
       server = {
         http_addr = "0.0.0.0";
@@ -113,6 +120,20 @@ in
             jsonData = {
               implementation = "prometheus";
               handleGrafanaManagedAlerts = false;
+            };
+          }
+          # Frigate's HTTP API on ser8, queried per panel by URL. Frigate runs
+          # with auth disabled behind the LAN and Tailscale, so the datasource
+          # carries no credentials; the allowed-hosts list is what stops a
+          # dashboard edit from turning this into a proxy to arbitrary hosts.
+          {
+            name = "Frigate";
+            type = "yesoreyeram-infinity-datasource";
+            access = "proxy";
+            uid = "frigate";
+            jsonData = {
+              auth_method = "none";
+              allowedHosts = [ "http://ser8.local" ];
             };
           }
         ];
@@ -202,6 +223,7 @@ in
     "L+ /var/lib/grafana/dashboards/services.json - - - - ${dashboards.services}"
     "L+ /var/lib/grafana/dashboards/uptime.json - - - - ${dashboards.uptime}"
     "L+ /var/lib/grafana/dashboards/alert-history.json - - - - ${dashboards.alert-history}"
+    "L+ /var/lib/grafana/dashboards/litter-box.json - - - - ${dashboards.litter-box}"
   ];
 
   # Automatically restart Grafana when dashboard files change

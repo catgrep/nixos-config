@@ -1,0 +1,709 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Cat visits to the litter box, from the indoor_hallway Frigate camera.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Visits, last 24h",
+      "id": 1,
+      "description": "Upward changes of Frigate's cat event count for the hallway camera over the last 24 hours, so retention purges do not count.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": true,
+          "range": false,
+          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[24h]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[24h])) or vector(0)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last visit",
+      "id": 2,
+      "description": "Start time of the most recent cat event inside the litter box zone, read from Frigate's events API.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "frigate"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "dateTimeFromNow",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "never"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Start$/",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              },
+              {
+                "key": "sort",
+                "value": "date_desc"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "timestamp_epoch_s"
+            }
+          ],
+          "filters": []
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Visits in range",
+      "id": 3,
+      "description": "Upward changes of the cat event count over the dashboard time range.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": true,
+          "range": false,
+          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[$__range]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[$__range])) or vector(0)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Median visit length",
+      "id": 4,
+      "description": "Median duration of the litter box events in the dashboard time range.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "frigate"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "ms",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "-"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "median"
+          ],
+          "fields": "/^Duration$/",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "end_time",
+              "text": "End",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "data.top_score",
+              "text": "Score",
+              "type": "number"
+            },
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            }
+          ],
+          "filters": []
+        }
+      ],
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "End",
+              "operator": "-",
+              "right": "Start"
+            },
+            "alias": "Duration",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Visits per day",
+      "id": 5,
+      "description": "Litter box visits per calendar day (UTC), counted as upward changes of Frigate's cat event count.",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "barAlignment": -1,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true,
+          "interval": "1d",
+          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[1d]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[1d]))",
+          "legendFormat": "visits"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Visits",
+      "id": 6,
+      "description": "Every cat event inside the litter box zone in the dashboard time range; the event id opens the clip in Frigate.",
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "frigate"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Score"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Event"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in Frigate",
+                    "url": "https://frigate.shad-bangus.ts.net/explore?event_id=${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Start",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "End",
+              "operator": "-",
+              "right": "Start"
+            },
+            "alias": "Duration",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "Start": 0,
+              "End": 1,
+              "Duration": 2,
+              "Score": 3,
+              "Event": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "end_time",
+              "text": "End",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "data.top_score",
+              "text": "Score",
+              "type": "number"
+            },
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            }
+          ],
+          "filters": []
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "frigate"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Litter Box",
+  "uid": "litter-box",
+  "version": 1,
+  "weekStart": ""
+}

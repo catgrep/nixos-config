@@ -310,10 +310,9 @@ in
       # Recording, inherited by every camera
       record = {
         enabled = true;
-        retain = {
-          days = 7;
-          mode = "motion";
-        };
+        # Segments with motion are kept for a week; continuous footage is
+        # not kept at all (the continuous.days default of 0).
+        motion.days = 7;
         # Alert footage is the largest unbounded growth source (~2-3G/day
         # accumulated before zones were tightened); 180 days keeps it well
         # inside the 600G quota of backup/cameras/recordings.

@@ -24,7 +24,9 @@ set -euo pipefail
 # shellcheck source=scripts/smoketests/lib/fanout.sh
 . ./scripts/smoketests/lib/fanout.sh
 
+# shellcheck disable=SC2034 # read by run_suite in scripts/smoketests/lib/fanout.sh
 SUITE_NAME="household"
+# shellcheck disable=SC2034 # read by run_suite in scripts/smoketests/lib/fanout.sh
 TESTS=(
 	./scripts/smoketests/household/test-mealie-service.sh
 	./scripts/smoketests/household/test-mealie-endpoint.sh

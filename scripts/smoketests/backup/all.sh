@@ -31,7 +31,9 @@ set -euo pipefail
 # shellcheck source=scripts/smoketests/lib/fanout.sh
 . ./scripts/smoketests/lib/fanout.sh
 
+# shellcheck disable=SC2034 # read by run_suite in scripts/smoketests/lib/fanout.sh
 SUITE_NAME="backup"
+# shellcheck disable=SC2034 # read by run_suite in scripts/smoketests/lib/fanout.sh
 TESTS=(
 	./scripts/smoketests/backup/test-snapshot-freshness.sh
 	./scripts/smoketests/backup/test-replica-freshness.sh

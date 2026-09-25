@@ -55,6 +55,13 @@ in
       RemainAfterExit = true;
     };
 
+    # Paths under these roots carry POSIX ACLs, and on an ACL-bearing path
+    # the group bits that chmod sets and that -perm reads are the ACL mask,
+    # not the owning group's own entry. A directory can therefore show as
+    # 2775 while the media group is still limited to r-x by its group::
+    # entry, which is what decides whether a media service can write there.
+    # setfacl is the only tool that sets that entry; on a path without an
+    # extended ACL it is a plain group-bit change and adds nothing.
     script = ''
       for media_root in ${lib.escapeShellArgs mediaRoots}; do
         ${pkgs.findutils}/bin/find "$media_root" -xdev ! -group media \
@@ -63,6 +70,7 @@ in
           -exec ${pkgs.coreutils}/bin/chmod 2775 {} +
         ${pkgs.findutils}/bin/find "$media_root" -xdev -type f ! -perm 0664 \
           -exec ${pkgs.coreutils}/bin/chmod 0664 {} +
+        ${pkgs.acl}/bin/setfacl --physical --recursive --modify g::rwX "$media_root"
       done
     '';
   };

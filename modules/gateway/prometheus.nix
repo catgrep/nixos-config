@@ -298,8 +298,8 @@ in
 
     # Retention and admin API
     extraFlags = [
-      "--storage.tsdb.retention.time=30d"
-      "--storage.tsdb.retention.size=10GB"
+      "--storage.tsdb.retention.time=180d"
+      "--storage.tsdb.retention.size=30GB"
       "--web.enable-admin-api" # Enable admin API for series deletion
     ];
 

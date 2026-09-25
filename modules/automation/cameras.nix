@@ -148,5 +148,34 @@ in
       };
     };
 
+    # Tapo C200, pan-tilt. The litter_box zone is drawn against a fixed
+    # framing: moving the camera invalidates it, so the camera carries no
+    # onvif block and gets no PTZ controls in Frigate.
+    #
+    # Zone membership is judged by the bottom centre of the object's
+    # bounding box, so the polygon covers the floor at the box entrance
+    # rather than the box itself. loitering_time keeps a cat that only
+    # walks past from counting as a visit.
+    indoor_hallway = {
+      host = "192.168.68.54";
+      frigate = {
+        zones.litter_box = {
+          coordinates = "0.336,0.011,0.819,0.035,0.671,0.932,0.195,0.915";
+          objects = [
+            "cat"
+            "dog"
+          ];
+          inertia = 3;
+          loitering_time = 5;
+        };
+        review = {
+          alerts.labels = [ ];
+          detections = {
+            labels = [ "cat" ];
+            required_zones = [ "litter_box" ];
+          };
+        };
+      };
+    };
   };
 }

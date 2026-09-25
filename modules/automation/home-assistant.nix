@@ -11,6 +11,15 @@
 }:
 
 let
+  # Every card, subview, and control below is generated from the camera
+  # inventory in cameras.nix. The Frigate integration creates the
+  # camera.<name> and switch.<name>_* entities these reference for each
+  # camera in Frigate's config, so a new inventory entry appears here
+  # without further wiring.
+  cameras = config.homelab.cameras;
+  cameraNames = lib.attrNames cameras;
+  forEachCamera = f: map (name: f name cameras.${name}) cameraNames;
+
   # Camera dashboard configuration (Nix attrset -> JSON, which is valid YAML)
   # Deployed as a symlink from /var/lib/hass/cameras-dashboard.yaml -> /nix/store/...
   camerasDashboard = pkgs.writeText "cameras-dashboard.yaml" (builtins.toJSON dashboardConfig);
@@ -68,39 +77,23 @@ let
             type = "entities";
             title = "Object Detection";
             show_header_toggle = true;
-            entities = [
-              {
-                entity = "switch.driveway_detect";
-                name = "Driveway";
+            entities = forEachCamera (
+              name: camera: {
+                entity = "switch.${name}_detect";
+                name = camera.displayName;
               }
-              {
-                entity = "switch.front_door_detect";
-                name = "Front Door";
-              }
-              {
-                entity = "switch.garage_detect";
-                name = "Garage";
-              }
-            ];
+            );
           }
           {
             type = "entities";
             title = "Motion Detection";
             show_header_toggle = true;
-            entities = [
-              {
-                entity = "switch.driveway_motion";
-                name = "Driveway";
+            entities = forEachCamera (
+              name: camera: {
+                entity = "switch.${name}_motion";
+                name = camera.displayName;
               }
-              {
-                entity = "switch.front_door_motion";
-                name = "Front Door";
-              }
-              {
-                entity = "switch.garage_motion";
-                name = "Garage";
-              }
-            ];
+            );
           }
         ];
       }
@@ -114,11 +107,7 @@ let
         title = "Live Cameras";
         path = "live";
         icon = "mdi:camera";
-        cards = [
-          (cameraCard "driveway" "Driveway")
-          (cameraCard "front_door" "Front Door")
-          (cameraCard "garage" "Garage")
-        ];
+        cards = forEachCamera (name: camera: cameraCard name camera.displayName);
       }
       # Tab 2: Events timeline
       {
@@ -131,23 +120,13 @@ let
           {
             type = "custom:advanced-camera-card";
             card_id = "events_card";
-            cameras = [
-              {
-                camera_entity = "camera.driveway";
-                title = "Driveway";
-                frigate.camera_name = "driveway";
+            cameras = forEachCamera (
+              name: camera: {
+                camera_entity = "camera.${name}";
+                title = camera.displayName;
+                frigate.camera_name = name;
               }
-              {
-                camera_entity = "camera.front_door";
-                title = "Front Door";
-                frigate.camera_name = "front_door";
-              }
-              {
-                camera_entity = "camera.garage";
-                title = "Garage";
-                frigate.camera_name = "garage";
-              }
-            ];
+            );
             dimensions = {
               aspect_ratio = "9:16";
               layout = {
@@ -175,27 +154,17 @@ let
           }
         ];
       }
-      # Per-camera subviews for notification deep-linking
-      # subview hides from tab bar; back button returns to live cameras
-      {
-        title = "Driveway";
-        path = "camera_driveway";
+    ]
+    # Per-camera subviews for notification deep-linking
+    # subview hides from tab bar; back button returns to live cameras
+    ++ forEachCamera (
+      name: camera: {
+        title = camera.displayName;
+        path = "camera_${name}";
         subview = true;
-        cards = [ (cameraCard "driveway" "Driveway") ];
+        cards = [ (cameraCard name camera.displayName) ];
       }
-      {
-        title = "Front Door";
-        path = "camera_front_door";
-        subview = true;
-        cards = [ (cameraCard "front_door" "Front Door") ];
-      }
-      {
-        title = "Garage";
-        path = "camera_garage";
-        subview = true;
-        cards = [ (cameraCard "garage" "Garage") ];
-      }
-    ];
+    );
   };
 in
 {

@@ -119,6 +119,9 @@ test_frigate_http() {
 }
 
 # YOLOv8s emits contiguous COCO-80 IDs, unlike Frigate's default labelmap.
+# Frigate pads whatever file it loads out to 91 slots with "unknown", so the
+# check is that the first 80 slots are all real labels in COCO-80 order, not
+# that the map has exactly 80 entries.
 test_detection_labelmap() {
 	info "checking that the deployed labelmap matches YOLOv8s class IDs"
 
@@ -132,8 +135,7 @@ test_detection_labelmap() {
 
 	if ! jq -e '
 		.detectors.onnx.model.labelmap as $labels
-		| ($labels | length) == 80
-		and all(range(0; 80); $labels[tostring] != null)
+		| all(range(0; 80); $labels[tostring] != null and $labels[tostring] != "unknown")
 		and $labels["0"] == "person" and $labels["2"] == "car"
 		and $labels["15"] == "cat" and $labels["16"] == "dog"
 		and all(.objects.track[],

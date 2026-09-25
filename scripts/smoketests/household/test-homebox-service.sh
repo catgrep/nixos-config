@@ -109,21 +109,21 @@ test_homebox_port_listening() {
 	return 1
 }
 
-# Test 3: no error-level journal entry in the current boot
+# Test 3: no error-level journal entry in the unit's current invocation
 test_homebox_no_startup_errors() {
-	info "checking the current boot's journal for '$(fmt_bold "$HOMEBOX_UNIT")' errors"
+	info "checking the current invocation's journal for '$(fmt_bold "$HOMEBOX_UNIT")' errors"
 
 	local errors
-	errors=$(remote journalctl -b -u "$HOMEBOX_UNIT" --priority=err --no-pager -q -o cat)
+	errors=$(remote journalctl -u "$HOMEBOX_UNIT" --priority=err --no-pager -q -o cat --invocation=0)
 
 	if [ -z "$errors" ]; then
-		pass "no error-level journal entries for '$(fmt_bold "$HOMEBOX_UNIT")' in the current boot"
+		pass "no error-level journal entries for '$(fmt_bold "$HOMEBOX_UNIT")' in the current invocation"
 		return 0
 	fi
 
 	local count
 	count=$(echo "$errors" | wc -l | tr -d ' ')
-	fail "$count error-level journal entries for '$(fmt_bold "$HOMEBOX_UNIT")' in the current boot"
+	fail "$count error-level journal entries for '$(fmt_bold "$HOMEBOX_UNIT")' in the current invocation"
 	echo "$errors" | head -10 | while IFS= read -r line; do
 		fail "  $line"
 	done

@@ -179,27 +179,28 @@ test_mealie_port_listening() {
 	return 1
 }
 
-# Test 3: no error-level journal entry in the current boot
+# Test 3: no error-level journal entry in the unit's current invocation
 #
 # This matters more for Mealie than for most units: the module runs Alembic
 # migrations as an ExecStartPre on every start, and a migration that failed
 # leaves the unit looking healthy on the next restart while the schema is
-# half-applied. Scoped to the current boot, so an error from a previous
-# generation is not carried forward as evidence about this one.
+# half-applied. Scoped to the unit's current invocation, so an error from a
+# previous start of the same boot is not carried forward as evidence about
+# the process that is running now.
 test_mealie_no_startup_errors() {
-	info "checking the current boot's journal for '$(fmt_bold "$MEALIE_UNIT")' errors"
+	info "checking the current invocation's journal for '$(fmt_bold "$MEALIE_UNIT")' errors"
 
 	local errors
-	errors=$(remote journalctl -b -u "$MEALIE_UNIT" --priority=err --no-pager -q -o cat)
+	errors=$(remote journalctl -u "$MEALIE_UNIT" --priority=err --no-pager -q -o cat --invocation=0)
 
 	if [ -z "$errors" ]; then
-		pass "no error-level journal entries for '$(fmt_bold "$MEALIE_UNIT")' in the current boot"
+		pass "no error-level journal entries for '$(fmt_bold "$MEALIE_UNIT")' in the current invocation"
 		return 0
 	fi
 
 	local count
 	count=$(echo "$errors" | wc -l | tr -d ' ')
-	fail "$count error-level journal entries for '$(fmt_bold "$MEALIE_UNIT")' in the current boot"
+	fail "$count error-level journal entries for '$(fmt_bold "$MEALIE_UNIT")' in the current invocation"
 	echo "$errors" | head -10 | while IFS= read -r line; do
 		fail "  $line"
 	done

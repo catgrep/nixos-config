@@ -5,24 +5,21 @@ set -euo pipefail
 
 # Verification run smoketest for ser8.
 #
-# Asserts that the nightly verification is scheduled, has actually run, and
-# that its last run succeeded.
+# Asserts that the nightly verification is wired into the backup cycle, has
+# actually completed, and that its last run succeeded.
 #
-# Everything here is read out of systemd's own state rather than out of any
-# file the job wrote. That is deliberate and it is what makes this test
-# different from the manifest one next to it: a run that crashed before writing
-# anything leaves last night's manifest in place, so a check that reads the
-# manifest would report a healthy engine while the job has been dying on start
-# for a week. systemd remembers how the process ended whether or not it got far
-# enough to leave a trace.
-#
-# The "has ever run" assertion is read from the timer rather than the service,
-# and the difference matters. A oneshot service that has never been started
-# reports its result as success, because that is the field's default -- so a
-# test looking only at the service would pass on a host where the verification
-# has never executed once. The timer's last-trigger stamp is unset until it
-# genuinely fires, and it is written to persisted storage, so it survives the
-# reboot that resets the service's own runtime state.
+# There is no timer to inspect. The verification is pulled in behind the
+# replica copier through Wants=, and its ExecCondition skips every pass whose
+# replica snapshot the latest manifest already records, so the unit runs the
+# heavy walk once per nightly snapshot and is otherwise a no-op. That shapes
+# what can be read from systemd: a oneshot that has never been started reports
+# its result as success, because that is the field's default, and a
+# condition-skipped pass leaves no runtime trace either. So "has ever run" is
+# read from the stamp the verification writes only when it finishes cleanly,
+# served by the node exporter from persisted storage, while the result and
+# wiring are read from systemd's own state. A run that crashed before writing
+# anything still shows here through its result, which the manifest test next
+# to this one cannot see.
 
 . ./scripts/lib/all.sh
 
@@ -38,7 +35,17 @@ ipaddr=$(get_ip "$host")
 user=$(get_user "$host")
 
 VERIFY_SERVICE="backup-verify.service"
-VERIFY_TIMER="backup-verify.timer"
+
+# The unit whose Wants= pulls the verification in, per hosts/ser8/backup/verify.nix
+COPY_SERVICE="syncoid-rpool-safe-persist.service"
+
+# The stamp verify.sh writes when a run finishes cleanly, served by the node
+# exporter from the persisted textfile directory
+METRICS_URL="http://localhost:9100/metrics"
+VERIFY_STAMP="backup_last_verify_timestamp_seconds"
+
+# The same day-plus-two-hours window the BackupVerifyStale alert rule uses
+MAX_AGE_SECONDS=$((26 * 3600))
 
 tests_run=0
 tests_passed=0
@@ -77,66 +84,81 @@ show_property() {
 	printf '%s\n' "$block" | awk -F= -v k="$key" '$1 == k { sub("^" k "=", ""); print; exit }'
 }
 
-# Test 1: the timer exists and is scheduled
+# Test 1: the verification is wired into the backup cycle
 #
 # A unit that was removed from the configuration reports as not-found rather
-# than failing, so load state is checked explicitly. Without it, a verification
-# deleted from the host would show up here as nothing at all.
-test_timer_scheduled() {
-	info "checking that '$(fmt_bold "$VERIFY_TIMER")' is loaded and active"
+# than failing, so load state is checked explicitly. The Wants= edge is checked
+# from the copier's side, because that edge is the only thing that ever starts
+# the verification.
+test_verify_chained() {
+	info "checking that '$(fmt_bold "$VERIFY_SERVICE")' is loaded and wanted by '$COPY_SERVICE'"
 
 	local block
-	block=$(remote systemctl show "$VERIFY_TIMER" -p LoadState -p ActiveState)
+	block=$(remote systemctl show "$VERIFY_SERVICE" -p LoadState)
 
 	if [ -z "$block" ]; then
-		fail "could not read the state of '$VERIFY_TIMER' from $host"
+		fail "could not read the state of '$VERIFY_SERVICE' from $host"
 		return 1
 	fi
 
-	local load_state active_state
+	local load_state
 	load_state=$(show_property "$block" LoadState)
-	active_state=$(show_property "$block" ActiveState)
 
 	if [ "$load_state" != "loaded" ]; then
-		fail "'$VERIFY_TIMER' has load state '$load_state', expected 'loaded'"
+		fail "'$VERIFY_SERVICE' has load state '$load_state', expected 'loaded'"
 		fail "  the nightly verification is not installed on this host"
 		return 1
 	fi
 
-	if [ "$active_state" != "active" ]; then
-		fail "'$VERIFY_TIMER' has active state '$active_state', expected 'active'"
-		fail "  the verification is installed but will never fire"
+	local wants
+	wants=$(show_property "$(remote systemctl show "$COPY_SERVICE" -p Wants)" Wants)
+
+	if ! printf '%s\n' "$wants" | tr ' ' '\n' | grep -qx "$VERIFY_SERVICE"; then
+		fail "'$COPY_SERVICE' does not want '$VERIFY_SERVICE' on $host"
+		fail "  nothing starts the verification after a replica snapshot lands"
 		return 1
 	fi
 
-	pass "'$(fmt_bold "$VERIFY_TIMER")' is loaded and active"
+	pass "'$(fmt_bold "$VERIFY_SERVICE")' is loaded and wanted by '$COPY_SERVICE'"
 	return 0
 }
 
-# Test 2: the timer has fired at least once
-test_timer_has_fired() {
-	info "checking that '$(fmt_bold "$VERIFY_TIMER")' has fired at least once"
+# Test 2: the verification has finished cleanly inside the alert window
+#
+# The sample line is filtered on the host so the whole exporter payload does
+# not cross the link. The URL is expanded by the remote shell, not this one.
+test_verify_stamp_fresh() {
+	info "checking that '$(fmt_bold "$VERIFY_STAMP")' is under $((MAX_AGE_SECONDS / 3600))h old"
 
-	local block
-	block=$(remote systemctl show "$VERIFY_TIMER" -p LastTriggerUSec)
+	local sample
+	# shellcheck disable=SC2016
+	sample=$(remote sh -c \
+		'curl -fsS --max-time 10 "$1" | grep -E "^'"$VERIFY_STAMP"'( |\{)" || true' \
+		_ "$METRICS_URL")
 
-	if [ -z "$block" ]; then
-		fail "could not read the last trigger time of '$VERIFY_TIMER' from $host"
+	if [ -z "$sample" ]; then
+		fail "the node exporter on $host serves no '$VERIFY_STAMP' sample"
+		fail "  the verification has never finished cleanly, so nothing has ever been proven restorable"
 		return 1
 	fi
 
-	local last_trigger
-	last_trigger=$(show_property "$block" LastTriggerUSec)
+	local stamp now age
+	stamp=$(printf '%s\n' "$sample" | awk '{ printf "%d", $NF; exit }')
+	now=$(remote date +%s)
 
-	# systemd renders a timer that has never fired as an empty value or as
-	# "n/a" depending on version, and both mean the same thing here.
-	if [ -z "$last_trigger" ] || [ "$last_trigger" = "n/a" ] || [ "$last_trigger" = "0" ]; then
-		fail "'$VERIFY_TIMER' has never fired on $host"
-		fail "  the verification has not run once, so nothing has ever been proven restorable"
+	if [ -z "$stamp" ] || [ -z "$now" ]; then
+		fail "could not read the verification stamp or the clock from $host"
 		return 1
 	fi
 
-	pass "'$(fmt_bold "$VERIFY_TIMER")' last fired at $last_trigger"
+	age=$((now - stamp))
+
+	if [ "$age" -gt "$MAX_AGE_SECONDS" ]; then
+		fail "the last clean verification on $host finished ${age}s ago, outside the $((MAX_AGE_SECONDS / 3600))h window"
+		return 1
+	fi
+
+	pass "the last clean verification finished ${age}s ago, inside the $((MAX_AGE_SECONDS / 3600))h window"
 	return 0
 }
 
@@ -184,9 +206,9 @@ test_last_run_succeeded() {
 }
 
 echo
-info "=== Verification Schedule Tests ==="
-run_test "timer_scheduled" test_timer_scheduled || true
-run_test "timer_has_fired" test_timer_has_fired || true
+info "=== Verification Wiring Tests ==="
+run_test "verify_chained" test_verify_chained || true
+run_test "verify_stamp_fresh" test_verify_stamp_fresh || true
 
 echo
 info "=== Verification Result Tests ==="

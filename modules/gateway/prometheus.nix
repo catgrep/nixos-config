@@ -71,6 +71,28 @@ in
         ];
         scrape_interval = "30s";
       }
+      # Frigate's own /api/metrics endpoint, reduced to the one series the
+      # exporter above cannot provide: the per-camera, per-label count of
+      # rows in Frigate's events table. Everything else on that endpoint
+      # duplicates the exporter's series under identical names, and keeping
+      # it would double every panel on the Frigate dashboard.
+      {
+        job_name = "frigate-api";
+        metrics_path = "/api/metrics";
+        static_configs = [
+          {
+            targets = [ "ser8.local:80" ];
+          }
+        ];
+        scrape_interval = "60s";
+        metric_relabel_configs = [
+          {
+            source_labels = [ "__name__" ];
+            regex = "frigate_camera_events_total";
+            action = "keep";
+          }
+        ];
+      }
       # Alertmanager's own metrics, over loopback (it binds 127.0.0.1 only and
       # runs on this host). Scraping it also folds it into the HostDown
       # catch-all, so a dead Alertmanager at least shows as a down target.
@@ -382,6 +404,22 @@ in
                   severity: warning
                 annotations:
                   summary: "CPU usage above 90% sustained for 5+ minutes on {{ $labels.instance }}"
+
+              # frigate_camera_events_total is a row count over Frigate's events
+              # table, not a monotonic counter: it falls whenever retention
+              # purges old rows. increase() reads every such drop as a counter
+              # reset and credits the whole post-purge value as new events, so
+              # visits are counted as upward changes only (changes minus
+              # resets). The absent() arm keeps the rule live when the series
+              # has never been written, which is what a camera that has
+              # detected nothing looks like.
+              - alert: LitterBoxNoVisit
+                expr: (changes(frigate_camera_events_total{camera="indoor_hallway",label="cat"}[24h]) - resets(frigate_camera_events_total{camera="indoor_hallway",label="cat"}[24h])) == 0 or absent(frigate_camera_events_total{camera="indoor_hallway",label="cat"})
+                for: 1h
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "No cat visit to the litter box recorded in the last 24 hours"
 
               # Blackbox probe rules. These watch what a user would experience
               # (an HTTP answer, a ping reply, a valid certificate) rather

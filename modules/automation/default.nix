@@ -4,6 +4,7 @@
 
 {
   imports = [
+    ./cameras.nix
     ./home-assistant.nix
     ./frigate.nix
     ./frigate-exporter.nix

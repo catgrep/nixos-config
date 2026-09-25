@@ -26,7 +26,7 @@ let
     cp ${pkgs.frigate.src}/docker/main/rootfs/labelmap/coco-80.txt "$out"
   '';
 
-  # Tapo camera addresses. Each camera yields these streams:
+  # Every camera in the inventory yields these go2rtc streams:
   #   <name>_main - record and live view, plus an on-demand opus
   #                 transcode (the cameras produce PCMA audio, which MSE
   #                 playback cannot decode)
@@ -40,13 +40,7 @@ let
   #                 viewing forces go2rtc to connect - and the button
   #                 still only shows up reliably when the producer is
   #                 already running (select the stream, then reload).
-  cameraHosts = {
-    driveway = "192.168.68.88";
-    front_door = "192.168.68.64";
-    garage = "192.168.68.66";
-    backyard_side_gate = "192.168.68.52";
-    backyard_charger = "192.168.68.58";
-  };
+  cameraHosts = lib.mapAttrs (_: camera: camera.host) config.homelab.cameras;
 
   # Cameras whose main stream is sourced from tapo:// instead of RTSP.
   # Frigate's recorder consumes the main stream around the clock, which
@@ -94,10 +88,44 @@ let
   go2rtcStreams = mkStreams (var: "\${${var}}");
   frigateGo2rtcStreams = mkStreams (var: "{${var}}");
 
-  yamlFormat = pkgs.formats.yaml { };
+  # Frigate camera block for one inventory entry. Recording, snapshots,
+  # object tracking, and detection are enabled in the global sections
+  # below and inherited by every camera; what is generated here is the
+  # restream wiring and the live view stream list, both derived from the
+  # camera name. The inventory's frigate attribute (zones, masks, review
+  # policy) is merged over the top and wins on any overlap.
+  #
+  # The detect resolution is stated rather than probed: when a camera is
+  # offline during a Frigate restart the probe fails and Frigate falls
+  # back to 1280x720, which does not match the Tapo sub stream.
+  mkCamera =
+    name: camera:
+    lib.recursiveUpdate {
+      ffmpeg.inputs = [
+        {
+          path = "rtsp://127.0.0.1:8554/${name}_main";
+          input_args = "preset-rtsp-restream";
+          roles = [ "record" ];
+        }
+        {
+          path = "rtsp://127.0.0.1:8554/${name}_sub";
+          input_args = "preset-rtsp-restream";
+          roles = [ "detect" ];
+        }
+      ];
+      detect = {
+        width = 640;
+        height = 360;
+        fps = 5;
+      };
+      live.streams = {
+        Main = "${name}_main";
+        Sub = "${name}_sub";
+      }
+      // lib.optionalAttrs (!lib.elem name tapoMainCameras) { "Two-way talk" = "${name}_talk"; };
+    } camera.frigate;
 
-  # "backyard_side_gate" -> "Backyard Side Gate"
-  homekitCameraName = name: lib.concatMapStringsSep " " lib.toSentenceCase (lib.splitString "_" name);
+  yamlFormat = pkgs.formats.yaml { };
 
   # Apple Home export: go2rtc advertises every camera's _main stream as a
   # native HomeKit accessory. The cameras' H264 video passes through
@@ -115,14 +143,14 @@ let
   # paired again in the Home app.
   homekitSettings = {
     homekit = lib.mapAttrs' (
-      name: _:
+      name: camera:
       lib.nameValuePair "${name}_main" {
         # Expanded from frigate.env by go2rtc at config load. Eight
         # digits; Apple rejects trivial codes such as 12345678.
         pin = "\${FRIGATE_HOMEKIT_PIN}";
-        name = homekitCameraName name;
+        name = camera.displayName;
       }
-    ) cameraHosts;
+    ) config.homelab.cameras;
   };
 
   # When an Apple device pairs, go2rtc records the pairing by patching
@@ -279,7 +307,7 @@ in
         labelmap_path = "${detectionLabelmap}";
       };
 
-      # Recording configuration (global defaults)
+      # Recording, inherited by every camera
       record = {
         enabled = true;
         retain = {
@@ -303,9 +331,9 @@ in
         };
       };
 
-      # Snapshot configuration
-      # Snapshot retention matches alert retention - a snapshot has little
-      # value once its alert footage is gone.
+      # Snapshots, inherited by every camera. Retention matches alert
+      # retention - a snapshot has little value once its alert footage is
+      # gone.
       snapshots = {
         enabled = true;
         bounding_box = true;
@@ -314,9 +342,12 @@ in
         };
       };
 
-      # Detection: stop tracking stationary objects after 5 minutes
-      # Prevents duplicate events from parked cars or idle objects
+      # Detection is enabled here for every camera; Frigate's own camera
+      # level default is off.
+      # Stationary handling: stop tracking stationary objects after 5
+      # minutes to prevent duplicate events from parked cars or idle objects.
       detect = {
+        enabled = true;
         stationary = {
           # frames without movement before marked stationary
           # 1500 frames = 5 min at 5 fps (5 min × 60 s × 5 fps)
@@ -381,319 +412,12 @@ in
         streams = frigateGo2rtcStreams;
       };
 
-      # Camera configurations
-      #
-      # Zone and motion-mask polygons are drawn in the Frigate UI, which
-      # saves them to /run/frigate/frigate.yml - a tmpfs copy that every
-      # deploy or service restart regenerates from this file. Copy UI
-      # edits back here or they are lost.
-      # Credentials injected via environment variables from SOPS:
-      #   {FRIGATE_CAM_USER} - Camera RTSP username
-      #   {FRIGATE_CAM_PASS} - Camera RTSP password
-      # TP-Link Tapo C120 streams:
-      #   stream1 = Main stream (2K/1080p for recording)
-      #   stream2 = Sub stream (360p for detection)
-      cameras = {
-        driveway = {
-          enabled = true;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/driveway_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-              {
-                path = "rtsp://127.0.0.1:8554/driveway_sub";
-                input_args = "preset-rtsp-restream";
-                roles = [ "detect" ];
-              }
-            ];
-          };
-          detect = {
-            enabled = true;
-            width = 640;
-            height = 360;
-            fps = 5;
-          };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
-              mode = "motion";
-            };
-          };
-          snapshots = {
-            enabled = true;
-          };
-          live = {
-            streams = {
-              Main = "driveway_main";
-              Sub = "driveway_sub";
-              "Two-way talk" = "driveway_talk";
-            };
-          };
-          zones = {
-            driveway_zone = {
-              coordinates = "0.079,0.027,0.989,0.033,1,0.611,0.292,1";
-              objects = [
-                "person"
-                "car"
-              ];
-              inertia = 3;
-            };
-          };
-          motion = {
-            mask = "0.025,0.163,0.118,0.118,0.207,0.183,0.313,0.12,0.325,0.012,0.005,0.006";
-          };
-          review = {
-            alerts = {
-              required_zones = [ "driveway_zone" ];
-            };
-          };
-        };
-
-        front_door = {
-          enabled = true;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/front_door_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-              {
-                path = "rtsp://127.0.0.1:8554/front_door_sub";
-                input_args = "preset-rtsp-restream";
-                roles = [ "detect" ];
-              }
-            ];
-          };
-          detect = {
-            enabled = true;
-            width = 640;
-            height = 360;
-            fps = 5;
-          };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
-              mode = "motion";
-            };
-          };
-          snapshots = {
-            enabled = true;
-          };
-          live = {
-            # Main is tapo-sourced (see tapoMainCameras), so two-way talk
-            # is available on it directly - no separate talk stream.
-            streams = {
-              Main = "front_door_main";
-              Sub = "front_door_sub";
-            };
-          };
-          zones = {
-            front_door_zone = {
-              coordinates = "0.013,0.189,0.919,0.034,0.97,0.835,0.105,0.988";
-              objects = [
-                "person"
-                "dog"
-                "cat"
-              ];
-              inertia = 3;
-            };
-          };
-          review = {
-            alerts = {
-              required_zones = [ "front_door_zone" ];
-            };
-          };
-        };
-
-        garage = {
-          enabled = true;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/garage_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-              {
-                path = "rtsp://127.0.0.1:8554/garage_sub";
-                input_args = "preset-rtsp-restream";
-                roles = [ "detect" ];
-              }
-            ];
-          };
-          detect = {
-            enabled = true;
-            width = 640;
-            height = 360;
-            fps = 5;
-          };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
-              mode = "motion";
-            };
-          };
-          snapshots = {
-            enabled = true;
-          };
-          live = {
-            streams = {
-              Main = "garage_main";
-              Sub = "garage_sub";
-              "Two-way talk" = "garage_talk";
-            };
-          };
-          zones = {
-            garage_zone = {
-              coordinates = "0.144,0,1,0,1,1,0.158,1";
-              objects = [
-                "person"
-                "car"
-                "dog"
-                "cat"
-              ];
-              inertia = 3;
-            };
-          };
-          review = {
-            alerts = {
-              required_zones = [ "garage_zone" ];
-            };
-          };
-        };
-
-        backyard_side_gate = {
-          enabled = true;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/backyard_side_gate_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-              {
-                path = "rtsp://127.0.0.1:8554/backyard_side_gate_sub";
-                input_args = "preset-rtsp-restream";
-                roles = [ "detect" ];
-              }
-            ];
-          };
-          detect = {
-            enabled = true;
-            width = 640;
-            height = 360;
-            fps = 5;
-          };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
-              mode = "motion";
-            };
-          };
-          snapshots = {
-            enabled = true;
-          };
-          live = {
-            streams = {
-              Main = "backyard_side_gate_main";
-              Sub = "backyard_side_gate_sub";
-              "Two-way talk" = "backyard_side_gate_talk";
-            };
-          };
-          zones = {
-            backyard_side_gate_zone = {
-              coordinates = "0.053,0.023,0.953,0.023,0.833,0.829,0.428,0.982,0.114,0.361";
-              objects = [
-                "person"
-                "dog"
-                "cat"
-              ];
-              inertia = 3;
-            };
-          };
-          motion = {
-            mask = [
-              "0.181,0.157,0.258,0.253,0.288,0.452,0.281,0.974,0.097,0.959,0.013,0.495"
-              "0.811,0.986,0.994,0.568,0.998,0.994"
-              "0.853,0.014,0.993,0.546,0.997,0.014"
-            ];
-          };
-          review = {
-            alerts = {
-              required_zones = [ "backyard_side_gate_zone" ];
-            };
-          };
-        };
-
-        backyard_charger = {
-          enabled = true;
-          ffmpeg = {
-            inputs = [
-              {
-                path = "rtsp://127.0.0.1:8554/backyard_charger_main";
-                input_args = "preset-rtsp-restream";
-                roles = [ "record" ];
-              }
-              {
-                path = "rtsp://127.0.0.1:8554/backyard_charger_sub";
-                input_args = "preset-rtsp-restream";
-                roles = [ "detect" ];
-              }
-            ];
-          };
-          detect = {
-            enabled = true;
-            width = 640;
-            height = 360;
-            fps = 5;
-          };
-          record = {
-            enabled = true;
-            retain = {
-              days = 7;
-              mode = "motion";
-            };
-          };
-          snapshots = {
-            enabled = true;
-          };
-          live = {
-            streams = {
-              Main = "backyard_charger_main";
-              Sub = "backyard_charger_sub";
-              "Two-way talk" = "backyard_charger_talk";
-            };
-          };
-          zones = {
-            backyard_charger_zone = {
-              coordinates = "0.336,0.011,0.819,0.035,0.671,0.932,0.195,0.915";
-              objects = [
-                "person"
-                "car"
-                "cat"
-                "dog"
-              ];
-              inertia = 3;
-            };
-          };
-          motion = {
-            mask = "0.717,0.874,0.829,0.841,0.937,0.809,0.935,0.301,0.782,0.254,0.689,0.446";
-          };
-          review = {
-            alerts = {
-              required_zones = [ "backyard_charger_zone" ];
-            };
-          };
-        };
-      };
+      # Per-camera blocks are generated from the inventory in cameras.nix;
+      # zone and mask polygons drawn in the Frigate UI are saved to
+      # /run/frigate/frigate.yml, a tmpfs copy that every deploy or service
+      # restart regenerates from this file, so UI edits are copied back into
+      # the inventory or they are lost.
+      cameras = lib.mapAttrs mkCamera config.homelab.cameras;
     };
   };
 

@@ -64,6 +64,11 @@ remote() {
 
 # Scrapes an exporter endpoint on the host itself. The URL is expanded by the
 # remote shell, not this one.
+#
+# Callers match on the payload with `grep ... >/dev/null` rather than
+# `grep -q`: the payload is thousands of lines, and a grep that exits on its
+# first match leaves printf writing into a closed pipe, which pipefail then
+# reports as a failed match.
 scrape() {
 	local url="$1"
 	# shellcheck disable=SC2016
@@ -105,14 +110,14 @@ test_node_exporter_serves_policy_and_backup_metrics() {
 		return 1
 	fi
 
-	if printf '%s\n' "$payload" | grep -qE '^homelab_systemd_monitoring_info( |\{)'; then
+	if printf '%s\n' "$payload" | grep -E '^homelab_systemd_monitoring_info( |\{)' >/dev/null; then
 		pass "node exporter serves 'homelab_systemd_monitoring_info'"
 	else
 		fail "node exporter does not serve 'homelab_systemd_monitoring_info'"
 		ok=0
 	fi
 
-	if printf '%s\n' "$payload" | grep -qE '^backup_[a-zA-Z_]+( |\{)'; then
+	if printf '%s\n' "$payload" | grep -E '^backup_[a-zA-Z_]+( |\{)' >/dev/null; then
 		pass "node exporter serves at least one 'backup_*' metric"
 	else
 		fail "node exporter does not serve any 'backup_*' metric"
@@ -135,14 +140,14 @@ test_systemd_exporter_serves_unit_metrics() {
 		return 1
 	fi
 
-	if printf '%s\n' "$payload" | grep -qF "systemd_unit_state{name=\"${FRIGATE_UNIT}\""; then
+	if printf '%s\n' "$payload" | grep -F "systemd_unit_state{name=\"${FRIGATE_UNIT}\"" >/dev/null; then
 		pass "systemd exporter serves 'systemd_unit_state' for '$FRIGATE_UNIT'"
 	else
 		fail "systemd exporter does not serve 'systemd_unit_state' for '$FRIGATE_UNIT'"
 		ok=0
 	fi
 
-	if printf '%s\n' "$payload" | grep -qE '^systemd_service_restart_total\{'; then
+	if printf '%s\n' "$payload" | grep -E '^systemd_service_restart_total\{' >/dev/null; then
 		pass "systemd exporter serves 'systemd_service_restart_total' for at least one unit"
 	else
 		fail "systemd exporter does not serve 'systemd_service_restart_total' for any unit"

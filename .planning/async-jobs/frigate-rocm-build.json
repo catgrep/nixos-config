@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "job_id": "frigate-rocm-build",
+  "plan_id": null,
+  "phase": null,
+  "backend": "systemd-run",
+  "status": "running",
+  "submit_command": "ssh bdhill@192.168.68.65 'sudo systemd-run --unit=frigate-rocm-build --description=\"Build ser8 system with ROCm onnxruntime for Frigate\" --setenv=PATH=/run/wrappers/bin:/run/current-system/sw/bin --property=WorkingDirectory=/root -- nix build --print-build-logs --out-link /root/frigate-rocm-build path:/nix/store/ig8zzrhm31pc4mydhwiiy82kjamn4w8c-source#nixosConfigurations.ser8.config.system.build.toplevel'",
+  "expected_artifacts": [
+    "/root/frigate-rocm-build (ser8) -- gc root for the built system, toplevel derivation /nix/store/kssyi1775dyzralxniq34ahrw4z26ldq-nixos-system-ser8-26.05.20260817.0dd31db.drv",
+    "commit 898b046 (repo) -- the flake source archived to ser8 as /nix/store/ig8zzrhm31pc4mydhwiiy82kjamn4w8c-source"
+  ],
+  "verification_command": "ssh bdhill@192.168.68.65 'systemctl show frigate-rocm-build -p ExecMainStatus,Result --value; readlink /root/frigate-rocm-build; sudo -u frigate env PYTHONPATH=$(nix eval --raw path:/nix/store/ig8zzrhm31pc4mydhwiiy82kjamn4w8c-source#nixosConfigurations.ser8.config.services.frigate.package.pythonPath) $(readlink /root/frigate-rocm-build)/sw/bin/python3 -c \"import onnxruntime as o; print(o.get_available_providers())\"'",
+  "resume_command": "ssh bdhill@192.168.68.65 'systemctl status frigate-rocm-build --no-pager; journalctl -u frigate-rocm-build --no-pager | tail -40'",
+  "submitted_at": "2026-09-27T07:32:15Z",
+  "notes": "Builds the ser8 system from commit 898b046, which points services.frigate.package at a Frigate whose onnxruntime carries the MIGraphX execution provider. cache.nixos.org serves the ROCm onnxruntime and every ROCm 7.2.3 library, so the fetch phase (63 paths, 3.6 GiB) finished within four minutes. keras and faster-whisper then rebuild because their onnxruntime input changed, and keras runs its full test suite, which is the long pole. Activation is a separate, operator-approved step: make test-ser8 restarts Frigate on the GPU without changing the boot default. A GPU inference smoke test that runs outside the service is staged at /tmp/migraphx-smoke.sh on ser8."
+}

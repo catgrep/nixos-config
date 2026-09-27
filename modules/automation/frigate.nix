@@ -20,6 +20,23 @@ let
   # model_cache here the documented location.
   detectionModelPath = "/var/lib/frigate/model_cache/yolov8s.onnx";
 
+  # Frigate with an onnxruntime that exposes the MIGraphX execution provider,
+  # which is how ROCm inference reaches the Radeon 780M. Frigate's package
+  # rebuilds its own Python package set from the interpreter, and that set
+  # reads onnxruntime from the top level of nixpkgs, so the override has to
+  # enter through an extended package set rather than a Python-scope
+  # override. Only Frigate consumes this variant; the ROCm libraries it links
+  # come from the binary cache and only onnxruntime itself is rebuilt.
+  frigateWithRocm =
+    let
+      rocmPkgs = pkgs.extend (
+        _final: prev: {
+          onnxruntime = prev.onnxruntime.override { rocmSupport = true; };
+        }
+      );
+    in
+    pkgs.frigate.override { inherit (rocmPkgs) python313Packages; };
+
   # YOLOv8 uses 80 contiguous class IDs; the packaged default uses COCO-91
   # class ordering and would interpret cats as birds and dogs as cats.
   detectionLabelmap = pkgs.runCommand "frigate-coco-80-labelmap.txt" { } ''
@@ -255,6 +272,7 @@ in
   services.frigate = {
     enable = lib.mkDefault false;
     hostname = "frigate";
+    package = frigateWithRocm;
 
     # AMD VA-API driver for hardware acceleration (Radeon 780M)
     vaapiDriver = "radeonsi";
@@ -281,14 +299,14 @@ in
         };
       };
 
-      # Object detection via ONNX on CPU
-      # ROCm inference combined with VAAPI decode causes GPU context resets
-      # on the Radeon 780M iGPU after ~5 days. VAAPI decode is kept (saves
-      # more CPU) while inference runs on CPU (~18ms, acceptable).
+      # Object detection via ONNX on the Radeon 780M. With device left at
+      # AUTO, Frigate registers every provider onnxruntime exposes in order,
+      # so the MIGraphX provider runs the model and the CPU provider stays
+      # registered behind it. MIGraphX compiles the model on first load and
+      # caches the result under model_cache/migraphx.
       detectors = {
         onnx = {
           type = "onnx";
-          device = "CPU";
         };
       };
 

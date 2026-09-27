@@ -160,14 +160,12 @@ in
       host = "192.168.68.54";
       frigate = {
         zones.litter_box = {
-          coordinates = "0.336,0.011,0.819,0.035,0.671,0.932,0.195,0.915";
-          objects = [
-            "cat"
-            "dog"
-          ];
+          coordinates = "0.271,0.34,0.932,0.047,0.784,0.944,0.308,0.927";
+          objects = [ "cat" ];
           inertia = 3;
           loitering_time = 5;
         };
+        motion.mask = "0,0.006,0.245,0.006,0.308,0.933,0.044,0.795";
         review = {
           alerts.labels = [ ];
           detections = {

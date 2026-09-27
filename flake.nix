@@ -90,6 +90,7 @@
             "~/github/catgrep/nixos-config"
             "~/Library/Application Support"
             "~/.docker"
+            "~/scratch"
           ];
           unixSocketPaths = [
             "/nix/var/nix/daemon-socket/socket"

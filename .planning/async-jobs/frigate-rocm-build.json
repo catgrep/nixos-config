@@ -5,13 +5,13 @@
   "phase": null,
   "backend": "systemd-run",
   "status": "running",
-  "submit_command": "ssh bdhill@192.168.68.65 'sudo systemd-run --unit=frigate-rocm-build --description=\"Build ser8 system with ROCm onnxruntime for Frigate\" --setenv=PATH=/run/wrappers/bin:/run/current-system/sw/bin --property=WorkingDirectory=/root -- nix build --print-build-logs --out-link /root/frigate-rocm-build path:/nix/store/bkr0ih3jjl8m82cpqd45cy25cm26cxqi-source#nixosConfigurations.ser8.config.system.build.toplevel'",
+  "submit_command": "ssh bdhill@192.168.68.65 'sudo systemd-run --unit=frigate-rocm-build --description=\"Build ser8 system with ROCm onnxruntime for Frigate\" --setenv=PATH=/run/wrappers/bin:/run/current-system/sw/bin --property=WorkingDirectory=/root -- nix build --print-build-logs --out-link /root/frigate-rocm-build path:/nix/store/bdl11vfq2f08nv9pp4ia2h6nl8gzswrg-source#nixosConfigurations.ser8.config.system.build.toplevel'",
   "expected_artifacts": [
     "/root/frigate-rocm-build (ser8) -- gc root for the built system",
-    "commit 3f7e2f1 (repo) -- the flake source archived to ser8 as /nix/store/bkr0ih3jjl8m82cpqd45cy25cm26cxqi-source"
+    "commit 192ea50 (repo) -- the flake source archived to ser8 as /nix/store/bdl11vfq2f08nv9pp4ia2h6nl8gzswrg-source"
   ],
   "verification_command": "ssh bdhill@192.168.68.65 'systemctl show frigate-rocm-build -p ExecMainStatus,Result --value; sudo readlink /root/frigate-rocm-build'",
   "resume_command": "ssh bdhill@192.168.68.65 'systemctl status frigate-rocm-build --no-pager; journalctl -u frigate-rocm-build --no-pager | tail -40'",
-  "submitted_at": "2026-09-27T08:57:59Z",
-  "notes": "Third dispatch, from commit 3f7e2f1. The second build (9fe732b) loaded the MIGraphX provider, but Frigate's detector process aborted on a protobuf descriptor collision: MIGraphX's TensorFlow parser and OpenCV's dnn module both link nixpkgs' shared libprotobuf and both register tensor_shape.proto, so any process that has imported cv2 dies when the provider loads. 3f7e2f1 builds MIGraphX against a static protobuf (private descriptor pool, gfx1100 and gfx1103 device code) and rebuilds onnxruntime against it. The dry run lists 18 derivations: protobuf, migraphx, onnxruntime, the Python wheel, tf2onnx, keras, faster-whisper, sherpa-onnx, frigate and the system glue. Expect two to three hours. Before activation, run the detector-shaped smoke test as the frigate user from /: import cv2 and frigate.detectors, then open a MIGraphX session on yolov8s.onnx; it must report MIGraphXExecutionProvider first and infer in under 10 ms. Then make test-ser8."
+  "submitted_at": "2026-09-27T16:59:30Z",
+  "notes": "Fourth dispatch, from commit 192ea50. The third build (3f7e2f1) passed a static protobuf to MIGraphX, but CMake found the shared protobuf config first because the Python onnx package propagates it, so libmigraphx_tf still linked libprotobuf.so and the collision with OpenCV remained (verified: import cv2 then a MIGraphX session still aborts on tensor_shape.proto). 192ea50 sets protobuf_DIR so config lookup and protoc come from the static build. Rebuilds migraphx, onnxruntime, its wheel, frigate and downstream packages; expect about ninety minutes. Verify before activation: patchelf --print-needed on libmigraphx_tf must list no libprotobuf, and the detector-shaped smoke test as the frigate user from / (import cv2 and frigate.detectors, then a MIGraphX session on yolov8s.onnx) must report MIGraphXExecutionProvider first and infer in under 10 ms. Then make test-ser8."
 }

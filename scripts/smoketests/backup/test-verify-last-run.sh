@@ -162,11 +162,14 @@ test_verify_stamp_fresh() {
 	return 0
 }
 
-# Test 3: the last invocation of the verification succeeded
+# Test 3: the last invocation of the verification succeeded or was skipped
 #
 # Result covers how the process ended, including a kill that left no output.
 # ActiveState is checked alongside it so a run that is currently failed cannot
-# pass on a stale successful result.
+# pass on a stale successful result. "exec-condition" is the gate declining a
+# pass whose replica snapshot is already recorded; that is the unit's normal
+# outcome on all but one pass a day, and the stamp test above is what proves
+# the real run happened.
 test_last_run_succeeded() {
 	info "checking that the last run of '$(fmt_bold "$VERIFY_SERVICE")' succeeded"
 
@@ -194,14 +197,14 @@ test_last_run_succeeded() {
 		return 1
 	fi
 
-	if [ "$result" != "success" ]; then
+	if [ "$result" != "success" ] && [ "$result" != "exec-condition" ]; then
 		fail "the last run of '$VERIFY_SERVICE' ended with result '$result'"
 		fail "  exit status='$exec_status'"
 		fail "  a non-success result covers a crash or a kill, which may have left no manifest at all"
 		return 1
 	fi
 
-	pass "the last run of '$(fmt_bold "$VERIFY_SERVICE")' succeeded"
+	pass "the last run of '$(fmt_bold "$VERIFY_SERVICE")' ended with result '$result'"
 	return 0
 }
 

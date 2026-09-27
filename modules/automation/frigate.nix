@@ -27,11 +27,34 @@ let
   # enter through an extended package set rather than a Python-scope
   # override. Only Frigate consumes this variant; the ROCm libraries it links
   # come from the binary cache and only onnxruntime itself is rebuilt.
+  #
+  # The Python wheel nixpkgs builds from the ROCm onnxruntime ships the
+  # provider stub but not libonnxruntime_providers_migraphx.so, which stays in
+  # the native package's lib directory. onnxruntime resolves provider
+  # libraries next to its Python module, so without the link it reports the
+  # MIGraphX provider as available and then falls back to the CPU.
   frigateWithRocm =
     let
+      linkMigraphxProvider = _pyfinal: pyprev: {
+        onnxruntime = pyprev.onnxruntime.overridePythonAttrs (old: {
+          postInstall =
+            let
+              native =
+                lib.findFirst (d: (d.pname or "") == "onnxruntime")
+                  (throw "python onnxruntime no longer carries the native onnxruntime in buildInputs")
+                  old.buildInputs;
+            in
+            (old.postInstall or "")
+            + ''
+              ln -s ${lib.getLib native}/lib/libonnxruntime_providers_migraphx.so \
+                "$out/${pyprev.python.sitePackages}/onnxruntime/capi/"
+            '';
+        });
+      };
       rocmPkgs = pkgs.extend (
         _final: prev: {
           onnxruntime = prev.onnxruntime.override { rocmSupport = true; };
+          pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [ linkMigraphxProvider ];
         }
       );
     in

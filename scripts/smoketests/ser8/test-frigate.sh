@@ -164,6 +164,10 @@ test_detection_labelmap() {
 # or restart, so a difference between the two files means UI edits are
 # pending a copy into modules/automation/cameras.nix. The store path is read
 # from the running unit so the check follows whatever generation is active.
+#
+# Frigate rewrites the file at startup: its config migration re-indents the
+# YAML and stamps a version key. The comparison is therefore made on the
+# parsed documents with that key removed, not on the text.
 test_config_matches_generation() {
 	info "checking that the live Frigate config matches the generated one"
 
@@ -179,8 +183,9 @@ test_config_matches_generation() {
 	fi
 
 	local remote_command
-	local remote_args=(sudo -n diff -q "$generated" "$FRIGATE_LIVE_CONFIG")
-	printf -v remote_command '%q ' "${remote_args[@]}"
+	printf -v remote_command \
+		'diff <(sudo -n yq -o json "del(.version)" %q | jq -S .) <(sudo -n yq -o json "del(.version)" %q | jq -S .)' \
+		"$generated" "$FRIGATE_LIVE_CONFIG"
 	# remote_command is intentionally expanded after printf %q shell escaping.
 	# shellcheck disable=SC2029
 	if ssh "$user@$ipaddr" "$remote_command" >/dev/null 2>&1; then

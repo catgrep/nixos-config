@@ -413,13 +413,18 @@ in
               # resets). The absent() arm keeps the rule live when the series
               # has never been written, which is what a camera that has
               # detected nothing looks like.
+              #
+              # The count is per camera and label, not per zone, so it covers
+              # every cat the hallway camera tracks, including one that only
+              # walks past the boxes. Zone-accurate visit counts are on the
+              # litter box dashboard, which reads Frigate's events API.
               - alert: LitterBoxNoVisit
                 expr: (changes(frigate_camera_events_total{camera="indoor_hallway",label="cat"}[24h]) - resets(frigate_camera_events_total{camera="indoor_hallway",label="cat"}[24h])) == 0 or absent(frigate_camera_events_total{camera="indoor_hallway",label="cat"})
                 for: 1h
                 labels:
                   severity: warning
                 annotations:
-                  summary: "No cat visit to the litter box recorded in the last 24 hours"
+                  summary: "No cat seen by the hallway camera in the last 24 hours"
 
               # Blackbox probe rules. These watch what a user would experience
               # (an HTTP answer, a ping reply, a valid certificate) rather

@@ -214,7 +214,10 @@ test_expected_running_matches_unit_state() {
 # Test 6: the rule group is loaded and every alert in it is healthy. "health"
 # here is Prometheus's own per-rule field: a rule that fails to evaluate
 # (a typo'd label, a metric that never existed) reports its health as
-# something other than "ok" while still appearing loaded.
+# something other than "ok" while still appearing loaded. One alert name can
+# cover several rules (SystemdMonitoringDataMissing has one absent() rule per
+# host and job), so the distinct health values across all of them are what is
+# compared.
 test_service_monitoring_rules() {
 	info "checking that the 'service-monitoring' rule group is loaded and healthy"
 
@@ -235,7 +238,7 @@ test_service_monitoring_rules() {
 	pass "rule group 'service-monitoring' is loaded"
 
 	for name in "${ALERT_NAMES[@]}"; do
-		health=$(printf '%s' "$group_json" | jq -r --arg n "$name" '.rules[] | select(.name == $n) | .health // empty')
+		health=$(printf '%s' "$group_json" | jq -r --arg n "$name" '[.rules[] | select(.name == $n) | .health // "missing"] | unique | join(",")')
 
 		if [ -z "$health" ]; then
 			fail "alert '$name' is not present in the 'service-monitoring' rule group"

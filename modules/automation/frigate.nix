@@ -48,15 +48,24 @@ let
   frigateWithRocm =
     let
       staticProtobuf = pkgs.protobuf.override { enableShared = false; };
+      # The build environment also carries the shared protobuf, propagated by
+      # the Python onnx package, and CMake's config search finds that one
+      # first. protobuf_DIR pins the lookup to the static build.
       rocmPackages = pkgs.rocmPackages.overrideScope (
         _final: prev: {
-          migraphx = prev.migraphx.override {
-            protobuf = staticProtobuf;
-            gpuTargets = [
-              "gfx1100"
-              "gfx1103"
-            ];
-          };
+          migraphx =
+            (prev.migraphx.override {
+              protobuf = staticProtobuf;
+              gpuTargets = [
+                "gfx1100"
+                "gfx1103"
+              ];
+            }).overrideAttrs
+              (old: {
+                cmakeFlags = old.cmakeFlags ++ [
+                  "-Dprotobuf_DIR=${staticProtobuf}/lib/cmake/protobuf"
+                ];
+              });
         }
       );
       linkMigraphxProvider = _pyfinal: pyprev: {

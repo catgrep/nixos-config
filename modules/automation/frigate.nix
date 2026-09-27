@@ -25,16 +25,40 @@ let
   # rebuilds its own Python package set from the interpreter, and that set
   # reads onnxruntime from the top level of nixpkgs, so the override has to
   # enter through an extended package set rather than a Python-scope
-  # override. Only Frigate consumes this variant; the ROCm libraries it links
-  # come from the binary cache and only onnxruntime itself is rebuilt.
+  # override. Only Frigate consumes this variant.
+  #
+  # MIGraphX's ONNX and TensorFlow parsers must link protobuf statically.
+  # Against the shared libprotobuf their generated descriptors land in the
+  # process-wide pool that OpenCV's dnn module also fills, both register
+  # tensor_shape.proto, and loading the provider then aborts every process
+  # that has imported cv2. A static protobuf with hidden symbols, which is
+  # what upstream's --exclude-libs,ALL link flag is for, gives MIGraphX a
+  # private pool. Device code is built for the 780M (gfx1103) and for the
+  # gfx1100 ISA it is presented as through HSA_OVERRIDE_GFX_VERSION.
   #
   # The Python wheel nixpkgs builds from the ROCm onnxruntime ships the
   # provider stub but not libonnxruntime_providers_migraphx.so, which stays in
   # the native package's lib directory. onnxruntime resolves provider
   # libraries next to its Python module, so without the link it reports the
   # MIGraphX provider as available and then falls back to the CPU.
+  #
+  # The package's pythonPath names the frigate derivation it was built from,
+  # which for an override is the unmodified nixpkgs one; passing the result
+  # back in as `frigate` keeps that entry inside this closure.
   frigateWithRocm =
     let
+      staticProtobuf = pkgs.protobuf.override { enableShared = false; };
+      rocmPackages = pkgs.rocmPackages.overrideScope (
+        _final: prev: {
+          migraphx = prev.migraphx.override {
+            protobuf = staticProtobuf;
+            gpuTargets = [
+              "gfx1100"
+              "gfx1103"
+            ];
+          };
+        }
+      );
       linkMigraphxProvider = _pyfinal: pyprev: {
         onnxruntime = pyprev.onnxruntime.overridePythonAttrs (old: {
           postInstall =
@@ -53,12 +77,21 @@ let
       };
       rocmPkgs = pkgs.extend (
         _final: prev: {
-          onnxruntime = prev.onnxruntime.override { rocmSupport = true; };
+          onnxruntime = prev.onnxruntime.override {
+            rocmSupport = true;
+            inherit rocmPackages;
+          };
           pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [ linkMigraphxProvider ];
         }
       );
     in
-    pkgs.frigate.override { inherit (rocmPkgs) python313Packages; };
+    lib.fix (
+      self:
+      pkgs.frigate.override {
+        inherit (rocmPkgs) python313Packages;
+        frigate = self;
+      }
+    );
 
   # YOLOv8 uses 80 contiguous class IDs; the packaged default uses COCO-91
   # class ordering and would interpret cats as birds and dogs as cats.

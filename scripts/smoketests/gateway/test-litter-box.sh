@@ -120,7 +120,10 @@ test_frigate_api_target_up() {
 # Test 2: the event count reaches Prometheus and it is the only series the
 # job contributes. The endpoint also serves every metric the frigate exporter
 # job already scrapes, under the same names; a second copy of those would
-# double every panel on the Frigate dashboard.
+# double every panel on the Frigate dashboard. ALERTS and ALERTS_FOR_STATE
+# are Prometheus's own bookkeeping for a pending or firing rule and inherit
+# the job label from whatever series the rule matched, so they are not a
+# scrape leak.
 test_event_metric_only() {
 	info "checking that '$SCRAPE_JOB' contributes $EVENT_METRIC and nothing else"
 
@@ -134,7 +137,7 @@ test_event_metric_only() {
 	fi
 	pass "$EVENT_METRIC carries $count camera/label series from job '$SCRAPE_JOB'"
 
-	payload=$(prom_query "{job=\"${SCRAPE_JOB}\",__name__!~\"${EVENT_METRIC}|up|scrape_.*\"}")
+	payload=$(prom_query "{job=\"${SCRAPE_JOB}\",__name__!~\"${EVENT_METRIC}|up|scrape_.*|ALERTS|ALERTS_FOR_STATE\"}")
 	names=$(printf '%s' "$payload" | jq -r '.data.result[].metric.__name__' | sort -u)
 
 	if [ -n "$names" ]; then

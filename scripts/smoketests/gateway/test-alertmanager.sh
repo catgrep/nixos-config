@@ -150,31 +150,46 @@ test_mail_configured_without_leaking() {
 	return 1
 }
 
-# EnvironmentFile changes only reach Alertmanager after a service restart.
+# EnvironmentFile changes only reach Alertmanager after a service restart, and
+# the rendered file's timestamp says nothing about that: sops-nix renders every
+# template into a fresh generation directory on each activation, so the file
+# is newer than the process after every deploy whether or not its contents
+# moved. What is compared instead is the credential the running process holds
+# against the credential on disk, both hashed on firebat so no value leaves it.
 test_mail_credentials_loaded() {
-	info "checking that Alertmanager started after its credentials were rendered"
+	info "checking that Alertmanager runs with the rendered SMTP credential"
 
-	local started modified
-	# Expand the timestamp command on firebat, using its clock and GNU date.
-	# shellcheck disable=SC2016
-	started=$(remote '
-		started=$(systemctl show alertmanager -p ExecMainStartTimestamp --value)
-		date -d "$started" +%s
-	')
-	modified=$(remote 'sudo -n stat -Lc %Y /run/secrets/rendered/alertmanager.env')
-	if [[ ! "$started" =~ ^[0-9]+$ || ! "$modified" =~ ^[0-9]+$ ]]; then
-		fail "could not read Alertmanager startup or credential modification time"
-		return 1
-	fi
+	# The script travels over ssh's stdin, so nothing in it is expanded here.
+	local verdict
+	verdict=$(
+		remote sudo -n bash -s <<'EOF'
+pid=$(systemctl show alertmanager -p MainPID --value)
+file=/run/secrets/rendered/alertmanager.env
+if [ -z "$pid" ] || [ "$pid" = 0 ] || [ ! -r "$file" ]; then
+	echo unreadable
+	exit 0
+fi
+names=$(grep -oE '^[A-Z_]+=' "$file")
+env_hash=$(tr '\0' '\n' <"/proc/$pid/environ" | grep -F "$names" | sort | sha256sum)
+file_hash=$(grep -E '^[A-Z_]+=' "$file" | sort | sha256sum)
+if [ "$env_hash" = "$file_hash" ]; then echo match; else echo mismatch; fi
+EOF
+	)
 
-	if ((started < modified)); then
-		fail "Alertmanager is running with credentials from before the last secret update"
+	case "$verdict" in
+	match)
+		pass "Alertmanager's environment matches the rendered SMTP credential"
+		return 0
+		;;
+	mismatch)
+		fail "Alertmanager is running with credentials that differ from the rendered file"
 		fail "restart alertmanager.service to load the rendered SMTP credential"
 		return 1
-	fi
+		;;
+	esac
 
-	pass "Alertmanager started after its SMTP credentials were rendered"
-	return 0
+	fail "could not compare Alertmanager's environment with the rendered credential (${verdict:-no answer})"
+	return 1
 }
 
 # Test 5: Grafana carries no alert rules of its own.

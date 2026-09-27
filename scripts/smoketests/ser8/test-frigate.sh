@@ -38,6 +38,13 @@ user=$(get_user "$host")
 FRIGATE_UNIT="frigate"
 FRIGATE_HTTP_PORT="80"
 
+# The tmpfs copy of the config that Frigate runs from and its UI edits
+FRIGATE_LIVE_CONFIG="/run/frigate/frigate.yml"
+
+# The camera and zones the litter box dashboard on firebat reads events for
+LITTER_BOX_CAMERA="indoor_hallway"
+LITTER_BOX_ZONES=("litter_box_basic" "litter_box_cleo")
+
 # The mosquitto listener in modules/automation/home-assistant.nix is bound to
 # loopback only, so the subscription has to originate on the host itself.
 MQTT_HOST="localhost"
@@ -151,6 +158,74 @@ test_detection_labelmap() {
 	return 0
 }
 
+# Zone and mask polygons drawn in Frigate's UI are saved to the tmpfs copy of
+# the config, which frigate-create-writable-config overwrites from the store
+# on every start. An edit that lives only there is lost on the next deploy
+# or restart, so a difference between the two files means UI edits are
+# pending a copy into modules/automation/cameras.nix. The store path is read
+# from the running unit so the check follows whatever generation is active.
+test_config_matches_generation() {
+	info "checking that the live Frigate config matches the generated one"
+
+	local generated
+	generated=$(remote systemctl show -p ExecStartPre --value "$FRIGATE_UNIT" |
+		grep -o '/nix/store/[^ ;]*-frigate-create-writable-config' | head -1)
+	if [ -n "$generated" ]; then
+		generated=$(remote grep -o '/nix/store/[^ ]*-frigate-config' "$generated" | head -1)
+	fi
+	if [ -z "$generated" ]; then
+		fail "could not resolve the generated config from the '$FRIGATE_UNIT' unit"
+		return 1
+	fi
+
+	local remote_command
+	local remote_args=(sudo -n diff -q "$generated" "$FRIGATE_LIVE_CONFIG")
+	printf -v remote_command '%q ' "${remote_args[@]}"
+	# remote_command is intentionally expanded after printf %q shell escaping.
+	# shellcheck disable=SC2029
+	if ssh "$user@$ipaddr" "$remote_command" >/dev/null 2>&1; then
+		pass "live config matches the generated config"
+		return 0
+	fi
+
+	fail "$FRIGATE_LIVE_CONFIG differs from the generated config"
+	fail "copy the UI edits into modules/automation/cameras.nix before the next deploy"
+	return 1
+}
+
+# The litter box dashboard on firebat filters Frigate's events API by these
+# zone names, and Frigate only tags an event with a zone that exists in its
+# config. A renamed or dropped zone shows up there as empty panels, which is
+# also what a quiet day looks like, so the contract is proven here instead.
+test_litter_box_zones() {
+	info "checking that the '$(fmt_bold "$LITTER_BOX_CAMERA")' camera has both litter box zones"
+
+	local config
+	config=$(remote curl -fsS --connect-timeout 5 --max-time 15 \
+		"http://${MQTT_HOST}:5000/api/config")
+	if [ -z "$config" ]; then
+		fail "could not read the camera configuration from Frigate's API"
+		return 1
+	fi
+
+	local zones_json
+	zones_json=$(printf '%s\n' "${LITTER_BOX_ZONES[@]}" | jq -R . | jq -sc .)
+	if ! jq -e --arg camera "$LITTER_BOX_CAMERA" --argjson zones "$zones_json" '
+		.cameras[$camera] as $cam
+		| ($cam.zones | keys) == ($zones | sort)
+		and all($zones[]; . as $zone
+			| ($cam.zones[$zone].objects | index("cat")) != null
+			and ($cam.review.detections.required_zones | index($zone)) != null)
+	' <<<"$config" >/dev/null; then
+		fail "'$LITTER_BOX_CAMERA' does not define exactly ${LITTER_BOX_ZONES[*]} as cat detection zones"
+		fail "the litter box dashboard and its visit counts depend on these zone names"
+		return 1
+	fi
+
+	pass "'$LITTER_BOX_CAMERA' tracks cats in ${LITTER_BOX_ZONES[*]} and reviews detections in both"
+	return 0
+}
+
 # Test 3: resolve the MQTT subscriber from the running broker
 #
 # The nixpkgs mosquitto package ships the broker and the client tools in the
@@ -247,6 +322,11 @@ info "=== Frigate Service Tests ==="
 run_test "frigate_unit_active" test_frigate_unit_active || true
 run_test "frigate_http" test_frigate_http || true
 run_test "detection_labelmap" test_detection_labelmap || true
+
+echo
+info "=== Frigate Configuration Tests ==="
+run_test "config_matches_generation" test_config_matches_generation || true
+run_test "litter_box_zones" test_litter_box_zones || true
 
 echo
 info "=== Frigate MQTT Publication Tests ==="

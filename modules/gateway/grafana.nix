@@ -38,7 +38,7 @@ let
     services = ../../dashboards/services.json; # Per-service CPU/memory/IO from process-exporter
     uptime = ../../dashboards/uptime.json; # Service uptime, host reachability, TLS cert expiry
     alert-history = ../../dashboards/alert-history.json; # Hand-written: 30d ALERTS state timeline + active alerts
-    litter-box = ../../dashboards/litter-box.json; # Hand-written: cat visits to the litter box camera zone
+    litter-box = ../../dashboards/litter-box.json; # Hand-written: cat visits to the litter box camera zones
   };
 in
 {

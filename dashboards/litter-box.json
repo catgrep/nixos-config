@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Cat visits to the litter box, from the indoor_hallway Frigate camera.",
+  "description": "Cat visits to the two litter boxes, one Frigate zone each on the indoor_hallway camera. Every panel reads Frigate's events API filtered by zone, so cats that only walk past the boxes are not counted.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -24,9 +24,9 @@
   "panels": [
     {
       "type": "stat",
-      "title": "Visits, last 24h",
+      "title": "Visits in range",
       "id": 1,
-      "description": "Upward changes of Frigate's cat event count for the hallway camera over the last 24 hours, so retention purges do not count.",
+      "description": "Cat events inside each litter box zone over the dashboard time range, counted by the datasource.",
       "gridPos": {
         "h": 5,
         "w": 6,
@@ -34,8 +34,8 @@
         "y": 0
       },
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "frigate"
       },
       "fieldConfig": {
         "defaults": {
@@ -53,9 +53,26 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "0"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cleo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -66,8 +83,8 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "none",
+        "textMode": "value_and_name",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "wideLayout": true,
@@ -78,12 +95,110 @@
         {
           "refId": "A",
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
           },
-          "instant": true,
-          "range": false,
-          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[24h]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[24h])) or vector(0)"
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_basic"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            }
+          ],
+          "filters": [],
+          "summarizeExpression": "count(Event)",
+          "summarizeBy": "",
+          "summarizeAlias": "Basic"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_cleo"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            }
+          ],
+          "filters": [],
+          "summarizeExpression": "count(Event)",
+          "summarizeBy": "",
+          "summarizeAlias": "Cleo"
         }
       ]
     },
@@ -91,7 +206,7 @@
       "type": "stat",
       "title": "Last visit",
       "id": 2,
-      "description": "Start time of the most recent cat event inside the litter box zone, read from Frigate's events API.",
+      "description": "Start time of the most recent cat event inside each litter box zone.",
       "gridPos": {
         "h": 5,
         "w": 6,
@@ -121,19 +236,35 @@
           },
           "noValue": "never"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cleo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^Start$/",
+          "fields": "",
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "none",
+        "textMode": "value_and_name",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "wideLayout": true,
@@ -166,7 +297,7 @@
               },
               {
                 "key": "zones",
-                "value": "litter_box"
+                "value": "litter_box_basic"
               },
               {
                 "key": "limit",
@@ -182,7 +313,54 @@
           "columns": [
             {
               "selector": "start_time",
-              "text": "Start",
+              "text": "Basic",
+              "type": "timestamp_epoch_s"
+            }
+          ],
+          "filters": []
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_cleo"
+              },
+              {
+                "key": "limit",
+                "value": "1"
+              },
+              {
+                "key": "sort",
+                "value": "date_desc"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "start_time",
+              "text": "Cleo",
               "type": "timestamp_epoch_s"
             }
           ],
@@ -192,78 +370,13 @@
     },
     {
       "type": "stat",
-      "title": "Visits in range",
-      "id": 3,
-      "description": "Upward changes of the cat event count over the dashboard time range.",
-      "gridPos": {
-        "h": 5,
-        "w": 6,
-        "x": 0,
-        "y": 5
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "unit": "none",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "none",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false,
-        "percentChangeColorMode": "standard"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "instant": true,
-          "range": false,
-          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[$__range]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[$__range])) or vector(0)"
-        }
-      ]
-    },
-    {
-      "type": "stat",
       "title": "Median visit length",
       "id": 4,
-      "description": "Median duration of the litter box events in the dashboard time range.",
+      "description": "Median duration of the cat events inside each litter box zone over the dashboard time range.",
       "gridPos": {
         "h": 5,
-        "w": 6,
-        "x": 6,
+        "w": 12,
+        "x": 0,
         "y": 5
       },
       "datasource": {
@@ -289,19 +402,35 @@
           },
           "noValue": "-"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cleo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
           "calcs": [
             "median"
           ],
-          "fields": "/^Duration$/",
+          "fields": "/^(Basic|Cleo)$/",
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "none",
+        "textMode": "value_and_name",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "wideLayout": true,
@@ -334,7 +463,7 @@
               },
               {
                 "key": "zones",
-                "value": "litter_box"
+                "value": "litter_box_basic"
               },
               {
                 "key": "after",
@@ -355,42 +484,83 @@
             {
               "selector": "start_time",
               "text": "Start",
-              "type": "timestamp_epoch_s"
+              "type": "number"
             },
             {
               "selector": "end_time",
               "text": "End",
-              "type": "timestamp_epoch_s"
-            },
-            {
-              "selector": "data.top_score",
-              "text": "Score",
               "type": "number"
-            },
+            }
+          ],
+          "computed_columns": [
             {
-              "selector": "id",
-              "text": "Event",
-              "type": "string"
+              "selector": "(End - Start) * 1000",
+              "text": "Basic"
             }
           ],
           "filters": []
-        }
-      ],
-      "transformations": [
+        },
         {
-          "id": "calculateField",
-          "options": {
-            "mode": "binary",
-            "binary": {
-              "left": "End",
-              "operator": "-",
-              "right": "Start"
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_cleo"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "number"
             },
-            "alias": "Duration",
-            "reduce": {
-              "reducer": "sum"
+            {
+              "selector": "end_time",
+              "text": "End",
+              "type": "number"
             }
-          }
+          ],
+          "computed_columns": [
+            {
+              "selector": "(End - Start) * 1000",
+              "text": "Cleo"
+            }
+          ],
+          "filters": []
         }
       ]
     },
@@ -398,7 +568,7 @@
       "type": "timeseries",
       "title": "Visits per day",
       "id": 5,
-      "description": "Litter box visits per calendar day (UTC), counted as upward changes of Frigate's cat event count.",
+      "description": "Cat events inside each litter box zone per calendar day (UTC). Days with no visit to either box are not drawn.",
       "gridPos": {
         "h": 10,
         "w": 12,
@@ -406,10 +576,9 @@
         "y": 0
       },
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "frigate"
       },
-      "interval": "1d",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -422,7 +591,7 @@
             "drawStyle": "bars",
             "fillOpacity": 80,
             "lineWidth": 1,
-            "barAlignment": -1,
+            "barAlignment": 1,
             "gradientMode": "none",
             "showPoints": "never",
             "axisBorderShow": false,
@@ -432,7 +601,7 @@
               "type": "linear"
             },
             "stacking": {
-              "mode": "none",
+              "mode": "normal",
               "group": "A"
             },
             "thresholdsStyle": {
@@ -452,31 +621,187 @@
           "mappings": [],
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cleo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
-          "displayMode": "hidden",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "Day",
+                "destinationType": "time"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
       "targets": [
         {
           "refId": "A",
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
           },
-          "instant": false,
-          "range": true,
-          "interval": "1d",
-          "expr": "(changes(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[1d]) - resets(frigate_camera_events_total{camera=\"indoor_hallway\",label=\"cat\"}[1d]))",
-          "legendFormat": "visits"
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_basic"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              },
+              {
+                "key": "sort",
+                "value": "date_asc"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            },
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "(Start - (Start % 86400)) * 1000",
+              "text": "Day"
+            }
+          ],
+          "filters": [],
+          "summarizeExpression": "count(Event)",
+          "summarizeBy": "Day",
+          "summarizeAlias": "Basic"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "frigate"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://ser8.local/api/events",
+          "url_options": {
+            "method": "GET",
+            "data": "",
+            "params": [
+              {
+                "key": "cameras",
+                "value": "indoor_hallway"
+              },
+              {
+                "key": "labels",
+                "value": "cat"
+              },
+              {
+                "key": "zones",
+                "value": "litter_box_cleo"
+              },
+              {
+                "key": "after",
+                "value": "${__from:date:seconds}"
+              },
+              {
+                "key": "before",
+                "value": "${__to:date:seconds}"
+              },
+              {
+                "key": "limit",
+                "value": "500"
+              },
+              {
+                "key": "sort",
+                "value": "date_asc"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "id",
+              "text": "Event",
+              "type": "string"
+            },
+            {
+              "selector": "start_time",
+              "text": "Start",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "(Start - (Start % 86400)) * 1000",
+              "text": "Day"
+            }
+          ],
+          "filters": [],
+          "summarizeExpression": "count(Event)",
+          "summarizeBy": "Day",
+          "summarizeAlias": "Cleo"
         }
       ]
     },
@@ -484,7 +809,7 @@
       "type": "table",
       "title": "Visits",
       "id": 6,
-      "description": "Every cat event inside the litter box zone in the dashboard time range; the event id opens the clip in Frigate.",
+      "description": "Every cat event inside either litter box zone in the dashboard time range; the event id opens the clip in Frigate.",
       "gridPos": {
         "h": 14,
         "w": 24,
@@ -521,6 +846,55 @@
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Box"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".*basic.*cleo.*",
+                      "result": {
+                        "text": "Basic, Cleo"
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".*cleo.*basic.*",
+                      "result": {
+                        "text": "Cleo, Basic"
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".*basic.*",
+                      "result": {
+                        "text": "Basic"
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".*cleo.*",
+                      "result": {
+                        "text": "Cleo"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -609,10 +983,11 @@
             "excludeByName": {},
             "indexByName": {
               "Start": 0,
-              "End": 1,
-              "Duration": 2,
-              "Score": 3,
-              "Event": 4
+              "Box": 1,
+              "End": 2,
+              "Duration": 3,
+              "Score": 4,
+              "Event": 5
             },
             "renameByName": {}
           }
@@ -644,7 +1019,7 @@
               },
               {
                 "key": "zones",
-                "value": "litter_box"
+                "value": "litter_box_basic,litter_box_cleo"
               },
               {
                 "key": "after",
@@ -666,6 +1041,11 @@
               "selector": "start_time",
               "text": "Start",
               "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "zones",
+              "text": "Box",
+              "type": "string"
             },
             {
               "selector": "end_time",

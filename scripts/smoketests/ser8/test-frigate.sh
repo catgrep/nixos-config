@@ -6,8 +6,18 @@ set -euo pipefail
 # Frigate smoketest for ser8.
 #
 # Asserts that the frigate unit is active, its web interface answers over HTTP,
-# its detector interprets YOLOv8s class IDs correctly, and it is publishing to
-# the MQTT broker right now.
+# its detector process is alive and running inference on the GPU, it
+# interprets YOLOv8s class IDs correctly, and it is publishing to the MQTT
+# broker right now.
+#
+# The detector is a child process that Frigate does not restart. When it dies
+# the unit stays active, the web interface keeps answering and the statistics
+# keep publishing, while every camera silently skips detection. The only
+# evidence is the process itself, so the check reads the detector's pid from
+# the statistics API and asserts that the process exists and has the MIGraphX
+# provider and the MIGraphX GPU runtime mapped. Frigate never logs which
+# onnxruntime provider it chose, and an inference time on its own cannot tell
+# a loaded GPU from an idle CPU.
 #
 # The MQTT coupling is proven by subscribing, never by reading configuration.
 # modules/automation/frigate.nix only establishes the intended broker settings;
@@ -40,6 +50,16 @@ FRIGATE_HTTP_PORT="80"
 
 # The tmpfs copy of the config that Frigate runs from and its UI edits
 FRIGATE_LIVE_CONFIG="/run/frigate/frigate.yml"
+
+# The detector named in modules/automation/frigate.nix, and the two libraries
+# a MIGraphX-backed onnxruntime session maps that a CPU session never does
+FRIGATE_DETECTOR="onnx"
+FRIGATE_STATS_URL="http://localhost:5000/api/stats"
+MIGRAPHX_PROVIDER_LIB="libonnxruntime_providers_migraphx.so"
+MIGRAPHX_GPU_LIB="libmigraphx_gpu.so"
+
+# Set by test_detector_process_alive for the provider check that follows
+DETECTOR_PID=""
 
 # The camera and zones the litter box dashboard on firebat reads events for
 LITTER_BOX_CAMERA="indoor_hallway"
@@ -123,6 +143,79 @@ test_frigate_http() {
 
 	fail "Frigate web interface on port $FRIGATE_HTTP_PORT returned '${response:-no response}'"
 	return 1
+}
+
+# The detector's pid comes from the statistics API, which keeps reporting the
+# last pid after the process has died. The kernel's view of that pid is the
+# assertion; the comm name guards against the pid having been reused.
+test_detector_process_alive() {
+	info "checking that the '$(fmt_bold "$FRIGATE_DETECTOR")' detector process is alive"
+
+	local pid
+	pid=$(remote curl -fsS --connect-timeout 5 --max-time 15 "$FRIGATE_STATS_URL" |
+		jq -r --arg d "$FRIGATE_DETECTOR" '.detectors[$d].pid // empty')
+	if [ -z "$pid" ] || [ "$pid" = "0" ]; then
+		fail "Frigate's statistics API reports no pid for the '$FRIGATE_DETECTOR' detector"
+		return 1
+	fi
+
+	local comm
+	comm=$(remote cat "/proc/$pid/comm")
+	if [ "$comm" != "frigate.detecto" ]; then
+		fail "detector pid $pid is ${comm:-gone}; Frigate is skipping detection on every camera"
+		fail "  read the detector's startup traceback with: journalctl -u $FRIGATE_UNIT"
+		return 1
+	fi
+
+	DETECTOR_PID="$pid"
+	pass "'$FRIGATE_DETECTOR' detector is running as pid $(fmt_bold "$pid")"
+	return 0
+}
+
+# onnxruntime loads a provider library only when a session registers that
+# provider, so the provider and the MIGraphX GPU runtime being mapped into
+# the detector process means the model is compiled for and running on the
+# 780M. A CPU fallback maps neither.
+test_detector_on_gpu() {
+	info "checking that the detector process has the MIGraphX provider mapped"
+
+	if [ -z "$DETECTOR_PID" ]; then
+		fail "detector pid unknown; cannot inspect its mapped libraries"
+		return 1
+	fi
+
+	local mapped
+	mapped=$(remote sudo -n grep -o -E "$MIGRAPHX_PROVIDER_LIB|$MIGRAPHX_GPU_LIB" "/proc/$DETECTOR_PID/maps" |
+		sort -u | tr '\n' ' ')
+	case "$mapped" in
+	*"$MIGRAPHX_PROVIDER_LIB"*"$MIGRAPHX_GPU_LIB"* | *"$MIGRAPHX_GPU_LIB"*"$MIGRAPHX_PROVIDER_LIB"*)
+		pass "detector pid $DETECTOR_PID runs inference through MIGraphX on the GPU"
+		return 0
+		;;
+	esac
+
+	fail "detector pid $DETECTOR_PID has not mapped $MIGRAPHX_PROVIDER_LIB and $MIGRAPHX_GPU_LIB"
+	fail "  inference has fallen back to the CPU; check the provider list in the detector's log"
+	return 1
+}
+
+# Diagnostic only, never asserted. Inference time is what to compare across
+# deploys and the GPU reset count is what to watch while the GPU path soaks:
+# amdgpu recovers a wedged ring on its own, so a reset leaves no failing
+# check behind, only this line and the kernel log.
+report_detector_health() {
+	local stats
+	stats=$(remote curl -fsS --connect-timeout 5 --max-time 15 "$FRIGATE_STATS_URL")
+	if [ -n "$stats" ]; then
+		info "$(jq -r --arg d "$FRIGATE_DETECTOR" '
+			"inference \(.detectors[$d].inference_speed) ms, "
+			+ "detection \([.cameras[].detection_fps] | add) fps, "
+			+ "skipped \([.cameras[].skipped_fps] | add) fps"' <<<"$stats")"
+	fi
+
+	local resets
+	resets=$(remote sudo -n dmesg | grep -c 'device wedged')
+	info "GPU resets since boot: ${resets:-unknown}"
 }
 
 # YOLOv8s emits contiguous COCO-80 IDs, unlike Frigate's default labelmap.
@@ -326,7 +419,13 @@ echo
 info "=== Frigate Service Tests ==="
 run_test "frigate_unit_active" test_frigate_unit_active || true
 run_test "frigate_http" test_frigate_http || true
+
+echo
+info "=== Frigate Detector Tests ==="
+run_test "detector_process_alive" test_detector_process_alive || true
+run_test "detector_on_gpu" test_detector_on_gpu || true
 run_test "detection_labelmap" test_detection_labelmap || true
+report_detector_health || true
 
 echo
 info "=== Frigate Configuration Tests ==="

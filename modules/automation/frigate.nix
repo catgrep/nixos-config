@@ -537,26 +537,6 @@ in
       MIGRAPHX_ENABLE_HIPRTC_WORKAROUNDS = "1";
       # Prevent transformers library from importing tensorflow
       USE_TF = "0";
-      # Remove tensorflow from PYTHONPATH to prevent protobuf
-      # symbol collision with onnxruntime. tensorflow statically
-      # links protobuf into libtensorflow_framework.so.2; when
-      # loaded alongside onnxruntime (dynamic libprotobuf.so),
-      # the competing symbols cause segfaults in forked detectors.
-      # Startup imports stay safe without a local overlay: since 26.05 nixpkgs
-      # applies its own ai-edge-litert patch, so Frigate's TFLite modules import
-      # ai_edge_litert (on PYTHONPATH) rather than tensorflow.
-      # Build a clean PYTHONPATH: remove tensorflow (protobuf collision)
-      # and fix frigate's self-reference (overrideAttrs doesn't update
-      # the pythonPath passthru attribute's self-reference).
-      PYTHONPATH = lib.mkForce (
-        let
-          paths = lib.splitString ":" pkgs.frigate.pythonPath;
-          frigateSitePackages = "${pkgs.frigate}/${pkgs.frigate.python.sitePackages}";
-          fixed = map (p: if lib.hasInfix "frigate-" p then frigateSitePackages else p) paths;
-          filtered = builtins.filter (p: !(lib.hasInfix "tensorflow-" p)) fixed;
-        in
-        builtins.concatStringsSep ":" filtered
-      );
     };
 
     serviceConfig = {

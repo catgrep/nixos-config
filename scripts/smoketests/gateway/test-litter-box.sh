@@ -176,27 +176,41 @@ test_alert_rule_loaded() {
 	return 0
 }
 
-# Test 4: Grafana has the Infinity datasource plugin installed and enabled.
-test_infinity_plugin_installed() {
-	info "checking that Grafana has the '$INFINITY_PLUGIN_ID' plugin"
+# Test 4: the Infinity plugin answers a query through Grafana. Grafana hides
+# external plugins from the anonymous plugin list, so the plugin is proven by
+# running the smallest query the dashboard makes and reading the per-query
+# status Grafana returns, which also covers the datasource's allowed-hosts list
+# and the network path from firebat to Frigate.
+test_infinity_query_answers() {
+	info "checking that the '$DATASOURCE_UID' datasource answers a query through Grafana"
 
-	local payload enabled
-	payload=$(grafana_get "/api/plugins?type=datasource")
+	local query payload status
+	query=$(
+		cat <<EOF
+{"queries":[{"refId":"A","datasource":{"uid":"$DATASOURCE_UID","type":"$INFINITY_PLUGIN_ID"},
+"type":"json","source":"url","format":"table","parser":"backend",
+"url":"http://ser8.local/api/events",
+"url_options":{"method":"GET","params":[{"key":"cameras","value":"indoor_hallway"},{"key":"limit","value":"1"}]},
+"root_selector":"","columns":[{"selector":"start_time","text":"Start","type":"timestamp_epoch_s"}]}]}
+EOF
+	)
+	payload=$(remote curl -sf --max-time 20 -H 'Content-Type: application/json' \
+		"${GRAFANA_URL}/api/ds/query" -d "$query")
 
 	if [ -z "$payload" ]; then
-		fail "Grafana did not answer its plugin list on $host"
+		fail "Grafana did not answer the datasource query on $host"
 		return 1
 	fi
 
-	enabled=$(printf '%s' "$payload" | jq -r --arg id "$INFINITY_PLUGIN_ID" \
-		'.[] | select(.id == $id) | .enabled // empty')
+	status=$(printf '%s' "$payload" | jq -r '.results.A.status // empty')
 
-	if [ "$enabled" = "true" ]; then
-		pass "plugin '$INFINITY_PLUGIN_ID' is installed and enabled"
+	if [ "$status" = "200" ]; then
+		pass "datasource '$DATASOURCE_UID' answered the query with status 200"
 		return 0
 	fi
 
-	fail "plugin '$INFINITY_PLUGIN_ID' is ${enabled:-not installed}"
+	fail "datasource '$DATASOURCE_UID' query returned status '${status:-none}'"
+	fail "  $(printf '%s' "$payload" | jq -r '.results.A.error // .message // empty' | head -c 200)"
 	return 1
 }
 
@@ -262,7 +276,7 @@ run_test "alert_rule_loaded" test_alert_rule_loaded || true
 
 echo
 info "=== Litter Box Grafana Tests ==="
-run_test "infinity_plugin_installed" test_infinity_plugin_installed || true
+run_test "infinity_query_answers" test_infinity_query_answers || true
 run_test "frigate_datasource_provisioned" test_frigate_datasource_provisioned || true
 run_test "dashboard_provisioned" test_dashboard_provisioned || true
 

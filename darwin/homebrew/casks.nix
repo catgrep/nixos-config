@@ -6,4 +6,5 @@
   "ghostty"
   "siliconscope"
   "stacktower"
+  "syncthing-app"
 ]

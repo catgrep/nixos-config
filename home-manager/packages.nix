@@ -27,6 +27,7 @@
   "golangci-lint"
   "grype"
   "hugo"
+  "jq"
   "jujutsu"
   "just"
   "nil"

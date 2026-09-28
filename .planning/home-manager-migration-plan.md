@@ -126,6 +126,7 @@ home-manager/
     packages.nix           # home.packages = map (n: pinned.${n}) (import ../packages.nix)
   packages.nix             # data: Nix list of pinned attribute names, owned by hm
   go-tools.nix             # data: Nix list of "module@version" strings, owned by hm
+  uv-tools.nix             # data: Nix list of "package==version" strings, owned by hm
 
 tools/
   hm/                      # the helper: a Go module, stdlib only, built with buildGoModule
@@ -292,10 +293,15 @@ The rest (gomodifytags and impl are years stale in nixpkgs, kubetest2 and its te
 nix-darwin's `homebrew.goPackages` was considered and rejected: `brew bundle` installs Homebrew's own `go` formula to run those entries, appends `@latest` itself so versions cannot be pinned, and does not accept `/...` patterns.
 Every one of those conflicts with a pinned toolchain.
 
-**pip and uv tools** follow the same rule.
-`claude-monitor` and `par-cc-usage` stay under `uv tool` because they are not in nixpkgs; `programs.uv` provides the toolchain.
+**Python tools** follow the same model as Go.
+`claude-monitor` and `par-cc-usage` are not in nixpkgs, so they are declared in `home-manager/uv-tools.nix` as `package==version` and installed by `hm sync uv` with the pinned `uv` and `python3`; `uv tool list` is the inventory.
+pipx goes away, since uv covers it and one installer is enough.
 Anything that is in nixpkgs (`python3Packages.*` is not pinnable through mvs, so these come from the nixpkgs input) goes through `python3.withPackages` in `toolchains.nix` when a project needs it.
-There is no `homebrew.pipPackages`, so a pip tool with no nixpkgs attribute is the one case that stays imperative.
+
+**What `hm sync` is for.**
+It reconciles a declared list with an installer that Nix cannot replace, so a tool with no nixpkgs attribute is still recorded in the repo with its version, comes back on a fresh machine, shows drift in `hm list`, and is built with the pinned toolchain.
+It is worth having where the installer is deterministic and the toolchain is pinned: `go install module@version` through the module proxy and checksum database, and `uv tool install package==version` against the index.
+`cargo install` is left as inventory only: most of what is in `~/.cargo/bin` today (cargo-audit, cargo-deny, cargo-watch, prek) is in nixpkgs and becomes a pin, and the remainder builds against whichever rustup toolchain is active, which the flake does not control.
 
 ## 4. The `hm` helper
 
@@ -360,9 +366,10 @@ Subcommands:
 | `hm add --cask <name>` | append to `darwin/homebrew/casks.nix`, `nh darwin switch` |
 | `hm add --brew <name>` | append to `darwin/homebrew/brews.nix`, `nh darwin switch` |
 | `hm add --go <module@version>` | append to `go-tools.nix`, `hm sync go` |
+| `hm add --uv <package==version>` | append to `uv-tools.nix`, `hm sync uv` |
 | `hm rm [--prune] <name>` | remove from whichever list holds the name, then the matching switch; `--prune` also drops an unreferenced pin |
 | `hm up [attr] [--repo]` | `nix flake update mvs`, `mvs lock update` for the named or the `packages.nix` pins, `nh home switch` |
-| `hm sync [go]` | install or reinstall every `go-tools.nix` entry whose binary is missing or at another version |
+| `hm sync [go|uv]` | install or reinstall every `go-tools.nix` or `uv-tools.nix` entry whose binary is missing or at another version |
 | `hm switch [home|darwin|all]` | `nh home switch`, `nh darwin switch`, or both, from anywhere |
 | `hm list [--source]` | every package in the current Home Manager generation and the imperative sources, with provenance |
 | `hm status` | `mvs lock status`, `mvs lock minimize --check`, uncommitted flake files |
@@ -383,12 +390,12 @@ Each row is tagged with where the package came from:
 | `cask`, `brew` | declared in `darwin/homebrew/casks.nix` or `brews.nix` | ghostty, docker |
 | `go` | every binary in `~/go/bin`, with module path and version read from the binary's build info | gomodifytags v1.17.0 |
 | `cargo` | entries in `~/.cargo/.crates.toml` | cargo-watch 8.5.3 |
-| `uv` | `uv tool list` | claude-monitor |
+| `uv` | `uv tool list`, compared with `uv-tools.nix` | claude-monitor 3.1.0 |
 | `native` | on PATH from `home.sessionPath` but managed elsewhere | claude 2.1.274, rustup |
 
 A generation records store paths, not where a package was declared, so `hm` derives provenance itself: a path is `pinned` if `packages.nix` or a `programs.*` module names its attribute and the lock resolves to that path, `nixpkgs` if the attribute is in a module but absent from the lock, and `custom` for everything else in the generation.
 The `go`, `cargo` and `uv` rows are read from the machine, not from the flake, so they show what `go install` and friends actually left behind.
-A `go` row that `go-tools.nix` does not declare is marked undeclared, and `hm doctor` lists it; `cargo` and `uv` rows are inventory only.
+A `go` or `uv` row that its list does not declare is marked undeclared, and `hm doctor` lists it; `cargo` rows are inventory only.
 `hm list --source pinned` and `hm status` together answer "what is pinned but not installed" (host-only pins such as jellyfin) and "what is installed but not pinned".
 Custom tools cannot be added with `hm add`; they are a Nix file in `packages/` and show up as `custom` once imported.
 
@@ -409,8 +416,24 @@ The subject is generated from a template, not by a model: layer, verb, name, ver
 Commits are signed by your normal git config; nothing in `hm` touches signing.
 
 A path-scoped commit records the whole current content of each file, so it would sweep in any edit you had already made to those files.
-`hm` therefore refuses to start when a file it is about to own has uncommitted changes, and says which one; every file it writes is written to a temporary file and renamed into place.
-If the switch fails after the files were edited, `hm` leaves the edits in place, prints them, and does not commit, so the state is visible in `git status` and reversible with `git checkout -- <files>`.
+`hm` therefore refuses to start when a file it is about to own has uncommitted changes, and says which one.
+
+### Failure handling
+
+A run is a transaction around one switch, and every write is a compare-and-swap:
+
+1. `hm` takes an exclusive lock file under `$NH_FLAKE/.git/hm.lock` for the whole run, so two invocations cannot interleave; a second one reports the first's pid and exits.
+2. It reads every owned file it will touch and `multiverse.lock`, and keeps the bytes and a content hash of each.
+3. Before each write it re-reads the file and compares the hash.
+   A mismatch means something else changed the file mid-run; `hm` aborts and writes nothing.
+   Writes go to a temporary file in the same directory and are renamed into place, so a crash mid-write leaves the old file intact.
+4. Any failure before a generation exists (mvs error, unknown attribute, `nix eval` rejecting the file, a build failure inside `nh home switch`) restores every captured file to its starting bytes and prints the cause.
+   `--keep-on-failure` skips the restore for inspecting a build error against the edited files.
+5. Once a generation exists nothing is reverted; the generation is the new truth.
+   Before an optional commit, `hm` hashes the files once more and refuses to commit if any differ from what it wrote, printing the command instead, so an edit made between switch and commit never rides along under the wrong message.
+6. Re-running the same command after a failure is idempotent: an existing pin is reused, a name already in a list is a no-op, and only the switch and the commit happen.
+
+`mvs` edits `multiverse.lock` on its own; `hm` treats it like any other captured file and restores it on failure, which also undoes the pin `mvs lock add` created.
 
 ```nix
 # home-manager/modules/nh.nix (excerpt)
@@ -576,7 +599,7 @@ The `tailscale` launch agent goes with the Tailscale app.
 | Codex | Homebrew cask, declared in `homebrew.casks` | `brew upgrade` tracks releases faster than nixpkgs |
 | rustup toolchains | `~/.cargo`, `~/.rustup` | per-project toolchains; `cargo install` tools are inventoried by `hm list`, not declared |
 | ghcup, cabal, stack | `~/.ghcup`, `~/.cabal` | same |
-| uv tools | `~/.local/share/uv` | claude-monitor, par-cc-usage; not in nixpkgs |
+| uv tools | `~/.local/share/uv`, declared in `uv-tools.nix` | claude-monitor, par-cc-usage (moved from pipx); not in nixpkgs |
 
 ### Already in Home Manager, keep
 
@@ -665,7 +688,7 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
 2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, doctor, try, clean) with `go test ./...` passing and wired into `checks`.
 3. For each plain CLI row in section 5 marked "move": `hm add --commit <attr>`.
    Four kinds of row do not go through `hm add` and are handled by hand in this step: attributes a `programs.*` module installs (git, gh, fzf, vim, gpg, uv, yt-dlp, go), Darwin-only attributes that need an `isDarwin` guard (`pinentry_mac`), nested attributes the lock cannot hold (`darwin.trash`, from the nixpkgs input), and ast-bro, which the sagent subflake exports and which `darwin/default.nix` adds to `home.packages` from `sagent.packages`.
-4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`.
+4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`.
 5. Reorder PATH in `darwin/default.nix`: Nix profile first, `/opt/homebrew/bin` appended last.
 
 Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store` or `~/.nix-profile`; `hm list` shows every row with the right source tag; `hm doctor` reports nothing undeclared in `~/go/bin`.
@@ -761,4 +784,4 @@ With direnv the shell is entered from nix-direnv's cache, so the cold cost is pa
 2. Git identity on the hosts: same signed identity everywhere (proposed), or unsigned commits on the servers?
 3. `homebrew.onActivation.cleanup`: `"zap"` after the dry-run preview is empty (proposed), or `"uninstall"` which leaves cask data behind?
 4. Rename cutover: one host per day with the open-session procedure (proposed), or all four in one session?
-5. `cargo install` tools: inventory only (proposed), or a `cargo-tools.nix` list with `hm sync cargo` on the same model as Go?
+5. `cargo install` tools stay inventory only: most of what is in `~/.cargo/bin` today (cargo-audit, cargo-deny, cargo-watch, prek) is in nixpkgs and becomes a pin, and the rest builds against whatever rustup toolchain is active, which the flake does not control. Revisit if the list grows.

@@ -61,5 +61,6 @@
   "wget"
   "yarn"
   "yq-go"
+  "zig"
   "zizmor"
 ]

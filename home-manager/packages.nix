@@ -11,6 +11,7 @@
   "colima"
   "colmena"
   "comma"
+  "coreutils"
   "fd"
   "gitingest"
   "jujutsu"

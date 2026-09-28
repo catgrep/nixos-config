@@ -41,6 +41,7 @@
   "nixfmt"
   "nmap"
   "nvd"
+  "openjdk"
   "openssh"
   "openssl"
   "ripgrep"

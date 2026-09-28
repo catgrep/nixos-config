@@ -31,6 +31,7 @@
   "jujutsu"
   "just"
   "ko"
+  "melange"
   "nil"
   "nix-output-monitor"
   "nixd"

@@ -9,5 +9,6 @@
   "sigs.k8s.io/kubetest2/kubetest2-tester-clusterloader2@v0.0.0-20240905095256-f6e8664cd2b1"
   "sigs.k8s.io/kubetest2/kubetest2-tester-exec@v0.0.0-20240905095256-f6e8664cd2b1"
   "sigs.k8s.io/kubetest2/kubetest2-tester-ginkgo@v0.0.0-20240905095256-f6e8664cd2b1"
+  "sigs.k8s.io/kubetest2/kubetest2-tester-node@v0.0.0-20240905095256-f6e8664cd2b1"
   "sigs.k8s.io/kubetest2@v0.0.0-20240905095256-f6e8664cd2b1"
 ]

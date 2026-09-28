@@ -22,6 +22,7 @@
   "fd"
   "ffmpeg"
   "flock"
+  "flyctl"
   "gitingest"
   "jujutsu"
   "just"

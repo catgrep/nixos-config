@@ -14,6 +14,7 @@
   "coreutils"
   "cosign"
   "crane"
+  "curl"
   "fd"
   "gitingest"
   "jujutsu"

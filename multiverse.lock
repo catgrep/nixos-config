@@ -116,6 +116,12 @@
       "date": "2026-05-23",
       "constraint": "0.25.1"
     },
+    "bpm-tools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.3",
+      "date": "2026-09-17"
+    },
     "btop": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

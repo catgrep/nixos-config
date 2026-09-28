@@ -6,6 +6,7 @@
   "ast-grep"
   "bat"
   "bats"
+  "bpm-tools"
   "buf"
   "cargo-audit"
   "cargo-careful"

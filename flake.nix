@@ -178,7 +178,7 @@
         ({ config, ... }: {
           home-manager.extraSpecialArgs = {
             pinned = config.multiverse.locked;
-            inherit mvs rust-overlay;
+            inherit mvs rust-overlay sagent;
           };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
@@ -286,7 +286,7 @@
         pkgs = nixpkgs.legacyPackages.aarch64-darwin;
         extraSpecialArgs = {
           pinned = pinnedFor "aarch64-darwin";
-          inherit mvs rust-overlay;
+          inherit mvs rust-overlay sagent;
         };
         modules = [ ./home-manager/users/bobby.nix ];
       };

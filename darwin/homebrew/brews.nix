@@ -7,4 +7,5 @@
   "lld"
   "llvm"
   "openvino"
+  "peon-ping"
 ]

@@ -8,6 +8,12 @@
       "date": "2026-09-17",
       "constraint": "2.4.0"
     },
+    "actionlint": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.7.12",
+      "date": "2026-09-17"
+    },
     "actual-server": {
       "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
       "label": "2026-07-19-241313f4e8e5",

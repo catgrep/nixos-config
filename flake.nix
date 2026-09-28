@@ -55,6 +55,7 @@
         impermanence
         sops-nix
         declarative-jellyfin
+        rust-overlay
         ;
 
       # No x86_64-darwin: nixpkgs dropped the platform after 26.05, and the
@@ -155,7 +156,7 @@
         ({ config, ... }: {
           home-manager.extraSpecialArgs = {
             pinned = config.multiverse.locked;
-            inherit mvs;
+            inherit mvs rust-overlay;
           };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
@@ -263,7 +264,7 @@
         pkgs = nixpkgs.legacyPackages.aarch64-darwin;
         extraSpecialArgs = {
           pinned = pinnedFor "aarch64-darwin";
-          inherit mvs;
+          inherit mvs rust-overlay;
         };
         modules = [ ./home-manager/users/bobby.nix ];
       };

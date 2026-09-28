@@ -32,6 +32,7 @@ in
   impermanence = upstream."github:nix-community/impermanence";
   sops-nix = upstream."github:Mic92/sops-nix";
   declarative-jellyfin = upstream."github:Sveske-Juice/declarative-jellyfin";
+  rust-overlay = upstream."github:oxalica/rust-overlay";
 
   # Caddy with plugins support (cleaner than withPlugins)
   caddy-nix = upstream."github:vincentbernat/caddy-nix";

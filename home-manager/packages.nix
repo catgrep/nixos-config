@@ -47,6 +47,7 @@
   "pandoc"
   "pdfgrep"
   "prek"
+  "pv"
   "ripgrep"
   "shellcheck"
   "shfmt"

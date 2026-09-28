@@ -12,11 +12,20 @@ _: {
     onActivation.cleanup = "none";
     # Plain `brew bundle` commands read the generated Brewfile.
     global.brewfile = true;
+    # Homebrew refuses formulae and casks from a third-party tap it has not
+    # been told to trust, so activation would abort on peon-ping and skip
+    # stacktower without these flags.
     taps = [
       # peon-ping
-      "peonping/tap"
+      {
+        name = "peonping/tap";
+        trusted = true;
+      }
       # stacktower
-      "stacktower-io/tap"
+      {
+        name = "stacktower-io/tap";
+        trusted = true;
+      }
     ];
     casks = import ./casks.nix;
     brews = import ./brews.nix;

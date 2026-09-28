@@ -32,6 +32,7 @@
   "just"
   "ko"
   "melange"
+  "minikube"
   "nil"
   "nix-output-monitor"
   "nixd"

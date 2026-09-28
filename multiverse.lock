@@ -157,6 +157,12 @@
       "date": "2026-09-17",
       "constraint": "0.4.0"
     },
+    "comma": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.4.2",
+      "date": "2026-09-17"
+    },
     "coreutils": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

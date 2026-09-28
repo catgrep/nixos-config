@@ -10,6 +10,7 @@
   "cmake"
   "colima"
   "colmena"
+  "comma"
   "fd"
   "gitingest"
   "jujutsu"

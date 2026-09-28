@@ -744,9 +744,10 @@ Verify: `time zsh -ilc exit` under 0.5s, entering the repo prints the direnv lin
 3. Move the package list into `home-manager/packages.nix` unchanged.
 4. Delete `home-manager/flake.nix`, `home-manager/flake.lock`; update `make home-switch` to `nh home switch .`; update `make update`.
 5. `nix build '.#homeConfigurations."bobby@bob-mac".activationPackage'` first, because `nix flake check` does not evaluate that output.
-6. `nh home switch -- -b bak` on the first run so any file Home Manager wants to own is backed up rather than refused.
+6. `nh home switch . -b bak` from the repo root on the first run, so any file Home Manager wants to own is backed up rather than refused.
+   nh detects `bobby@bob-mac` from the user and the LocalHostName, so no configuration flag is needed.
 
-Verify: `home-manager generations` shows gen 20 with the same packages; the activation package builds; `nix flake check` on aarch64-darwin passes with only the known unknown-output warnings; `~/.local/state/home-manager/keep-gen19` resolves.
+Verify: the new generation (21 on this machine) resolves to the activation package that `nix build` printed, with the same packages as generation 20 (`nvd diff` shows only the `home-manager-applications` entry that state version 26.05 adds through `copyApps`); the activation package builds; `nix flake check` on aarch64-darwin passes with only the known unknown-output warnings; `~/.local/state/home-manager/keep-gen19` resolves.
 
 ### Phase 2: shell and dotfiles
 

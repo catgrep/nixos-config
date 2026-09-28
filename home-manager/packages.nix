@@ -51,6 +51,7 @@
   "pandoc"
   "pdfgrep"
   "prek"
+  "protoc-gen-go"
   "pv"
   "ripgrep"
   "ripgrep-all"

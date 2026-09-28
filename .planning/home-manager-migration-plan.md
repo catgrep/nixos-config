@@ -14,8 +14,12 @@ Revised 2026-09-28 after the first review.
   The Linux account is renamed from `bdhill` to `bobby` in Phase 4.
 - nix-darwin is adopted for the Mac so Homebrew casks, brew-only formulae, `go install` tools and launchd services are declared in the same flake.
   `nh` drives both layers (`nh home switch`, `nh darwin switch`), wrapped by a small `hm` helper that also drives `mvs lock`.
-- Toolchains (Go, Python, Node) come from `multiverse.lock`.
-  Tools built with `go install` that nixpkgs lacks are declared in a list `hm` owns and installed by `hm sync` with the pinned Go, not through Homebrew.
+- Toolchains (Go, Python, Node) come from `multiverse.lock`; Rust comes from `rust-overlay` through the omniflake index, and rustup is uninstalled.
+  Tools built with `go install`, `uv tool install` or `cargo install` that nixpkgs lacks are declared in lists `hm` owns and installed by `hm sync` with the pinned toolchains, not through Homebrew.
+  `GOPATH` and `GOBIN` stay at `~/go` and `~/go/bin`.
+- The git identity is the same signed identity on every machine; the signing subkey reaches the hosts through sops.
+- Homebrew cleanup is never automatic: `onActivation.cleanup` stays `"none"`, and `hm brew cleanup` shows the preview and runs the removal only when you ask.
+- The account rename runs on all four hosts in one sitting, sequentially, each with its own open root session.
 - A Codex review of the plan (2026-09-28, `home-manager-migration-review-codex.md`) found two blockers in the account rename and several gaps in the helper; this revision applies all of its findings.
 - `home.stateVersion` moves to `26.05` for `bobby` before the first real switch, so the new XDG defaults apply from day one.
 - `multiverse.lock` was minimized on 2026-09-27 (29 revisions to 5, every version unchanged) and committed as `62e633c`.
@@ -123,10 +127,12 @@ home-manager/
     direnv.nix             # programs.direnv + nix-direnv
     nh.nix                 # programs.nh + the hm helper package
     toolchains.nix         # programs.go, python3, nodejs, uv from pinned
+    rust.nix               # rust-overlay stable toolchain with rust-src, clippy, rustfmt, rust-analyzer
     packages.nix           # home.packages = map (n: pinned.${n}) (import ../packages.nix)
   packages.nix             # data: Nix list of pinned attribute names, owned by hm
   go-tools.nix             # data: Nix list of "module@version" strings, owned by hm
   uv-tools.nix             # data: Nix list of "package==version" strings, owned by hm
+  cargo-tools.nix          # data: Nix list of "crate@version" strings, owned by hm
 
 tools/
   hm/                      # the helper: a Go module, stdlib only, built with buildGoModule
@@ -197,6 +203,22 @@ in
 ```
 
 The git identity is the same person everywhere (`Bobby Dhillon`, the gmail address, signing on), so the `catgrep` identity the hosts use today goes away with the rename.
+Signing on the hosts needs the private key material there, and that goes through sops: export only the signing subkey (`gpg --export-secret-subkeys --armor <subkey-id>!`), store it as `gpg_signing_subkey` in `secrets/shared.yaml` with `make sops-edit-shared`, declare it in `modules/common` with `owner = "bobby"` and `mode = "0400"`, and let a Home Manager user service import it once:
+
+```nix
+# home-manager/modules/gpg.nix, Linux branch
+systemd.user.services.gpg-import-signing-subkey = lib.mkIf (!darwin) {
+  Unit.Description = "Import the git signing subkey delivered by sops";
+  Service = {
+    Type = "oneshot";
+    ExecStart = "${pinned.gnupg}/bin/gpg --batch --import /run/secrets/gpg_signing_subkey";
+  };
+  Install.WantedBy = [ "default.target" ];
+};
+```
+
+The primary key never leaves the Mac, so a compromised host can sign but cannot certify or revoke.
+The Mac keeps its full key in `~/.gnupg` as today.
 If you want commits from the servers to stay unsigned, that is a one-line `lib.mkIf (!darwin)` in `git.nix`.
 
 ### Shared module examples
@@ -273,7 +295,12 @@ The survey keyed on `brew leaves`, which hides any formula that another formula 
 Section 5 now uses `brew list --installed-on-request`, which lists everything you asked for (88 formulae).
 
 **Toolchains** come from `multiverse.lock`: `go_1_27` (1.27.1 indexed), `python3` (3.14.7), `nodejs_24` (24.20.0), `uv` (0.12.11).
-rustup and ghcup stay native; they manage their own toolchain versions and per-project overrides in ways nixpkgs does not replicate.
+
+**Rust** is managed by Nix through `rust-overlay` (`github:oxalica/rust-overlay`, in the omniflake index, selected in `omniflake.nix` like disko).
+`modules/rust.nix` installs `rust-bin.stable.latest.default` extended with `rust-src`, `clippy`, `rustfmt` and `rust-analyzer` as the machine-wide toolchain, and a project that needs a different one gets it from its own `rust-toolchain.toml` through `rust-bin.fromRustupToolchainFile` in that project's dev shell, which direnv loads.
+That replaces rustup entirely: the binary, `~/.rustup`, and the `. "$HOME/.cargo/env"` lines in `.zshenv` and `.profile`.
+nixpkgs also packages `rustup` itself (1.29.0 indexed) as a fallback, but keeping two toolchain managers defeats the point.
+ghcup stays native for now; Haskell is not in daily use and `haskell.compiler` from nixpkgs can replace it later on the same pattern.
 
 **Tools you built with `go install`** split two ways.
 Most are packaged: gopls, delve, buf, protoc-gen-go, protoc-gen-go-grpc, gotestsum, gotests, hclfmt, go-licenses, goda, nfpm, mani, diffoci, go-arch-lint, and `go-tools` for staticcheck.
@@ -300,8 +327,8 @@ Anything that is in nixpkgs (`python3Packages.*` is not pinnable through mvs, so
 
 **What `hm sync` is for.**
 It reconciles a declared list with an installer that Nix cannot replace, so a tool with no nixpkgs attribute is still recorded in the repo with its version, comes back on a fresh machine, shows drift in `hm list`, and is built with the pinned toolchain.
-It is worth having where the installer is deterministic and the toolchain is pinned: `go install module@version` through the module proxy and checksum database, and `uv tool install package==version` against the index.
-`cargo install` is left as inventory only: most of what is in `~/.cargo/bin` today (cargo-audit, cargo-deny, cargo-watch, prek) is in nixpkgs and becomes a pin, and the remainder builds against whichever rustup toolchain is active, which the flake does not control.
+It is worth having where the installer is deterministic and the toolchain is pinned: `go install module@version` through the module proxy and checksum database, `uv tool install package==version` against the index, and, once rust-overlay owns the toolchain, `cargo install --locked crate@version` against crates.io.
+Most of `~/.cargo/bin` today is in nixpkgs and becomes a pin (cargo-audit 0.22.2, cargo-deny 0.20.2, cargo-watch 8.5.3, cargo-careful 0.4.10, prek); what remains (`wt`, `rustlings`, `cargo-deps`) goes into `cargo-tools.nix` and `hm sync cargo` installs it.
 
 ## 4. The `hm` helper
 
@@ -367,9 +394,11 @@ Subcommands:
 | `hm add --brew <name>` | append to `darwin/homebrew/brews.nix`, `nh darwin switch` |
 | `hm add --go <module@version>` | append to `go-tools.nix`, `hm sync go` |
 | `hm add --uv <package==version>` | append to `uv-tools.nix`, `hm sync uv` |
+| `hm add --cargo <crate@version>` | append to `cargo-tools.nix`, `hm sync cargo` |
+| `hm brew cleanup [--force] [--zap]` | preview what Homebrew would remove against the generated Brewfile; with `--force` remove it, with `--zap` also delete cask data |
 | `hm rm [--prune] <name>` | remove from whichever list holds the name, then the matching switch; `--prune` also drops an unreferenced pin |
 | `hm up [attr] [--repo]` | `nix flake update mvs`, `mvs lock update` for the named or the `packages.nix` pins, `nh home switch` |
-| `hm sync [go|uv]` | install or reinstall every `go-tools.nix` or `uv-tools.nix` entry whose binary is missing or at another version |
+| `hm sync [go|uv|cargo]` | install or reinstall every `go-tools.nix`, `uv-tools.nix` or `cargo-tools.nix` entry whose binary is missing or at another version |
 | `hm switch [home|darwin|all]` | `nh home switch`, `nh darwin switch`, or both, from anywhere |
 | `hm list [--source]` | every package in the current Home Manager generation and the imperative sources, with provenance |
 | `hm status` | `mvs lock status`, `mvs lock minimize --check`, uncommitted flake files |
@@ -389,13 +418,13 @@ Each row is tagged with where the package came from:
 | `custom` | built in this repo: `packages/`, `tools/hm`, the sagent subflake | hm, ast-bro, treehouse |
 | `cask`, `brew` | declared in `darwin/homebrew/casks.nix` or `brews.nix` | ghostty, docker |
 | `go` | every binary in `~/go/bin`, with module path and version read from the binary's build info | gomodifytags v1.17.0 |
-| `cargo` | entries in `~/.cargo/.crates.toml` | cargo-watch 8.5.3 |
+| `cargo` | `cargo install --list`, compared with `cargo-tools.nix` | wt 0.3.1 |
 | `uv` | `uv tool list`, compared with `uv-tools.nix` | claude-monitor 3.1.0 |
 | `native` | on PATH from `home.sessionPath` but managed elsewhere | claude 2.1.274, rustup |
 
 A generation records store paths, not where a package was declared, so `hm` derives provenance itself: a path is `pinned` if `packages.nix` or a `programs.*` module names its attribute and the lock resolves to that path, `nixpkgs` if the attribute is in a module but absent from the lock, and `custom` for everything else in the generation.
 The `go`, `cargo` and `uv` rows are read from the machine, not from the flake, so they show what `go install` and friends actually left behind.
-A `go` or `uv` row that its list does not declare is marked undeclared, and `hm doctor` lists it; `cargo` rows are inventory only.
+A `go`, `uv` or `cargo` row that its list does not declare is marked undeclared, and `hm doctor` lists it.
 `hm list --source pinned` and `hm status` together answer "what is pinned but not installed" (host-only pins such as jellyfin) and "what is installed but not pinned".
 Custom tools cannot be added with `hm add`; they are a Nix file in `packages/` and show up as `custom` once imported.
 
@@ -434,6 +463,11 @@ A run is a transaction around one switch, and every write is a compare-and-swap:
 6. Re-running the same command after a failure is idempotent: an existing pin is reused, a name already in a list is a no-op, and only the switch and the commit happen.
 
 `mvs` edits `multiverse.lock` on its own; `hm` treats it like any other captured file and restores it on failure, which also undoes the pin `mvs lock add` created.
+
+Why this is files and hashes rather than a database: the state that has to stay consistent is written by three other programs (`mvs` writes the lock, Nix reads the lists, `nh` creates the generation), and a SQLite transaction cannot span them.
+A database would make its own rows atomic and still need every check above; it would only record that they ran.
+Git already holds the durable history of what was installed when.
+What `hm` does keep is a run journal, one JSON file per run under `.git/hm/`, with the command, the captured hashes, the step reached and the outcome, so `hm status` can say "last run failed at the switch step and restored two files" and a later run can refuse to start on top of an unresolved one.
 
 ```nix
 # home-manager/modules/nh.nix (excerpt)
@@ -597,8 +631,9 @@ The `tailscale` launch agent goes with the Tailscale app.
 |---|---|---|
 | Claude Code | `~/.local/share/claude`, symlink in `~/.local/bin` | self-updating; Home Manager adds the path |
 | Codex | Homebrew cask, declared in `homebrew.casks` | `brew upgrade` tracks releases faster than nixpkgs |
-| rustup toolchains | `~/.cargo`, `~/.rustup` | per-project toolchains; `cargo install` tools are inventoried by `hm list`, not declared |
-| ghcup, cabal, stack | `~/.ghcup`, `~/.cabal` | same |
+| ghcup, cabal, stack | `~/.ghcup`, `~/.cabal` | Haskell is not in daily use; `haskell.compiler` from nixpkgs can replace it later |
+
+rustup is not in this table any more: the Rust toolchain comes from rust-overlay (section 3), `~/.rustup` is removed in Phase 3, and `~/.cargo/bin` holds only `cargo install` output declared in `cargo-tools.nix`.
 | uv tools | `~/.local/share/uv`, declared in `uv-tools.nix` | claude-monitor, par-cc-usage (moved from pipx); not in nixpkgs |
 
 ### Already in Home Manager, keep
@@ -684,11 +719,12 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
 
 ### Phase 3: packages and the helper
 
-1. `toolchains.nix` with `go_1_27`, `python3`, `nodejs_24`, `uv`; switch; confirm `go version` and `node --version` resolve under the Nix store.
+1. `toolchains.nix` with `go_1_27`, `python3`, `nodejs_24`, `uv`, and `rust.nix` with the rust-overlay stable toolchain; switch; confirm `go version`, `node --version`, `cargo --version` and `rust-analyzer --version` resolve under the Nix store.
+   Then `rustup self uninstall`, which removes `~/.rustup` and the rustup-managed proxies in `~/.cargo/bin` but keeps `cargo install` output; the `. "$HOME/.cargo/env"` lines are already gone with Phase 2.
 2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, doctor, try, clean) with `go test ./...` passing and wired into `checks`.
 3. For each plain CLI row in section 5 marked "move": `hm add --commit <attr>`.
    Four kinds of row do not go through `hm add` and are handled by hand in this step: attributes a `programs.*` module installs (git, gh, fzf, vim, gpg, uv, yt-dlp, go), Darwin-only attributes that need an `isDarwin` guard (`pinentry_mac`), nested attributes the lock cannot hold (`darwin.trash`, from the nixpkgs input), and ast-bro, which the sagent subflake exports and which `darwin/default.nix` adds to `home.packages` from `sagent.packages`.
-4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`.
+4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`; `hm add --cargo` for `wt`, `rustlings` and `cargo-deps`, then `hm sync cargo`, which rebuilds them against the Nix toolchain.
 5. Reorder PATH in `darwin/default.nix`: Nix profile first, `/opt/homebrew/bin` appended last.
 
 Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store` or `~/.nix-profile`; `hm list` shows every row with the right source tag; `hm doctor` reports nothing undeclared in `~/go/bin`.
@@ -698,17 +734,25 @@ Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store`
 1. Add `nix-darwin` to `omniflake.nix`, `darwinConfigurations."bob-mac"` to `flake.nix`, and the `darwin/` directory with `homebrew.nix` written from the "declared through nix-darwin" table and `services.nix` for yabai and skhd.
    Leave `nix.*` settings to Determinate (`nix.enable = false`) so nix-darwin does not fight the installer over `/etc/nix/nix.conf`.
 2. `brew services stop yabai skhd`, then `nh darwin switch`; nix-darwin's launchd agents take over.
-3. Keep `homebrew.onActivation.cleanup = "none"` for the first activations.
-   `brew bundle check` only confirms that declared entries are installed; it says nothing about what cleanup would remove.
-   Run `brew bundle cleanup --file=<generated Brewfile>` without `--force`, which prints every formula, cask and tap it would uninstall, and compare that list with `brew list --installed-on-request` and `brew list --cask`.
-   Only when that preview contains nothing you want to keep, set `cleanup = "zap"` and switch once more.
-4. Extend `hm` with `--cask`, `--brew` and `switch darwin`.
+3. `homebrew.onActivation.cleanup` stays `"none"` permanently, and `homebrew.global.brewfile = true` so plain `brew bundle` commands read the generated Brewfile.
+   Removal is a manual, previewed step you run whenever you decide to:
 
-Verify: the cleanup preview is empty after the final switch; `launchctl list | grep -E 'yabai|skhd'` shows the nix-darwin agents; `hm add --cask --commit <name>` round-trips.
+```bash
+hm brew cleanup            # preview: every formula, cask and tap not in darwin/homebrew/ that Homebrew would remove
+hm brew cleanup --force    # remove them; cask data and preferences are left in place
+hm brew cleanup --force --zap   # remove them and delete cask data too
+```
+
+   Under the hood that is `brew bundle cleanup` against the generated Brewfile, without and with `--force`, and `--zap` adds `--zap`.
+   `brew bundle check` is not a substitute: it only confirms declared entries are installed and says nothing about what cleanup would remove.
+   Compare the preview with `brew list --installed-on-request` and `brew list --cask` before the first `--force`; the roughly 150 dependency leftovers (llvm, gcc, six Node majors, five OpenSSL versions, four kubectl versions) are expected there.
+4. Extend `hm` with `--cask`, `--brew`, `brew cleanup` and `switch darwin`.
+
+Verify: `hm brew cleanup` prints only entries you expect to lose; `launchctl list | grep -E 'yabai|skhd'` shows the nix-darwin agents; `hm add --cask --commit <name>` round-trips.
 
 ### Phase 4: hosts share the config and the account is renamed
 
-The rename is the one live-host mutation in this plan and needs your go-ahead per host.
+The rename is the one live-host mutation in this plan and needs your go-ahead; it runs on all four hosts in one sitting, sequentially, and a host is not started until the previous one has passed its verification.
 Two constraints shape the order.
 NixOS rejects two accounts with the same uid, so `bdhill` and `bobby` cannot coexist at uid 1000; the rename is one configuration change that removes one and adds the other.
 And `createHome` runs during activation, so an empty `/home/bobby` appears the moment the new configuration activates; the home directory must already be in place before that, or the later `mv` lands inside it.
@@ -721,7 +765,7 @@ Preparation, once, in the repo:
 3. Do not touch `deploy.yaml` or `etc/nix/machines` yet; every deploy in this phase still connects as `bdhill`.
 4. `make build-HOST` for all four hosts.
 
-Per host, in one SSH session that stays open throughout:
+Then, for ser8, firebat, pi4 and pi5 in that order, each in one SSH session that stays open throughout:
 
 5. `ssh bdhill@HOST`, then `sudo -i`.
    The session survives the account's removal because the process already exists; a second terminal with a root shell is the fallback.
@@ -737,7 +781,8 @@ Per host, in one SSH session that stays open throughout:
 After all four hosts:
 
 11. Update `deploy.yaml` (`targetUser`) and `etc/nix/machines`, run `make update-nix-conf`, and confirm a remote build from the Mac with `nix build --builders @/etc/nix/machines` on an x86_64-linux derivation.
-12. Restore the snapshot on any host that needs a second attempt; otherwise delete it after a week.
+12. Deploy the sops-delivered signing subkey (section 2) and confirm `git commit --allow-empty -m test` signs on each host.
+13. Restore the snapshot on any host that needs a second attempt; otherwise delete it after a week.
 
 Verify per host: `ssh bobby@HOST`, `make smoketests-HOST`, `nix eval '.#nixosConfigurations.HOST.config.home-manager.users.bobby.programs.zsh.dotDir'` prints the XDG path, Samba login as `bobby` on ser8, and a reboot brings the host back with `/home/bobby` mounted.
 The Pi smoketests in `deploy.yaml` are placeholders today (`test`); add a login, sudo and builder check before this phase so the verification means something.
@@ -772,16 +817,26 @@ With direnv the shell is entered from nix-direnv's cache, so the cold cost is pa
 - GPG signing depends on `pinentry-mac` being found by the agent; keep the brew copy until the Nix one prompts once.
 - The `ccode` function calls `claude update`; it keeps working because Claude stays native.
 - Generation 19 is protected by an explicit GC root from Phase 1, and `nh clean` stays disabled until Phase 5; keeping five generations would not have been enough across the dozens of switches in Phase 3.
-- nix-darwin's `cleanup = "zap"` uninstalls anything not declared and deletes cask data; only the dry-run `brew bundle cleanup` preview shows what that would be, and it must be empty before zap is enabled.
-- The account rename touches Samba, SSH, remote builders and the persisted home dataset; do one host at a time, keep a root session open, and move the home directory before activation.
+- Homebrew cleanup is never run by activation; `hm brew cleanup --force --zap` deletes cask data, so read the preview first.
+- The account rename touches Samba, SSH, remote builders and the persisted home dataset; all four hosts in one sitting, one at a time, each with a root session kept open and the home directory moved before activation.
+- Removing rustup removes every toolchain it managed; make sure `cargo --version` resolves to the Nix toolchain before `rustup self uninstall`.
+- The signing subkey on the hosts is readable by `bobby` only, but a host compromise can then produce signed commits; the primary key stays on the Mac so the subkey can be revoked.
 - State version 26.05 turns on `targets.darwin.copyApps`, which copies `.app` bundles into `~/Applications/Home Manager Apps` and checks App Management permission for the terminal; expect a one-time macOS prompt.
   It does not move `~/.gnupg` under XDG; `programs.gpg.homedir` stays at the default.
 - Rollback for Home Manager is `home-manager generations` and activating the previous generation's `activate` script; for nix-darwin it is `darwin-rebuild --rollback`; for hosts it is `make test-HOST` on the previous commit.
 
-## 10. Open questions for feedback
+## 10. Decisions from review, and what is still open
 
-1. `programs.go` env: keep `GOPATH=~/go` and `GOBIN=~/go/bin` as today, or move to XDG (`~/.local/share/go`)? Today's layout is proposed so `hm sync go` and the existing binaries line up.
-2. Git identity on the hosts: same signed identity everywhere (proposed), or unsigned commits on the servers?
-3. `homebrew.onActivation.cleanup`: `"zap"` after the dry-run preview is empty (proposed), or `"uninstall"` which leaves cask data behind?
-4. Rename cutover: one host per day with the open-session procedure (proposed), or all four in one session?
-5. `cargo install` tools stay inventory only: most of what is in `~/.cargo/bin` today (cargo-audit, cargo-deny, cargo-watch, prek) is in nixpkgs and becomes a pin, and the rest builds against whatever rustup toolchain is active, which the flake does not control. Revisit if the list grows.
+Closed on 2026-09-28:
+
+1. `GOPATH=~/go` and `GOBIN=~/go/bin` stay as they are.
+2. One signed git identity everywhere; the signing subkey reaches the hosts through sops.
+3. Homebrew cleanup is manual and previewed through `hm brew cleanup`; activation never removes anything.
+4. The account rename runs on all four hosts in one sitting.
+5. Rust is Nix-managed through rust-overlay; rustup is removed; `cargo install` tools get `hm sync cargo`.
+6. `hm` keeps its state in files, hashes and a JSON run journal, not a database.
+
+Still open:
+
+1. rust-overlay is proposed over fenix because it builds a toolchain from a project's `rust-toolchain.toml`; fenix is the alternative if you prefer its nightly component handling.
+2. Whether to move Haskell (ghcup) onto nixpkgs in the same pass, or leave it for later as proposed.

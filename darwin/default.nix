@@ -9,6 +9,7 @@
 {
   imports = [
     ./homebrew
+    ./services.nix
   ];
 
   # Determinate Nix owns /etc/nix/nix.conf and the nix-daemon launchd job.

@@ -132,6 +132,27 @@
         }
       ) (nixpkgs.lib.filterAttrs (system: _: system != "x86_64-darwin") sagent.packages);
 
+      # hm is built on the pinned Go so the binary matches the toolchain the
+      # home configuration installs; nh and git come from the same lock.
+      hmFor =
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          pinned = pinnedFor system;
+        in
+        pkgs.callPackage ./tools/hm {
+          inherit (pinned) nh git;
+          buildGoModule = pkgs.buildGoModule.override { go = pinned.go_1_27; };
+        };
+
+      # Exported so `nix run .#hm` works before Home Manager has installed
+      # it, and so hm can run the refreshed mvs through `nix run .#mvs`
+      # after `nix flake update mvs`.
+      toolPackagesFor = system: {
+        hm = hmFor system;
+        mvs = mvs.packages.${system}.mvs;
+      };
+
       subgenPackagesFor =
         system:
         let
@@ -271,9 +292,9 @@
 
       inherit (sagent) lib;
 
-      packages = nixpkgs.lib.recursiveUpdate sagentPackages {
-        x86_64-linux = subgenPackagesFor "x86_64-linux";
-      };
+      packages = nixpkgs.lib.recursiveUpdate (nixpkgs.lib.recursiveUpdate sagentPackages (
+        nixpkgs.lib.genAttrs shellSystems toolPackagesFor
+      )) { x86_64-linux = subgenPackagesFor "x86_64-linux"; };
 
       # kexec installers for nixos-anywhere. The Raspberry Pi sd-image entries were
       # removed with the third-party fork that built them; a minimal upstream

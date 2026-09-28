@@ -103,6 +103,10 @@ let
             touch $out
           '';
 
+      # Building hm runs its Go tests in the check phase, so a regression in
+      # the helper fails `make check` like any other check.
+      hm = self.packages.${system}.hm;
+
       package-pins = import ./tests/package-pins.nix {
         inherit pkgs self system;
         pinned = pinnedFor system;

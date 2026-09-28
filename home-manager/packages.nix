@@ -53,6 +53,7 @@
   "rsync"
   "shellcheck"
   "shfmt"
+  "sox"
   "yq-go"
   "zizmor"
 ]

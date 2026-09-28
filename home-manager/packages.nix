@@ -44,6 +44,7 @@
   "mosh"
   "neovim"
   "nerdlog"
+  "nfpm"
   "nil"
   "nix-output-monitor"
   "nixd"

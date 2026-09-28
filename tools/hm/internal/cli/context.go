@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package cli
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"runtime"
+	"strings"
+
+	"github.com/catgrep/nixos-config/tools/hm/internal/nixlist"
+	"github.com/catgrep/nixos-config/tools/hm/internal/run"
+	"github.com/catgrep/nixos-config/tools/hm/internal/sources"
+)
+
+// Files hm reads and writes, relative to the flake.
+const (
+	fileLock      = "multiverse.lock"
+	fileFlakeLock = "flake.lock"
+	filePackages  = "home-manager/packages.nix"
+	fileGoTools   = "home-manager/go-tools.nix"
+	fileUvTools   = "home-manager/uv-tools.nix"
+	fileCargo     = "home-manager/cargo-tools.nix"
+	dirModules    = "home-manager"
+)
+
+// spdxHeader is the first line of every list hm creates.
+const spdxHeader = "# SPDX-License-Identifier: GPL-3.0-or-later"
+
+// ownedLists are the data files hm parses and writes.
+var ownedLists = []string{filePackages, fileGoTools, fileUvTools, fileCargo}
+
+// readList parses an owned list, returning an empty list and created=true
+// when the file does not exist yet.
+func (a *App) readList(rel string) (*nixlist.List, bool, error) {
+	l, err := nixlist.Read(a.path(rel))
+	if errors.Is(err, os.ErrNotExist) {
+		return nixlist.Empty(spdxHeader), true, nil
+	}
+	if err != nil {
+		return nil, false, fail(ExitFailed, "%v", err)
+	}
+	return l, false, nil
+}
+
+// mvs returns the mvs on PATH bound to the flake's lock.
+func (a *App) mvs() run.Mvs {
+	return run.NewMvs(a.runner, []string{"mvs"}, a.path(fileLock))
+}
+
+// mvsFromFlake returns the mvs the flake's refreshed input builds, for use
+// after nix flake update mvs when the one on PATH is still the previous
+// generation's.
+func (a *App) mvsFromFlake() run.Mvs {
+	return run.NewMvs(a.runner, []string{"nix", "run", a.flake + "#mvs", "--"}, a.path(fileLock))
+}
+
+// configName is the homeConfigurations attribute nh selects: user@host,
+// with the host from LocalHostName on macOS.
+func (a *App) configName() string {
+	name := a.env.Getenv("USER")
+	if name == "" {
+		if u, err := user.Current(); err == nil {
+			name = u.Username
+		}
+	}
+	host := ""
+	if runtime.GOOS == "darwin" {
+		if out, err := exec.Command("scutil", "--get", "LocalHostName").Output(); err == nil {
+			host = strings.TrimSpace(string(out))
+		}
+	}
+	if host == "" {
+		h, _ := os.Hostname()
+		host, _, _ = strings.Cut(h, ".")
+	}
+	return name + "@" + host
+}
+
+// currentGeneration returns the active generation's store path.
+func (a *App) currentGeneration() (string, error) {
+	return sources.CurrentGeneration(a.home, a.env.Getenv)
+}
+
+// toolBin resolves a toolchain program, preferring the copy in the active
+// generation so hm sync uses the pinned toolchain even when PATH still
+// lists another one first.
+func (a *App) toolBin(name string) string {
+	if gen, err := a.currentGeneration(); err == nil {
+		candidate := filepath.Join(gen, "home-path", "bin", name)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return name
+}
+
+// gobin returns where go install puts binaries: GOBIN, else GOPATH/bin,
+// else ~/go/bin, read from the toolchain so the go env file counts.
+func (a *App) gobin() string {
+	out, err := a.runner.Output(run.Cmd{Prog: a.toolBin("go"), Args: []string{"env", "GOBIN", "GOPATH"}})
+	if err == nil {
+		fields := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+		if len(fields) == 2 {
+			if fields[0] != "" {
+				return fields[0]
+			}
+			if fields[1] != "" {
+				return filepath.Join(strings.Split(fields[1], string(os.PathListSeparator))[0], "bin")
+			}
+		}
+	}
+	return filepath.Join(a.home, "go", "bin")
+}
+
+// subject renders a commit subject from the template layer: verb name
+// version, at most 72 characters with the version kept.
+func subject(layer, verb, name, version string) string {
+	const limit = 72
+	tail := ""
+	if version != "" {
+		tail = " " + version
+	}
+	head := layer + ": " + verb + " "
+	if len(head)+len(name)+len(tail) <= limit {
+		return head + name + tail
+	}
+	room := limit - len(head) - len(tail)
+	if room < 1 {
+		room = 1
+	}
+	return head + name[:room] + tail
+}
+
+// validateList runs nix eval on a written list and checks that it is a
+// list of strings, so a malformed edit stops before nh sees it.
+func (a *App) validateList(rel string) error {
+	raw, err := a.nix.EvalFile(a.path(rel))
+	if err != nil {
+		return fmt.Errorf("%s does not evaluate: %v", rel, err)
+	}
+	var values []string
+	if err := jsonUnmarshal(raw, &values); err != nil {
+		return fmt.Errorf("%s does not evaluate to a list of strings", rel)
+	}
+	return nil
+}

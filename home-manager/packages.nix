@@ -21,6 +21,7 @@
   "eslint"
   "fd"
   "ffmpeg"
+  "flock"
   "gitingest"
   "jujutsu"
   "just"

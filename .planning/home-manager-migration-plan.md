@@ -120,10 +120,17 @@ home-manager/
     ssh.nix                # programs.ssh matchBlocks
     fzf.nix
     direnv.nix             # programs.direnv + nix-direnv
-    nh.nix                 # programs.nh + the hm helper
-    hm.sh                  # the helper's source
+    nh.nix                 # programs.nh + the hm helper package
     toolchains.nix         # programs.go, python3, nodejs, uv from pinned
-    packages.nix           # cross-platform CLI list from pinned, one attr per line
+    packages.nix           # Nix list of pinned attribute names, owned by hm
+  hm/                      # the helper: a Go module, stdlib only, built with buildGoModule
+    go.mod
+    main.go
+    internal/
+      nixlist/             # read and write the string-list files hm owns (with golden tests)
+      sources/             # inventory: generation, lock, brew lists, go/bin, cargo, uv, native
+      run/                 # mvs, nh, git, nix eval as typed calls
+    hm_test.go
   darwin/
     default.nix            # sessionPath, brew PATH after nix, darwin-only packages
     ghostty.nix            # programs.ghostty.settings
@@ -276,8 +283,10 @@ There is no `homebrew.pipPackages`, so a pip tool with no nixpkgs attribute is t
 
 ## 4. The `hm` helper
 
-`hm` is a `writeShellApplication` installed by `nh.nix`.
+`hm` is a small Go program in `home-manager/hm/`, built by the flake with `buildGoModule` and installed through `nh.nix`.
 It wraps `mvs lock`, `nh home`, `nh darwin` and the nix-darwin Homebrew lists, so adding anything is one command again.
+Go rather than a shell script because every file `hm` edits is a file `hm` must parse back exactly, the inventory needs to read Go build info and TOML, and each of those wants a unit test.
+The standard library covers all of it (`os/exec`, `debug/buildinfo`, `encoding/json`, `text/template`), so `vendorHash` stays `null` and nothing needs re-vendoring.
 
 ```mermaid
 sequenceDiagram
@@ -324,6 +333,7 @@ Subcommands:
 | `hm switch [home|darwin|all]` | `nh home switch`, `nh darwin switch`, or both, from anywhere |
 | `hm list [--source]` | every package in the current Home Manager generation, with its source |
 | `hm status` | `mvs lock status`, `mvs lock minimize --check`, uncommitted flake files |
+| `hm doctor` | walk PATH and report every binary that shadows a Nix one, plus tools present in `~/go/bin`, cargo or uv that no list declares |
 | `hm try <attr>` | `nix shell nixpkgs#<attr>`, nothing installed |
 | `hm clean` | `nh clean user --keep 5` |
 
@@ -336,25 +346,32 @@ Each row is tagged with where the package came from:
 |---|---|---|
 | `pinned` | attribute in `multiverse.lock`, installed through `packages.nix` or a `programs.*` module | ripgrep 15.1.0 |
 | `nixpkgs` | from the flake's nixpkgs input, not pinnable (nested attribute sets) | darwin.trash |
-| `custom` | built in this repo: `packages/`, `writeShellApplication`, the sagent subflake | hm, ast-bro, treehouse |
-| `brew` | declared in `darwin/homebrew.nix` (casks, brews, go packages) | ghostty, gomodifytags |
-| `native` | on PATH from `home.sessionPath` but managed elsewhere | claude, rustup |
+| `custom` | built in this repo: `packages/`, `home-manager/hm`, the sagent subflake | hm, ast-bro, treehouse |
+| `cask`, `brew` | declared in `darwin/homebrew.nix` | ghostty, docker |
+| `go` | every binary in `~/go/bin`, with module path and version read from the binary's build info | gomodifytags v1.17.0 |
+| `cargo` | entries in `~/.cargo/.crates.toml` | cargo-watch 8.5.3 |
+| `uv` | `uv tool list` | claude-monitor |
+| `native` | on PATH from `home.sessionPath` but managed elsewhere | claude 2.1.274, rustup |
 
+The `go`, `cargo` and `uv` rows are read from the machine, not from the flake, so they show what `go install` and friends actually left behind.
+A row in those sources that no `homebrew.goPackages` or `cargoPackages` entry declares is marked undeclared, and `hm doctor` lists them.
 `hm list --source pinned` and `hm status` together answer "what is pinned but not installed" (host-only pins such as jellyfin) and "what is installed but not pinned".
 Custom tools cannot be added with `hm add`; they are a Nix file in `packages/` and show up as `custom` once imported.
 
 ### Commits
 
-`hm` does not commit.
-After every switch it prints the files it changed and a ready-to-paste subject:
+`hm` does not commit by default.
+After every switch it prints the files it changed and a command that runs from any directory, because the flake path comes from `NH_FLAKE` and the commit is scoped to the files `hm` touched rather than to everything in the working tree:
 
 ```
-hm: switched to generation 20 (zizmor 1.30.1 added)
-hm: uncommitted changes in multiverse.lock, home-manager/modules/packages.nix
-hm: git commit -am "home: add zizmor"
+hm: switched bobby@bob-mac to generation 20 (zizmor 1.30.1 added)
+hm: uncommitted: multiverse.lock home-manager/modules/packages.nix
+hm: git -C /Users/bobby/github/catgrep/nixos-config commit -m "home: add zizmor 1.30.1" -- multiverse.lock home-manager/modules/packages.nix
 ```
 
-`hm add --commit` runs that commit for you with the printed subject, so the day-to-day path is `hm add --commit zizmor`.
+The subject is generated from a template, not by a model: layer, verb, name, version.
+`home: add zizmor 1.30.1`, `home: update ripgrep 15.1.0 to 15.2.0`, `home: remove charasay`, `darwin: add cask ghostty`, `darwin: add go gomodifytags@latest`.
+`hm add --commit` runs that exact command, so the day-to-day path is `hm add --commit zizmor`.
 Commits are signed by your normal git config; nothing in `hm` touches signing.
 
 ```nix
@@ -369,18 +386,41 @@ Commits are signed by your normal git config; nothing in `hm` touches signing.
   };
   home.packages = [
     mvs.packages.${pkgs.stdenv.hostPlatform.system}.mvs
-    (pkgs.writeShellApplication {
-      name = "hm";
-      runtimeInputs = [ pinned.nh pinned.git pinned.jq pkgs.nixfmt ];
-      text = builtins.readFile ./hm.sh;
-    })
+    (pkgs.callPackage ../hm { inherit (pinned) nh git; })
   ];
 }
 ```
 
-`programs.nh.flake` sets `NH_FLAKE`, which `nh home`, `nh darwin` and `nh os` all read, so one setting covers every layer.
-`packages.nix` keeps one attribute per line in alphabetical order so the insert is a plain text edit, checked by `nix eval` before the switch.
-`nix fmt` runs after the edit.
+```nix
+# home-manager/hm/default.nix
+{ buildGoModule, makeWrapper, lib, nh, git }:
+buildGoModule {
+  pname = "hm";
+  version = "0.1.0";
+  src = ./.;
+  vendorHash = null;
+  nativeBuildInputs = [ makeWrapper ];
+  postInstall = ''
+    wrapProgram $out/bin/hm --prefix PATH : ${lib.makeBinPath [ nh git ]}
+  '';
+}
+```
+
+`programs.nh.flake` sets `NH_FLAKE`, which `nh home`, `nh darwin`, `nh os` and `hm` all read, so one setting covers every layer.
+The files `hm` edits are Nix list literals of strings that it owns outright:
+
+```nix
+# home-manager/modules/packages.nix, written by hm, one name per line, sorted
+[
+  "actionlint"
+  "apko"
+  "ripgrep"
+]
+```
+
+`packages.nix` is consumed by `home.packages = map (name: pinned.${name}) (import ./packages.nix);`, and the cask, brew and go lists under `darwin/` have the same shape.
+`hm` parses and re-emits them with a round-trip test, then runs `nix eval --json` on the file before switching, so a malformed edit stops before `nh` sees it.
+The flake also exports the package as `packages.<system>.hm` so `nix run .#hm` works before Home Manager has installed it.
 
 ## 5. Package survey
 
@@ -576,7 +616,7 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
 ### Phase 3: packages and the helper
 
 1. `toolchains.nix` with `go_1_27`, `python3`, `nodejs_24`, `uv`; switch; confirm `go version` and `node --version` resolve under the Nix store.
-2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, try, clean).
+2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, doctor, try, clean) with `go test ./...` passing and wired into `checks`.
 3. For each row in section 5 marked "move": `hm add --commit <attr>`.
 4. Reorder PATH in `darwin/default.nix`: Nix profile first, `/opt/homebrew/bin` appended last.
 

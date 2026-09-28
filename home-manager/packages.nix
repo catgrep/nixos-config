@@ -8,6 +8,7 @@
   "bats"
   "buf"
   "cargo-audit"
+  "cargo-careful"
   "cargo-deny"
   "cargo-watch"
   "charasay"

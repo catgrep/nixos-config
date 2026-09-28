@@ -142,6 +142,12 @@
       "version": "0.22.2",
       "date": "2026-09-17"
     },
+    "cargo-careful": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.4.10",
+      "date": "2026-09-17"
+    },
     "cargo-deny": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

@@ -8,4 +8,5 @@
   "llvm"
   "openvino"
   "peon-ping"
+  "pkgx"
 ]

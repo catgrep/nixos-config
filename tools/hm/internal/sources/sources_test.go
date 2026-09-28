@@ -197,6 +197,11 @@ func TestConsumers(t *testing.T) {
 		"hosts/ser8/default.nix":    "{ a = pinned.jq-go; b = pinned.jq; }\n",
 		"modules/x.nix":             "# jq_extra is different\n",
 		"experimental/notes.md":     "jq\n",
+		// Parser fixtures and hm's own tree mention names without consuming
+		// the pin.
+		"tools/hm/internal/nixlist/testdata/packages.nix": "[\n  \"jq\"\n]\n",
+		"tools/hm/default.nix":                            "{ jq }: jq\n",
+		"modules/testdata/fixture.nix":                    "{ inherit jq; }\n",
 	})
 	refs, err := Consumers(root, "jq", filepath.Join(root, "home-manager/packages.nix"))
 	if err != nil {

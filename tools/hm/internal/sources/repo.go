@@ -53,15 +53,19 @@ type Reference struct {
 	Line int
 }
 
-// nixFiles lists every .nix file under dir except those in skip.
+// nixFiles lists every .nix file under dir except those in skip. Test
+// fixtures (any testdata directory) and hm's own source tree under
+// tools/hm mention attribute names without consuming anything, so they
+// are left out.
 func nixFiles(dir string, skip map[string]bool) ([]string, error) {
+	hmTree := filepath.Join(dir, "tools", "hm")
 	var files []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == ".direnv" {
+			if d.Name() == ".git" || d.Name() == ".direnv" || d.Name() == "testdata" || path == hmTree {
 				return filepath.SkipDir
 			}
 			return nil

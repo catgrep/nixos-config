@@ -26,6 +26,7 @@
   "gitingest"
   "golangci-lint"
   "grype"
+  "hugo"
   "jujutsu"
   "just"
   "nil"

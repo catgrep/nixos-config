@@ -52,7 +52,7 @@ Reverse proxy routes are defined in `modules/gateway/Caddyfile`.
 - `dashboards/` contains provisioned Grafana dashboard JSON.
 - `etc/` contains repository-managed Nix daemon configuration.
 - `experimental/` contains work that is not part of the active host flake.
-- `home-manager/` contains the separate Home Manager flake.
+- `home-manager/` contains the Home Manager modules, user file and package list consumed by the root flake.
 - `hosts/` contains host-specific NixOS configuration.
 - `modules/` contains reusable NixOS modules grouped by role.
 - `overlays/` contains package overrides.
@@ -121,7 +121,6 @@ Hosts consume pins through `config.multiverse.locked.<attr>` (wired in `modules/
 Moving a pin forward is two steps: `nix flake update mvs`, then `mvs lock update <attr>`.
 Run the lock command from a newly entered development shell so it uses the refreshed index.
 An existing version constraint remains in force; use `mvs lock add <attr>@<version>` to change it.
-The standalone Home Manager flake reads the same lock file and may need its reader refreshed with `nix flake update mvs --flake ./home-manager`.
 Do not automatically minimize pins: the same application version can carry older recipes and dependencies after `mvs lock minimize`.
 
 Build the Arm64 kexec installer with `make aarch64-kexec`.

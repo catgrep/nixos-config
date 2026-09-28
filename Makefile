@@ -108,7 +108,6 @@ dev:
 # Update flake inputs
 update:
 	@nix flake update
-	@nix flake update --flake ./home-manager
 	@nix flake archive
 	@$(call success_msg,"Flake inputs updated.")
 
@@ -152,7 +151,7 @@ fmt-caddy:
 
 # Home manager switch
 home-switch:
-	nix run home-manager -- switch --flake ./home-manager
+	nh home switch .
 
 # Show flake info
 flake-info:

@@ -7,6 +7,7 @@
   "bat"
   "bats"
   "charasay"
+  "cmake"
   "colima"
   "colmena"
   "fd"

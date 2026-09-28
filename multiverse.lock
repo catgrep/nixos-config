@@ -136,6 +136,12 @@
       "date": "2026-09-17",
       "constraint": "2.11.4"
     },
+    "cargo-audit": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.22.2",
+      "date": "2026-09-17"
+    },
     "charasay": {
       "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
       "label": "2026-05-23-64c08a7ca051",

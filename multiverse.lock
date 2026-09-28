@@ -252,6 +252,12 @@
       "date": "2026-09-17",
       "constraint": "0.17.2"
     },
+    "fzf": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.74.4",
+      "date": "2026-09-17"
+    },
     "ghostty": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",
@@ -265,6 +271,12 @@
       "version": "2.54.0",
       "date": "2026-07-19",
       "constraint": "2.54.0"
+    },
+    "git-lfs": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.7.1",
+      "date": "2026-09-17"
     },
     "gitingest": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
@@ -590,6 +602,12 @@
       "date": "2026-05-23",
       "constraint": "26.0"
     },
+    "oh-my-zsh": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2026-08-16",
+      "date": "2026-09-17"
+    },
     "openssh": {
       "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
       "label": "2026-07-19-241313f4e8e5",
@@ -624,6 +642,12 @@
       "version": "unstable-2017-12-19",
       "date": "2026-09-17",
       "constraint": "unstable-2017-12-19"
+    },
+    "pinentry_mac": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.1.1.1",
+      "date": "2026-09-17"
     },
     "postgresql_17": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",

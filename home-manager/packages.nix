@@ -75,6 +75,7 @@
   "shfmt"
   "sox"
   "templ"
+  "termshot"
   "terragrunt"
   "testkube"
   "traefik"

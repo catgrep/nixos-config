@@ -1165,6 +1165,12 @@
       "version": "0.3.1020",
       "date": "2026-09-17"
     },
+    "termshot": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.6.1",
+      "date": "2026-09-17"
+    },
     "terragrunt": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

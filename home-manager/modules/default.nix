@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 {
-  imports = [ ./direnv.nix ];
+  imports = [
+    ./direnv.nix
+    ./packages.nix
+  ];
 }

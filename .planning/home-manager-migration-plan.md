@@ -727,11 +727,13 @@ flowchart TD
 3. Extend `.envrc`:
 
 ```bash
-use flake
 watch_file dev.nix multiverse.lock tools/sagent/flake.nix tools/sagent/flake.lock tools/sagent/outputs.nix
+use flake
 ```
 
 4. `direnv allow`, open a new shell, confirm `sb` and `mvs` resolve without `make dev`.
+   Home Manager writes the direnv hook into `programs.zsh.initContent`, which stays inert until Phase 2 enables `programs.zsh`, so until then add `eval "$(direnv hook zsh)"` to the unmanaged dotfiles `.zshrc` by hand.
+   Phase 2 removes that line again when Home Manager takes over zsh.
 
 Verify: `time zsh -ilc exit` under 0.5s, entering the repo prints the direnv line and nothing evaluates.
 

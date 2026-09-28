@@ -3,6 +3,7 @@
 {
   imports = [
     ./direnv.nix
+    ./fzf.nix
     ./git.nix
     ./gpg.nix
     ./packages.nix

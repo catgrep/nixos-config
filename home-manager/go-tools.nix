@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [
+  "github.com/JohannesKaufmann/html-to-markdown/v2/cli/html2markdown@v2.5.0"
   "github.com/arch-go/arch-go/v2@v2.1.2"
   "github.com/fatih/gomodifytags@v1.17.0"
   "github.com/haya14busa/goplay/cmd/goplay@v1.0.0"

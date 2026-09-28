@@ -22,7 +22,7 @@
   home.packages = [
     mvs.packages.${pkgs.stdenv.hostPlatform.system}.mvs
     (pkgs.callPackage ../../tools/hm {
-      inherit (pinned) nh git;
+      inherit (pinned) nh git go-tools;
       buildGoModule = pkgs.buildGoModule.override { go = pinned.go_1_27; };
     })
   ];

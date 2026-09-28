@@ -6,6 +6,7 @@
 # scripts are rendered from the same source as --help: the page in
 # postBuild, the scripts by the built binary in postInstall. nh and git are
 # on the wrapper's PATH; nix and mvs are resolved from the caller's PATH.
+# The check phase runs go test and then staticcheck from the go-tools pin.
 {
   lib,
   buildGoModule,
@@ -13,7 +14,15 @@
   installShellFiles,
   nh,
   git,
+  go-tools,
 }:
+let
+  # An analyzer reads the export data of the compiler that built the code,
+  # so staticcheck must be built with the same Go as hm. The pinned
+  # go-tools comes from nixpkgs' default Go; rebuilding it with the
+  # buildGoModule hm uses keeps the two toolchains identical.
+  staticcheck = go-tools.override { inherit buildGoModule; };
+in
 buildGoModule (finalAttrs: {
   pname = "hm";
   version = "0.1.0";
@@ -31,7 +40,18 @@ buildGoModule (finalAttrs: {
     makeWrapper
     installShellFiles
   ];
-  nativeCheckInputs = [ git ];
+  nativeCheckInputs = [
+    git
+    staticcheck
+  ];
+  # staticcheck caches under the user cache directory, which the sandbox
+  # has no writable home for. It is silent on success, so the version line
+  # is the log's evidence that it ran.
+  postCheck = ''
+    export STATICCHECK_CACHE="$TMPDIR/staticcheck-cache"
+    staticcheck -version
+    staticcheck ./...
+  '';
   postBuild = ''
     go run ./internal/gendoc \
       -version ${finalAttrs.version} \

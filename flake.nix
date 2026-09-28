@@ -133,7 +133,8 @@
       ) (nixpkgs.lib.filterAttrs (system: _: system != "x86_64-darwin") sagent.packages);
 
       # hm is built on the pinned Go so the binary matches the toolchain the
-      # home configuration installs; nh and git come from the same lock.
+      # home configuration installs; nh, git and the go-tools staticcheck
+      # its check phase runs come from the same lock.
       hmFor =
         system:
         let
@@ -141,7 +142,7 @@
           pinned = pinnedFor system;
         in
         pkgs.callPackage ./tools/hm {
-          inherit (pinned) nh git;
+          inherit (pinned) nh git go-tools;
           buildGoModule = pkgs.buildGoModule.override { go = pinned.go_1_27; };
         };
 

@@ -24,6 +24,7 @@
   "flock"
   "flyctl"
   "gitingest"
+  "golangci-lint"
   "jujutsu"
   "just"
   "nil"

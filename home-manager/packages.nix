@@ -31,6 +31,7 @@
   "gotests"
   "gotestsum"
   "grype"
+  "hclfmt"
   "hugo"
   "jq"
   "jujutsu"

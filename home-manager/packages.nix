@@ -15,6 +15,7 @@
   "cosign"
   "crane"
   "curl"
+  "delve"
   "dive"
   "docker-compose"
   "doxygen"

@@ -4,5 +4,6 @@
   imports = [
     ./direnv.nix
     ./packages.nix
+    ./shell/zsh.nix
   ];
 }

@@ -5,4 +5,5 @@
   "fprobe"
   "gocloc"
   "lld"
+  "llvm"
 ]

@@ -387,6 +387,7 @@ Examples:
   Output to a pipe is never paged and never colored; `NO_COLOR` also disables color.
 - Exit codes are documented and stable: 0 success, 1 the operation failed and files were restored, 2 usage error, 3 refused (dirty owned file, lock held, unresolved previous run), 4 switch succeeded but the commit did not.
 - Every subcommand supports `--dry-run`, which prints the commands it would run and the diff it would write.
+- `add`, `rm`, `up` and `sync` also take `--build-only`, which does every step except the one that changes the machine: for a nixpkgs attribute it builds the new generation with `nix build` and prints its store path instead of activating it, and for `--go`, `--uv` or `--cargo` it writes and validates the list and prints the `hm sync` command instead of running it; `--commit` stays allowed because the build proved the configuration.
 - Flags are parsed with the standard library `flag` package per subcommand; global flags (`--no-pager`, `--dry-run`, `--flake PATH` overriding `NH_FLAKE`) are accepted before or after the subcommand name.
 - Shell completion for zsh, bash and fish.
   `hm completion <shell>` prints the script, generated from the same `internal/doc` structs, so subcommands, flags and flag values are always current.
@@ -782,6 +783,7 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
    Then `rustup self uninstall`, which removes `~/.rustup` and the rustup-managed proxies in `~/.cargo/bin` but keeps `cargo install` output; the `. "$HOME/.cargo/env"` lines are already gone with Phase 2.
 2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, doctor, try, clean) with `go test ./...` passing and wired into `checks`.
 3. For each plain CLI row in section 5 marked "move": `hm add --commit <attr>`.
+   From an agent session the migration runs `hm add --build-only --commit <attr>` for each row, so every addition is built and committed without activating, and the user activates once at the end with `hm switch`.
    Four kinds of row do not go through `hm add` and are handled by hand in this step: attributes a `programs.*` module installs (git, gh, fzf, vim, gpg, uv, yt-dlp, go), Darwin-only attributes that need an `isDarwin` guard (`pinentry_mac`), nested attributes the lock cannot hold (`darwin.trash`, from the nixpkgs input), and ast-bro, which the sagent subflake exports and which `darwin/default.nix` adds to `home.packages` from `sagent.packages`.
    Once the Nix hugo, minikube and nfpm are installed, regenerate their completions in `modules/shell/completions/` from those binaries.
 4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`; `hm add --cargo` for `wt`, `rustlings` and `cargo-deps`, then `hm sync cargo`, which rebuilds them against the Nix toolchain.

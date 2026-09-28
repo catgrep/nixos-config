@@ -1064,6 +1064,12 @@
       "date": "2026-05-23",
       "constraint": "3.6a"
     },
+    "traefik": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.7.13",
+      "date": "2026-09-17"
+    },
     "tree": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

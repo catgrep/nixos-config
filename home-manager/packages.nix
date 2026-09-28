@@ -57,6 +57,7 @@
   "templ"
   "terragrunt"
   "testkube"
+  "traefik"
   "yq-go"
   "zizmor"
 ]

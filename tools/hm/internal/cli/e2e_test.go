@@ -999,3 +999,38 @@ func TestToolCommitsNameTheExecutable(t *testing.T) {
 		t.Errorf("uv body = %q", body)
 	}
 }
+
+// Reconciliation leaves an entry whose installed version matches alone, so
+// a plain sync is idempotent; --force reinstalls every declared entry, which
+// rebuilds the tools with the toolchain of the current generation.
+func TestSyncForceReinstallsMatchingEntries(t *testing.T) {
+	h := newHarness(t)
+	h.write("repo", "home-manager/cargo-tools.nix", "[\n  \"wt@0.3.1\"\n  \"rustlings@6.4.0\"\n]\n")
+	h.git("add", ".")
+	h.git("commit", "-q", "-m", "home: add cargo tools")
+	h.script("cargo", `case "$1 $2" in "install --list") echo "rustlings v6.4.0:"; echo "    rustlings"; echo "wt v0.3.1:"; echo "    wt" ;; esac`)
+	code, out := h.run("sync", "cargo")
+	if code != ExitOK || !strings.Contains(out, "cargo: 2 current, 0 installed") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if strings.Contains(h.calls(), "cargo install --locked") {
+		t.Errorf("a matching entry was reinstalled without --force:\n%s", h.calls())
+	}
+	code, out = h.run("sync", "cargo", "--force")
+	if code != ExitOK || !strings.Contains(out, "cargo: 2 installed, forced") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{"cargo install --locked --force rustlings --version 6.4.0", "cargo install --locked --force wt --version 0.3.1"} {
+		if !strings.Contains(h.calls(), want) {
+			t.Errorf("calls lack %q:\n%s", want, h.calls())
+		}
+	}
+	must(t, os.Remove(h.log))
+	code, out = h.run("sync", "cargo", "--force", "--build-only")
+	if code != ExitOK || !strings.Contains(out, "cargo: would install wt@0.3.1") || !strings.Contains(out, "cargo: 2 installed, forced") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if strings.Contains(h.calls(), "cargo install --locked") {
+		t.Errorf("--build-only installed:\n%s", h.calls())
+	}
+}

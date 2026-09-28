@@ -204,14 +204,17 @@ func syncCommand() Command {
 		Args:    "[go|uv|cargo]",
 		Summary: "install the go, uv and cargo tools their lists declare",
 		Description: []string{
-			"For every entry of go-tools.nix hm reads the build information of the binaries in GOBIN and runs go install for entries that are missing or at another version, using the go of the current generation. uv-tools.nix is compared with uv tool list and installed with uv tool install --python pointing at the generation's python3; cargo-tools.nix is compared with cargo install --list and installed with cargo install --locked. Entries already at the declared version are left alone. With no argument all three lists are synced. A standalone sync takes the run lock like switch; the sync that add --go, --uv or --cargo runs is part of that add's own transaction.",
+			"For every entry of go-tools.nix hm reads the build information of the binaries in GOBIN and runs go install for entries that are missing or at another version, using the go of the current generation. uv-tools.nix is compared with uv tool list and installed with uv tool install --python pointing at the generation's python3; cargo-tools.nix is compared with cargo install --list and installed with cargo install --locked. Entries already at the declared version are left alone, so a plain sync changes nothing on a reconciled machine. With no argument all three lists are synced. A standalone sync takes the run lock like switch; the sync that add --go, --uv or --cargo runs is part of that add's own transaction.",
+			"--force reinstalls every declared entry whether or not its version matches. The inventories record versions, not the compiler that built a binary, so this is how the tools are rebuilt after the toolchain changed, for instance once go or cargo comes from the Nix generation instead of Homebrew or rustup.",
 		},
 		Flags: []Flag{
 			{Name: "build-only", Help: "print the installs hm would run and run none of them"},
+			{Name: "force", Help: "reinstall every declared entry, including those already at the declared version, so the tools are rebuilt with the pinned toolchains"},
 		},
 		Examples: []Example{
 			{"hm sync go", "install the go tools that are missing or at another version"},
 			{"hm sync", "reconcile all three lists"},
+			{"hm sync cargo --force", "rebuild every declared crate with the generation's cargo"},
 		},
 		Complete: CompleteWords,
 		Words:    []string{"go", "uv", "cargo"},

@@ -31,6 +31,7 @@ func (a *App) cmdSync(opts options, args []string) error {
 	if err != nil {
 		return err
 	}
+	so := syncOpts{listOnly: opts.flag("build-only"), force: opts.flag("force")}
 	var synced []string
 	for _, k := range kinds {
 		f.step("sync " + k.name)
@@ -42,7 +43,7 @@ func (a *App) cmdSync(opts options, args []string) error {
 			a.say("%s: nothing declared (%s does not exist)", k.name, k.file)
 			continue
 		}
-		if err := a.syncKind(k, list, opts.flag("build-only")); err != nil {
+		if err := a.syncKind(k, list, so); err != nil {
 			return f.fail("sync "+k.name, err)
 		}
 		synced = append(synced, k.name)
@@ -51,11 +52,20 @@ func (a *App) cmdSync(opts options, args []string) error {
 	return nil
 }
 
+// syncOpts selects how syncKind reconciles a list.
+type syncOpts struct {
+	// listOnly prints the installs and runs none.
+	listOnly bool
+	// force reinstalls entries whose installed version already matches, so
+	// the tools are rebuilt with the toolchain of the current generation.
+	force bool
+}
+
 // syncKind installs the entries of list that are missing or at another
-// version. The list is passed in rather than read from disk, so a dry run
-// reconciles against the proposed list whose diff it printed. With
-// listOnly it prints the installs and runs none.
-func (a *App) syncKind(k toolKind, list *nixlist.List, listOnly bool) error {
+// version, or every entry with force. The list is passed in rather than
+// read from disk, so a dry run reconciles against the proposed list whose
+// diff it printed.
+func (a *App) syncKind(k toolKind, list *nixlist.List, so syncOpts) error {
 	installed, err := a.installed(k, list.Entries())
 	if err != nil {
 		return err
@@ -66,12 +76,12 @@ func (a *App) syncKind(k toolKind, list *nixlist.List, listOnly bool) error {
 		if err != nil {
 			return fmt.Errorf("%s: %v", k.file, err)
 		}
-		if have, ok := installed[k.entryName(entry)]; ok && have == version {
+		if have, ok := installed[k.entryName(entry)]; ok && have == version && !so.force {
 			current++
 			continue
 		}
 		todo++
-		if listOnly {
+		if so.listOnly {
 			a.say("%s: would install %s", k.name, entry)
 			continue
 		}
@@ -79,7 +89,11 @@ func (a *App) syncKind(k toolKind, list *nixlist.List, listOnly bool) error {
 			return err
 		}
 	}
-	a.say("%s: %d current, %d installed", k.name, current, todo)
+	if so.force {
+		a.say("%s: %d installed, forced", k.name, todo)
+	} else {
+		a.say("%s: %d current, %d installed", k.name, current, todo)
+	}
 	return nil
 }
 

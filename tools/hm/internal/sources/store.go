@@ -58,15 +58,6 @@ func splitDrvName(name string) (string, string) {
 	return name, ""
 }
 
-// Base is the name without hash and output suffix, shared by every output
-// of one derivation.
-func (s StorePath) Base() string {
-	if s.Version == "" {
-		return s.Pname
-	}
-	return s.Pname + "-" + s.Version
-}
-
 // Generation is a built Home Manager generation.
 type Generation struct {
 	Path     string

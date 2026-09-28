@@ -123,7 +123,10 @@ func sourceOrder(s string) int {
 	return 99
 }
 
-// generationRows tags every store path the generation references.
+// generationRows tags every store path the generation references. A path
+// is pinned or nixpkgs only when an attribute resolves to exactly that
+// path; every output of one resolved attribute is one row, and every
+// other path is its own custom row.
 func (a *App) generationRows(inv *inventory, gen *sources.Generation) error {
 	lock, err := sources.ReadLock(a.path(fileLock))
 	if err != nil {
@@ -139,39 +142,32 @@ func (a *App) generationRows(inv *inventory, gen *sources.Generation) error {
 	for _, ref := range gen.Refs {
 		pkgsList = append(pkgsList, ref.Pname)
 	}
-	resolved, err := a.resolve(pinnedList, pkgsList)
+	res, err := a.resolve(pinnedList, pkgsList)
 	if err != nil {
 		return err
 	}
-	byBase := map[string]row{}
-	for attr, path := range resolved.Pinned {
-		if path != "" {
-			byBase[sources.ParseStorePath(path).Base()] = row{Source: "pinned", Detail: attr + " " + lock[attr].Version}
-		}
-	}
-	for attr, path := range resolved.Nixpkgs {
-		if path == "" {
-			continue
-		}
-		base := sources.ParseStorePath(path).Base()
-		if _, ok := byBase[base]; !ok {
-			byBase[base] = row{Source: "nixpkgs", Detail: attr}
-		}
-	}
+	tags := provenance(res, lock)
 	installedPinned := map[string]bool{}
 	seen := map[string]bool{}
 	for _, ref := range gen.Refs {
-		base := ref.Base()
-		if seen[base] {
+		t, tagged := tags[ref.Path]
+		key := ref.Path
+		if tagged {
+			key = t.key
+		}
+		if seen[key] {
 			continue
 		}
-		seen[base] = true
+		seen[key] = true
 		r := row{Name: ref.Pname, Version: ref.Version, Source: "custom", Detail: "built by this flake"}
-		if tagged, ok := byBase[base]; ok {
-			r.Source, r.Detail = tagged.Source, tagged.Detail
-			if tagged.Source == "pinned" {
-				installedPinned[strings.Fields(tagged.Detail)[0]] = true
+		switch {
+		case tagged:
+			r.Source, r.Detail = t.source, t.detail
+			if t.attr != "" {
+				installedPinned[t.attr] = true
 			}
+		case ref.Output != "":
+			r.Detail += " (" + ref.Output + " output)"
 		}
 		inv.rows = append(inv.rows, r)
 	}
@@ -182,6 +178,48 @@ func (a *App) generationRows(inv *inventory, gen *sources.Generation) error {
 	}
 	sort.Strings(inv.notInstalled)
 	return nil
+}
+
+// tag is the provenance of one store path.
+type tag struct {
+	source, detail string
+	// key is shared by every output path of one resolved attribute, so
+	// they collapse into one row.
+	key string
+	// attr is the lock attribute for a pinned path, else "".
+	attr string
+}
+
+// provenance maps every store path the lock or the flake's nixpkgs
+// resolves to its tag. A path the lock resolves is pinned even when
+// nixpkgs resolves to it too, and attributes are visited in sorted order
+// so a path two attributes share is tagged the same way every run.
+func provenance(res resolved, lock map[string]sources.LockPin) map[string]tag {
+	tags := map[string]tag{}
+	for _, attr := range sortedKeys(res.Pinned) {
+		for _, path := range res.Pinned[attr] {
+			if _, ok := tags[path]; !ok {
+				tags[path] = tag{source: "pinned", detail: attr + " " + lock[attr].Version, key: "pinned " + attr, attr: attr}
+			}
+		}
+	}
+	for _, attr := range sortedKeys(res.Nixpkgs) {
+		for _, path := range res.Nixpkgs[attr] {
+			if _, ok := tags[path]; !ok {
+				tags[path] = tag{source: "nixpkgs", detail: attr, key: "nixpkgs " + attr}
+			}
+		}
+	}
+	return tags
+}
+
+func sortedKeys(m map[string][]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // declaredAttrs collects the attributes the home-manager modules take from
@@ -227,12 +265,15 @@ func (a *App) declaredAttrs(inv *inventory, lock map[string]sources.LockPin) ([]
 	return pinnedList, pkgsList, nil
 }
 
+// resolved holds every output path of each candidate attribute; an
+// attribute that is missing, not a derivation or fails to evaluate has
+// none.
 type resolved struct {
-	Pinned  map[string]string `json:"pinned"`
-	Nixpkgs map[string]string `json:"nixpkgs"`
+	Pinned  map[string][]string `json:"pinned"`
+	Nixpkgs map[string][]string `json:"nixpkgs"`
 }
 
-// resolve asks Nix for the store path of every candidate attribute, from
+// resolve asks Nix for the output paths of every candidate attribute, from
 // the lock for pinned ones and from the flake's nixpkgs input for the
 // rest, in one evaluation.
 func (a *App) resolve(pinned, pkgs []string) (resolved, error) {
@@ -246,12 +287,15 @@ func (a *App) resolve(pinned, pkgs []string) (resolved, error) {
   pkgs = flake.inputs.nixpkgs.legacyPackages.${system};
   lib = pkgs.lib;
   pinned = flake.inputs.mvs.lib.readLock { inherit system; file = %s/multiverse.lock; config.allowUnfree = true; };
-  resolve = set: attr:
-    let v = builtins.tryEval (lib.attrByPath (lib.splitString "." attr) null set);
-    in if v.success && v.value != null && lib.isDerivation v.value then v.value.outPath else "";
+  outputs = set: attr:
+    let
+      v = lib.attrByPath (lib.splitString "." attr) null set;
+      paths = if v != null && lib.isDerivation v then map (o: v.${o}.outPath) (v.outputs or [ "out" ]) else [ ];
+      r = builtins.tryEval (builtins.deepSeq paths paths);
+    in if r.success then r.value else [ ];
 in {
-  pinned = lib.genAttrs %s (resolve pinned);
-  nixpkgs = lib.genAttrs %s (resolve pkgs);
+  pinned = lib.genAttrs %s (outputs pinned);
+  nixpkgs = lib.genAttrs %s (outputs pkgs);
 }`, a.flake, a.flake, nixStringList(pinned), nixStringList(pkgs))
 	raw, err := a.nix.EvalExpr(expr)
 	if err != nil {

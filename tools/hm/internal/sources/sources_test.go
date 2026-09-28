@@ -12,22 +12,22 @@ import (
 
 func TestParseStorePath(t *testing.T) {
 	tests := []struct {
-		path                         string
-		pname, version, output, base string
+		path                   string
+		pname, version, output string
 	}{
-		{"/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0", "ripgrep", "15.1.0", "", "ripgrep-15.1.0"},
-		{"/nix/store/148icihpgb90anqhbh019i7wq3czsmmd-shellcheck-0.11.0-man", "shellcheck", "0.11.0", "man", "shellcheck-0.11.0"},
-		{"/nix/store/bvd9jw9h28g6v6nzasc8p2zkjdgkg7l1-python3.14-gitingest-0.3.1", "python3.14-gitingest", "0.3.1", "", "python3.14-gitingest-0.3.1"},
-		{"/nix/store/78dxx2mr5drizabafzha5hjwizzl9dkh-home-manager", "home-manager", "", "", "home-manager"},
-		{"/nix/store/id8cbza5bqlpsmvx82yi8g7ibp81jf4h-hm-session-vars.sh", "hm-session-vars.sh", "", "", "hm-session-vars.sh"},
-		{"/nix/store/p7ap9sijfgyjazj4gmalpwzj51xwx178-nil-2025-06-13", "nil", "2025-06-13", "", "nil-2025-06-13"},
-		{"/nix/store/7x1qd3vzv370gq5byaf9i5j3yc8fl0b1-openssl-3.6.3-bin", "openssl", "3.6.3", "bin", "openssl-3.6.3"},
-		{"/nix/store/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-rust-default-1.98.1", "rust-default", "1.98.1", "", "rust-default-1.98.1"},
+		{"/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0", "ripgrep", "15.1.0", ""},
+		{"/nix/store/148icihpgb90anqhbh019i7wq3czsmmd-shellcheck-0.11.0-man", "shellcheck", "0.11.0", "man"},
+		{"/nix/store/bvd9jw9h28g6v6nzasc8p2zkjdgkg7l1-python3.14-gitingest-0.3.1", "python3.14-gitingest", "0.3.1", ""},
+		{"/nix/store/78dxx2mr5drizabafzha5hjwizzl9dkh-home-manager", "home-manager", "", ""},
+		{"/nix/store/id8cbza5bqlpsmvx82yi8g7ibp81jf4h-hm-session-vars.sh", "hm-session-vars.sh", "", ""},
+		{"/nix/store/p7ap9sijfgyjazj4gmalpwzj51xwx178-nil-2025-06-13", "nil", "2025-06-13", ""},
+		{"/nix/store/7x1qd3vzv370gq5byaf9i5j3yc8fl0b1-openssl-3.6.3-bin", "openssl", "3.6.3", "bin"},
+		{"/nix/store/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-rust-default-1.98.1", "rust-default", "1.98.1", ""},
 	}
 	for _, tc := range tests {
 		got := ParseStorePath(tc.path)
-		if got.Pname != tc.pname || got.Version != tc.version || got.Output != tc.output || got.Base() != tc.base {
-			t.Errorf("%s: got %+v base %q", tc.path, got, got.Base())
+		if got.Path != tc.path || got.Pname != tc.pname || got.Version != tc.version || got.Output != tc.output {
+			t.Errorf("%s: got %+v", tc.path, got)
 		}
 	}
 }

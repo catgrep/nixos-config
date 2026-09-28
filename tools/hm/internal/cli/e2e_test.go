@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -658,7 +659,7 @@ func TestListAndDoctor(t *testing.T) {
 		"/nix/store/9jvj0khvdmj7hnyqkk4454d715jvkf7x-man-db-2.13.1",
 		"/nix/store/78dxx2mr5drizabafzha5hjwizzl9dkh-home-manager",
 	}, "\n")+"\n")
-	h.write("fake", "resolved.json", `{"pinned":{"bat":"/nix/store/9nnfhsm7d0rmv74viba3q8w8bvgaix8n-bat-0.26.1","charasay":"","ripgrep":"/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0"},"nixpkgs":{"man-db":"/nix/store/9jvj0khvdmj7hnyqkk4454d715jvkf7x-man-db-2.13.1","home-manager":"","bat":"","ripgrep":""}}`)
+	h.write("fake", "resolved.json", `{"pinned":{"bat":["/nix/store/9nnfhsm7d0rmv74viba3q8w8bvgaix8n-bat-0.26.1"],"charasay":[],"ripgrep":["/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0"]},"nixpkgs":{"man-db":["/nix/store/9jvj0khvdmj7hnyqkk4454d715jvkf7x-man-db-2.13.1"],"home-manager":[],"bat":[],"ripgrep":[]}}`)
 	must(t, os.MkdirAll(filepath.Join(h.store, "gen-20/home-path/etc/profile.d"), 0o755))
 	native := filepath.Join(h.home, ".local/bin")
 	must(t, os.MkdirAll(filepath.Join(h.home, ".local/share/claude/versions/2.1.274"), 0o755))
@@ -709,6 +710,47 @@ func TestListAndDoctor(t *testing.T) {
 	}
 	if strings.Contains(out, "  wt ") {
 		t.Errorf("declared cargo tool reported:\n%s", out)
+	}
+}
+
+// Provenance is decided by the exact store path the lock resolves to, not
+// by name and version: another build of ripgrep 15.1.0 is not the pinned
+// one, and every output of one pinned derivation is one row.
+func TestListProvenanceByStorePath(t *testing.T) {
+	h := newHarness(t)
+	h.write("repo", "multiverse.lock", strings.Replace(lockBefore, `    "ripgrep":`, `    "shellcheck": {"rev": "d407", "label": "2026-07-05-d407", "version": "0.11.0", "date": "2026-07-05", "constraint": null},
+    "ripgrep":`, 1))
+	h.write("repo", "home-manager/packages.nix", "# SPDX-License-Identifier: GPL-3.0-or-later\n[\n  \"bat\"\n  \"charasay\"\n  \"ripgrep\"\n  \"shellcheck\"\n]\n")
+	h.git("add", ".")
+	h.git("commit", "-q", "-m", "home: add shellcheck")
+	const pinnedRipgrep = "/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0"
+	const otherRipgrep = "/nix/store/0000000000000000000000000000000a-ripgrep-15.1.0"
+	const shellcheckBin = "/nix/store/1111111111111111111111111111111b-shellcheck-0.11.0-bin"
+	const shellcheckMan = "/nix/store/148icihpgb90anqhbh019i7wq3czsmmd-shellcheck-0.11.0-man"
+	h.write("fake", "refs.txt", strings.Join([]string{otherRipgrep, pinnedRipgrep, shellcheckMan, shellcheckBin}, "\n")+"\n")
+	h.write("fake", "resolved.json", `{"pinned":{"bat":[],"charasay":[],"ripgrep":["`+pinnedRipgrep+`"],"shellcheck":["`+shellcheckBin+`","`+shellcheckMan+`"]},"nixpkgs":{"ripgrep":[],"shellcheck":[]}}`)
+	must(t, os.MkdirAll(filepath.Join(h.store, "gen-20/home-path/etc/profile.d"), 0o755))
+	must(t, os.WriteFile(filepath.Join(h.store, "gen-20/home-path/etc/profile.d/hm-session-vars.sh"), []byte("export PATH=\"${PATH:+:}$PATH\"\n"), 0o644))
+	h.script("cargo", "")
+	h.script("uv", "")
+
+	code, out := h.run("list")
+	if code != ExitOK {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	rows := map[string]int{}
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && (fields[0] == "ripgrep" || fields[0] == "shellcheck") {
+			rows[fields[0]+" "+fields[2]]++
+		}
+	}
+	want := map[string]int{"ripgrep pinned": 1, "ripgrep custom": 1, "shellcheck pinned": 1}
+	if !reflect.DeepEqual(rows, want) {
+		t.Errorf("rows = %v, want %v:\n%s", rows, want, out)
+	}
+	if !strings.Contains(out, "pinned but not in this generation (3):\n  bat charasay jellyfin") {
+		t.Errorf("not-installed list is wrong:\n%s", out)
 	}
 }
 

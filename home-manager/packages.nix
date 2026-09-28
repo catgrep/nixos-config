@@ -18,6 +18,7 @@
   "dive"
   "docker-compose"
   "doxygen"
+  "eslint"
   "fd"
   "gitingest"
   "jujutsu"

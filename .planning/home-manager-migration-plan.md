@@ -14,7 +14,8 @@ Revised 2026-09-28 after the first review.
   The Linux account is renamed from `bdhill` to `bobby` in Phase 4.
 - nix-darwin is adopted for the Mac so Homebrew casks, brew-only formulae, `go install` tools and launchd services are declared in the same flake.
   `nh` drives both layers (`nh home switch`, `nh darwin switch`), wrapped by a small `hm` helper that also drives `mvs lock`.
-- Toolchains (Go, Python, Node) come from `multiverse.lock`; Rust comes from `rust-overlay` through the omniflake index, and rustup is uninstalled.
+- Toolchains (Go, Python, Node) come from `multiverse.lock`; Rust comes from `rust-overlay` (chosen over fenix) through the omniflake index, and rustup is uninstalled.
+  Haskell is out of scope: ghcup stays as it is and nothing in this plan touches it.
   Tools built with `go install`, `uv tool install` or `cargo install` that nixpkgs lacks are declared in lists `hm` owns and installed by `hm sync` with the pinned toolchains, not through Homebrew.
   `GOPATH` and `GOBIN` stay at `~/go` and `~/go/bin`.
 - The git identity is the same signed identity on every machine; the signing subkey reaches the hosts through sops.
@@ -140,8 +141,12 @@ tools/
     go.mod                 # module github.com/catgrep/nixos-config/tools/hm, go 1.27
     main.go
     internal/
+      cli/                 # subcommand table, flag parsing, help rendering, pager
+      doc/                 # one struct per subcommand: synopsis, description, examples; feeds --help and the man page
+      gendoc/              # `go run ./internal/gendoc` renders doc/ into hm.1 at build time
       nixlist/             # read and write the string-list files hm owns (with golden tests)
       sources/             # inventory: generation, lock, brew lists, go/bin, cargo, uv, native
+      txn/                 # lock file, captured files and hashes, restore, run journal
       run/                 # mvs, nh, git, nix eval as typed calls
     hm_test.go
   sagent/                  # existing
@@ -300,7 +305,7 @@ Section 5 now uses `brew list --installed-on-request`, which lists everything yo
 `modules/rust.nix` installs `rust-bin.stable.latest.default` extended with `rust-src`, `clippy`, `rustfmt` and `rust-analyzer` as the machine-wide toolchain, and a project that needs a different one gets it from its own `rust-toolchain.toml` through `rust-bin.fromRustupToolchainFile` in that project's dev shell, which direnv loads.
 That replaces rustup entirely: the binary, `~/.rustup`, and the `. "$HOME/.cargo/env"` lines in `.zshenv` and `.profile`.
 nixpkgs also packages `rustup` itself (1.29.0 indexed) as a fallback, but keeping two toolchain managers defeats the point.
-ghcup stays native for now; Haskell is not in daily use and `haskell.compiler` from nixpkgs can replace it later on the same pattern.
+ghcup is out of scope and stays untouched.
 
 **Tools you built with `go install`** split two ways.
 Most are packaged: gopls, delve, buf, protoc-gen-go, protoc-gen-go-grpc, gotestsum, gotests, hclfmt, go-licenses, goda, nfpm, mani, diffoci, go-arch-lint, and `go-tools` for staticcheck.
@@ -338,6 +343,39 @@ It wraps `mvs lock`, `nh home`, `nh darwin` and the nix-darwin Homebrew lists, s
 Go rather than a shell script because every file `hm` edits is a file `hm` must parse back exactly, the inventory needs to read Go build info, and each of those wants a unit test.
 The standard library covers all of it (`os/exec`, `debug/buildinfo`, `encoding/json`, `text/template`), so `vendorHash` stays `null` and nothing needs re-vendoring.
 The cargo inventory comes from `cargo install --list` rather than parsing `.crates.toml`, since the standard library has no TOML decoder.
+
+### Command-line conventions
+
+`hm` behaves like git and systemctl at the terminal:
+
+- One man page, `hm(1)`, covering every subcommand, every flag, the files `hm` owns, the environment variables it reads (`NH_FLAKE`, `HM_PAGER`, `PAGER`, `NO_COLOR`), exit codes, and an EXAMPLES section per subcommand.
+  It is generated at build time from the same `internal/doc` structs that render `--help`, so the two can never disagree; `tools/hm/default.nix` runs `go run ./internal/gendoc` in `postBuild` and installs the result under `$out/share/man/man1/hm.1`.
+  Home Manager installs the `man` output of `home.packages`, so `man hm` works after the first switch; `hm help` prints the same page for machines where `man` is not set up.
+- `hm --help` lists the subcommands with one line each and three worked examples.
+  `hm <subcommand> --help` gives that subcommand's synopsis, every flag with its default, and at least two examples, for instance:
+
+```
+$ hm add --help
+Usage: hm add [--commit] [--cask | --brew | --go | --uv | --cargo] NAME[@VERSION]
+
+Pin a package and install it.
+
+  --commit      commit the files hm changed with a generated message
+  --cask        add a Homebrew cask instead of a nixpkgs attribute
+  ...
+
+Examples:
+  hm add zizmor                 pin the newest indexed zizmor and switch
+  hm add --commit ripgrep@15.1.0
+  hm add --cask ghostty
+  hm add --go github.com/fatih/gomodifytags@v1.17.0
+```
+
+- Long output (`list`, `status`, `doctor`, `help`, `brew cleanup` previews) goes through a pager when stdout is a terminal, in this order: `--no-pager` disables it, then `HM_PAGER`, then `PAGER`, then `less -FRX`.
+  Output to a pipe is never paged and never colored; `NO_COLOR` also disables color.
+- Exit codes are documented and stable: 0 success, 1 the operation failed and files were restored, 2 usage error, 3 refused (dirty owned file, lock held, unresolved previous run), 4 switch succeeded but the commit did not.
+- Every subcommand supports `--dry-run`, which prints the commands it would run and the diff it would write.
+- Flags are parsed with the standard library `flag` package per subcommand; global flags (`--no-pager`, `--dry-run`, `--flake PATH` overriding `NH_FLAKE`) are accepted before or after the subcommand name.
 
 ### Rules for the shared lock
 
@@ -631,7 +669,7 @@ The `tailscale` launch agent goes with the Tailscale app.
 |---|---|---|
 | Claude Code | `~/.local/share/claude`, symlink in `~/.local/bin` | self-updating; Home Manager adds the path |
 | Codex | Homebrew cask, declared in `homebrew.casks` | `brew upgrade` tracks releases faster than nixpkgs |
-| ghcup, cabal, stack | `~/.ghcup`, `~/.cabal` | Haskell is not in daily use; `haskell.compiler` from nixpkgs can replace it later |
+| ghcup, cabal, stack | `~/.ghcup`, `~/.cabal` | out of scope; untouched |
 
 rustup is not in this table any more: the Rust toolchain comes from rust-overlay (section 3), `~/.rustup` is removed in Phase 3, and `~/.cargo/bin` holds only `cargo install` output declared in `cargo-tools.nix`.
 | uv tools | `~/.local/share/uv`, declared in `uv-tools.nix` | claude-monitor, par-cc-usage (moved from pipx); not in nixpkgs |
@@ -825,18 +863,76 @@ With direnv the shell is entered from nix-direnv's cache, so the cold cost is pa
   It does not move `~/.gnupg` under XDG; `programs.gpg.homedir` stays at the default.
 - Rollback for Home Manager is `home-manager generations` and activating the previous generation's `activate` script; for nix-darwin it is `darwin-rebuild --rollback`; for hosts it is `make test-HOST` on the previous commit.
 
-## 10. Decisions from review, and what is still open
+## 10. Decisions from review
 
-Closed on 2026-09-28:
+All closed on 2026-09-28; nothing is open.
 
 1. `GOPATH=~/go` and `GOBIN=~/go/bin` stay as they are.
 2. One signed git identity everywhere; the signing subkey reaches the hosts through sops.
 3. Homebrew cleanup is manual and previewed through `hm brew cleanup`; activation never removes anything.
 4. The account rename runs on all four hosts in one sitting.
-5. Rust is Nix-managed through rust-overlay; rustup is removed; `cargo install` tools get `hm sync cargo`.
+5. Rust is Nix-managed through rust-overlay (not fenix); rustup is removed; `cargo install` tools get `hm sync cargo`.
 6. `hm` keeps its state in files, hashes and a JSON run journal, not a database.
+7. Haskell and ghcup are out of scope.
+8. `hm` ships a generated man page, per-subcommand `--help` with examples, and pager handling like git.
 
-Still open:
+## 11. Implementation notes for agents
 
-1. rust-overlay is proposed over fenix because it builds a toolchain from a project's `rust-toolchain.toml`; fenix is the alternative if you prefer its nightly component handling.
-2. Whether to move Haskell (ghcup) onto nixpkgs in the same pass, or leave it for later as proposed.
+This plan is meant to be executed by agents in fresh sessions, one phase per session or less.
+Everything an agent needs that is not in `CLAUDE.md` is here.
+
+### Ground rules
+
+- Work on local `main`; never push, never open a pull request, never amend a commit that already existed when the session started.
+- Never sign commits from an agent session (`-S`, `--gpg-sign`, or leaving `commit.gpgsign` on); run git with `-c commit.gpgsign=false`.
+  The user re-signs afterwards with a date-preserving rebase.
+- Never add an agent as co-author.
+- Human checkpoints, where the agent stops and asks: every command that mutates a live host (Phase 4 in full, `make switch-HOST`, `make test-HOST`), entering secret material (`make sops-edit-shared`, the subkey export), `rustup self uninstall`, `hm brew cleanup --force`, and the first `nh home switch` of Phase 1.
+  Repo edits, builds, evaluations, dry runs and tests need no confirmation.
+- In the sagent sandbox, `nix` commands that fetch, lock or evaluate impurely need `export XDG_CONFIG_HOME=<scratchpad>/xdg` first.
+- Nix files: `nixfmt-rfc-style` formatting, `statix` clean, `SPDX-License-Identifier: GPL-3.0-or-later` header, lowercase kebab-case filenames, one small module per concern imported through the directory's `default.nix`.
+- Comments state the present design and its reason; no change history ("previously", "used to"), no references to planning phases or this document.
+- Shell: `set -euo pipefail`, `shellcheck` and `shfmt -d` clean.
+- Go (`tools/hm`): standard library only, `gofmt`, `go vet`, `staticcheck` (from the `go-tools` pin) clean, table tests with golden files for every file format `hm` owns, functions under 100 lines, no package-level mutable state.
+  `buildGoModule` runs `go test ./...` as its check phase, and `checks.<system>.hm` in `checks.nix` builds the package so `make check` covers it.
+- Every phase ends with `make fmt`, `make check` (or the narrower command the phase names), and the phase's own Verify line satisfied, before the last commit of the phase.
+
+### Commit messages
+
+Match the style already in the history: an area prefix, a colon, an imperative subject in lower case, no trailing period.
+The subject line is at most 72 characters, and the body, when there is one, wraps at 72 columns; some existing commits exceed that and are being cleaned up separately, so do not copy them.
+One logical change per commit.
+Area prefixes used by this plan:
+
+| Prefix | Scope | Example |
+|---|---|---|
+| `home:` | `home-manager/` modules, users, data lists | `home: add zsh module with oh-my-zsh custom dir` |
+| `hm:` | `tools/hm` | `hm: add sync subcommand for go tools` |
+| `darwin:` | `darwin/`, nix-darwin wiring | `darwin: declare homebrew casks and taps` |
+| `flake:` | `flake.nix`, `omniflake.nix`, inputs | `flake: export homeConfigurations for bob-mac` |
+| `multiverse:` | `multiverse.lock` changes made by hand through `mvs` | `multiverse: pin direnv, nix-direnv and nh` |
+| `users:` | `modules/common/users.nix`, account rename | `users: rename the host account to bobby` |
+| `secrets:` | sops files | `secrets: add the git signing subkey for hosts` |
+| `smoketests:` | `deploy.yaml` tests | `smoketests: check login and sudo on the pis` |
+| `docs:`, `planning:` | `CLAUDE.md`, `.planning/` | `docs: describe hm and nh in the repo guide` |
+
+The subjects `hm` generates (`home: add zizmor 1.30.1`) follow the same rule and are truncated at 72 characters with the version kept.
+
+### Order of work and expected commits
+
+| Phase | Session deliverable | Commits, in order |
+|---|---|---|
+| 0 | direnv, nix-direnv, nh, nom, nvd pinned and installed through the old flake; `.envrc` extended | `multiverse: pin direnv, nix-direnv, nh, nom and nvd`; `home: enable direnv and install nh`; `flake: ignore .direnv and watch the dev shell inputs` |
+| 1 | root-flake `homeConfigurations`, subflake deleted, state version 26.05, GC root for gen 19 | `flake: export homeConfigurations for bob-mac`; `home: move the package list to packages.nix`; `home: delete the standalone subflake`; `docs: point home-switch at nh` |
+| 2 | shell, git, gpg, vim, tmux, ssh, fzf, ghostty, zed modules; symlinks removed by hand | one `home:` commit per module, `home: add omz custom functions and aliases` |
+| 3 | toolchains, rust-overlay, `tools/hm` with tests and `checks` wiring, packages migrated, PATH order | `flake: select rust-overlay from the omniflake index`; `home: add toolchains and rust modules`; `hm: scaffold the module and the txn package`; `hm: add add, rm and up`; `hm: add list, status and doctor`; `hm: add sync for go, uv and cargo`; `hm: generate the man page and per-subcommand help`; `flake: build and check tools/hm`; then the `home: add <pkg>` commits `hm` generates |
+| 3b | nix-darwin, Homebrew lists, yabai and skhd services, `hm brew cleanup` | `flake: select nix-darwin from the omniflake index`; `darwin: add the bob-mac system configuration`; `darwin: declare homebrew casks, brews and taps`; `darwin: run yabai and skhd as launchd services`; `hm: add brew cleanup with a preview` |
+| 4 | account rename prepared in the repo, then executed with the user host by host | `users: rename the host account to bobby`; `secrets: add the git signing subkey for hosts`; `smoketests: check login and sudo on the pis`; after cutover `deploy: connect to hosts as bobby` |
+| 5 | cleanup, docs, `nh clean` enabled | `docs: describe hm and nh in the repo guide`; `home: enable nh clean after the rollback test` |
+
+### Definition of done per session
+
+- The Verify line of the phase passes and the agent shows the command output in its report.
+- `make check` passes, or the narrower check the phase names, with zero warnings.
+- Every commit subject is under 72 characters and carries the right prefix; `git log --oneline` for the session is included in the report.
+- Anything skipped or blocked is listed explicitly, with the reason, rather than silently narrowed.

@@ -35,6 +35,7 @@
   "minikube"
   "mosh"
   "neovim"
+  "nerdlog"
   "nil"
   "nix-output-monitor"
   "nixd"

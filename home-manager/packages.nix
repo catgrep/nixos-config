@@ -5,6 +5,7 @@
   "apko"
   "ast-grep"
   "bat"
+  "bats"
   "charasay"
   "colima"
   "colmena"

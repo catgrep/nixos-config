@@ -46,6 +46,7 @@
   "openssl"
   "pandoc"
   "pdfgrep"
+  "prek"
   "ripgrep"
   "shellcheck"
   "shfmt"

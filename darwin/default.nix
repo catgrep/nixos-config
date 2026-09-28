@@ -5,7 +5,12 @@
 # formulae, and the launchd agents of the window manager. Home Manager
 # stays a separate, standalone layer, so nh home switch and nh darwin
 # switch remain independent steps.
-_: {
+{ ... }:
+{
+  imports = [
+    ./homebrew
+  ];
+
   # Determinate Nix owns /etc/nix/nix.conf and the nix-daemon launchd job.
   # Leaving Nix unmanaged keeps nix-darwin from rewriting either.
   nix.enable = false;

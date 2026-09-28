@@ -74,14 +74,17 @@ func (a *App) addAttr(spec string, co changeOpts) error {
 	if err != nil {
 		return err
 	}
-	pinVersion := pin.Version
+	lockPath, pinVersion := a.path(fileLock), pin.Version
 	if !pinned {
 		f.step("pin")
-		created, err := a.pinAttr(f, spec)
+		created, path, err := a.pinAttr(f, spec)
 		if err != nil {
 			return f.fail("mvs lock add", err)
 		}
-		pinVersion = created.Version
+		if path != lockPath {
+			defer os.Remove(path)
+		}
+		lockPath, pinVersion = path, created.Version
 		if a.dryRun {
 			a.say("would pin %s %s at %s", attr, created.Version, created.Label)
 		} else {
@@ -107,35 +110,96 @@ func (a *App) addAttr(spec string, co changeOpts) error {
 		return f.fail("switch", err)
 	}
 	f.step("report")
-	a.say("added %s %s (%s)", attr, pinVersion, detail)
-	return f.report(commitMessage{subject: subject("home", "add", attr, pinVersion)}, co.commit)
+	version, note := a.installedVersion(attr, pinVersion, lockPath)
+	a.say("added %s %s (%s)", attr, version, detail)
+	return f.report(commitMessage{subject: subject("home", "add", attr, version), body: note}, co.commit)
 }
 
-// pinAttr runs mvs lock add. In a dry run it runs against a copy of the
-// lock, so the pin it would create is known and nothing changes.
-func (a *App) pinAttr(f *flow, spec string) (run.Pin, error) {
-	mvs := a.mvs()
-	if a.dryRun {
-		tmp, err := copyToTemp(a.path(fileLock))
+// pinAttr runs mvs lock add and returns the pin with the lock file that
+// holds it. In a dry run that is a temporary copy, so the pin it would
+// create is known and nothing changes; the caller removes the copy.
+func (a *App) pinAttr(f *flow, spec string) (run.Pin, string, error) {
+	mvs, lock := a.mvs(), a.path(fileLock)
+	if !a.dryRun {
+		_, pin, err := mvs.Add(spec)
 		if err != nil {
-			return run.Pin{}, err
+			return pin, lock, err
 		}
-		defer os.Remove(tmp)
-		fmt.Fprintf(a.out, "+ mvs lock add %s\n", spec)
-		_, pin, err := mvs.WithLock(tmp).Add(spec)
-		if err != nil {
-			return pin, err
-		}
-		before, _ := os.ReadFile(a.path(fileLock))
-		after, _ := os.ReadFile(tmp)
-		fmt.Fprint(a.out, unifiedDiff(fileLock, before, after))
-		return pin, nil
+		return pin, lock, f.adopt(fileLock)
 	}
-	_, pin, err := mvs.Add(spec)
+	tmp, err := copyToTemp(lock)
 	if err != nil {
-		return pin, err
+		return run.Pin{}, lock, err
 	}
-	return pin, f.adopt(fileLock)
+	fmt.Fprintf(a.out, "+ mvs lock add %s\n", spec)
+	_, pin, err := mvs.WithLock(tmp).Add(spec)
+	if err != nil {
+		_ = os.Remove(tmp)
+		return pin, lock, err
+	}
+	before, _ := os.ReadFile(lock)
+	after, _ := os.ReadFile(tmp)
+	fmt.Fprint(a.out, unifiedDiff(fileLock, before, after))
+	return pin, tmp, nil
+}
+
+// resolvedPackage is what the flake resolves a pinned attribute to on the
+// system hm runs on.
+type resolvedPackage struct {
+	Version string `json:"version"`
+	Pname   string `json:"pname"`
+	System  string `json:"system"`
+}
+
+// resolvePinned evaluates, through the flake's mvs input, the package that
+// pinned.<attr> is on this system when the lock at lockPath is read. The
+// lock is a parameter because a dry run pins into a temporary copy.
+func (a *App) resolvePinned(attr, lockPath string) (resolvedPackage, error) {
+	expr := fmt.Sprintf(`let
+  flake = builtins.getFlake %q;
+  lock = %q;
+  attr = %q;
+  system = builtins.currentSystem;
+  lib = flake.inputs.nixpkgs.lib;
+  pinned = flake.inputs.mvs.lib.readLock { inherit system; file = lock; config.allowUnfree = true; };
+  pkg = lib.attrByPath (lib.splitString "." attr) null pinned;
+in
+if pkg == null then null else {
+  inherit system;
+  version = pkg.version or null;
+  pname = pkg.pname or (builtins.parseDrvName pkg.name).name;
+}`, a.flake, lockPath, attr)
+	raw, err := a.nix.EvalExpr(expr)
+	if err != nil {
+		return resolvedPackage{}, err
+	}
+	var pkg *resolvedPackage
+	if err := jsonUnmarshal(raw, &pkg); err != nil {
+		return resolvedPackage{}, fmt.Errorf("unexpected nix eval output: %v", err)
+	}
+	if pkg == nil || pkg.Version == "" {
+		return resolvedPackage{}, fmt.Errorf("%s is not a versioned package in the lock the flake reads", attr)
+	}
+	return *pkg, nil
+}
+
+// installedVersion returns the version this system installs for attr and,
+// when that is not the index version the lock records, a line naming both
+// for the output and the commit body. When the flake cannot tell, the
+// index version stands and the reason is printed, since the generation was
+// already built from that lock.
+func (a *App) installedVersion(attr, index, lockPath string) (version, note string) {
+	pkg, err := a.resolvePinned(attr, lockPath)
+	if err != nil {
+		a.say("the version this system resolves for %s could not be read; reporting the index version: %v", attr, err)
+		return index, ""
+	}
+	if pkg.Version == index {
+		return index, ""
+	}
+	note = fmt.Sprintf("index %s, %s resolves %s %s", index, pkg.System, pkg.Pname, pkg.Version)
+	a.say("%s: %s", attr, note)
+	return pkg.Version, note
 }
 
 func copyToTemp(path string) (string, error) {

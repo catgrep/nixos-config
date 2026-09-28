@@ -81,6 +81,8 @@ func newHarness(t *testing.T) *harness {
 `, "", 1))
 	h.write("fake", "lock-after-update.json", strings.Replace(lockBefore, `"version": "15.1.0"`, `"version": "15.2.0"`, 1))
 	h.write("fake", "lock-after-update-jellyfin.json", strings.Replace(strings.Replace(lockBefore, `"version": "15.1.0"`, `"version": "15.2.0"`, 1), `"version": "10.11.11"`, `"version": "10.11.12"`, 1))
+	h.write("fake", "version-zizmor.json", `{"version":"1.30.1","pname":"zizmor","system":"aarch64-darwin"}`)
+	h.write("fake", "version-ripgrep.json", `{"version":"15.1.0","pname":"ripgrep","system":"aarch64-darwin"}`)
 	h.fakes()
 	h.env = map[string]string{
 		"HOME":           h.home,
@@ -164,13 +166,19 @@ case "$1 $2" in
   *) echo "fake mvs: unknown $*" >&2; exit 1 ;;
 esac
 `)
+	// An expression that binds attr asks what the flake resolves that pin
+	// to on this system; the answer is version-ATTR.json, or null when no
+	// such file exists. Any other expression is the list resolution.
 	h.script("nix", `case "$1 $2" in
   "eval --json")
     if [ "$3" = "--file" ]; then
       if grep -q BROKEN "$4"; then echo "error: undefined variable 'BROKEN'" >&2; exit 1; fi
       echo '["ok"]'
     else
-      cat "$FAKE_DIR/resolved.json"
+      attr=$(printf '%s\n' "$5" | sed -n 's/^  attr = "\(.*\)";$/\1/p')
+      if [ -z "$attr" ]; then cat "$FAKE_DIR/resolved.json"
+      elif [ -f "$FAKE_DIR/version-$attr.json" ]; then cat "$FAKE_DIR/version-$attr.json"
+      else echo null; fi
     fi ;;
   "build --no-link") echo "$FAKE_STORE/built-generation" ;;
   "flake update") printf '{"version": 7, "updated": true}\n' > "$FAKE_REPO/flake.lock" ;;
@@ -487,8 +495,58 @@ func TestAddDryRun(t *testing.T) {
 	if strings.Contains(h.calls(), "nh home switch") {
 		t.Error("dry run switched")
 	}
+	// The version is resolved from the temporary lock the dry run pinned
+	// into, since the real lock does not hold the pin.
+	if !strings.Contains(h.calls(), `lock = "`+os.TempDir()) || !strings.Contains(h.calls(), "hm-multiverse.lock-") {
+		t.Errorf("version not resolved from the temporary lock:\n%s", h.calls())
+	}
 	if _, _, err := txn.Last(filepath.Join(h.repo, ".git")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The success line and the commit carry the version this system installs,
+// which the flake resolves from the lock and which can differ from the
+// index version the lock records; both are then named.
+func TestAddReportsResolvedVersion(t *testing.T) {
+	h := newHarness(t)
+	h.write("fake", "version-jellyfin.json", `{"version":"10.11.10","pname":"jellyfin-server","system":"aarch64-darwin"}`)
+	code, out := h.run("add", "--build-only", "--commit", "jellyfin")
+	if code != ExitOK {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{
+		"hm: reusing the pin for jellyfin 10.11.11",
+		"hm: jellyfin: index 10.11.11, aarch64-darwin resolves jellyfin-server 10.11.10",
+		"hm: added jellyfin 10.11.10 (built ",
+		`hm: committed "home: add jellyfin 10.11.10"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "added jellyfin 10.11.11") {
+		t.Errorf("the index version was reported as installed:\n%s", out)
+	}
+	if body := strings.TrimSpace(h.git("log", "-1", "--format=%b")); body != "index 10.11.11, aarch64-darwin resolves jellyfin-server 10.11.10" {
+		t.Errorf("commit body = %q", body)
+	}
+	// When the versions agree the commit has no body.
+	code, out = h.run("add", "--build-only", "--commit", "zizmor")
+	if code != ExitOK || !strings.Contains(out, "hm: added zizmor 1.30.1 (built ") || strings.Contains(out, "resolves") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if body := strings.TrimSpace(h.git("log", "-1", "--format=%b")); body != "" {
+		t.Errorf("commit body = %q, want none", body)
+	}
+	// A version the flake cannot tell falls back to the index version and
+	// says so, since the generation was already built from that lock.
+	h.write("repo", "home-manager/packages.nix", packagesBefore)
+	h.git("commit", "-q", "-m", "reset", "--", "home-manager/packages.nix")
+	must(t, os.Remove(filepath.Join(h.fakeDir, "version-zizmor.json")))
+	code, out = h.run("add", "--build-only", "zizmor")
+	if code != ExitOK || !strings.Contains(out, "could not be read") || !strings.Contains(out, "hm: added zizmor 1.30.1 (built ") || !strings.Contains(out, "'home: add zizmor 1.30.1'") {
+		t.Fatalf("exit %d\n%s", code, out)
 	}
 }
 

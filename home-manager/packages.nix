@@ -27,6 +27,7 @@
   "flyctl"
   "gitingest"
   "go-licenses"
+  "goda"
   "golangci-lint"
   "gopls"
   "gotests"

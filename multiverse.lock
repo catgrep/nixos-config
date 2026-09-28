@@ -413,6 +413,12 @@
       "version": "1.27.1",
       "date": "2026-09-17"
     },
+    "goda": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.9.4",
+      "date": "2026-09-17"
+    },
     "golangci-lint": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

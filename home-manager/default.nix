@@ -28,7 +28,21 @@
     addlicense
     jujutsu
     just
+    nh
+    nix-output-monitor
+    nvd
   ];
+
+  # direnv loads the repository dev shell on entry; nix-direnv caches the
+  # evaluated shell so a new terminal does not re-evaluate the flake.
+  programs.direnv = {
+    enable = true;
+    package = pinned.direnv;
+    nix-direnv = {
+      enable = true;
+      package = pinned.nix-direnv;
+    };
+  };
 
   # Enable home-manager
   programs.home-manager.enable = true;

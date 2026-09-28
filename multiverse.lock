@@ -388,6 +388,12 @@
       "date": "2026-09-17",
       "constraint": "2.4.9"
     },
+    "go-licenses": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.0.1",
+      "date": "2026-09-17"
+    },
     "go-tools": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

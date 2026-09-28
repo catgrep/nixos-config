@@ -26,6 +26,7 @@
   "flock"
   "flyctl"
   "gitingest"
+  "go-licenses"
   "golangci-lint"
   "gopls"
   "gotests"

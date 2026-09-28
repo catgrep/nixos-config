@@ -1,0 +1,69 @@
+// Zed keymap
+//
+// For information on binding keys, see the Zed
+// documentation: https://zed.dev/docs/key-bindings
+//
+// To see the default key bindings run `zed: open default keymap`
+// from the command palette.
+[
+    {
+        "context": "Workspace",
+        "bindings": {
+            // "shift shift": "file_finder::Toggle"
+        },
+    },
+    {
+        "context": "Editor && vim_mode == insert",
+        "bindings": {
+            // "j k": "vim::NormalBefore"
+        },
+    },
+    {
+        "context": "Workspace",
+        "bindings": {
+            "cmd-alt-g d": "git::Diff",
+        },
+    },
+    // BEGIN zed-gerrit-provider
+    {
+        // MacOS Key Bindings
+        "context": "os == macos && Workspace",
+        "bindings": {
+            "ctrl-cmd-g": [
+                "task::Spawn",
+                {
+                    "reevaluate_context": true,
+                    "task_name": "gerrit_open_review",
+                },
+            ],
+            "ctrl-cmd-k": [
+                "task::Spawn",
+                {
+                    "reevaluate_context": true,
+                    "task_name": "gerrit_copy_permalink",
+                },
+            ],
+        },
+    },
+    {
+        // Linux Key Bindings
+        "context": "os == linux && Workspace",
+        "bindings": {
+            "alt-shift-g": [
+                "task::Spawn",
+                {
+                    "reevaluate_context": true,
+                    "task_name": "gerrit_open_review",
+                },
+            ],
+            "alt-shift-c": [
+                "task::Spawn",
+                {
+                    "reevaluate_context": true,
+                    "task_name": "gerrit_copy_permalink",
+                },
+            ],
+        },
+    },
+    // END zed-gerrit-provider
+]

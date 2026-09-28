@@ -1,0 +1,151 @@
+//
+// Zed settings
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+    "diff_view_style": "unified",
+    "cli_default_open_behavior": "new_window",
+    "agent_servers": {
+        "codex-acp": {
+            "type": "registry"
+        },
+        "claude-acp": {
+            "type": "registry"
+        }
+    },
+    "project_panel": {
+        "dock": "right"
+    },
+    "outline_panel": {
+        "dock": "right"
+    },
+    "collaboration_panel": {
+        "dock": "right"
+    },
+    "git_panel": {
+        "dock": "right"
+    },
+    "edit_predictions": {
+        "provider": "none",
+    },
+    "terminal": {
+        "dock": "bottom",
+    },
+    "ui_font_size": 16,
+    "buffer_font_size": 16,
+    "wrap_guides": [80, 110],
+    "show_whitespaces": "all",
+    "show_wrap_guides": true,
+    "hard_tabs": false,
+    "tab_size": 4,
+    "remove_trailing_whitespace_on_save": true,
+    "ensure_final_newline_on_save": true,
+    "theme": {
+        "mode": "system",
+        "light": "One Light",
+        "dark": "Dracula Solid",
+    },
+    "auto_install_extensions": {
+        "html": true,
+        "dockerfile": true,
+        "docker-compose": false,
+    },
+    // "inlay_hints": {
+    //     "enabled": true,
+    //     "show_type_hints": true,
+    //     "show_parameter_hints": true,
+    //     "show_other_hints": true
+    // },
+    "lsp": {
+        "gopls": {
+            "initialization_options": {
+                "buildFlags": ["-tags=integration e2e sandbox"],
+                "completeUnimported": true,
+                "hints": {
+                    "assignVariableTypes": true,
+                    "compositeLiteralFields": true,
+                    "compositeLiteralTypes": true,
+                    "constantValues": true,
+                    "functionTypeParameters": true,
+                    "parameterNames": true,
+                    "rangeVariableTypes": true,
+                },
+            },
+        },
+        // "nil": {
+        //     "binary": {
+        //         "path": "nixfmt"
+        //     },
+        //     "enable_lsp_tasks": true
+        // }
+    },
+    "telemetry": {
+        // Send debug info like crash reports.
+        "diagnostics": false,
+        // Send anonymized usage data like what languages you're using Zed with.
+        "metrics": false,
+    },
+    "agent": {
+        "dock": "left",
+        "enabled": false,
+    },
+    // "git_hosting_providers": [
+    //     {
+    //         "provider": "gerrit",
+    //         "base_url": "https://gerrit-review.googlesource.com",
+    //         "name": "Google Gerrit Review",
+    //     },
+    // ],
+    // Add external formatter for hcl files
+    "file_types": {
+        "HCL": ["*.hcl"],
+        "HTML": ["*.svg"],
+    },
+    "languages": {
+        "Shell Script": {
+            "format_on_save": "on",
+            "show_completions_on_input": true,
+            "show_whitespaces": "all",
+            "hard_tabs": false,
+            "tab_size": 4,
+            "formatter": {
+                "external": {
+                    "command": "shfmt",
+                    "arguments": ["-i", "4"],
+                },
+            },
+            "inlay_hints": {
+                "enabled": true,
+                "show_parameter_hints": true,
+                "show_value_hints": true,
+            },
+            // "language_servers": ["shellcheck"]
+        },
+        "HCL": {
+            "formatter": {
+                "external": {
+                    "command": "/Users/bobby/go/bin/hclfmt",
+                },
+            },
+        },
+        "C": {
+            "format_on_save": "on",
+            "show_completions_on_input": true,
+            "show_whitespaces": "all",
+        },
+        "Make": {
+            "format_on_save": "on",
+            "show_completions_on_input": true,
+            "show_whitespaces": "all",
+            "hard_tabs": true,
+        },
+        "YAML": {
+            "hard_tabs": false,
+            "tab_size": 2,
+        },
+    },
+}

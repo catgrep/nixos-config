@@ -8,6 +8,7 @@
 {
   imports = [
     ./ghostty.nix
+    ./files.nix
   ];
 
   config = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {

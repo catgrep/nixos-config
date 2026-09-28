@@ -17,6 +17,7 @@
   "crane"
   "curl"
   "delve"
+  "diffoci"
   "dive"
   "docker-compose"
   "doxygen"

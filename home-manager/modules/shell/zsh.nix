@@ -43,8 +43,9 @@ in
         fpath+=("${config.xdg.configHome}/zsh/completions")
       '')
       ''
-        # iTerm2 installs its integration script itself; load it when present.
-        if [[ -e "$HOME/.iterm2_shell_integration.zsh" ]]; then
+        # iTerm2 installs its integration script itself; load it only inside
+        # iTerm2 so other terminals do not get its prompt hooks.
+        if [[ "$TERM_PROGRAM" == iTerm.app && -r "$HOME/.iterm2_shell_integration.zsh" ]]; then
           source "$HOME/.iterm2_shell_integration.zsh"
         fi
 

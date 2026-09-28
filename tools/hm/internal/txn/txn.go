@@ -5,9 +5,10 @@
 // A run takes an exclusive lock file, captures the bytes and hash of every
 // file it may change, writes each file only after confirming nothing else
 // changed it in the meantime (a temporary file renamed into place, so a
-// crash leaves the old file intact), restores every captured file when a
-// step fails before a generation exists, and records what happened in a
-// JSON journal under the repository's .git directory.
+// crash leaves the old file intact), restores the captured files that still
+// hold what it wrote when a step fails before a generation exists, and
+// records what happened in a JSON journal under the repository's .git
+// directory.
 package txn
 
 import (
@@ -30,6 +31,7 @@ const (
 	OutcomeOK           = "ok"
 	OutcomeFailed       = "failed"
 	OutcomeKept         = "kept"
+	OutcomeUnrestored   = "unrestored"
 	OutcomeCommitFailed = "commit-failed"
 )
 
@@ -52,9 +54,10 @@ type Step struct {
 }
 
 // Resolved reports whether the run ended in a state that needs no attention:
-// it finished, and it did not leave edited files behind.
+// it finished, and every file it captured is back to what it was or was
+// deliberately kept for a generation that exists.
 func (j *Journal) Resolved() bool {
-	return j.Finished != nil && j.Outcome != OutcomeKept
+	return j.Finished != nil && j.Outcome != OutcomeKept && j.Outcome != OutcomeUnrestored
 }
 
 // LastStep returns the name of the last step reached, or "start".
@@ -84,7 +87,11 @@ type UnresolvedError struct {
 func (e *UnresolvedError) Error() string {
 	j := e.Journal
 	state := "did not finish"
-	if j.Finished != nil {
+	switch {
+	case j.Finished == nil:
+	case j.Outcome == OutcomeUnrestored:
+		state = "could not restore every file"
+	default:
 		state = "left edited files behind"
 	}
 	return fmt.Sprintf("a previous run (%s, %s) %s at step %s; check the files it lists and remove %s to acknowledge",
@@ -105,6 +112,24 @@ type captured struct {
 	existed bool
 	mode    os.FileMode
 	current string
+}
+
+// start is the hash the file had when it was captured, "" when it did not
+// exist.
+func (c *captured) start() string {
+	if !c.existed {
+		return ""
+	}
+	return Hash(c.orig)
+}
+
+// restore puts the file back to its captured content, removing it when it
+// did not exist.
+func (c *captured) restore(path string) error {
+	if !c.existed {
+		return os.Remove(path)
+	}
+	return writeAtomic(path, c.orig, c.mode)
 }
 
 // Txn is one run.
@@ -288,33 +313,31 @@ func (t *Txn) check(path string, c *captured) error {
 	return nil
 }
 
-// Restore puts every captured file back to its starting content and
-// returns the paths it touched.
-func (t *Txn) Restore() ([]string, error) {
-	var restored []string
+// Restore puts every captured file that still holds what hm last wrote,
+// or last saw, back to its starting content. A file whose content is
+// neither was changed by something else since; it is left as found and
+// returned in kept, so the caller can name it and leave the run
+// unresolved. Both lists are relative to the repository root.
+func (t *Txn) Restore() (restored, kept []string, err error) {
 	var errs []error
 	for _, path := range t.paths() {
 		c := t.files[path]
-		if hashFile(path) == Hash(c.orig) && c.existed == exists(path) {
+		now := hashFile(path)
+		if now != c.current {
+			kept = append(kept, t.rel(path))
 			continue
 		}
-		var err error
-		if c.existed {
-			err = writeAtomic(path, c.orig, c.mode)
-		} else {
-			err = os.Remove(path)
+		if now == c.start() {
+			continue
 		}
-		if err != nil {
+		if err := c.restore(path); err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		c.current = Hash(c.orig)
-		if !c.existed {
-			c.current = ""
-		}
+		c.current = c.start()
 		restored = append(restored, t.rel(path))
 	}
-	return restored, errors.Join(errs...)
+	return restored, kept, errors.Join(errs...)
 }
 
 // Changed lists the captured files whose content differs from the start of
@@ -322,12 +345,7 @@ func (t *Txn) Restore() ([]string, error) {
 func (t *Txn) Changed() []string {
 	var out []string
 	for _, path := range t.paths() {
-		c := t.files[path]
-		start := ""
-		if c.existed {
-			start = Hash(c.orig)
-		}
-		if hashFile(path) != start {
+		if hashFile(path) != t.files[path].start() {
 			out = append(out, t.rel(path))
 		}
 	}
@@ -385,11 +403,6 @@ func hashFile(path string) string {
 		return ""
 	}
 	return Hash(data)
-}
-
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
 
 // writeAtomic writes data to a temporary file next to path and renames it

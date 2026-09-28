@@ -95,6 +95,8 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("FAKE_STATE", h.state)
 	t.Setenv("FAKE_HOME", h.home)
 	t.Setenv("FAKE_NH_FAIL", "")
+	t.Setenv("FAKE_NH_FAIL_AFTER", "")
+	t.Setenv("FAKE_NH_EDIT", "")
 	return h
 }
 
@@ -176,7 +178,12 @@ esac
 `)
 	h.script("nix-store", `cat "$FAKE_DIR/refs.txt"
 `)
-	h.script("nh", `if [ -n "$FAKE_NH_FAIL" ]; then echo "error: builder failed" >&2; exit 1; fi
+	// FAKE_NH_EDIT names a file the fake edits before anything else, as
+	// another program or an editor might while the switch runs.
+	// FAKE_NH_FAIL fails before a generation exists; FAKE_NH_FAIL_AFTER
+	// activates the new generation and then fails.
+	h.script("nh", `if [ -n "$FAKE_NH_EDIT" ]; then echo '# edited elsewhere' >> "$FAKE_NH_EDIT"; fi
+if [ -n "$FAKE_NH_FAIL" ]; then echo "error: builder failed" >&2; exit 1; fi
 case "$1 $2" in
   "home switch")
     n=$(cat "$FAKE_DIR/gen-counter"); n=$((n + 1)); echo "$n" > "$FAKE_DIR/gen-counter"
@@ -185,6 +192,7 @@ case "$1 $2" in
     ln -sfn "$FAKE_STORE/gen-$n" "$FAKE_STATE/nix/profiles/home-manager-$n-link"
     ln -sfn "home-manager-$n-link" "$FAKE_STATE/nix/profiles/home-manager" ;;
 esac
+if [ -n "$FAKE_NH_FAIL_AFTER" ]; then echo "error: activation failed after linking" >&2; exit 1; fi
 `)
 	h.script("go", `case "$1" in
   env) printf '%s\n%s\n' "$FAKE_HOME/go/bin" "$FAKE_HOME/go" ;;
@@ -326,6 +334,40 @@ func TestAddRestoresOnSwitchFailure(t *testing.T) {
 	t.Setenv("FAKE_NH_FAIL", "")
 	if code, out := h.run("add", "zizmor"); code != ExitOK {
 		t.Fatalf("rerun exit %d\n%s", code, out)
+	}
+}
+
+// A file that something else changed while the switch ran no longer holds
+// what hm wrote, so the failed run must leave it as found rather than
+// overwrite the foreign edit, and must stay unresolved until acknowledged.
+func TestAddLeavesForeignEditOnFailure(t *testing.T) {
+	h := newHarness(t)
+	t.Setenv("FAKE_NH_FAIL", "1")
+	t.Setenv("FAKE_NH_EDIT", filepath.Join(h.repo, "home-manager/packages.nix"))
+	code, out := h.run("add", "zizmor")
+	if code != ExitFailed {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{"hm: switch failed", "hm: restored multiverse.lock", "hm: left home-manager/packages.nix as found"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if got := h.read("home-manager/packages.nix"); !strings.Contains(got, "# edited elsewhere") || !strings.Contains(got, "zizmor") {
+		t.Errorf("foreign edit did not survive: %q", got)
+	}
+	if h.read("multiverse.lock") != lockBefore {
+		t.Error("the lock was not restored")
+	}
+	j := h.lastJournal()
+	if j.Outcome != txn.OutcomeUnrestored || j.Resolved() || !strings.Contains(j.Detail, "home-manager/packages.nix") {
+		t.Errorf("journal = %+v", j)
+	}
+	h.git("checkout", "--", ".")
+	t.Setenv("FAKE_NH_FAIL", "")
+	t.Setenv("FAKE_NH_EDIT", "")
+	if code, out := h.run("add", "zizmor"); code != ExitRefused || !strings.Contains(out, "a previous run") {
+		t.Fatalf("unresolved run not refused: exit %d\n%s", code, out)
 	}
 }
 

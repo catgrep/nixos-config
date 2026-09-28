@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -145,12 +146,12 @@ func TestRestore(t *testing.T) {
 	if got := tx.Verify(); len(got) != 0 {
 		t.Errorf("Verify after Adopt = %v", got)
 	}
-	restored, err := tx.Restore()
+	restored, kept, err := tx.Restore()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"created.nix", "list.nix", "lock.json"}; !reflect.DeepEqual(restored, want) {
-		t.Errorf("restored = %v, want %v", restored, want)
+	if want := []string{"created.nix", "list.nix", "lock.json"}; !reflect.DeepEqual(restored, want) || len(kept) != 0 {
+		t.Errorf("restored = %v, kept = %v, want %v and none kept", restored, kept, want)
 	}
 	if got := read(t, r.file("list.nix")); got != "[\n]\n" {
 		t.Errorf("list.nix = %q after restore", got)
@@ -274,5 +275,72 @@ func TestWriteRequiresCapture(t *testing.T) {
 	defer func() { _ = tx.Finish(OutcomeOK, "") }()
 	if err := tx.Write(r.file("list.nix"), []byte("[\n]\n")); err == nil {
 		t.Fatal("Write of an uncaptured file succeeded")
+	}
+}
+
+func TestRestoreLeavesFilesChangedSinceHmWrote(t *testing.T) {
+	r := newRepo(t)
+	write(t, r.file("written.nix"), "[\n]\n")
+	write(t, r.file("untouched.nix"), "[\n]\n")
+	write(t, r.file("mine.nix"), "[\n]\n")
+	tx := begin(t, r)
+	if err := tx.Capture(r.file("written.nix"), r.file("untouched.nix"), r.file("mine.nix"), r.file("created.nix")); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"written.nix", "mine.nix", "created.nix"} {
+		if err := tx.Write(r.file(name), []byte("[\n  \"a\"\n]\n")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Something else edits one file hm wrote and one it only captured.
+	write(t, r.file("written.nix"), "[\n  \"a\"\n  \"theirs\"\n]\n")
+	write(t, r.file("untouched.nix"), "[\n  \"theirs\"\n]\n")
+	restored, kept, err := tx.Restore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"created.nix", "mine.nix"}; !reflect.DeepEqual(restored, want) {
+		t.Errorf("restored = %v, want %v", restored, want)
+	}
+	if want := []string{"untouched.nix", "written.nix"}; !reflect.DeepEqual(kept, want) {
+		t.Errorf("kept = %v, want %v", kept, want)
+	}
+	if got := read(t, r.file("written.nix")); got != "[\n  \"a\"\n  \"theirs\"\n]\n" {
+		t.Errorf("foreign edit overwritten: %q", got)
+	}
+	if got := read(t, r.file("untouched.nix")); got != "[\n  \"theirs\"\n]\n" {
+		t.Errorf("foreign edit overwritten: %q", got)
+	}
+	if got := read(t, r.file("mine.nix")); got != "[\n]\n" {
+		t.Errorf("mine.nix = %q after restore", got)
+	}
+	if _, err := os.Stat(r.file("created.nix")); !errors.Is(err, os.ErrNotExist) {
+		t.Error("created file survived restore")
+	}
+	if got := tx.Changed(); !reflect.DeepEqual(got, []string{"untouched.nix", "written.nix"}) {
+		t.Errorf("Changed after restore = %v", got)
+	}
+	if err := tx.Finish(OutcomeUnrestored, "left as found: untouched.nix, written.nix"); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Begin(r.root, r.gitDir, []string{"hm"}, nil)
+	var unres *UnresolvedError
+	if !errors.As(err, &unres) || !strings.Contains(err.Error(), "could not restore") {
+		t.Fatalf("err = %v, want UnresolvedError naming the restore", err)
+	}
+}
+
+func TestRestoreSkipsAnAbsentFileNeverWritten(t *testing.T) {
+	r := newRepo(t)
+	tx := begin(t, r)
+	if err := tx.Capture(r.file("never.nix")); err != nil {
+		t.Fatal(err)
+	}
+	restored, kept, err := tx.Restore()
+	if err != nil || len(restored) != 0 || len(kept) != 0 {
+		t.Errorf("Restore = %v, %v, %v; want nothing to do", restored, kept, err)
+	}
+	if err := tx.Finish(OutcomeFailed, ""); err != nil {
+		t.Fatal(err)
 	}
 }

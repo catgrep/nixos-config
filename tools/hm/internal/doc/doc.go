@@ -89,7 +89,7 @@ func GlobalFlags() []Flag {
 func Overview() []string {
 	return []string{
 		"hm adds, removes and updates the packages of this repository's Home Manager configuration in one command each. A nixpkgs attribute is pinned through multiverse.lock with mvs, recorded in home-manager/packages.nix and installed with nh home switch. Tools that nixpkgs lacks and that go install, uv tool install or cargo install build are recorded in go-tools.nix, uv-tools.nix and cargo-tools.nix and installed by hm sync with the pinned toolchains.",
-		"Every run that edits files is a transaction around one switch: hm takes a lock under .git/hm.lock, captures the files it may change, writes each one only after checking that nothing else changed it, restores every file if a step fails before a generation exists, and records the run in .git/hm/. Once a generation exists nothing is reverted.",
+		"Every run that edits files is a transaction around one switch: hm takes a lock under .git/hm.lock, captures the files it may change, writes each one only after checking that nothing else changed it, restores every file that still holds what it wrote if a step fails before a generation exists, leaves a file something else changed meanwhile as found and names it, and records the run in .git/hm/. Once a generation exists nothing is reverted.",
 		"hm never commits on its own. After a switch it prints the files it changed and a git commit command scoped to those files; --commit runs that exact command. hm refuses to start when a file it would edit has uncommitted changes, because a path-scoped commit would sweep them in.",
 		"Long output (list, status, doctor, help) goes through a pager when stdout is a terminal: --no-pager disables it, then HM_PAGER, then PAGER, then less -FRX. Output to a pipe is never paged or colored; NO_COLOR also disables color.",
 	}
@@ -376,7 +376,7 @@ func Environment() []EnvVar {
 func ExitCodes() []ExitCode {
 	return []ExitCode{
 		{0, "success"},
-		{1, "the operation failed and every file hm had changed was restored"},
+		{1, "the operation failed; every file hm had changed was restored, except one that no longer held what hm wrote, which is left as found and named"},
 		{2, "usage error"},
 		{3, "refused: a file hm would edit has uncommitted changes, another hm holds the lock, a previous run is unresolved, or the request breaks a rule such as versioning a shared pin"},
 		{4, "the switch succeeded but the commit did not"},

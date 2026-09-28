@@ -136,19 +136,33 @@ func (f *flow) fail(step string, err error) error {
 		_ = f.tx.Finish(txn.OutcomeKept, step+": "+err.Error())
 		return fail(ExitFailed, "%s failed: %v\nhm: the edited files were kept: %s", step, err, strings.Join(f.tx.Changed(), ", "))
 	}
-	restored, rerr := f.tx.Restore()
+	return f.restore(step, err)
+}
+
+// restore puts the captured files back and reports the ones it could not:
+// a file that no longer holds what hm wrote is left as found, and the run
+// stays unresolved until the user has looked at it.
+func (f *flow) restore(step string, err error) error {
+	restored, kept, rerr := f.tx.Restore()
 	detail := step + ": " + err.Error()
-	if len(restored) > 0 {
-		detail += "; restored " + strings.Join(restored, ", ")
-	}
-	_ = f.tx.Finish(txn.OutcomeFailed, detail)
 	msg := fmt.Sprintf("%s failed: %v", step, err)
 	if len(restored) > 0 {
-		msg += fmt.Sprintf("\nhm: restored %s", strings.Join(restored, ", "))
+		detail += "; restored " + strings.Join(restored, ", ")
+		msg += "\nhm: restored " + strings.Join(restored, ", ")
 	}
 	if rerr != nil {
+		detail += "; restore incomplete: " + rerr.Error()
 		msg += fmt.Sprintf("\nhm: restore incomplete: %v", rerr)
 	}
+	if len(kept) > 0 {
+		detail += "; left as found: " + strings.Join(kept, ", ")
+		msg += fmt.Sprintf("\nhm: left %s as found: the content is not what hm last wrote; reconcile it and remove %s to acknowledge", strings.Join(kept, ", "), f.tx.JournalPath())
+	}
+	outcome := txn.OutcomeFailed
+	if len(kept) > 0 || rerr != nil {
+		outcome = txn.OutcomeUnrestored
+	}
+	_ = f.tx.Finish(outcome, detail)
 	return fail(ExitFailed, "%s", msg)
 }
 

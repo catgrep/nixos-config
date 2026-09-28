@@ -7,4 +7,5 @@
   "siliconscope"
   "stacktower"
   "syncthing-app"
+  "vscodium"
 ]

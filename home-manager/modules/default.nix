@@ -4,6 +4,7 @@
   imports = [
     ./direnv.nix
     ./git.nix
+    ./gpg.nix
     ./packages.nix
     ./shell/zsh.nix
   ];

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Shared tmux configuration. The clipboard commands and the load average
+# Shared tmux configuration. The clipboard command and the load average
 # source are the only parts that differ between macOS and Linux.
 {
   lib,
@@ -11,7 +11,6 @@
 let
   darwin = pkgs.stdenv.hostPlatform.isDarwin;
   copyCommand = if darwin then "pbcopy" else "wl-copy";
-  pasteCommand = if darwin then "pbpaste" else "wl-paste";
   loadAverage =
     if darwin then
       "sysctl -n vm.loadavg | awk '{print $2,$3,$4}'"
@@ -55,7 +54,7 @@ in
       bind C-c new-window
       bind C-n next-window
       bind C-p previous-window
-      bind v run "tmux show-buffer | ${pasteCommand} > /dev/null"
+      bind v run "tmux show-buffer | ${copyCommand}"
 
       # Highlighting the active window in status bar
       setw -g window-status-current-style bg=red

@@ -58,8 +58,6 @@ in
 
   home.sessionVariables = {
     PROJ = "${home}/github";
-    GOPATH = "${home}/go";
-    GOBIN = "${home}/go/bin";
     # Silence the buildx warning about read access to paths outside the context.
     BUILDX_BAKE_ENTITLEMENTS_FS = "0";
   };
@@ -68,7 +66,6 @@ in
   home.sessionPath = [
     "${home}/.local/bin"
     "${home}/bin"
-    "${home}/go/bin"
     "${home}/.cargo/bin"
     "${home}/.npm-global/bin"
   ];

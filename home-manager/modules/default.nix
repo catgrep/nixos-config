@@ -7,8 +7,10 @@
     ./git.nix
     ./gpg.nix
     ./packages.nix
+    ./rust.nix
     ./shell/zsh.nix
     ./tmux.nix
+    ./toolchains.nix
     ./vim.nix
   ];
 }

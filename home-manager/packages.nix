@@ -12,6 +12,7 @@
   "colmena"
   "comma"
   "coreutils"
+  "cosign"
   "fd"
   "gitingest"
   "jujutsu"

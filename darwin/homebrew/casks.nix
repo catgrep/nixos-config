@@ -9,4 +9,5 @@
   "syncthing-app"
   "vscodium"
   "wezterm"
+  "whatsapp"
 ]

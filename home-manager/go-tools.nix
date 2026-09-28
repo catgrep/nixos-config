@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [
+  "github.com/arch-go/arch-go/v2@v2.1.2"
   "github.com/fatih/gomodifytags@v1.17.0"
   "github.com/haya14busa/goplay/cmd/goplay@v1.0.0"
   "github.com/josharian/impl@v1.4.0"

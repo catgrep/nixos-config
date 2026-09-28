@@ -33,6 +33,7 @@
   "ko"
   "melange"
   "minikube"
+  "mosh"
   "nil"
   "nix-output-monitor"
   "nixd"

@@ -56,6 +56,7 @@
   "sox"
   "templ"
   "terragrunt"
+  "testkube"
   "yq-go"
   "zizmor"
 ]

@@ -15,6 +15,7 @@
   "cosign"
   "crane"
   "curl"
+  "dive"
   "fd"
   "gitingest"
   "jujutsu"

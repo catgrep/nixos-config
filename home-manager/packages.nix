@@ -55,6 +55,7 @@
   "shfmt"
   "sox"
   "templ"
+  "terragrunt"
   "yq-go"
   "zizmor"
 ]

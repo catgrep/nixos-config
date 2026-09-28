@@ -52,6 +52,7 @@
   "pdfgrep"
   "prek"
   "protoc-gen-go"
+  "protoc-gen-go-grpc"
   "pv"
   "ripgrep"
   "ripgrep-all"

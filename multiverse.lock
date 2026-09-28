@@ -903,6 +903,12 @@
       "version": "1.36.12",
       "date": "2026-09-17"
     },
+    "protoc-gen-go-grpc": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.6.2",
+      "date": "2026-09-17"
+    },
     "prowlarr": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

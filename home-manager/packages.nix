@@ -25,6 +25,7 @@
   "flyctl"
   "gitingest"
   "golangci-lint"
+  "gopls"
   "grype"
   "hugo"
   "jq"

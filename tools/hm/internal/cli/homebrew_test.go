@@ -190,6 +190,10 @@ func TestBrewCleanup(t *testing.T) {
 	if code, _ := h.run("brew", "prune"); code != ExitUsage {
 		t.Errorf("brew prune: exit %d", code)
 	}
+	t.Setenv("FAKE_BREW_FAIL", "1")
+	if code, out := h.run("brew", "cleanup"); code != ExitFailed || !strings.Contains(out, "rb_sysopen") || strings.Contains(out, "nothing to remove") {
+		t.Errorf("a failed preview was not reported: exit %d\n%s", code, out)
+	}
 }
 
 func TestListShowsCasksAndBrews(t *testing.T) {

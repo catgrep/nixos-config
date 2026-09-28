@@ -280,14 +280,14 @@ func (a *App) writeBrewfile() (string, error) {
 
 // previewCleanup prints what brew bundle cleanup would remove. brew exits
 // 1 when something would be removed, which is the answer asked for here,
-// not a failure.
+// not a failure; an exit 1 that listed nothing is one.
 func (a *App) previewCleanup(cmd run.Cmd) error {
 	out, err := a.runner.Output(cmd)
+	text := strings.TrimSpace(string(out))
 	var exit *run.ExitError
-	if err != nil && !(errors.As(err, &exit) && exit.Code == 1) {
+	if err != nil && !(errors.As(err, &exit) && exit.Code == 1 && strings.Contains(text, "Would ")) {
 		return err
 	}
-	text := strings.TrimSpace(string(out))
 	if text == "" {
 		a.say("nothing to remove: everything Homebrew has is in the Brewfile")
 		return nil

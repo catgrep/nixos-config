@@ -112,6 +112,7 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("FAKE_NH_FAIL", "")
 	t.Setenv("FAKE_NH_FAIL_AFTER", "")
 	t.Setenv("FAKE_NH_EDIT", "")
+	t.Setenv("FAKE_BREW_FAIL", "")
 	return h
 }
 
@@ -229,7 +230,8 @@ esac
 	// bundle cleanup copies the Brewfile it was given into the log, so a
 	// test can check what hm handed to brew; the preview exits 1 the way
 	// brew does when something would be removed.
-	h.script("brew", `case "$1 $2" in
+	h.script("brew", `if [ -n "$FAKE_BREW_FAIL" ]; then echo "Error: Operation not permitted @ rb_sysopen" >&2; exit 1; fi
+case "$1 $2" in
   "bundle cleanup")
     for arg in "$@"; do case "$arg" in --file=*) cat "${arg#--file=}" >> "$FAKE_LOG" ;; esac; done
     case " $* " in

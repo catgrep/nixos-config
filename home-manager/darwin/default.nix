@@ -3,7 +3,12 @@
 # Mac-only additions on top of the shared modules. Everything is gated on
 # isDarwin so the Linux hosts, which import this directory too, are
 # unaffected.
-{ lib, pkgs, ... }:
+{
+  lib,
+  pkgs,
+  sagent,
+  ...
+}:
 
 {
   imports = [
@@ -12,6 +17,14 @@
   ];
 
   config = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    # trash moves files to the Finder Trash. It is a nested attribute, which
+    # the lock cannot hold, so it comes from the flake's nixpkgs input.
+    # ast-bro is built by the sagent subflake and is not in nixpkgs at all.
+    home.packages = [
+      pkgs.darwin.trash
+      sagent.packages.${pkgs.stdenv.hostPlatform.system}.ast-bro
+    ];
+
     home.sessionPath = [
       "/opt/homebrew/bin"
       "/opt/homebrew/opt/llvm/bin"

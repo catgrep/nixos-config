@@ -7,6 +7,7 @@
     ./gpg.nix
     ./packages.nix
     ./shell/zsh.nix
+    ./tmux.nix
     ./vim.nix
   ];
 }

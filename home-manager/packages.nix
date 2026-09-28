@@ -20,6 +20,7 @@
   "doxygen"
   "eslint"
   "fd"
+  "ffmpeg"
   "gitingest"
   "jujutsu"
   "just"

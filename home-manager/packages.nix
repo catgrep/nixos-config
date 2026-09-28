@@ -2,6 +2,7 @@
 [
   "actionlint"
   "addlicense"
+  "apko"
   "bat"
   "charasay"
   "colima"

@@ -9,6 +9,7 @@
   "buf"
   "cargo-audit"
   "cargo-deny"
+  "cargo-watch"
   "charasay"
   "cmake"
   "colima"

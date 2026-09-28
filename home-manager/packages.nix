@@ -25,6 +25,7 @@
   "flyctl"
   "gitingest"
   "golangci-lint"
+  "grype"
   "jujutsu"
   "just"
   "nil"

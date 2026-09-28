@@ -408,6 +408,12 @@
       "date": "2026-09-17",
       "constraint": "13.1.4"
     },
+    "grype": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.119.0",
+      "date": "2026-09-17"
+    },
     "hdparm": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

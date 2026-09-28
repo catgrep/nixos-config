@@ -39,6 +39,7 @@
   "jujutsu"
   "just"
   "ko"
+  "mani"
   "melange"
   "minikube"
   "mosh"

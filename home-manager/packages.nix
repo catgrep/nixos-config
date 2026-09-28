@@ -30,6 +30,7 @@
   "jq"
   "jujutsu"
   "just"
+  "ko"
   "nil"
   "nix-output-monitor"
   "nixd"

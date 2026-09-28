@@ -50,6 +50,7 @@
   "pv"
   "ripgrep"
   "ripgrep-all"
+  "rsync"
   "shellcheck"
   "shfmt"
   "yq-go"

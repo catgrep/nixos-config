@@ -16,6 +16,7 @@
   "crane"
   "curl"
   "dive"
+  "docker-compose"
   "fd"
   "gitingest"
   "jujutsu"

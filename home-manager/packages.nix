@@ -8,6 +8,7 @@
   "bats"
   "buf"
   "cargo-audit"
+  "cargo-deny"
   "charasay"
   "cmake"
   "colima"

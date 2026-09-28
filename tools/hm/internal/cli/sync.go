@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/catgrep/nixos-config/tools/hm/internal/nixlist"
 	"github.com/catgrep/nixos-config/tools/hm/internal/sources"
 	"github.com/catgrep/nixos-config/tools/hm/internal/txn"
 )
@@ -33,7 +34,15 @@ func (a *App) cmdSync(opts options, args []string) error {
 	var synced []string
 	for _, k := range kinds {
 		f.step("sync " + k.name)
-		if err := a.syncKind(k, opts.flag("build-only")); err != nil {
+		list, created, err := a.readList(k.file)
+		if err != nil {
+			return f.fail("sync "+k.name, err)
+		}
+		if created {
+			a.say("%s: nothing declared (%s does not exist)", k.name, k.file)
+			continue
+		}
+		if err := a.syncKind(k, list, opts.flag("build-only")); err != nil {
 			return f.fail("sync "+k.name, err)
 		}
 		synced = append(synced, k.name)
@@ -42,18 +51,12 @@ func (a *App) cmdSync(opts options, args []string) error {
 	return nil
 }
 
-// syncKind installs the entries of one list that are missing or at another
-// version. With listOnly it prints the installs and runs none.
-func (a *App) syncKind(k toolKind, listOnly bool) error {
-	list, created, err := a.readList(k.file)
-	if err != nil {
-		return err
-	}
-	if created {
-		a.say("%s: nothing declared (%s does not exist)", k.name, k.file)
-		return nil
-	}
-	installed, err := a.installed(k)
+// syncKind installs the entries of list that are missing or at another
+// version. The list is passed in rather than read from disk, so a dry run
+// reconciles against the proposed list whose diff it printed. With
+// listOnly it prints the installs and runs none.
+func (a *App) syncKind(k toolKind, list *nixlist.List, listOnly bool) error {
+	installed, err := a.installed(k, list.Entries())
 	if err != nil {
 		return err
 	}
@@ -81,8 +84,9 @@ func (a *App) syncKind(k toolKind, listOnly bool) error {
 }
 
 // installed maps the name of each tool this installer has on the machine
-// to its version.
-func (a *App) installed(k toolKind) (map[string]string, error) {
+// to its version. Go binaries carry no tool name, so they are matched
+// against the package patterns of the given list entries.
+func (a *App) installed(k toolKind, entries []string) (map[string]string, error) {
 	out := map[string]string{}
 	switch k.name {
 	case "go":
@@ -90,11 +94,7 @@ func (a *App) installed(k toolKind) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		list, _, err := a.readList(k.file)
-		if err != nil {
-			return nil, err
-		}
-		for _, entry := range list.Entries() {
+		for _, entry := range entries {
 			e, err := sources.ParseGoEntry(entry)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %v", k.file, err)

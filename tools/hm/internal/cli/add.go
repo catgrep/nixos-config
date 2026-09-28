@@ -236,7 +236,7 @@ func (a *App) addTool(k toolKind, entry string, co changeOpts) error {
 	f.step("sync")
 	if co.buildOnly {
 		a.say("not installed; run: hm sync %s", k.name)
-	} else if err := a.syncKind(k, false); err != nil {
+	} else if err := a.syncKind(k, list, false); err != nil {
 		return f.fail("hm sync "+k.name, err)
 	}
 	f.step("report")

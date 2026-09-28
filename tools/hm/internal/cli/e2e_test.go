@@ -584,6 +584,40 @@ func TestAddGoToolBuildOnly(t *testing.T) {
 	}
 }
 
+// A dry run prints the diff of the proposed list, so the install commands
+// it previews must come from that same list, not from the file on disk.
+func TestAddToolDryRunPreviewsInstall(t *testing.T) {
+	h := newHarness(t)
+	code, out := h.run("--dry-run", "add", "--go", "example.com/tool@v1.2.3")
+	if code != ExitOK {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{`+  "example.com/tool@v1.2.3"`, "+ go install example.com/tool@v1.2.3", "go: 0 current, 1 installed"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(h.calls(), "go install") {
+		t.Errorf("dry run installed:\n%s", h.calls())
+	}
+	if status := h.git("status", "--porcelain"); status != "" {
+		t.Errorf("dry run changed files: %q", status)
+	}
+	// Updating an entry previews the new version, not the declared one.
+	h.write("repo", "home-manager/go-tools.nix", "[\n  \"github.com/fatih/gomodifytags@v1.17.0\"\n]\n")
+	h.git("add", ".")
+	h.git("commit", "-q", "-m", "home: add go gomodifytags")
+	code, out = h.run("--dry-run", "add", "--go", "github.com/fatih/gomodifytags@v1.18.0")
+	if code != ExitOK || !strings.Contains(out, "+ go install github.com/fatih/gomodifytags@v1.18.0") || strings.Contains(out, "install github.com/fatih/gomodifytags@v1.17.0") {
+		t.Fatalf("update preview: exit %d\n%s", code, out)
+	}
+	h.script("uv", `case "$1 $2" in "tool list") echo "par-cc-usage v0.9.1"; echo "- par-cc-usage" ;; esac`)
+	code, out = h.run("--dry-run", "add", "--uv", "claude-monitor==3.1.0")
+	if code != ExitOK || !strings.Contains(out, "+ uv tool install --reinstall claude-monitor==3.1.0") {
+		t.Fatalf("uv preview: exit %d\n%s", code, out)
+	}
+}
+
 func TestUp(t *testing.T) {
 	h := newHarness(t)
 	code, out := h.run("up", "jellyfin")

@@ -3,4 +3,5 @@
   "asitop"
   "docker"
   "fprobe"
+  "gocloc"
 ]

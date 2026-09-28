@@ -4,4 +4,5 @@
   "docker"
   "fprobe"
   "gocloc"
+  "lld"
 ]

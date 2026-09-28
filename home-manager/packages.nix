@@ -17,6 +17,7 @@
   "curl"
   "dive"
   "docker-compose"
+  "doxygen"
   "fd"
   "gitingest"
   "jujutsu"

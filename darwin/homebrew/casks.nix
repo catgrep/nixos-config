@@ -5,4 +5,5 @@
   "codex"
   "ghostty"
   "siliconscope"
+  "stacktower"
 ]

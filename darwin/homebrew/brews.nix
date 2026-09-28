@@ -2,4 +2,5 @@
 [
   "asitop"
   "docker"
+  "fprobe"
 ]

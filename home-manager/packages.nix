@@ -58,6 +58,7 @@
   "terragrunt"
   "testkube"
   "traefik"
+  "wget"
   "yq-go"
   "zizmor"
 ]

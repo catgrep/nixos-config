@@ -29,10 +29,14 @@ type flow struct {
 }
 
 // beginFlow refuses when a file hm would own has uncommitted changes,
-// takes the lock and captures the files.
+// takes the lock and captures the files. A run that edits nothing, such
+// as switch or a standalone sync, still takes the lock so it cannot
+// interleave with a run that does.
 func (a *App) beginFlow(files []string, keep bool) (*flow, error) {
-	if err := a.refuseDirty(files...); err != nil {
-		return nil, err
+	if len(files) > 0 {
+		if err := a.refuseDirty(files...); err != nil {
+			return nil, err
+		}
 	}
 	f := &flow{a: a, files: files, keep: keep}
 	if a.dryRun {

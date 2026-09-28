@@ -5,8 +5,10 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/catgrep/nixos-config/tools/hm/internal/sources"
+	"github.com/catgrep/nixos-config/tools/hm/internal/txn"
 )
 
 func (a *App) cmdSync(opts options, args []string) error {
@@ -24,11 +26,19 @@ func (a *App) cmdSync(opts options, args []string) error {
 		}
 		kinds = []toolKind{k}
 	}
-	for _, k := range kinds {
-		if err := a.syncKind(k, opts.flag("build-only")); err != nil {
-			return fail(ExitFailed, "sync %s: %v", k.name, err)
-		}
+	f, err := a.beginFlow(nil, false)
+	if err != nil {
+		return err
 	}
+	var synced []string
+	for _, k := range kinds {
+		f.step("sync " + k.name)
+		if err := a.syncKind(k, opts.flag("build-only")); err != nil {
+			return f.fail("sync "+k.name, err)
+		}
+		synced = append(synced, k.name)
+	}
+	f.finish(txn.OutcomeOK, "synced "+strings.Join(synced, ", "))
 	return nil
 }
 

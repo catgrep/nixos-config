@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -714,6 +715,80 @@ func TestSwitchAndClean(t *testing.T) {
 	code, out = h.run("clean", "--keep", "7")
 	if code != ExitOK || !strings.Contains(h.calls(), "nh clean user --keep 7") {
 		t.Fatalf("clean: exit %d\n%s\n%s", code, out, h.calls())
+	}
+}
+
+// switch and a standalone sync change the machine, so they take the same
+// lock as add and refuse on a held lock or an unresolved run.
+func TestSwitchAndSyncTakeTheLock(t *testing.T) {
+	h := newHarness(t)
+	h.write("repo", "home-manager/go-tools.nix", "[\n  \"github.com/fatih/gomodifytags@v1.17.0\"\n]\n")
+	h.git("add", ".")
+	h.git("commit", "-q", "-m", "home: add go gomodifytags")
+	lock := filepath.Join(h.repo, ".git", "hm.lock")
+	must(t, os.WriteFile(lock, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o644))
+	for _, args := range [][]string{{"switch"}, {"sync", "go"}, {"sync"}} {
+		code, out := h.run(args...)
+		if code != ExitRefused || !strings.Contains(out, "another hm (pid") {
+			t.Errorf("%v with the lock held: exit %d\n%s", args, code, out)
+		}
+	}
+	if calls := h.calls(); strings.Contains(calls, "nh home switch") || strings.Contains(calls, "go install") {
+		t.Errorf("a locked run changed the machine:\n%s", calls)
+	}
+	must(t, os.Remove(lock))
+	t.Setenv("FAKE_NH_FAIL", "1")
+	if code, out := h.run("add", "--keep-on-failure", "zizmor"); code != ExitFailed {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	t.Setenv("FAKE_NH_FAIL", "")
+	h.git("checkout", "--", ".")
+	for _, args := range [][]string{{"switch"}, {"sync", "go"}} {
+		code, out := h.run(args...)
+		if code != ExitRefused || !strings.Contains(out, "a previous run") {
+			t.Errorf("%v on an unresolved run: exit %d\n%s", args, code, out)
+		}
+	}
+	unresolved, err := txn.Unresolved(filepath.Join(h.repo, ".git"))
+	must(t, err)
+	for _, path := range unresolved {
+		must(t, os.Remove(path))
+	}
+	code, out := h.run("switch")
+	if code != ExitOK || !strings.Contains(out, "to generation 21") {
+		t.Fatalf("switch after acknowledging: exit %d\n%s", code, out)
+	}
+	if j := h.lastJournal(); j.Command[1] != "switch" || j.Outcome != txn.OutcomeOK || !j.Resolved() {
+		t.Errorf("switch journal = %+v", j)
+	}
+	if _, err := os.Stat(lock); err == nil {
+		t.Error("switch left the lock behind")
+	}
+	code, out = h.run("sync", "go")
+	if code != ExitOK || !strings.Contains(h.calls(), "go install github.com/fatih/gomodifytags@v1.17.0") {
+		t.Fatalf("sync after acknowledging: exit %d\n%s\n%s", code, out, h.calls())
+	}
+	if j := h.lastJournal(); j.Command[1] != "sync" || j.Outcome != txn.OutcomeOK {
+		t.Errorf("sync journal = %+v", j)
+	}
+	if _, err := os.Stat(lock); err == nil {
+		t.Error("sync left the lock behind")
+	}
+}
+
+// The sync that add --go runs is part of add's own transaction, so it
+// does not contend for the lock add already holds.
+func TestAddGoToolInstallsInsideItsTransaction(t *testing.T) {
+	h := newHarness(t)
+	code, out := h.run("add", "--go", "github.com/fatih/gomodifytags@v1.17.0")
+	if code != ExitOK || !strings.Contains(out, "+ go install github.com/fatih/gomodifytags@v1.17.0") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if !strings.Contains(h.calls(), "go install github.com/fatih/gomodifytags@v1.17.0") {
+		t.Errorf("go install did not run:\n%s", h.calls())
+	}
+	if j := h.lastJournal(); j.Outcome != txn.OutcomeOK || j.LastStep() != "report" {
+		t.Errorf("journal = %+v", j)
 	}
 }
 

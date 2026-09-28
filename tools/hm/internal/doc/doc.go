@@ -89,7 +89,7 @@ func GlobalFlags() []Flag {
 func Overview() []string {
 	return []string{
 		"hm adds, removes and updates the packages of this repository's Home Manager configuration in one command each. A nixpkgs attribute is pinned through multiverse.lock with mvs, recorded in home-manager/packages.nix and installed with nh home switch. Tools that nixpkgs lacks and that go install, uv tool install or cargo install build are recorded in go-tools.nix, uv-tools.nix and cargo-tools.nix and installed by hm sync with the pinned toolchains.",
-		"Every run that edits files is a transaction around one switch: hm takes a lock under .git/hm.lock, captures the files it may change, writes each one only after checking that nothing else changed it, restores every file that still holds what it wrote if a step fails before a generation exists, leaves a file something else changed meanwhile as found and names it, and records the run in .git/hm/. Once a generation exists nothing is reverted.",
+		"Every run that edits files or changes the machine is a transaction: hm takes a lock under .git/hm.lock, captures the files it may change, writes each one only after checking that nothing else changed it, restores every file that still holds what it wrote if a step fails before a generation exists, leaves a file something else changed meanwhile as found and names it, and records the run in .git/hm/. Once a generation exists nothing is reverted.",
 		"hm never commits on its own. After a switch it prints the files it changed and a git commit command scoped to those files; --commit runs that exact command. hm refuses to start when a file it would edit has uncommitted changes, because a path-scoped commit would sweep them in.",
 		"Long output (list, status, doctor, help) goes through a pager when stdout is a terminal: --no-pager disables it, then HM_PAGER, then PAGER, then less -FRX. Output to a pipe is never paged or colored; NO_COLOR also disables color.",
 	}
@@ -197,7 +197,7 @@ func syncCommand() Command {
 		Args:    "[go|uv|cargo]",
 		Summary: "install the go, uv and cargo tools their lists declare",
 		Description: []string{
-			"For every entry of go-tools.nix hm reads the build information of the binaries in GOBIN and runs go install for entries that are missing or at another version, using the go of the current generation. uv-tools.nix is compared with uv tool list and installed with uv tool install --python pointing at the generation's python3; cargo-tools.nix is compared with cargo install --list and installed with cargo install --locked. Entries already at the declared version are left alone. With no argument all three lists are synced.",
+			"For every entry of go-tools.nix hm reads the build information of the binaries in GOBIN and runs go install for entries that are missing or at another version, using the go of the current generation. uv-tools.nix is compared with uv tool list and installed with uv tool install --python pointing at the generation's python3; cargo-tools.nix is compared with cargo install --list and installed with cargo install --locked. Entries already at the declared version are left alone. With no argument all three lists are synced. A standalone sync takes the run lock like switch; the sync that add --go, --uv or --cargo runs is part of that add's own transaction.",
 		},
 		Flags: []Flag{
 			{Name: "build-only", Help: "print the installs hm would run and run none of them"},
@@ -217,7 +217,7 @@ func switchCommand() Command {
 		Args:    "[home|darwin|all]",
 		Summary: "run nh home switch, nh darwin switch or both",
 		Description: []string{
-			"Works from any directory because the flake comes from NH_FLAKE or --flake. The default is home.",
+			"Works from any directory because the flake comes from NH_FLAKE or --flake. The default is home. The run takes the same lock as add, rm and up and is refused while another hm holds it or a previous run is unresolved, so a switch never activates another run's half-edited lists.",
 		},
 		Examples: []Example{
 			{"hm switch", "nh home switch"},

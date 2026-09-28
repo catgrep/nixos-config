@@ -8,36 +8,49 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/catgrep/nixos-config/tools/hm/internal/doc"
 	"github.com/catgrep/nixos-config/tools/hm/internal/sources"
+	"github.com/catgrep/nixos-config/tools/hm/internal/txn"
 )
 
 func (a *App) cmdSwitch(_ options, args []string) error {
 	if len(args) > 1 {
 		return usage("switch takes at most one of home, darwin, all")
 	}
-	if err := a.requireFlake(); err != nil {
-		return err
-	}
 	layer := "home"
 	if len(args) == 1 {
 		layer = args[0]
 	}
-	switch layer {
-	case "home":
-		_, err := a.activate(false)
-		return err
-	case "darwin":
-		return a.nh.DarwinSwitch(a.flake)
-	case "all":
-		if _, err := a.activate(false); err != nil {
-			return err
-		}
-		return a.nh.DarwinSwitch(a.flake)
-	default:
+	if layer != "home" && layer != "darwin" && layer != "all" {
 		return usage("unknown layer %q; expected home, darwin or all", layer)
 	}
+	if err := a.requireFlake(); err != nil {
+		return err
+	}
+	f, err := a.beginFlow(nil, false)
+	if err != nil {
+		return err
+	}
+	var details []string
+	if layer != "darwin" {
+		f.step("switch")
+		detail, err := a.activate(false)
+		if err != nil {
+			return f.fail("switch", err)
+		}
+		details = append(details, detail)
+	}
+	if layer != "home" {
+		f.step("switch darwin")
+		if err := a.nh.DarwinSwitch(a.flake); err != nil {
+			return f.fail("switch darwin", err)
+		}
+		details = append(details, "darwin switched")
+	}
+	f.finish(txn.OutcomeOK, strings.Join(details, "; "))
+	return nil
 }
 
 func (a *App) cmdTry(_ options, args []string) error {

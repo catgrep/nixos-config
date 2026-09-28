@@ -3,6 +3,7 @@
   "actionlint"
   "addlicense"
   "apko"
+  "ast-grep"
   "bat"
   "charasay"
   "colima"

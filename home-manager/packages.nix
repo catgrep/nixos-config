@@ -29,6 +29,7 @@
   "gitingest"
   "go-arch-lint"
   "go-licenses"
+  "go-tools"
   "goda"
   "golangci-lint"
   "gopls"

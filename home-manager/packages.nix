@@ -59,6 +59,7 @@
   "testkube"
   "traefik"
   "wget"
+  "yarn"
   "yq-go"
   "zizmor"
 ]

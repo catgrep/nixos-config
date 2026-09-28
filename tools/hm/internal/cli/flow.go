@@ -340,10 +340,19 @@ func (a *App) describeGeneration(s sources.GenerationState) string {
 }
 
 // diffAgainstCurrent shows what a built generation adds and removes
-// relative to the active one, when nvd is available.
+// relative to the active one.
 func (a *App) diffAgainstCurrent(built string) {
 	current, err := a.currentGeneration()
-	if err != nil || current == built {
+	if err != nil {
+		return
+	}
+	a.diffGenerations(current, built)
+}
+
+// diffGenerations shows what built adds and removes relative to current,
+// when nvd is available.
+func (a *App) diffGenerations(current, built string) {
+	if current == built {
 		return
 	}
 	nvd := a.toolBin("nvd")

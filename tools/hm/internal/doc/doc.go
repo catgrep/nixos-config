@@ -73,7 +73,7 @@ const Summary = "manage the packages of the Home Manager configuration"
 
 // buildOnlyFlag is the --build-only flag add, rm, up and sync share.
 func buildOnlyFlag() Flag {
-	return Flag{Name: "build-only", Help: "do every step except the one that changes the machine: build the new generation with nix build and print its store path instead of activating it, or write and validate a tool list and print the hm sync command instead of running it; --commit is still allowed because the build proved the configuration"}
+	return Flag{Name: "build-only", Help: "do every step except the one that changes the machine: build the new generation, or the nix-darwin system for --cask and --brew, with nix build and print its store path instead of activating it, or write and validate a tool list and print the hm sync command instead of running it; --commit is still allowed because the build proved the configuration"}
 }
 
 // commitFlag is the --commit flag add, rm and up share.
@@ -95,10 +95,10 @@ func GlobalFlags() []Flag {
 // Overview is the description of the program.
 func Overview() []string {
 	return []string{
-		"hm adds, removes and updates the packages of this repository's Home Manager configuration in one command each. A nixpkgs attribute is pinned through multiverse.lock with mvs, recorded in home-manager/packages.nix and installed with nh home switch. Tools that nixpkgs lacks and that go install, uv tool install or cargo install build are recorded in go-tools.nix, uv-tools.nix and cargo-tools.nix and installed by hm sync with the pinned toolchains.",
+		"hm adds, removes and updates the packages of this repository's Home Manager configuration in one command each. A nixpkgs attribute is pinned through multiverse.lock with mvs, recorded in home-manager/packages.nix and installed with nh home switch. Tools that nixpkgs lacks and that go install, uv tool install or cargo install build are recorded in go-tools.nix, uv-tools.nix and cargo-tools.nix and installed by hm sync with the pinned toolchains. On the Mac, Homebrew casks and formulae are recorded in darwin/homebrew/casks.nix and brews.nix and installed by nix-darwin with nh darwin switch; what Homebrew has beyond those lists is removed only by hm brew cleanup.",
 		"Every run that edits files or changes the machine is a transaction: hm takes a lock under .git/hm.lock, captures the files it may change, writes each one only after checking that nothing else changed it, restores every file that still holds what it wrote if a step fails before a generation exists, leaves a file something else changed meanwhile as found and names it, and records the run in .git/hm/. Once a generation exists nothing is reverted.",
 		"hm never commits on its own. After a switch it prints the files it changed and a git commit command scoped to those files; --commit runs that exact command. hm refuses to start when a file it would edit has uncommitted changes, because a path-scoped commit would sweep them in.",
-		"Long output (list, status, doctor, help) goes through a pager when stdout is a terminal: --no-pager disables it, then HM_PAGER, then PAGER, then less -FRX. Output to a pipe is never paged or colored; NO_COLOR also disables color.",
+		"Long output (list, status, doctor, help, the brew cleanup preview) goes through a pager when stdout is a terminal: --no-pager disables it, then HM_PAGER, then PAGER, then less -FRX. Output to a pipe is never paged or colored; NO_COLOR also disables color.",
 	}
 }
 
@@ -110,6 +110,7 @@ func Commands() []Command {
 		upCommand(),
 		syncCommand(),
 		switchCommand(),
+		brewCommand(),
 		listCommand(),
 		statusCommand(),
 		doctorCommand(),
@@ -125,17 +126,20 @@ func addCommand() Command {
 	return Command{
 		Name:     "add",
 		Args:     "NAME[@VERSION]",
-		Synopsis: "hm add [--commit] [--build-only] [--keep-on-failure] [--go | --uv | --cargo] NAME[@VERSION]",
+		Synopsis: "hm add [--commit] [--build-only] [--keep-on-failure] [--cask | --brew | --go | --uv | --cargo] NAME[@VERSION]",
 		Summary:  "pin a package and install it",
 		Description: []string{
 			"Without a source flag NAME is a nixpkgs attribute. hm reuses the pin in multiverse.lock when one exists and otherwise runs mvs lock add NAME[@VERSION]; it then inserts NAME into home-manager/packages.nix in sorted order, validates the file with nix eval, and switches with nh home switch. A version given for an attribute that is already pinned is refused, because the lock is shared with the hosts: changing a shared pin is hm up.",
 			"With --go, --uv or --cargo the argument is appended to go-tools.nix (module/package@vX.Y.Z, /... patterns allowed), uv-tools.nix (package==X.Y.Z) or cargo-tools.nix (crate@X.Y.Z) and the matching hm sync runs. An explicit version is required so the list stays reproducible.",
+			"With --cask or --brew NAME is a Homebrew cask or formula, taken whole (node@22 is a formula name, not a version), appended to darwin/homebrew/casks.nix or brews.nix, and the nix-darwin system is switched with nh darwin switch; --build-only builds it with nix build instead. A tap the name needs is declared by hand in darwin/homebrew/default.nix. Homebrew versions are not pinned.",
 			"Re-running the same command after a failure is safe: an existing pin is reused, a name already in the list is left alone, and only the switch and the commit happen.",
 		},
 		Flags: []Flag{
 			commitFlag(),
 			buildOnlyFlag(),
 			{Name: "keep-on-failure", Help: "leave the edited files in place when a step fails, to inspect a build error against them"},
+			{Name: "cask", Help: "add a Homebrew cask instead of a nixpkgs attribute"},
+			{Name: "brew", Help: "add a Homebrew formula instead of a nixpkgs attribute"},
 			{Name: "go", Help: "add a go install target instead of a nixpkgs attribute"},
 			{Name: "uv", Help: "add a uv tool instead of a nixpkgs attribute"},
 			{Name: "cargo", Help: "add a cargo install crate instead of a nixpkgs attribute"},
@@ -144,6 +148,8 @@ func addCommand() Command {
 			{"hm add zizmor", "pin the newest indexed zizmor and switch"},
 			{"hm add --commit ripgrep@15.1.0", "pin that version, switch and commit"},
 			{"hm add --build-only --commit zizmor", "build the new generation and commit, activate later with hm switch"},
+			{"hm add --cask ghostty", "declare a Homebrew cask and switch the nix-darwin system"},
+			{"hm add --brew --commit docker", "declare a formula, switch and commit \"darwin: add brew docker\""},
 			{"hm add --go github.com/fatih/gomodifytags@v1.17.0", "declare a go install tool and install it"},
 			{"hm add --uv claude-monitor==3.1.0", "declare a uv tool and install it"},
 			{"hm add --cargo wt@0.3.1", "declare a cargo install crate and build it"},
@@ -158,8 +164,9 @@ func rmCommand() Command {
 		Args:    "NAME",
 		Summary: "remove a package from the list that holds it",
 		Description: []string{
-			"NAME is looked up in packages.nix, go-tools.nix (by package path), uv-tools.nix and cargo-tools.nix. A nixpkgs attribute is removed from packages.nix and hm switches. Its pin stays in multiverse.lock unless --prune is given and no other Nix file in the repository names the attribute, in which case hm also runs mvs lock rm; when another file does name it, hm refuses and lists the consumers.",
+			"NAME is looked up in packages.nix, go-tools.nix (by package path), uv-tools.nix, cargo-tools.nix, casks.nix and brews.nix, in that order. A nixpkgs attribute is removed from packages.nix and hm switches. Its pin stays in multiverse.lock unless --prune is given and no other Nix file in the repository names the attribute, in which case hm also runs mvs lock rm; when another file does name it, hm refuses and lists the consumers.",
 			"A go entry is removed from its list and the binaries in GOBIN whose build information names that package are deleted; a uv or cargo entry is removed and uv tool uninstall or cargo uninstall runs.",
+			"A cask or brew is removed from its list and the nix-darwin system is switched. Homebrew keeps the package installed until hm brew cleanup --force removes it.",
 		},
 		Flags: []Flag{
 			{Name: "prune", Help: "also remove the pin from multiverse.lock when nothing else in the repository names it"},
@@ -170,6 +177,7 @@ func rmCommand() Command {
 			{"hm rm charasay", "drop it from packages.nix and switch; the pin stays"},
 			{"hm rm --prune --commit charasay", "also drop the pin, then commit both files"},
 			{"hm rm github.com/fatih/gomodifytags", "remove a go tool and its binary"},
+			{"hm rm --commit ghostty", "drop a cask from casks.nix, switch darwin and commit"},
 		},
 		Complete: CompleteOwned,
 	}
@@ -227,7 +235,7 @@ func switchCommand() Command {
 		Args:    "[home|darwin|all]",
 		Summary: "run nh home switch, nh darwin switch or both",
 		Description: []string{
-			"Works from any directory because the flake comes from NH_FLAKE or --flake. The default is home. The run takes the same lock as add, rm and up and is refused while another hm holds it or a previous run is unresolved, so a switch never activates another run's half-edited lists.",
+			"Works from any directory because the flake comes from NH_FLAKE or --flake. The default is home. darwin switches the nix-darwin system named after this Mac's LocalHostName, which is what installs the Homebrew lists and the launchd agents. The run takes the same lock as add, rm and up and is refused while another hm holds it or a previous run is unresolved, so a switch never activates another run's half-edited lists.",
 		},
 		Examples: []Example{
 			{"hm switch", "nh home switch"},
@@ -238,17 +246,41 @@ func switchCommand() Command {
 	}
 }
 
+func brewCommand() Command {
+	return Command{
+		Name:     "brew",
+		Args:     "cleanup",
+		Synopsis: "hm brew cleanup [--force] [--zap]",
+		Summary:  "preview or remove what Homebrew has beyond the lists",
+		Description: []string{
+			"hm brew cleanup runs brew bundle cleanup against the Brewfile the flake generates for this Mac. The Brewfile is evaluated from darwinConfigurations rather than read from the activated system, so the preview matches what the next nh darwin switch would apply and works before the first one. Without --force it prints, through the pager, every formula, cask and tap Homebrew has that darwin/homebrew/ does not declare, and removes nothing. With --force it uninstalls them; --zap also deletes the data and preferences of the removed casks.",
+			"Activation never removes anything: homebrew.onActivation.cleanup stays none, so a wrong list costs an unwanted install, never a lost one. The --force run takes the run lock like a switch.",
+		},
+		Flags: []Flag{
+			{Name: "force", Help: "remove what the preview lists instead of printing it"},
+			{Name: "zap", Help: "with --force, delete the data of removed casks too"},
+		},
+		Examples: []Example{
+			{"hm brew cleanup", "preview what would be uninstalled and untapped"},
+			{"hm brew cleanup --force", "remove it, keeping cask data and preferences"},
+			{"hm brew cleanup --force --zap", "remove it and delete cask data too"},
+		},
+		Complete: CompleteWords,
+		Words:    []string{"cleanup"},
+	}
+}
+
 func listCommand() Command {
 	return Command{
 		Name:    "list",
 		Args:    "",
 		Summary: "show every installed package with where it came from",
 		Description: []string{
-			"hm reads the Home Manager generation, not the lock, so the rows are what is installed. Each row carries a source tag: pinned (an attribute in multiverse.lock installed through packages.nix or a programs.* module, resolved to the same store path), nixpkgs (an attribute a module takes from the flake's nixpkgs input, which the lock cannot hold), custom (built by this flake: hm, the sagent tools, Home Manager's own activation files), go (every binary in GOBIN with the module and version from its build information), cargo (cargo install --list), uv (uv tool list) and native (executables in the home.sessionPath directories that no other row explains, such as claude). A go, uv or cargo row that its list does not declare is marked undeclared.",
+			"hm reads the Home Manager generation, not the lock, so the rows are what is installed. Each row carries a source tag: pinned (an attribute in multiverse.lock installed through packages.nix or a programs.* module, resolved to the same store path), nixpkgs (an attribute a module takes from the flake's nixpkgs input, which the lock cannot hold), custom (built by this flake: hm, the sagent tools, Home Manager's own activation files), cask and brew (the entries of darwin/homebrew/casks.nix and brews.nix, with the version found in Homebrew's Caskroom or Cellar), go (every binary in GOBIN with the module and version from its build information), cargo (cargo install --list), uv (uv tool list) and native (executables in the home.sessionPath directories that no other row explains, such as claude). A go, uv or cargo row that its list does not declare is marked undeclared.",
 			"The lock pins that are not in the generation are listed at the end, so hm list and hm status together answer what is pinned but not installed and what is installed but not pinned.",
 		},
 		Flags: []Flag{
-			{Name: "source", Arg: "TAG", Help: "show only rows with this source tag", Values: []string{"pinned", "nixpkgs", "custom", "go", "cargo", "uv", "native"}},
+			{Name: "source", Arg: "TAG", Help: "show only rows with this source tag", Values: []string{"pinned", "nixpkgs", "custom", "cask", "brew", "go", "cargo", "uv", "native"}},
 			{Name: "generation", Arg: "PATH", Default: "the active generation", Help: "read a built generation instead, such as the path hm add --build-only printed"},
 		},
 		Examples: []Example{
@@ -264,7 +296,7 @@ func statusCommand() Command {
 		Name:    "status",
 		Summary: "report pin drift, lock minimality, uncommitted files and the last run",
 		Description: []string{
-			"hm prints the pins that mvs lock status reports behind the index, whether mvs lock minimize --check would move any pin onto a shared revision, the uncommitted files under flake.nix, flake.lock, multiverse.lock and home-manager/, and the outcome of the last run recorded in .git/hm/.",
+			"hm prints the pins that mvs lock status reports behind the index, whether mvs lock minimize --check would move any pin onto a shared revision, the uncommitted files under flake.nix, flake.lock, multiverse.lock, home-manager/ and darwin/, and the outcome of the last run recorded in .git/hm/.",
 		},
 		Examples: []Example{
 			{"hm status", "the full report"},
@@ -342,7 +374,7 @@ func completionCommand() Command {
 		Args:    "zsh|bash|fish",
 		Summary: "print the shell completion script",
 		Description: []string{
-			"The script completes subcommands, flags and flag values from this documentation, and asks a hidden hm __complete call for names that depend on state: owned list entries for rm and up, and multiverse index attributes for add and try. The Nix package installs the scripts under share/, so completion works after the first switch without sourcing anything.",
+			"The script completes subcommands, flags and flag values from this documentation, and asks a hidden hm __complete call for names that depend on state: owned list entries for rm and up, multiverse index attributes for add and try, and the casks or formulae Homebrew knows for add --cask and add --brew. The Nix package installs the scripts under share/, so completion works after the first switch without sourcing anything.",
 		},
 		Examples: []Example{
 			{"hm completion zsh > ~/.config/zsh/completions/_hm", "install by hand where the package is not used"},
@@ -400,6 +432,8 @@ func Files() []File {
 		{"home-manager/go-tools.nix", "go install targets as module/package@version"},
 		{"home-manager/uv-tools.nix", "uv tools as package==version"},
 		{"home-manager/cargo-tools.nix", "cargo install crates as crate@version"},
+		{"darwin/homebrew/casks.nix", "Homebrew casks nix-darwin installs on the Mac"},
+		{"darwin/homebrew/brews.nix", "Homebrew formulae nix-darwin installs on the Mac"},
 		{"multiverse.lock", "the shared pins, written by mvs and captured and restored like the lists"},
 		{"flake.lock", "rewritten by nix flake update mvs during hm up"},
 		{".git/hm.lock", "the exclusive lock one run holds, containing its pid"},

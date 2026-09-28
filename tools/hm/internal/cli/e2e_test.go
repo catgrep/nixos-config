@@ -25,6 +25,7 @@ type harness struct {
 	state   string
 	store   string
 	fakeDir string
+	brew    string
 	log     string
 	env     map[string]string
 }
@@ -42,6 +43,8 @@ const lockBefore = `{
 
 const packagesBefore = "# SPDX-License-Identifier: GPL-3.0-or-later\n[\n  \"bat\"\n  \"charasay\"\n  \"ripgrep\"\n]\n"
 
+const emptyList = "# SPDX-License-Identifier: GPL-3.0-or-later\n[\n]\n"
+
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	root := t.TempDir()
@@ -52,9 +55,10 @@ func newHarness(t *testing.T) *harness {
 		state:   filepath.Join(root, "state"),
 		store:   filepath.Join(root, "store"),
 		fakeDir: filepath.Join(root, "fake"),
+		brew:    filepath.Join(root, "brew"),
 		log:     filepath.Join(root, "calls.log"),
 	}
-	for _, d := range []string{h.repo + "/home-manager", h.repo + "/hosts/ser8", h.home, h.state + "/home-manager/gcroots", h.state + "/nix/profiles", h.store + "/gen-20/home-path/bin", h.fakeDir, h.home + "/go/bin"} {
+	for _, d := range []string{h.repo + "/home-manager", h.repo + "/darwin/homebrew", h.repo + "/hosts/ser8", h.home, h.state + "/home-manager/gcroots", h.state + "/nix/profiles", h.state + "/nixvar/profiles", h.store + "/gen-20/home-path/bin", h.fakeDir, h.home + "/go/bin", h.brew + "/Caskroom/ghostty/1.2.3", h.brew + "/Cellar/docker/28.3.3"} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -63,6 +67,8 @@ func newHarness(t *testing.T) *harness {
 	h.write("repo", "flake.lock", "{\"version\": 7}\n")
 	h.write("repo", "multiverse.lock", lockBefore)
 	h.write("repo", "home-manager/packages.nix", packagesBefore)
+	h.write("repo", "darwin/homebrew/casks.nix", emptyList)
+	h.write("repo", "darwin/homebrew/brews.nix", emptyList)
 	h.write("repo", "hosts/ser8/default.nix", "{ pinned, ... }: { services.jellyfin.package = pinned.jellyfin; }\n")
 	h.write("repo", "dev.nix", "with pinned; [ bat ]\n")
 	h.git("init", "-q")
@@ -75,6 +81,8 @@ func newHarness(t *testing.T) *harness {
 	must(t, os.Symlink(filepath.Join(h.store, "gen-20"), filepath.Join(h.state, "nix/profiles/home-manager-20-link")))
 	must(t, os.Symlink("home-manager-20-link", filepath.Join(h.state, "nix/profiles/home-manager")))
 	h.write("fake", "gen-counter", "20\n")
+	h.write("fake", "system-counter", "0\n")
+	h.write("fake", "Brewfile", "tap \"peonping/tap\"\nbrew \"docker\"\ncask \"ghostty\"\n")
 	h.write("fake", "lock-after-add.json", strings.Replace(lockBefore, `    "ripgrep":`, `    "zizmor": {"rev": "e554", "label": "2026-09-17-e554", "version": "1.30.1", "date": "2026-09-17", "constraint": null},
     "ripgrep":`, 1))
 	h.write("fake", "lock-after-rm.json", strings.Replace(lockBefore, `    "charasay": {"rev": "64c0", "label": "2026-08-01-64c0", "version": "3.3.0", "date": "2026-08-01", "constraint": null},
@@ -85,11 +93,13 @@ func newHarness(t *testing.T) *harness {
 	h.write("fake", "version-ripgrep.json", `{"version":"15.1.0","pname":"ripgrep","system":"aarch64-darwin"}`)
 	h.fakes()
 	h.env = map[string]string{
-		"HOME":           h.home,
-		"XDG_STATE_HOME": h.state,
-		"NH_FLAKE":       h.repo,
-		"USER":           "tester",
-		"PATH":           h.fakeDir + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"HOME":            h.home,
+		"XDG_STATE_HOME":  h.state,
+		"NH_FLAKE":        h.repo,
+		"USER":            "tester",
+		"PATH":            h.fakeDir + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"HOMEBREW_PREFIX": h.brew,
+		"NIX_STATE_DIR":   h.state + "/nixvar",
 	}
 	t.Setenv("PATH", h.env["PATH"])
 	t.Setenv("FAKE_LOG", h.log)
@@ -97,6 +107,7 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("FAKE_REPO", h.repo)
 	t.Setenv("FAKE_STORE", h.store)
 	t.Setenv("FAKE_STATE", h.state)
+	t.Setenv("FAKE_BREW", h.brew)
 	t.Setenv("FAKE_HOME", h.home)
 	t.Setenv("FAKE_NH_FAIL", "")
 	t.Setenv("FAKE_NH_FAIL_AFTER", "")
@@ -170,6 +181,7 @@ esac
 	// to on this system; the answer is version-ATTR.json, or null when no
 	// such file exists. Any other expression is the list resolution.
 	h.script("nix", `case "$1 $2" in
+  "eval --raw") cat "$FAKE_DIR/Brewfile" ;;
   "eval --json")
     if [ "$3" = "--file" ]; then
       if grep -q BROKEN "$4"; then echo "error: undefined variable 'BROKEN'" >&2; exit 1; fi
@@ -201,6 +213,11 @@ case "$1 $2" in
     ln -sfn "$FAKE_STORE/gen-$n" "$FAKE_STATE/home-manager/gcroots/current-home"
     ln -sfn "$FAKE_STORE/gen-$n" "$FAKE_STATE/nix/profiles/home-manager-$n-link"
     ln -sfn "home-manager-$n-link" "$FAKE_STATE/nix/profiles/home-manager" ;;
+  "darwin switch")
+    n=$(cat "$FAKE_DIR/system-counter"); n=$((n + 1)); echo "$n" > "$FAKE_DIR/system-counter"
+    mkdir -p "$FAKE_STORE/system-$n"
+    ln -sfn "$FAKE_STORE/system-$n" "$FAKE_STATE/nixvar/profiles/system-$n-link"
+    ln -sfn "system-$n-link" "$FAKE_STATE/nixvar/profiles/system" ;;
 esac
 if [ -n "$FAKE_NH_FAIL_AFTER" ]; then echo "error: activation failed after linking" >&2; exit 1; fi
 `)
@@ -209,6 +226,20 @@ if [ -n "$FAKE_NH_FAIL_AFTER" ]; then echo "error: activation failed after linki
 esac
 `)
 	h.script("nvd", "")
+	// bundle cleanup copies the Brewfile it was given into the log, so a
+	// test can check what hm handed to brew; the preview exits 1 the way
+	// brew does when something would be removed.
+	h.script("brew", `case "$1 $2" in
+  "bundle cleanup")
+    for arg in "$@"; do case "$arg" in --file=*) cat "${arg#--file=}" >> "$FAKE_LOG" ;; esac; done
+    case " $* " in
+      *" --force "*) echo "Uninstalled 2 formulae" ;;
+      *) printf 'Would uninstall formulae:\ngcc\nnode@18\nRun \x60brew bundle cleanup --force\x60 to make these changes.\n'; exit 1 ;;
+    esac ;;
+  "casks "*) printf 'ghostty\nghostty@tip\nzed\n' ;;
+  "formulae "*) printf 'dive\ndocker\n' ;;
+esac
+`)
 }
 
 // run invokes hm with the harness environment and returns the exit code

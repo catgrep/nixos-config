@@ -25,7 +25,10 @@ const (
 	fileGoTools   = "home-manager/go-tools.nix"
 	fileUvTools   = "home-manager/uv-tools.nix"
 	fileCargo     = "home-manager/cargo-tools.nix"
+	fileCasks     = "darwin/homebrew/casks.nix"
+	fileBrews     = "darwin/homebrew/brews.nix"
 	dirModules    = "home-manager"
+	dirDarwin     = "darwin"
 )
 
 // spdxHeader is the first line of every list hm creates.
@@ -33,7 +36,7 @@ const spdxHeader = "# SPDX-License-Identifier: GPL-3.0-or-later"
 
 // ownedLists returns the data files hm parses and writes.
 func ownedLists() []string {
-	return []string{filePackages, fileGoTools, fileUvTools, fileCargo}
+	return []string{filePackages, fileGoTools, fileUvTools, fileCargo, fileCasks, fileBrews}
 }
 
 // readList parses an owned list, returning an empty list and created=true
@@ -61,8 +64,7 @@ func (a *App) mvsFromFlake() run.Mvs {
 	return run.NewMvs(a.runner, []string{"nix", "run", a.flake + "#mvs", "--"}, a.path(fileLock))
 }
 
-// configName is the homeConfigurations attribute nh selects: user@host,
-// with the host from LocalHostName on macOS.
+// configName is the homeConfigurations attribute nh selects: user@host.
 func (a *App) configName() string {
 	name := a.env.Getenv("USER")
 	if name == "" {
@@ -70,17 +72,23 @@ func (a *App) configName() string {
 			name = u.Username
 		}
 	}
-	host := ""
+	return name + "@" + a.hostName()
+}
+
+// hostName is the host part nh uses to select a configuration:
+// LocalHostName on macOS, else the short hostname. It also names the
+// darwinConfigurations attribute.
+func (a *App) hostName() string {
 	if runtime.GOOS == "darwin" {
 		if out, err := exec.Command("scutil", "--get", "LocalHostName").Output(); err == nil {
-			host = strings.TrimSpace(string(out))
+			if host := strings.TrimSpace(string(out)); host != "" {
+				return host
+			}
 		}
 	}
-	if host == "" {
-		h, _ := os.Hostname()
-		host, _, _ = strings.Cut(h, ".")
-	}
-	return name + "@" + host
+	h, _ := os.Hostname()
+	host, _, _ := strings.Cut(h, ".")
+	return host
 }
 
 // currentGeneration returns the active generation's store path.

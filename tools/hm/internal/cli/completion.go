@@ -72,7 +72,7 @@ func (a *App) candidates(args []string) []string {
 	if strings.HasPrefix(cur, "-") {
 		return filterPrefix(append(flagNames(cmd.Flags), flagNames(doc.GlobalFlags())...), cur)
 	}
-	return filterPrefix(a.positional(cmd, cur), cur)
+	return filterPrefix(a.positional(cmd, rest, cur), cur)
 }
 
 func flagNames(flags []doc.Flag) []string {
@@ -105,8 +105,9 @@ func filterPrefix(items []string, prefix string) []string {
 	return out
 }
 
-// positional returns the candidates for a command's argument.
-func (a *App) positional(cmd doc.Command, cur string) []string {
+// positional returns the candidates for a command's argument, given the
+// words already typed after the command name.
+func (a *App) positional(cmd doc.Command, rest []string, cur string) []string {
 	switch cmd.Complete {
 	case doc.CompleteWords:
 		return cmd.Words
@@ -135,11 +136,19 @@ func (a *App) positional(cmd doc.Command, cur string) []string {
 					}
 				}
 			}
+			for _, k := range homebrewKinds() {
+				if list, created, err := a.readList(k.file); err == nil && !created {
+					out = append(out, list.Entries()...)
+				}
+			}
 		}
 		return out
 	case doc.CompleteAttr:
 		if a.requireFlake() != nil || len(cur) == 0 {
 			return nil
+		}
+		if k, ok := homebrewFlag(rest); ok {
+			return a.homebrewNames(k)
 		}
 		matches, err := a.mvs().Search(cur+"*", 50)
 		if err != nil {

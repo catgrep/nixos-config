@@ -204,6 +204,36 @@ func resolveLink(link string) (string, error) {
 	return target, nil
 }
 
+// DarwinProfile is the nix-darwin system profile link: profiles/system
+// under $NIX_STATE_DIR or /nix/var/nix.
+func DarwinProfile(getenv func(string) string) string {
+	dir := getenv("NIX_STATE_DIR")
+	if dir == "" {
+		dir = "/nix/var/nix"
+	}
+	return filepath.Join(dir, "profiles", "system")
+}
+
+// ReadDarwinState resolves the nix-darwin system profile to the active
+// system's store path, "" when no system has been activated yet.
+func ReadDarwinState(getenv func(string) string) (string, error) {
+	return resolveLink(DarwinProfile(getenv))
+}
+
+// DarwinGenerationNumber returns the number of the active nix-darwin
+// generation from the system profile link, or 0 when there is none.
+func DarwinGenerationNumber(getenv func(string) string) int {
+	target, err := os.Readlink(DarwinProfile(getenv))
+	if err != nil {
+		return 0
+	}
+	if m := regexp.MustCompile(`system-(\d+)-link$`).FindStringSubmatch(target); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	return 0
+}
+
 // GenerationNumber returns the number of the active generation from the
 // home-manager profile link, or 0 when there is none.
 func GenerationNumber(home string, getenv func(string) string) int {

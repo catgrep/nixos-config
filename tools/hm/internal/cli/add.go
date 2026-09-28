@@ -38,14 +38,21 @@ func (a *App) cmdAdd(opts options, args []string) error {
 			kinds = append(kinds, k)
 		}
 	}
-	switch len(kinds) {
-	case 0:
-		return a.addAttr(args[0], co)
-	case 1:
-		return a.addTool(kinds[0], args[0], co)
-	default:
-		return usage("--go, --uv and --cargo exclude each other")
+	var brews []homebrewKind
+	for _, k := range homebrewKinds() {
+		if opts.flag(k.name) {
+			brews = append(brews, k)
+		}
 	}
+	switch {
+	case len(kinds)+len(brews) > 1:
+		return usage("--cask, --brew, --go, --uv and --cargo exclude each other")
+	case len(brews) == 1:
+		return a.addHomebrew(brews[0], args[0], co)
+	case len(kinds) == 1:
+		return a.addTool(kinds[0], args[0], co)
+	}
+	return a.addAttr(args[0], co)
 }
 
 // addAttr pins a nixpkgs attribute, records it in packages.nix and

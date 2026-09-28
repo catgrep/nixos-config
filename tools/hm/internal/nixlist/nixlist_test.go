@@ -28,7 +28,7 @@ func parseGolden(t *testing.T, name string) *List {
 }
 
 func TestRoundTrip(t *testing.T) {
-	for _, name := range []string{"packages.nix", "comments.nix", "empty.nix", "go-tools.nix"} {
+	for _, name := range []string{"packages.nix", "comments.nix", "empty.nix", "go-tools.nix", "casks.nix", "brews.nix"} {
 		t.Run(name, func(t *testing.T) {
 			in := golden(t, name)
 			l, err := Parse(name, in)
@@ -55,6 +55,8 @@ func TestParseEntries(t *testing.T) {
 			"github.com/fatih/gomodifytags@v1.17.0",
 			"sigs.k8s.io/kubetest2/...@v0.0.0-20240905095256-f6e8664cd2b1",
 		}},
+		{"casks.nix", []string{"anaconda", "ghostty", "stacktower", "syncthing-app"}},
+		{"brews.nix", []string{"docker", "lld", "node@22", "peon-ping"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.file, func(t *testing.T) {

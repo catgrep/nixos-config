@@ -105,6 +105,7 @@ func (a *App) inventory(genPath string) (*inventory, error) {
 		return string(out), err
 	}, sources.ParseUvList)
 	a.nativeRows(inv, gen, gobin, append(append(goBins, cargoBins...), uvBins...))
+	a.homebrewRows(inv)
 	sort.SliceStable(inv.rows, func(i, j int) bool {
 		if inv.rows[i].Source != inv.rows[j].Source {
 			return sourceOrder(inv.rows[i].Source) < sourceOrder(inv.rows[j].Source)
@@ -115,7 +116,7 @@ func (a *App) inventory(genPath string) (*inventory, error) {
 }
 
 func sourceOrder(s string) int {
-	for i, tag := range []string{"pinned", "nixpkgs", "custom", "go", "cargo", "uv", "native"} {
+	for i, tag := range []string{"pinned", "nixpkgs", "custom", "cask", "brew", "go", "cargo", "uv", "native"} {
 		if tag == s {
 			return i
 		}

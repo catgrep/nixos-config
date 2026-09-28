@@ -59,12 +59,12 @@ func (a *App) statusPins(w io.Writer) {
 
 func (a *App) statusFiles(w io.Writer) {
 	fmt.Fprintln(w, a.bold("uncommitted"))
-	dirty, err := a.git.Dirty("flake.nix", fileFlakeLock, fileLock, dirModules)
+	dirty, err := a.git.Dirty("flake.nix", fileFlakeLock, fileLock, dirModules, dirDarwin)
 	switch {
 	case err != nil:
 		fmt.Fprintf(w, "  git status unavailable: %v\n", err)
 	case len(dirty) == 0:
-		fmt.Fprintln(w, "  nothing under flake.nix, flake.lock, multiverse.lock or home-manager/")
+		fmt.Fprintln(w, "  nothing under flake.nix, flake.lock, multiverse.lock, home-manager/ or darwin/")
 	default:
 		for _, f := range dirty {
 			fmt.Fprintf(w, "  %s\n", f)

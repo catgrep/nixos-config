@@ -63,7 +63,7 @@ func TestHelpText(t *testing.T) {
 	c, _ := Lookup("add")
 	help := Help(c)
 	for _, want := range []string{
-		"Usage: hm add [--commit] [--build-only] [--keep-on-failure]\n       [--go | --uv | --cargo] NAME[@VERSION]",
+		"Usage: hm add [--commit] [--build-only] [--keep-on-failure]\n       [--cask | --brew | --go | --uv | --cargo] NAME[@VERSION]",
 		"Pin a package and install it.",
 		"  --commit ",
 		"  --build-only ",

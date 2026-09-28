@@ -43,7 +43,16 @@ func (a *App) cmdRm(opts options, args []string) error {
 			}
 		}
 	}
-	return usage("%s is not in %s or any tool list", name, filePackages)
+	for _, k := range homebrewKinds() {
+		list, created, err := a.readList(k.file)
+		if err != nil {
+			return err
+		}
+		if !created && list.Has(name) {
+			return a.rmHomebrew(k, name, co)
+		}
+	}
+	return usage("%s is not in %s, a tool list, %s or %s", name, filePackages, fileCasks, fileBrews)
 }
 
 // rmAttr drops an attribute from packages.nix and switches; with prune it

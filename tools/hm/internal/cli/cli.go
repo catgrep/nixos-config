@@ -226,6 +226,7 @@ func (a *App) dispatch(cmd doc.Command, args []string) error {
 		"up":         a.cmdUp,
 		"sync":       a.cmdSync,
 		"switch":     a.cmdSwitch,
+		"brew":       a.cmdBrew,
 		"list":       a.cmdList,
 		"status":     a.cmdStatus,
 		"doctor":     a.cmdDoctor,

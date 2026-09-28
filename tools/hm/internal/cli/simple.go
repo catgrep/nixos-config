@@ -44,10 +44,11 @@ func (a *App) cmdSwitch(_ options, args []string) error {
 	}
 	if layer != "home" {
 		f.step("switch darwin")
-		if err := a.nh.DarwinSwitch(a.flake); err != nil {
+		detail, err := a.activateDarwin(false)
+		if err != nil {
 			return f.fail("switch darwin", err)
 		}
-		details = append(details, "darwin switched")
+		details = append(details, detail)
 	}
 	f.finish(txn.OutcomeOK, strings.Join(details, "; "))
 	return nil

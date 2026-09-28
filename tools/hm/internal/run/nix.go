@@ -28,6 +28,12 @@ func (n Nix) EvalExpr(expr string) (json.RawMessage, error) {
 	return n.r.Output(Cmd{Prog: "nix", Args: []string{"eval", "--json", "--impure", "--expr", expr}})
 }
 
+// EvalRaw evaluates an installable's attribute to its string value.
+func (n Nix) EvalRaw(installable string) (string, error) {
+	out, err := n.r.Output(Cmd{Prog: "nix", Args: []string{"eval", "--raw", installable}})
+	return string(out), err
+}
+
 // Build builds an installable without a result link and returns its output
 // path. Build progress streams to stderr.
 func (n Nix) Build(installable string) (string, error) {

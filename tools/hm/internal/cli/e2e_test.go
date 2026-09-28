@@ -371,6 +371,58 @@ func TestAddLeavesForeignEditOnFailure(t *testing.T) {
 	}
 }
 
+// nh can activate the new generation and still exit non-zero, for
+// instance when a later activation step fails. The generation is then the
+// truth and the edited files are its source, so they must not be restored.
+func TestAddKeepsFilesWhenFailedSwitchActivated(t *testing.T) {
+	h := newHarness(t)
+	t.Setenv("FAKE_NH_FAIL_AFTER", "1")
+	code, out := h.run("add", "zizmor")
+	if code != ExitFailed {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{"hm: switch failed", "generation 21", "were kept: home-manager/packages.nix, multiverse.lock"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "restored") {
+		t.Errorf("files were restored after activation:\n%s", out)
+	}
+	if !strings.Contains(h.read("home-manager/packages.nix"), "zizmor") || !strings.Contains(h.read("multiverse.lock"), `"zizmor"`) {
+		t.Error("the edits were not kept")
+	}
+	j := h.lastJournal()
+	if j.Outcome != txn.OutcomeActivated || j.Resolved() || !strings.Contains(j.Detail, "generation 21") {
+		t.Errorf("journal = %+v", j)
+	}
+	h.git("checkout", "--", ".")
+	t.Setenv("FAKE_NH_FAIL_AFTER", "")
+	if code, out := h.run("add", "zizmor"); code != ExitRefused || !strings.Contains(out, "a previous run") || !strings.Contains(out, "activated") {
+		t.Fatalf("unresolved run not refused: exit %d\n%s", code, out)
+	}
+}
+
+// When the generation links cannot be read after a failed switch, hm
+// cannot tell whether activation happened and must keep the files.
+func TestAddKeepsFilesWhenGenerationUnreadable(t *testing.T) {
+	h := newHarness(t)
+	t.Setenv("FAKE_NH_FAIL", "1")
+	// A dangling profile link is neither absent nor readable.
+	must(t, os.Remove(filepath.Join(h.state, "nix/profiles/home-manager")))
+	must(t, os.Symlink("home-manager-99-link", filepath.Join(h.state, "nix/profiles/home-manager")))
+	code, out := h.run("add", "zizmor")
+	if code != ExitFailed || strings.Contains(out, "restored") || !strings.Contains(out, "cannot be read") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if !strings.Contains(h.read("home-manager/packages.nix"), "zizmor") {
+		t.Error("the edit was not kept")
+	}
+	if j := h.lastJournal(); j.Outcome != txn.OutcomeActivated || j.Resolved() {
+		t.Errorf("journal = %+v", j)
+	}
+}
+
 func TestAddKeepOnFailure(t *testing.T) {
 	h := newHarness(t)
 	t.Setenv("FAKE_NH_FAIL", "1")

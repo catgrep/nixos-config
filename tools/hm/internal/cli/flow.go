@@ -132,6 +132,10 @@ func (f *flow) fail(step string, err error) error {
 	if f.tx == nil {
 		return fail(ExitFailed, "%s failed: %v", step, err)
 	}
+	var activated *activatedError
+	if errors.As(err, &activated) {
+		return f.keepActivated(step, activated)
+	}
 	if f.keep {
 		_ = f.tx.Finish(txn.OutcomeKept, step+": "+err.Error())
 		return fail(ExitFailed, "%s failed: %v\nhm: the edited files were kept: %s", step, err, strings.Join(f.tx.Changed(), ", "))
@@ -163,6 +167,23 @@ func (f *flow) restore(step string, err error) error {
 		outcome = txn.OutcomeUnrestored
 	}
 	_ = f.tx.Finish(outcome, detail)
+	return fail(ExitFailed, "%s", msg)
+}
+
+// keepActivated records a switch that failed after the generation changed:
+// nothing is restored, the edited files are the source of what is now
+// active, and the run stays unresolved until the user has looked at them.
+func (f *flow) keepActivated(step string, e *activatedError) error {
+	changed := f.tx.Changed()
+	msg := fmt.Sprintf("%s failed: %v\nhm: %s", step, e.cause, e.generation)
+	detail := fmt.Sprintf("%s: %v; %s", step, e.cause, e.generation)
+	if len(changed) == 0 {
+		_ = f.tx.Finish(txn.OutcomeFailed, detail)
+		return fail(ExitFailed, "%s", msg)
+	}
+	detail += "; kept " + strings.Join(changed, ", ")
+	msg += fmt.Sprintf("; the edited files are its source and were kept: %s\nhm: review and commit them, then remove %s to acknowledge", strings.Join(changed, ", "), f.tx.JournalPath())
+	_ = f.tx.Finish(txn.OutcomeActivated, detail)
 	return fail(ExitFailed, "%s", msg)
 }
 
@@ -213,32 +234,38 @@ func (f *flow) report(subj string, commit bool) error {
 	return nil
 }
 
+// activatedError is a switch that reported failure after the active
+// generation changed, or while it cannot be determined. The generation is
+// the truth from then on and the edited files are its source, so the
+// caller must keep them rather than restore them.
+type activatedError struct {
+	cause      error
+	generation string
+}
+
+func (e *activatedError) Error() string {
+	return e.cause.Error()
+}
+
+func (e *activatedError) Unwrap() error {
+	return e.cause
+}
+
 // activate switches to the new configuration, or with buildOnly builds
 // the activation package and reports its path. It returns a line
 // describing what happened.
 func (a *App) activate(buildOnly bool) (string, error) {
 	if buildOnly {
-		installable := fmt.Sprintf("%s#homeConfigurations.%q.activationPackage", a.flake, a.configName())
-		path, err := a.nix.Build(installable)
-		if err != nil {
-			return "", err
-		}
-		if a.dryRun {
-			return "would build " + installable, nil
-		}
-		a.say("built %s", path)
-		a.diffAgainstCurrent(path)
-		a.say("not activated; run: hm switch")
-		return "built " + path, nil
+		return a.buildOnly()
 	}
-	before, _ := a.currentGeneration()
+	before, berr := a.generationState()
 	if err := a.nh.HomeSwitch(a.flake); err != nil {
-		return "", err
+		return "", a.switchFailure(before, berr, err)
 	}
 	if a.dryRun {
 		return "would switch", nil
 	}
-	after, err := a.currentGeneration()
+	after, err := a.generationState()
 	if err != nil {
 		return "", err
 	}
@@ -246,13 +273,58 @@ func (a *App) activate(buildOnly bool) (string, error) {
 		a.say("switched %s: generation unchanged", a.configName())
 		return "generation unchanged", nil
 	}
-	n := sources.GenerationNumber(a.home, a.env.Getenv)
-	if n > 0 {
-		a.say("switched %s to generation %d", a.configName(), n)
-		return fmt.Sprintf("generation %d", n), nil
+	detail := a.describeGeneration(after)
+	a.say("switched %s to %s", a.configName(), detail)
+	return detail, nil
+}
+
+// buildOnly builds the activation package without activating it.
+func (a *App) buildOnly() (string, error) {
+	installable := fmt.Sprintf("%s#homeConfigurations.%q.activationPackage", a.flake, a.configName())
+	path, err := a.nix.Build(installable)
+	if err != nil {
+		return "", err
 	}
-	a.say("switched %s to %s", a.configName(), after)
-	return after, nil
+	if a.dryRun {
+		return "would build " + installable, nil
+	}
+	a.say("built %s", path)
+	a.diffAgainstCurrent(path)
+	a.say("not activated; run: hm switch")
+	return "built " + path, nil
+}
+
+func (a *App) generationState() (sources.GenerationState, error) {
+	return sources.ReadGenerationState(a.home, a.env.Getenv)
+}
+
+// switchFailure decides what a non-zero nh exit means. Only a failure
+// that left the active generation where it was is a plain failure the
+// caller may restore from; a changed or unreadable generation is reported
+// as activated, so the edited files are kept as its source.
+func (a *App) switchFailure(before sources.GenerationState, berr, err error) error {
+	after, aerr := a.generationState()
+	switch {
+	case berr != nil:
+		return &activatedError{cause: err, generation: "the generation before the switch cannot be read: " + berr.Error()}
+	case aerr != nil:
+		return &activatedError{cause: err, generation: "the active generation cannot be read: " + aerr.Error()}
+	case after != before:
+		return &activatedError{cause: err, generation: a.describeGeneration(after) + " is now active"}
+	}
+	return err
+}
+
+// describeGeneration names a generation by number when the profile link
+// carries one, else by store path.
+func (a *App) describeGeneration(s sources.GenerationState) string {
+	if n := sources.GenerationNumber(a.home, a.env.Getenv); n > 0 {
+		return fmt.Sprintf("generation %d", n)
+	}
+	if s.Current != "" {
+		return s.Current
+	}
+	return s.Profile
 }
 
 // diffAgainstCurrent shows what a built generation adds and removes

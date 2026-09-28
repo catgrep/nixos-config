@@ -80,6 +80,52 @@ func TestReadGeneration(t *testing.T) {
 	}
 }
 
+func TestReadGenerationState(t *testing.T) {
+	home := t.TempDir()
+	state := filepath.Join(home, ".local", "state")
+	getenv := func(string) string { return "" }
+	got, err := ReadGenerationState(home, getenv)
+	if err != nil || got != (GenerationState{}) {
+		t.Fatalf("no links: %+v, %v", got, err)
+	}
+	profiles := filepath.Join(state, "nix", "profiles")
+	gcroots := filepath.Join(state, "home-manager", "gcroots")
+	gen := filepath.Join(home, "store", "gen-21")
+	for _, d := range []string{profiles, gcroots, gen} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(gen, filepath.Join(profiles, "home-manager-21-link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("home-manager-21-link", filepath.Join(profiles, "home-manager")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(gen, filepath.Join(gcroots, "current-home")); err != nil {
+		t.Fatal(err)
+	}
+	// EvalSymlinks also resolves the temporary directory itself.
+	realGen, err := filepath.EvalSymlinks(gen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = ReadGenerationState(home, getenv)
+	if err != nil || got.Profile != realGen || got.Current != realGen {
+		t.Fatalf("with links: %+v, %v", got, err)
+	}
+	if n := GenerationNumber(home, getenv); n != 21 {
+		t.Errorf("GenerationNumber = %d", n)
+	}
+	// A dangling link is an error, not an absent generation.
+	if err := os.Remove(filepath.Join(profiles, "home-manager-21-link")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadGenerationState(home, getenv); err == nil {
+		t.Error("dangling profile link read as a state")
+	}
+}
+
 func TestReadLock(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "multiverse.lock")
 	content := `{"version":1,"pins":{"ripgrep":{"rev":"d407","label":"2026-08-01-d407","version":"15.1.0","date":"2026-08-01","constraint":"15.1.0"},"nh":{"rev":"e554","label":"l","version":"4.4.2","date":"2026-09-17","constraint":null}}}`

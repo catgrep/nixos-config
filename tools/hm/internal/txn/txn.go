@@ -32,6 +32,7 @@ const (
 	OutcomeFailed       = "failed"
 	OutcomeKept         = "kept"
 	OutcomeUnrestored   = "unrestored"
+	OutcomeActivated    = "activated"
 	OutcomeCommitFailed = "commit-failed"
 )
 
@@ -54,10 +55,13 @@ type Step struct {
 }
 
 // Resolved reports whether the run ended in a state that needs no attention:
-// it finished, and every file it captured is back to what it was or was
-// deliberately kept for a generation that exists.
+// it finished, and it left no edited file behind for the user to look at.
 func (j *Journal) Resolved() bool {
-	return j.Finished != nil && j.Outcome != OutcomeKept && j.Outcome != OutcomeUnrestored
+	switch j.Outcome {
+	case OutcomeKept, OutcomeUnrestored, OutcomeActivated:
+		return false
+	}
+	return j.Finished != nil
 }
 
 // LastStep returns the name of the last step reached, or "start".
@@ -91,6 +95,8 @@ func (e *UnresolvedError) Error() string {
 	case j.Finished == nil:
 	case j.Outcome == OutcomeUnrestored:
 		state = "could not restore every file"
+	case j.Outcome == OutcomeActivated:
+		state = "activated a generation from the edited files while reporting failure"
 	default:
 		state = "left edited files behind"
 	}

@@ -8,6 +8,7 @@ package sources
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -139,9 +140,24 @@ func StateDir(home string, getenv func(string) string) string {
 	return filepath.Join(home, ".local", "state")
 }
 
+// currentHomeLink is the GC root Home Manager points at the active
+// generation.
+func currentHomeLink(home string, getenv func(string) string) string {
+	return filepath.Join(StateDir(home, getenv), "home-manager", "gcroots", "current-home")
+}
+
+// profileLinks are the places the home-manager profile link can live: the
+// state directory, then the per-user profiles directory.
+func profileLinks(home string, getenv func(string) string) []string {
+	return []string{
+		filepath.Join(StateDir(home, getenv), "nix", "profiles", "home-manager"),
+		filepath.Join("/nix/var/nix/profiles/per-user", filepath.Base(home), "home-manager"),
+	}
+}
+
 // CurrentGeneration returns the store path of the active generation.
 func CurrentGeneration(home string, getenv func(string) string) (string, error) {
-	link := filepath.Join(StateDir(home, getenv), "home-manager", "gcroots", "current-home")
+	link := currentHomeLink(home, getenv)
 	target, err := filepath.EvalSymlinks(link)
 	if err != nil {
 		return "", fmt.Errorf("no active Home Manager generation at %s: %w", link, err)
@@ -149,15 +165,55 @@ func CurrentGeneration(home string, getenv func(string) string) (string, error) 
 	return target, nil
 }
 
+// GenerationState identifies the active generation: where the
+// home-manager profile link and the current-home GC root resolve to. A
+// link that does not exist reads as "".
+type GenerationState struct {
+	Profile string
+	Current string
+}
+
+// ReadGenerationState resolves both links. A missing link is not an
+// error; a link that exists but cannot be resolved is, since the state is
+// then unknown.
+func ReadGenerationState(home string, getenv func(string) string) (GenerationState, error) {
+	var s GenerationState
+	for _, link := range profileLinks(home, getenv) {
+		target, err := resolveLink(link)
+		if err != nil {
+			return s, err
+		}
+		if target != "" {
+			s.Profile = target
+			break
+		}
+	}
+	current, err := resolveLink(currentHomeLink(home, getenv))
+	if err != nil {
+		return s, err
+	}
+	s.Current = current
+	return s, nil
+}
+
+// resolveLink follows link to its final target, returning "" when the link
+// itself does not exist.
+func resolveLink(link string) (string, error) {
+	if _, err := os.Lstat(link); errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	target, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		return "", fmt.Errorf("%s cannot be read: %w", link, err)
+	}
+	return target, nil
+}
+
 // GenerationNumber returns the number of the active generation from the
 // home-manager profile link, or 0 when there is none.
 func GenerationNumber(home string, getenv func(string) string) int {
-	candidates := []string{
-		filepath.Join(StateDir(home, getenv), "nix", "profiles", "home-manager"),
-		filepath.Join("/nix/var/nix/profiles/per-user", filepath.Base(home), "home-manager"),
-	}
 	re := regexp.MustCompile(`home-manager-(\d+)-link$`)
-	for _, link := range candidates {
+	for _, link := range profileLinks(home, getenv) {
 		target, err := os.Readlink(link)
 		if err != nil {
 			continue

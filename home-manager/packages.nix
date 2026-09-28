@@ -9,7 +9,6 @@
   "gitingest"
   "jujutsu"
   "just"
-  "nh"
   "nil"
   "nix-output-monitor"
   "nixd"

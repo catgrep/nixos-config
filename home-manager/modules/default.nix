@@ -6,6 +6,7 @@
     ./fzf.nix
     ./git.nix
     ./gpg.nix
+    ./nh.nix
     ./packages.nix
     ./rust.nix
     ./shell/zsh.nix

@@ -34,6 +34,7 @@
   "melange"
   "minikube"
   "mosh"
+  "neovim"
   "nil"
   "nix-output-monitor"
   "nixd"

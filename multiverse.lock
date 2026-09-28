@@ -626,6 +626,12 @@
       "date": "2026-09-17",
       "constraint": "9.2"
     },
+    "neovim": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.12.5",
+      "date": "2026-09-17"
+    },
     "neovim-unwrapped": {
       "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
       "label": "2026-07-19-241313f4e8e5",

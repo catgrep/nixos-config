@@ -6,4 +6,5 @@
   "gocloc"
   "lld"
   "llvm"
+  "openvino"
 ]

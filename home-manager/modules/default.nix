@@ -4,6 +4,7 @@
   imports = [
     ./direnv.nix
     ./fzf.nix
+    ./gh.nix
     ./git.nix
     ./gpg.nix
     ./nh.nix

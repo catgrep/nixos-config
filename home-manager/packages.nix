@@ -13,6 +13,7 @@
   "comma"
   "coreutils"
   "cosign"
+  "crane"
   "fd"
   "gitingest"
   "jujutsu"

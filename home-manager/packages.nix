@@ -27,6 +27,7 @@
   "flock"
   "flyctl"
   "gitingest"
+  "go-arch-lint"
   "go-licenses"
   "goda"
   "golangci-lint"

@@ -28,6 +28,7 @@
   "gitingest"
   "golangci-lint"
   "gopls"
+  "gotestsum"
   "grype"
   "hugo"
   "jq"

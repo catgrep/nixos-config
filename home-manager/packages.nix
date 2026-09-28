@@ -63,6 +63,7 @@
   "openjdk"
   "openssh"
   "openssl"
+  "opus-tools"
   "pandoc"
   "pdfgrep"
   "prek"

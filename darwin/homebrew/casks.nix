@@ -10,4 +10,5 @@
   "vscodium"
   "wezterm"
   "whatsapp"
+  "zed"
 ]

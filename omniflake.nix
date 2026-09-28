@@ -33,6 +33,7 @@ in
   sops-nix = upstream."github:Mic92/sops-nix";
   declarative-jellyfin = upstream."github:Sveske-Juice/declarative-jellyfin";
   rust-overlay = upstream."github:oxalica/rust-overlay";
+  nix-darwin = upstream."github:nix-darwin/nix-darwin";
 
   # Caddy with plugins support (cleaner than withPlugins)
   caddy-nix = upstream."github:vincentbernat/caddy-nix";

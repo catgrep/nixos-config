@@ -117,5 +117,9 @@ let
 in
 {
   x86_64-linux = vmChecks "x86_64-linux" // portableChecks "x86_64-linux";
-  aarch64-darwin = portableChecks "aarch64-darwin";
+  # The Mac's nix-darwin system builds here too, so a broken Homebrew list
+  # or launchd service fails `make check` before nh darwin switch sees it.
+  aarch64-darwin = portableChecks "aarch64-darwin" // {
+    darwin-bob-mac = self.darwinConfigurations."bob-mac".system;
+  };
 }

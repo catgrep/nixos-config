@@ -56,6 +56,7 @@
         sops-nix
         declarative-jellyfin
         rust-overlay
+        nix-darwin
         ;
 
       # No x86_64-darwin: nixpkgs dropped the platform after 26.05, and the
@@ -289,6 +290,14 @@
           inherit mvs rust-overlay sagent;
         };
         modules = [ ./home-manager/users/bobby.nix ];
+      };
+
+      # The Mac's system layer: Homebrew lists and launchd agents. It gets
+      # the same pinned set as the home configuration above.
+      darwinConfigurations."bob-mac" = nix-darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        specialArgs.pinned = pinnedFor "aarch64-darwin";
+        modules = [ ./darwin ];
       };
 
       inherit (sagent) lib;

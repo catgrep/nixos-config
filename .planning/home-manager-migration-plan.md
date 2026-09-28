@@ -322,7 +322,7 @@ ghcup is out of scope and stays untouched.
 **Tools you built with `go install`** split two ways.
 Most are packaged: gopls, delve, buf, protoc-gen-go, protoc-gen-go-grpc, gotestsum, gotests, hclfmt, go-licenses, goda, nfpm, mani, diffoci, go-arch-lint, and `go-tools` for staticcheck.
 Those become pins and `hm add` handles them.
-The rest (gomodifytags and impl are years stale in nixpkgs, kubetest2 and its testers, git-codereview, goplay, arch-go, benchstat, isocule) stay as `go install` targets, declared in `home-manager/go-tools.nix` and installed by `hm sync go`:
+The rest (gomodifytags and impl are years stale in nixpkgs, kubetest2 and its testers, git-codereview, goplay, arch-go, benchstat, html2markdown) stay as `go install` targets, declared in `home-manager/go-tools.nix` and installed by `hm sync go`:
 
 ```nix
 # home-manager/go-tools.nix, written by hm, one entry per line, sorted
@@ -334,6 +334,12 @@ The rest (gomodifytags and impl are years stale in nixpkgs, kubetest2 and its te
 ```
 
 `hm sync go` reads each entry, compares it with the module path and version that `debug/buildinfo` reports for the binary already in `~/go/bin`, and runs `go install` with the pinned toolchain only for entries that are missing or differ.
+`hm sync go --force` reinstalls every entry regardless, which is how the binaries are rebuilt with the Nix toolchain after the switch, since the inventory records versions and not the compiler that built a binary.
+
+`isocule` is not a `go-tools.nix` entry.
+It is a private Gerrit module built from a local checkout, and its binary reports `vcs.modified`, so no `module@version` entry can reproduce it.
+It stays a local `go install` build in `~/go/bin`, with `~/bin/iso` and `~/bin/sol` pointing at it, and `hm doctor` reports it as the one known undeclared binary.
+
 nix-darwin's `homebrew.goPackages` was considered and rejected: `brew bundle` installs Homebrew's own `go` formula to run those entries, appends `@latest` itself so versions cannot be pinned, and does not accept `/...` patterns.
 Every one of those conflicts with a pinned toolchain.
 
@@ -444,16 +450,16 @@ Subcommands:
 
 | Command | Does |
 |---|---|
-| `hm add <attr>[@version]` | reuse or create the pin, insert the attr in `packages.nix`, `nh home switch` |
+| `hm add <attr>[@version]` | reuse or create the pin, insert the attr in `packages.nix`, `nh home switch`; the success line and the commit carry the version the target system resolves, and when the index version in `multiverse.lock` differs both are printed and recorded in the commit body |
 | `hm add --cask <name>` | append to `darwin/homebrew/casks.nix`, `nh darwin switch` |
 | `hm add --brew <name>` | append to `darwin/homebrew/brews.nix`, `nh darwin switch` |
-| `hm add --go <module@version>` | append to `go-tools.nix`, `hm sync go` |
-| `hm add --uv <package==version>` | append to `uv-tools.nix`, `hm sync uv` |
-| `hm add --cargo <crate@version>` | append to `cargo-tools.nix`, `hm sync cargo` |
+| `hm add --go <module@version>` | append to `go-tools.nix`, `hm sync go`; the commit subject names the executable (`home: add go kubetest2-gce v0.0.0-20240905095256`) and the body holds the full `module@version` |
+| `hm add --uv <package==version>` | append to `uv-tools.nix`, `hm sync uv`; the commit subject names the package and the body holds the full entry |
+| `hm add --cargo <crate@version>` | append to `cargo-tools.nix`, `hm sync cargo`; the commit subject names the crate and the body holds the full entry |
 | `hm brew cleanup [--force] [--zap]` | preview what Homebrew would remove against the generated Brewfile; with `--force` remove it, with `--zap` also delete cask data |
 | `hm rm [--prune] <name>` | remove from whichever list holds the name, then the matching switch; `--prune` also drops an unreferenced pin |
 | `hm up [attr] [--repo]` | `nix flake update mvs`, `mvs lock update` for the named or the `packages.nix` pins, `nh home switch` |
-| `hm sync [go|uv|cargo]` | install or reinstall every `go-tools.nix`, `uv-tools.nix` or `cargo-tools.nix` entry whose binary is missing or at another version |
+| `hm sync [go|uv|cargo] [--force]` | install or reinstall every `go-tools.nix`, `uv-tools.nix` or `cargo-tools.nix` entry whose binary is missing or at another version; `--force` reinstalls the matching entries too, so the tools are rebuilt with the pinned toolchains |
 | `hm switch [home|darwin|all]` | `nh home switch`, `nh darwin switch`, or both, from anywhere |
 | `hm list [--source]` | every package in the current Home Manager generation and the imperative sources, with provenance |
 | `hm status` | `mvs lock status`, `mvs lock minimize --check`, uncommitted flake files |
@@ -498,6 +504,8 @@ hm: git -C /Users/bobby/github/catgrep/nixos-config commit -m "home: add zizmor 
 The subject is generated from a template, not by a model: layer, verb, name, version.
 `home: add zizmor 1.30.1`, `home: update ripgrep 15.1.0 to 15.2.0`, `home: remove charasay`, `darwin: add cask ghostty`, `home: add go gomodifytags v1.17.0`.
 `hm add --go` needs an explicit version and refuses `@latest`, so the subject always carries the version it installed.
+A tool commit names the executable rather than the module path, keeps only the timestamp of a Go pseudo-version in the subject, and carries the full `module@version` entry in the body, so the eight kubetest2 commands get distinct subjects within 72 characters.
+`hm add <attr>` puts the version the target system resolves in the subject and, when `multiverse.lock` records another version for the index, names both in the body (`index 21.0.12.1+1, aarch64-darwin resolves zulu-ca-jdk 21.0.11`).
 `hm add --commit` runs that exact command, so the day-to-day path is `hm add --commit zizmor`.
 Commits are signed by your normal git config; nothing in `hm` touches signing.
 
@@ -595,6 +603,7 @@ Nixpkgs attribute names and versions come from the multiverse index on 2026-09-2
 | apko | apko | 1.2.37 | |
 | ast-grep | ast-grep | 0.45.1 | |
 | bats-core | bats | 1.14.0 | |
+| bpm-tools | bpm-tools | 0.3 | |
 | cmake | cmake | 4.4.2 | |
 | coreutils | coreutils | 9.11 | already pinned |
 | cosign | cosign | 3.1.3 | |
@@ -626,8 +635,9 @@ Nixpkgs attribute names and versions come from the multiverse index on 2026-09-2
 | neovim | neovim | 0.12.5 | `neovim-unwrapped` already pinned |
 | node, node@22 | nodejs_24 | 24.20.0 | one Node instead of six |
 | numpy | python3Packages.numpy | n/a | `python3.withPackages` when a project needs it |
-| openjdk | openjdk | 21.0.12.1 | |
+| openjdk | openjdk | 21.0.12.1 | aarch64-darwin resolves zulu-ca-jdk 21.0.11 |
 | openssl@3 | openssl | 3.6.3 | already pinned |
+| opus-tools | opus-tools | 0.2 | |
 | pandoc | pandoc | 3.7.0.2 | |
 | pdfgrep | pdfgrep | 2.2.0 | |
 | pinentry-mac | pinentry_mac | 1.1.1.1 | `services.gpg-agent.pinentry.package` |
@@ -642,6 +652,7 @@ Nixpkgs attribute names and versions come from the multiverse index on 2026-09-2
 | shfmt | shfmt | 3.13.1 | already pinned and in Home Manager |
 | sox | sox | 14.4.2 | |
 | templ | templ | 0.3.1020 | |
+| termshot | termshot | 0.6.1 | |
 | terragrunt | terragrunt | 1.1.3 | drop the bashcompinit hook |
 | tesseract | tesseract | n/a | only if still used |
 | testkube | testkube | 2.12.2 | |
@@ -677,13 +688,15 @@ gopls 0.23.0, delve 1.27.2, buf 1.72.0, protoc-gen-go 1.36.12, protoc-gen-go-grp
 |---|---|---|
 | anaconda, blackhole-16ch, codex, ghostty, siliconscope, stacktower, syncthing, syncthing-app, vscodium, wezterm, whatsapp, zed | `homebrew.casks` | GUI apps; Nix on macOS does not manage `.app` bundles well |
 | docker | `homebrew.brews` | Docker Desktop owns the CLI and socket |
-| openvino, asitop, fprobe, peon-ping, pkgx, omlx, bpm-tools, opus-tools, gocloc, html2markdown | `homebrew.brews` | tap-only, Darwin-only, or stale in nixpkgs |
-| gomodifytags, impl, kubetest2 and testers, git-codereview, goplay, arch-go, benchstat, isocule | `home-manager/go-tools.nix` via `hm sync go` (not Homebrew) | not in nixpkgs or years stale there |
+| openvino, asitop, fprobe, peon-ping, pkgx, omlx, gocloc | `homebrew.brews` | tap-only, Darwin-only, or stale in nixpkgs |
+| llvm, lld | `homebrew.brews` | `/opt/homebrew/opt/llvm/bin` is on PATH and Homebrew cleanup would otherwise remove them; retained until a Nix C toolchain is decided |
+| gomodifytags, impl, kubetest2 and testers, git-codereview, goplay, arch-go, benchstat, html2markdown | `home-manager/go-tools.nix` via `hm sync go` (not Homebrew) | not in nixpkgs or years stale there; `isocule` is the local build exception described in section 3 |
+| borders | `services.jankyborders` (nix-darwin, Phase 3b) | the nixpkgs `jankyborders` binary under the nix-darwin service, which owns the launchd agent |
 | felixkratz/formulae, homeport/tap, jundot/omlx, peonping/tap, stacktower-io/tap | `homebrew.taps` | needed by the rows above |
 
-yabai and skhd move to nixpkgs binaries under nix-darwin's `services.yabai` and `services.skhd`, which own the launchd agents and read your existing rc files.
+yabai, skhd and borders move to nixpkgs binaries under nix-darwin's `services.yabai`, `services.skhd` and `services.jankyborders`, which own the launchd agents and read your existing rc files.
 The `tailscale` launch agent goes with the Tailscale app.
-`homebrew.onActivation.cleanup = "zap"` removes anything not in the lists, which is how the 150 dependency leftovers (llvm, gcc, six Node majors, five OpenSSL versions, four kubectl versions) disappear.
+`homebrew.onActivation.cleanup = "zap"` removes anything not in the lists, which is how the 150 dependency leftovers (gcc, six Node majors, five OpenSSL versions, four kubectl versions) disappear.
 
 ### Native installers (unchanged)
 
@@ -791,7 +804,11 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
    From an agent session the migration runs `hm add --build-only --commit <attr>` for each row, so every addition is built and committed without activating, and the user activates once at the end with `hm switch`.
    Four kinds of row do not go through `hm add` and are handled by hand in this step: attributes a `programs.*` module installs (git, gh, fzf, vim, gpg, uv, yt-dlp, go), Darwin-only attributes that need an `isDarwin` guard (`pinentry_mac`), nested attributes the lock cannot hold (`darwin.trash`, from the nixpkgs input), and ast-bro, which the sagent subflake exports and which `darwin/default.nix` adds to `home.packages` from `sagent.packages`.
    Once the Nix hugo, minikube and nfpm are installed, regenerate their completions in `modules/shell/completions/` from those binaries.
-4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`; `hm add --cargo` for `wt`, `rustlings` and `cargo-deps`, then `hm sync cargo`, which rebuilds them against the Nix toolchain.
+4. `hm add --go` for each `go install` tool in section 5, `hm add --uv claude-monitor==<version>` and `par-cc-usage` followed by `brew uninstall pipx` and `trash ~/.local/pipx`, and `hm add --cargo` for `worktrunk` (the `wt` binary), `rustlings` and `cargo-deps`.
+   After the activation the user runs `hm sync cargo --force` and `hm sync go --force`, which rebuild every declared tool with the Nix toolchains, because a plain sync skips an entry whose installed version already matches.
+   Then `cargo uninstall cargo-audit cargo-careful cargo-deny cargo-watch prek`, because their `~/.cargo/bin` copies became pins, and `trash ~/go/bin/{gopls,dlv,buf,protoc-gen-go,protoc-gen-go-grpc,gotestsum,gotests,hclfmt,go-licenses,goda,nfpm,mani,diffoci,go-arch-lint,staticcheck}` for the fifteen Go binaries that became pins.
+   `programs.gh` owns `~/.config/gh/config.yml`, so the file is moved aside before the switch and its settings are ported into `programs.gh.settings`.
+   The conditional rows (numpy, poppler-utils, tesseract, python-requests) are the user's decision.
 5. Verify the PATH order, which `darwin/default.nix` does not need to change: `home.sessionPath` prepends its entries from `.zshenv`, `path_helper` then places the system directories first, and the `/etc/zshrc` Nix hook prepends the Nix profiles, so from the Phase 2 switch on the order is Nix profiles, system directories, session path entries with `/opt/homebrew/bin` last.
    Because Homebrew now sits after `/usr/bin`, every Homebrew tool that overrides an Apple system tool today (python3, rsync, curl, make, openssl, coreutils) must have moved to a pin before Phase 3 ends.
 
@@ -799,9 +816,9 @@ Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store`
 
 ### Phase 3b: nix-darwin
 
-1. Add `nix-darwin` to `omniflake.nix`, `darwinConfigurations."bob-mac"` to `flake.nix`, and the `darwin/` directory with `homebrew.nix` written from the "declared through nix-darwin" table and `services.nix` for yabai and skhd.
+1. Add `nix-darwin` to `omniflake.nix`, `darwinConfigurations."bob-mac"` to `flake.nix`, and the `darwin/` directory with `homebrew.nix` written from the "declared through nix-darwin" table and `services.nix` for yabai, skhd and borders (`services.jankyborders`).
    Leave `nix.*` settings to Determinate (`nix.enable = false`) so nix-darwin does not fight the installer over `/etc/nix/nix.conf`.
-2. `brew services stop yabai skhd`, then `nh darwin switch`; nix-darwin's launchd agents take over.
+2. `brew services stop yabai skhd borders`, then `nh darwin switch`; nix-darwin's launchd agents take over.
 3. `homebrew.onActivation.cleanup` stays `"none"` permanently, and `homebrew.global.brewfile = true` so plain `brew bundle` commands read the generated Brewfile.
    Removal is a manual, previewed step you run whenever you decide to:
 
@@ -813,7 +830,7 @@ hm brew cleanup --force --zap   # remove them and delete cask data too
 
    Under the hood that is `brew bundle cleanup` against the generated Brewfile, without and with `--force`, and `--zap` adds `--zap`.
    `brew bundle check` is not a substitute: it only confirms declared entries are installed and says nothing about what cleanup would remove.
-   Compare the preview with `brew list --installed-on-request` and `brew list --cask` before the first `--force`; the roughly 150 dependency leftovers (llvm, gcc, six Node majors, five OpenSSL versions, four kubectl versions) are expected there.
+   Compare the preview with `brew list --installed-on-request` and `brew list --cask` before the first `--force`; the roughly 150 dependency leftovers (gcc, six Node majors, five OpenSSL versions, four kubectl versions) are expected there, while llvm and lld stay because `homebrew.brews` lists them.
 4. Extend `hm` with `--cask`, `--brew`, `brew cleanup` and `switch darwin`.
 
 Verify: `hm brew cleanup` prints only entries you expect to lose; `launchctl list | grep -E 'yabai|skhd'` shows the nix-darwin agents; `hm add --cask --commit <name>` round-trips.

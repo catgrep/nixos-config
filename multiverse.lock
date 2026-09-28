@@ -1197,6 +1197,12 @@
       "version": "5.9.1",
       "date": "2026-07-05",
       "constraint": "5.9.1"
+    },
+    "zsh-completions": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.36.0",
+      "date": "2026-09-17"
     }
   }
 }

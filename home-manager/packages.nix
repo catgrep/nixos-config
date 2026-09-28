@@ -63,4 +63,5 @@
   "yq-go"
   "zig"
   "zizmor"
+  "zsh-completions"
 ]

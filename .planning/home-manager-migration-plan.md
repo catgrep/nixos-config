@@ -385,7 +385,7 @@ Examples:
 
 - Long output (`list`, `status`, `doctor`, `help`, `brew cleanup` previews) goes through a pager when stdout is a terminal, in this order: `--no-pager` disables it, then `HM_PAGER`, then `PAGER`, then `less -FRX`.
   Output to a pipe is never paged and never colored; `NO_COLOR` also disables color.
-- Exit codes are documented and stable: 0 success, 1 the operation failed and files were restored, 2 usage error, 3 refused (dirty owned file, lock held, unresolved previous run), 4 switch succeeded but the commit did not.
+- Exit codes are documented and stable: 0 success, 1 the operation failed and files were restored as far as the failure handling below allows, 2 usage error, 3 refused (dirty owned file, lock held, unresolved previous run), 4 switch succeeded but the commit did not.
 - Every subcommand supports `--dry-run`, which prints the commands it would run and the diff it would write.
 - `add`, `rm`, `up` and `sync` also take `--build-only`, which does every step except the one that changes the machine: for a nixpkgs attribute it builds the new generation with `nix build` and prints its store path instead of activating it, and for `--go`, `--uv` or `--cargo` it writes and validates the list and prints the `hm sync` command instead of running it; `--commit` stays allowed because the build proved the configuration.
 - Flags are parsed with the standard library `flag` package per subcommand; global flags (`--no-pager`, `--dry-run`, `--flake PATH` overriding `NH_FLAKE`) are accepted before or after the subcommand name.
@@ -464,6 +464,7 @@ Subcommands:
 ### What `hm list` shows
 
 It reads the Home Manager generation, not the lock, so it shows what is actually installed.
+`hm list --generation PATH` reads a built but unactivated generation, such as the path `hm add --build-only` printed.
 Each row is tagged with where the package came from:
 
 | Source tag | Meaning | Example |
@@ -495,7 +496,8 @@ hm: git -C /Users/bobby/github/catgrep/nixos-config commit -m "home: add zizmor 
 ```
 
 The subject is generated from a template, not by a model: layer, verb, name, version.
-`home: add zizmor 1.30.1`, `home: update ripgrep 15.1.0 to 15.2.0`, `home: remove charasay`, `darwin: add cask ghostty`, `darwin: add go gomodifytags@latest`.
+`home: add zizmor 1.30.1`, `home: update ripgrep 15.1.0 to 15.2.0`, `home: remove charasay`, `darwin: add cask ghostty`, `home: add go gomodifytags v1.17.0`.
+`hm add --go` needs an explicit version and refuses `@latest`, so the subject always carries the version it installed.
 `hm add --commit` runs that exact command, so the day-to-day path is `hm add --commit zizmor`.
 Commits are signed by your normal git config; nothing in `hm` touches signing.
 
@@ -512,8 +514,10 @@ A run is a transaction around one switch, and every write is a compare-and-swap:
    A mismatch means something else changed the file mid-run; `hm` aborts and writes nothing.
    Writes go to a temporary file in the same directory and are renamed into place, so a crash mid-write leaves the old file intact.
 4. Any failure before a generation exists (mvs error, unknown attribute, `nix eval` rejecting the file, a build failure inside `nh home switch`) restores every captured file to its starting bytes and prints the cause.
+   A captured file that no longer holds what `hm` last wrote was changed by something else meanwhile; it is left in place, named in the journal, and the run stays unresolved until the file has been looked at.
    `--keep-on-failure` skips the restore for inspecting a build error against the edited files.
 5. Once a generation exists nothing is reverted; the generation is the new truth.
+   `hm` reads the profile link and the `current-home` root before the switch and again after a non-zero `nh` exit; when they changed, or cannot be read, the restore is skipped, the edited files are kept as the source of what is now active, and the journal records the activated outcome.
    Before an optional commit, `hm` hashes the files once more and refuses to commit if any differ from what it wrote, printing the command instead, so an edit made between switch and commit never rides along under the wrong message.
 6. Re-running the same command after a failure is idempotent: an existing pin is reused, a name already in a list is a no-op, and only the switch and the commit happen.
 
@@ -576,6 +580,7 @@ These data files live outside `modules/` so the module directory's "import every
 The grammar `hm` accepts is exactly that: a bracketed list of double-quoted strings, one per line, with `#` comments allowed between entries; anything else is an error naming the line.
 `hm` parses and re-emits them with a round-trip test, then runs `nix eval --json` on the file before switching, so a malformed edit stops before `nh` sees it.
 The flake also exports the package as `packages.<system>.hm` so `nix run .#hm` works before Home Manager has installed it.
+It exports `packages.<system>.mvs` as well, because `hm up` runs the refreshed mvs through `nix run "$NH_FLAKE#mvs"` after `nix flake update mvs`.
 
 ## 5. Package survey
 

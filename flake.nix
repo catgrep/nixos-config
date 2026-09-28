@@ -92,6 +92,7 @@
             "~/AGENTS.md"
             "~/github/experiments"
             "~/.ssh"
+            "/Users/bobby" # temporary
           ];
           extraWritePaths = [
             "~/github/catgrep/nixos-config"

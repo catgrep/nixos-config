@@ -57,8 +57,12 @@ gsk() {
                 localbranch="$1"
             elif [ -z "$newbase" ]; then
                 newbase="$1"
+            else
+                echo "$0: Unexpected argument: $1"
+                usage
+                return 2
             fi
-            break
+            shift
             ;;
         esac
     done

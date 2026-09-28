@@ -8,4 +8,5 @@
   "stacktower"
   "syncthing-app"
   "vscodium"
+  "wezterm"
 ]

@@ -54,6 +54,7 @@
   "shellcheck"
   "shfmt"
   "sox"
+  "templ"
   "yq-go"
   "zizmor"
 ]

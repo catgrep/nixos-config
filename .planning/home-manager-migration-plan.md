@@ -137,7 +137,7 @@ home-manager/
 
 tools/
   hm/                      # the helper: a Go module, stdlib only, built with buildGoModule
-    default.nix            # buildGoModule with pinned.go_1_27, vendorHash = null
+    default.nix            # buildGoModule with pinned.go_1_27, vendorHash = null; installs hm.1 and the completions
     go.mod                 # module github.com/catgrep/nixos-config/tools/hm, go 1.27
     main.go
     internal/
@@ -376,6 +376,10 @@ Examples:
 - Exit codes are documented and stable: 0 success, 1 the operation failed and files were restored, 2 usage error, 3 refused (dirty owned file, lock held, unresolved previous run), 4 switch succeeded but the commit did not.
 - Every subcommand supports `--dry-run`, which prints the commands it would run and the diff it would write.
 - Flags are parsed with the standard library `flag` package per subcommand; global flags (`--no-pager`, `--dry-run`, `--flake PATH` overriding `NH_FLAKE`) are accepted before or after the subcommand name.
+- Shell completion for zsh, bash and fish.
+  `hm completion <shell>` prints the script, generated from the same `internal/doc` structs, so subcommands, flags and flag values are always current.
+  Names that depend on state are completed dynamically through a hidden `hm __complete <args>` call, the way cobra-based tools do it: `hm rm` and `hm up` complete from the owned lists, `hm add --cask` and `--brew` from `brew search` output cached for a day, and `hm add` without a source flag from the multiverse index through `mvs query`, which reads the local database and returns in well under a second.
+  `tools/hm/default.nix` runs the built binary in `postInstall` and installs `_hm` under `share/zsh/site-functions`, `hm` under `share/bash-completion/completions` and `hm.fish` under `share/fish/vendor_completions.d`; Home Manager's zsh module already puts the profile's `site-functions` on `fpath`, so completion works after the first switch with no extra configuration.
 
 ### Rules for the shared lock
 
@@ -887,8 +891,28 @@ Everything an agent needs that is not in `CLAUDE.md` is here.
 - Never sign commits from an agent session (`-S`, `--gpg-sign`, or leaving `commit.gpgsign` on); run git with `-c commit.gpgsign=false`.
   The user re-signs afterwards with a date-preserving rebase.
 - Never add an agent as co-author.
-- Human checkpoints, where the agent stops and asks: every command that mutates a live host (Phase 4 in full, `make switch-HOST`, `make test-HOST`), entering secret material (`make sops-edit-shared`, the subkey export), `rustup self uninstall`, `hm brew cleanup --force`, and the first `nh home switch` of Phase 1.
-  Repo edits, builds, evaluations, dry runs and tests need no confirmation.
+- Human checkpoints, where the agent stops and asks: every command that mutates a live host (Phase 4 in full, `make switch-HOST`, `make test-HOST`), entering secret material (`make sops-edit-shared`, the subkey export), the first `nh darwin switch` (it takes over `/etc` files and launchd), `rustup self uninstall`, and `hm brew cleanup --force`.
+  Repo edits, builds, evaluations, dry runs, tests, and `nh home switch` on the Mac need no confirmation: a Home Manager switch is user-level and one generation away from rollback.
+- Human-gated work is grouped at the end of the run, not interleaved: agents complete everything that is repo-only or Mac-user-level first (Phases 0 to 3, the repo side of 3b and 4, the docs of 5), then the user works through the gated list in one sitting with the agent preparing each command.
+
+### Orchestration
+
+One orchestrator session manages the run and does not edit files itself.
+It spawns one sub-agent per phase with a fresh context, hands it this document and the phase name, waits for its report, and reviews the result before the next phase starts.
+Between phases the orchestrator runs a Codex review of the diff since the previous review, with sandboxing off, and has the phase's sub-agent (or a new one) apply the findings that hold up:
+
+```bash
+codex exec --dangerously-bypass-approvals-and-sandbox --ephemeral --skip-git-repo-check \
+  -C "$NH_FLAKE" --color never -o .planning/reviews/phase-N-codex.md - <<'EOF'
+Review the commits since <sha> in this repository against .planning/home-manager-migration-plan.md, phase N.
+Do not modify files. Verify option names against the locked Home Manager and nix-darwin sources in the Nix store.
+Report a ranked list: severity, file:line, what is wrong, evidence, concrete fix. Under 1200 words.
+EOF
+```
+
+The review file is committed with `planning: record the codex review of phase N`.
+Findings the orchestrator rejects are listed in that commit's body with the reason.
+The gated list at the end is executed in the orchestrator's own session, one command at a time, each shown to the user before it runs.
 - In the sagent sandbox, `nix` commands that fetch, lock or evaluate impurely need `export XDG_CONFIG_HOME=<scratchpad>/xdg` first.
 - Nix files: `nixfmt-rfc-style` formatting, `statix` clean, `SPDX-License-Identifier: GPL-3.0-or-later` header, lowercase kebab-case filenames, one small module per concern imported through the directory's `default.nix`.
 - Comments state the present design and its reason; no change history ("previously", "used to"), no references to planning phases or this document.
@@ -925,10 +949,20 @@ The subjects `hm` generates (`home: add zizmor 1.30.1`) follow the same rule and
 | 0 | direnv, nix-direnv, nh, nom, nvd pinned and installed through the old flake; `.envrc` extended | `multiverse: pin direnv, nix-direnv, nh, nom and nvd`; `home: enable direnv and install nh`; `flake: ignore .direnv and watch the dev shell inputs` |
 | 1 | root-flake `homeConfigurations`, subflake deleted, state version 26.05, GC root for gen 19 | `flake: export homeConfigurations for bob-mac`; `home: move the package list to packages.nix`; `home: delete the standalone subflake`; `docs: point home-switch at nh` |
 | 2 | shell, git, gpg, vim, tmux, ssh, fzf, ghostty, zed modules; symlinks removed by hand | one `home:` commit per module, `home: add omz custom functions and aliases` |
-| 3 | toolchains, rust-overlay, `tools/hm` with tests and `checks` wiring, packages migrated, PATH order | `flake: select rust-overlay from the omniflake index`; `home: add toolchains and rust modules`; `hm: scaffold the module and the txn package`; `hm: add add, rm and up`; `hm: add list, status and doctor`; `hm: add sync for go, uv and cargo`; `hm: generate the man page and per-subcommand help`; `flake: build and check tools/hm`; then the `home: add <pkg>` commits `hm` generates |
+| 3 | toolchains, rust-overlay, `tools/hm` with tests and `checks` wiring, packages migrated, PATH order | `flake: select rust-overlay from the omniflake index`; `home: add toolchains and rust modules`; `hm: scaffold the module and the txn package`; `hm: add add, rm and up`; `hm: add list, status and doctor`; `hm: add sync for go, uv and cargo`; `hm: generate the man page and per-subcommand help`; `hm: add shell completion for zsh, bash and fish`; `flake: build and check tools/hm`; then the `home: add <pkg>` commits `hm` generates |
 | 3b | nix-darwin, Homebrew lists, yabai and skhd services, `hm brew cleanup` | `flake: select nix-darwin from the omniflake index`; `darwin: add the bob-mac system configuration`; `darwin: declare homebrew casks, brews and taps`; `darwin: run yabai and skhd as launchd services`; `hm: add brew cleanup with a preview` |
 | 4 | account rename prepared in the repo, then executed with the user host by host | `users: rename the host account to bobby`; `secrets: add the git signing subkey for hosts`; `smoketests: check login and sudo on the pis`; after cutover `deploy: connect to hosts as bobby` |
 | 5 | cleanup, docs, `nh clean` enabled | `docs: describe hm and nh in the repo guide`; `home: enable nh clean after the rollback test` |
+
+### The gated list, in order
+
+Run after every agent phase is committed and reviewed:
+
+1. `nh darwin switch` for the first time (Phase 3b), then `hm brew cleanup` preview and, when satisfied, `hm brew cleanup --force`.
+2. `rustup self uninstall` after `cargo --version` resolves to the Nix toolchain (Phase 3).
+3. Export the signing subkey and enter it with `make sops-edit-shared` (Phase 4 preparation).
+4. The account rename on ser8, firebat, pi4, pi5 in that order (Phase 4), then `deploy.yaml` and `etc/nix/machines`.
+5. The rollback exercise and `nh clean` enablement (Phase 5).
 
 ### Definition of done per session
 

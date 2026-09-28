@@ -44,6 +44,7 @@
   "openjdk"
   "openssh"
   "openssl"
+  "pandoc"
   "ripgrep"
   "shellcheck"
   "shfmt"

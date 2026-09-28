@@ -779,6 +779,12 @@
       "date": "2026-09-17",
       "constraint": "17.06"
     },
+    "pandoc": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.7.0.2",
+      "date": "2026-09-17"
+    },
     "pciutils": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
       "label": "2026-09-17-e554fab72f81",

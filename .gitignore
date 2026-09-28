@@ -7,3 +7,6 @@ tmp
 
 # GSD tooling runtime state (dispatch sentinels, not project data)
 .gsd/
+
+# direnv / nix-direnv cache for the dev shell
+.direnv/

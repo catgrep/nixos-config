@@ -123,14 +123,18 @@ home-manager/
     nh.nix                 # programs.nh + the hm helper package
     toolchains.nix         # programs.go, python3, nodejs, uv from pinned
     packages.nix           # Nix list of pinned attribute names, owned by hm
+
+tools/
   hm/                      # the helper: a Go module, stdlib only, built with buildGoModule
-    go.mod
+    default.nix            # buildGoModule with pinned.go_1_27, vendorHash = null
+    go.mod                 # module github.com/catgrep/nixos-config/tools/hm, go 1.27
     main.go
     internal/
       nixlist/             # read and write the string-list files hm owns (with golden tests)
       sources/             # inventory: generation, lock, brew lists, go/bin, cargo, uv, native
       run/                 # mvs, nh, git, nix eval as typed calls
     hm_test.go
+  sagent/                  # existing
   darwin/
     default.nix            # sessionPath, brew PATH after nix, darwin-only packages
     ghostty.nix            # programs.ghostty.settings
@@ -283,7 +287,8 @@ There is no `homebrew.pipPackages`, so a pip tool with no nixpkgs attribute is t
 
 ## 4. The `hm` helper
 
-`hm` is a small Go program in `home-manager/hm/`, built by the flake with `buildGoModule` and installed through `nh.nix`.
+`hm` is a small Go program in `tools/hm/`, next to sagent, with module path `github.com/catgrep/nixos-config/tools/hm` and `go 1.27` in its `go.mod`.
+The flake builds it with `buildGoModule` on the pinned `go_1_27` toolchain and installs it through `nh.nix`.
 It wraps `mvs lock`, `nh home`, `nh darwin` and the nix-darwin Homebrew lists, so adding anything is one command again.
 Go rather than a shell script because every file `hm` edits is a file `hm` must parse back exactly, the inventory needs to read Go build info and TOML, and each of those wants a unit test.
 The standard library covers all of it (`os/exec`, `debug/buildinfo`, `encoding/json`, `text/template`), so `vendorHash` stays `null` and nothing needs re-vendoring.
@@ -346,7 +351,7 @@ Each row is tagged with where the package came from:
 |---|---|---|
 | `pinned` | attribute in `multiverse.lock`, installed through `packages.nix` or a `programs.*` module | ripgrep 15.1.0 |
 | `nixpkgs` | from the flake's nixpkgs input, not pinnable (nested attribute sets) | darwin.trash |
-| `custom` | built in this repo: `packages/`, `home-manager/hm`, the sagent subflake | hm, ast-bro, treehouse |
+| `custom` | built in this repo: `packages/`, `tools/hm`, the sagent subflake | hm, ast-bro, treehouse |
 | `cask`, `brew` | declared in `darwin/homebrew.nix` | ghostty, docker |
 | `go` | every binary in `~/go/bin`, with module path and version read from the binary's build info | gomodifytags v1.17.0 |
 | `cargo` | entries in `~/.cargo/.crates.toml` | cargo-watch 8.5.3 |
@@ -386,13 +391,16 @@ Commits are signed by your normal git config; nothing in `hm` touches signing.
   };
   home.packages = [
     mvs.packages.${pkgs.stdenv.hostPlatform.system}.mvs
-    (pkgs.callPackage ../hm { inherit (pinned) nh git; })
+    (pkgs.callPackage ../../tools/hm {
+      inherit (pinned) nh git;
+      buildGoModule = pkgs.buildGoModule.override { go = pinned.go_1_27; };
+    })
   ];
 }
 ```
 
 ```nix
-# home-manager/hm/default.nix
+# tools/hm/default.nix
 { buildGoModule, makeWrapper, lib, nh, git }:
 buildGoModule {
   pname = "hm";

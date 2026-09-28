@@ -14,5 +14,6 @@
     ./tmux.nix
     ./toolchains.nix
     ./vim.nix
+    ./yt-dlp.nix
   ];
 }

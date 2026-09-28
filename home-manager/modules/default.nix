@@ -3,6 +3,7 @@
 {
   imports = [
     ./direnv.nix
+    ./git.nix
     ./packages.nix
     ./shell/zsh.nix
   ];

@@ -19,7 +19,7 @@ func (a *App) cmdRm(opts options, args []string) error {
 	}
 	co := changeOpts{commit: opts.flag("commit"), buildOnly: opts.flag("build-only")}
 	name := args[0]
-	if err := a.refuseDirty(ownedLists...); err != nil {
+	if err := a.refuseDirty(ownedLists()...); err != nil {
 		return err
 	}
 	pkgs, _, err := a.readList(filePackages)
@@ -29,7 +29,7 @@ func (a *App) cmdRm(opts options, args []string) error {
 	if pkgs.Has(name) {
 		return a.rmAttr(name, opts.flag("prune"), co)
 	}
-	for _, k := range toolKinds {
+	for _, k := range toolKinds() {
 		list, created, err := a.readList(k.file)
 		if err != nil {
 			return err

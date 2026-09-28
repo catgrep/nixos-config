@@ -229,8 +229,9 @@ func (a *App) declaredAttrs(inv *inventory, lock map[string]sources.LockPin) ([]
 	if err != nil {
 		return nil, nil, err
 	}
-	skip := make([]string, len(ownedLists))
-	for i, rel := range ownedLists {
+	owned := ownedLists()
+	skip := make([]string, len(owned))
+	for i, rel := range owned {
 		skip[i] = a.path(rel)
 	}
 	modules := a.path(dirModules)

@@ -71,8 +71,15 @@ const Name = "hm"
 // Summary is the one-line description.
 const Summary = "manage the packages of the Home Manager configuration"
 
-var buildOnly = Flag{Name: "build-only", Help: "do every step except the one that changes the machine: build the new generation with nix build and print its store path instead of activating it, or write and validate a tool list and print the hm sync command instead of running it; --commit is still allowed because the build proved the configuration"}
-var commit = Flag{Name: "commit", Help: "commit the files hm changed with a generated subject such as \"home: add zizmor 1.30.1\""}
+// buildOnlyFlag is the --build-only flag add, rm, up and sync share.
+func buildOnlyFlag() Flag {
+	return Flag{Name: "build-only", Help: "do every step except the one that changes the machine: build the new generation with nix build and print its store path instead of activating it, or write and validate a tool list and print the hm sync command instead of running it; --commit is still allowed because the build proved the configuration"}
+}
+
+// commitFlag is the --commit flag add, rm and up share.
+func commitFlag() Flag {
+	return Flag{Name: "commit", Help: "commit the files hm changed with a generated subject such as \"home: add zizmor 1.30.1\""}
+}
 
 // GlobalFlags are accepted before or after the subcommand name.
 func GlobalFlags() []Flag {
@@ -126,8 +133,8 @@ func addCommand() Command {
 			"Re-running the same command after a failure is safe: an existing pin is reused, a name already in the list is left alone, and only the switch and the commit happen.",
 		},
 		Flags: []Flag{
-			commit,
-			buildOnly,
+			commitFlag(),
+			buildOnlyFlag(),
 			{Name: "keep-on-failure", Help: "leave the edited files in place when a step fails, to inspect a build error against them"},
 			{Name: "go", Help: "add a go install target instead of a nixpkgs attribute"},
 			{Name: "uv", Help: "add a uv tool instead of a nixpkgs attribute"},
@@ -156,8 +163,8 @@ func rmCommand() Command {
 		},
 		Flags: []Flag{
 			{Name: "prune", Help: "also remove the pin from multiverse.lock when nothing else in the repository names it"},
-			commit,
-			buildOnly,
+			commitFlag(),
+			buildOnlyFlag(),
 		},
 		Examples: []Example{
 			{"hm rm charasay", "drop it from packages.nix and switch; the pin stays"},
@@ -179,8 +186,8 @@ func upCommand() Command {
 		},
 		Flags: []Flag{
 			{Name: "repo", Help: "allow an attribute that packages.nix does not list, such as a host service"},
-			commit,
-			buildOnly,
+			commitFlag(),
+			buildOnlyFlag(),
 		},
 		Examples: []Example{
 			{"hm up", "update every packages.nix pin and switch"},

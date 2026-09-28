@@ -128,7 +128,7 @@ func (a *App) positional(cmd doc.Command, cur string) []string {
 			out = append(out, pkgs.Entries()...)
 		}
 		if cmd.Name == "rm" {
-			for _, k := range toolKinds {
+			for _, k := range toolKinds() {
 				if list, created, err := a.readList(k.file); err == nil && !created {
 					for _, e := range list.Entries() {
 						out = append(out, k.entryName(e))

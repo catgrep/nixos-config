@@ -33,7 +33,7 @@ func (a *App) cmdAdd(opts options, args []string) error {
 	}
 	co := changeOpts{commit: opts.flag("commit"), buildOnly: opts.flag("build-only"), keep: opts.flag("keep-on-failure")}
 	var kinds []toolKind
-	for _, k := range toolKinds {
+	for _, k := range toolKinds() {
 		if opts.flag(k.flag) {
 			kinds = append(kinds, k)
 		}
@@ -165,21 +165,24 @@ type toolKind struct {
 	parse func(string) (name, version string, err error)
 }
 
-var toolKinds = []toolKind{
-	{name: "go", flag: "go", file: fileGoTools, sep: "@", usage: "module/package@vX.Y.Z", parse: func(s string) (string, string, error) {
-		e, err := sources.ParseGoEntry(s)
-		return e.Pattern, e.Version, err
-	}},
-	{name: "uv", flag: "uv", file: fileUvTools, sep: "==", usage: "package==X.Y.Z", parse: func(s string) (string, string, error) {
-		return sources.SplitEntry(s, "==")
-	}},
-	{name: "cargo", flag: "cargo", file: fileCargo, sep: "@", usage: "crate@X.Y.Z", parse: func(s string) (string, string, error) {
-		return sources.SplitEntry(s, "@")
-	}},
+// toolKinds returns the installers in the order hm syncs them.
+func toolKinds() []toolKind {
+	return []toolKind{
+		{name: "go", flag: "go", file: fileGoTools, sep: "@", usage: "module/package@vX.Y.Z", parse: func(s string) (string, string, error) {
+			e, err := sources.ParseGoEntry(s)
+			return e.Pattern, e.Version, err
+		}},
+		{name: "uv", flag: "uv", file: fileUvTools, sep: "==", usage: "package==X.Y.Z", parse: func(s string) (string, string, error) {
+			return sources.SplitEntry(s, "==")
+		}},
+		{name: "cargo", flag: "cargo", file: fileCargo, sep: "@", usage: "crate@X.Y.Z", parse: func(s string) (string, string, error) {
+			return sources.SplitEntry(s, "@")
+		}},
+	}
 }
 
 func toolKindByName(name string) (toolKind, bool) {
-	for _, k := range toolKinds {
+	for _, k := range toolKinds() {
 		if k.name == name {
 			return k, true
 		}

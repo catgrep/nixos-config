@@ -11,7 +11,7 @@ import (
 )
 
 func TestScriptsMentionEveryCommandAndFlag(t *testing.T) {
-	for _, shell := range Shells {
+	for _, shell := range Shells() {
 		script, err := Script(shell)
 		if err != nil {
 			t.Fatal(err)
@@ -74,5 +74,13 @@ func TestFishScriptParses(t *testing.T) {
 	cmd.Stdin = strings.NewReader(Fish())
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("fish --no-execute: %v\n%s", err, out)
+	}
+}
+
+func TestShellsIsFreshPerCall(t *testing.T) {
+	first := Shells()
+	first[0] = "tcsh"
+	if got := Shells(); got[0] != "zsh" {
+		t.Errorf("Shells() shares its backing array: %v", got)
 	}
 }

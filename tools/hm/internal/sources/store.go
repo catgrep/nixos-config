@@ -28,7 +28,11 @@ type StorePath struct {
 	Output  string
 }
 
-var outputSuffixes = []string{"bin", "man", "doc", "dev", "lib", "info", "devdoc", "debug", "static", "cli", "out", "lib", "dist"}
+// outputSuffixes returns the output names nixpkgs appends to a store path
+// name after a dash.
+func outputSuffixes() []string {
+	return []string{"bin", "man", "doc", "dev", "lib", "info", "devdoc", "debug", "static", "cli", "out", "dist"}
+}
 
 // ParseStorePath splits a /nix/store path into its parts.
 func ParseStorePath(path string) StorePath {
@@ -39,7 +43,7 @@ func ParseStorePath(path string) StorePath {
 	}
 	s.Name = base
 	s.Pname, s.Version = splitDrvName(base)
-	for _, suffix := range outputSuffixes {
+	for _, suffix := range outputSuffixes() {
 		if strings.HasSuffix(s.Version, "-"+suffix) {
 			s.Version = strings.TrimSuffix(s.Version, "-"+suffix)
 			s.Output = suffix

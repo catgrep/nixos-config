@@ -19,7 +19,7 @@ func (a *App) cmdSync(opts options, args []string) error {
 	if err := a.requireFlake(); err != nil {
 		return err
 	}
-	kinds := toolKinds
+	kinds := toolKinds()
 	if len(args) == 1 {
 		k, ok := toolKindByName(args[0])
 		if !ok {

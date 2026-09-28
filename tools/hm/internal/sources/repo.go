@@ -42,9 +42,10 @@ func ReadLock(path string) (map[string]LockPin, error) {
 	return lock.Pins, nil
 }
 
-var (
-	pinnedRef = regexp.MustCompile(`\bpinned\.([A-Za-z_][A-Za-z0-9_'-]*)`)
-	pkgsRef   = regexp.MustCompile(`\bpkgs\.([A-Za-z_][A-Za-z0-9_'-]*(?:\.[A-Za-z_][A-Za-z0-9_'-]*)*)`)
+// pinnedRef matches `pinned.<attr>`; pkgsRef matches `pkgs.<attr.path>`.
+const (
+	pinnedRef = `\bpinned\.([A-Za-z_][A-Za-z0-9_'-]*)`
+	pkgsRef   = `\bpkgs\.([A-Za-z_][A-Za-z0-9_'-]*(?:\.[A-Za-z_][A-Za-z0-9_'-]*)*)`
 )
 
 // Reference is one place a Nix file names an attribute.
@@ -108,7 +109,7 @@ func PinnedAttrs(dir string, skip ...string) (map[string][]Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	return scan(files, pinnedRef)
+	return scan(files, regexp.MustCompile(pinnedRef))
 }
 
 // PkgsAttrs maps every attribute path the Nix files under dir take from
@@ -118,7 +119,7 @@ func PkgsAttrs(dir string, skip ...string) (map[string][]Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	return scan(files, pkgsRef)
+	return scan(files, regexp.MustCompile(pkgsRef))
 }
 
 func set(items []string) map[string]bool {

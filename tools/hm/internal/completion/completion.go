@@ -12,8 +12,10 @@ import (
 	"github.com/catgrep/nixos-config/tools/hm/internal/doc"
 )
 
-// Shells lists the supported shells.
-var Shells = []string{"zsh", "bash", "fish"}
+// Shells returns the supported shells.
+func Shells() []string {
+	return []string{"zsh", "bash", "fish"}
+}
 
 // Script returns the completion script for shell.
 func Script(shell string) (string, error) {

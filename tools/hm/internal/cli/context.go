@@ -31,8 +31,10 @@ const (
 // spdxHeader is the first line of every list hm creates.
 const spdxHeader = "# SPDX-License-Identifier: GPL-3.0-or-later"
 
-// ownedLists are the data files hm parses and writes.
-var ownedLists = []string{filePackages, fileGoTools, fileUvTools, fileCargo}
+// ownedLists returns the data files hm parses and writes.
+func ownedLists() []string {
+	return []string{filePackages, fileGoTools, fileUvTools, fileCargo}
+}
 
 // readList parses an owned list, returning an empty list and created=true
 // when the file does not exist yet.

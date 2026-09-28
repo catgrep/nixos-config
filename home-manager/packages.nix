@@ -6,6 +6,7 @@
   "ast-grep"
   "bat"
   "bats"
+  "buf"
   "charasay"
   "cmake"
   "colima"

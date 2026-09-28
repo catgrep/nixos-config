@@ -21,4 +21,5 @@
   "shellcheck"
   "shfmt"
   "yq-go"
+  "zizmor"
 ]

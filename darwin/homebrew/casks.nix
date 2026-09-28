@@ -4,4 +4,5 @@
   "blackhole-16ch"
   "codex"
   "ghostty"
+  "siliconscope"
 ]

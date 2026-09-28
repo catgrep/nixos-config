@@ -266,4 +266,6 @@
       OnUnitActiveSec = "5min";
     };
   };
+
+  services.adguardhome.package = config.multiverse.locked.adguardhome;
 }

@@ -8,7 +8,10 @@
 }:
 
 let
-  bdhillUser = import ../../users/bdhill.nix { inherit config lib pkgs; };
+  bdhillUser = import ../../users/bdhill.nix {
+    inherit config lib;
+    pinned = config.multiverse.locked;
+  };
 in
 {
   users = {
@@ -47,6 +50,8 @@ in
 
   # Enable zsh system-wide but let home-manager handle user configuration
   programs.zsh.enable = true;
+  # The NixOS zsh module has no package option and installs pkgs.zsh itself.
+  nixpkgs.overlays = [ (_: _: { inherit (config.multiverse.locked) zsh; }) ];
 
   # Enable sudo for wheel group
   security.sudo.wheelNeedsPassword = false;

@@ -5,10 +5,18 @@
 # scraping a real guest, so the flags and the generated policy file are
 # proven against what Prometheus actually receives rather than against Nix
 # evaluation alone.
-{ pkgs }:
+{ pkgs, pinned }:
 
 pkgs.testers.runNixOSTest {
   name = "service-monitoring-vm";
+  # The test harness supplies a read-only package set to its nodes.
+  node.pkgs = pkgs.lib.mkForce (
+    pkgs.extend (
+      _: _: {
+        inherit (pinned) prometheus-node-exporter prometheus-systemd-exporter;
+      }
+    )
+  );
 
   nodes.machine =
     { pkgs, ... }:
@@ -22,7 +30,7 @@ pkgs.testers.runNixOSTest {
         ../modules/servers/service-monitoring.nix
       ];
 
-      environment.systemPackages = [ pkgs.curl ];
+      environment.systemPackages = [ pinned.curl ];
 
       services.prometheus.exporters.node = {
         enable = true;

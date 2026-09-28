@@ -165,7 +165,7 @@
       echo "Setting Samba passwords from SOPS..."
 
       # media
-      if ${pkgs.samba}/bin/smbpasswd -a -s media < <(
+      if ${config.multiverse.locked.samba}/bin/smbpasswd -a -s media < <(
         cat ${config.sops.secrets.samba_media_password.path}
         echo
         cat ${config.sops.secrets.samba_media_password.path}
@@ -174,7 +174,7 @@
       fi
 
       # bdhill
-      if ${pkgs.samba}/bin/smbpasswd -a -s bdhill < <(
+      if ${config.multiverse.locked.samba}/bin/smbpasswd -a -s bdhill < <(
         cat ${config.sops.secrets.samba_bdhill_password.path}
         echo
         cat ${config.sops.secrets.samba_bdhill_password.path}
@@ -183,4 +183,8 @@
       fi
     '';
   };
+
+  services.samba.package = config.multiverse.locked.samba;
+  # The wsdd module has no package option; keep its executable on the lock.
+  nixpkgs.overlays = [ (_: _: { inherit (config.multiverse.locked) wsdd; }) ];
 }

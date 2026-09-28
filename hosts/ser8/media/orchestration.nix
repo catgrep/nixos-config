@@ -53,7 +53,7 @@
 
       script = lib.mkMerge [
         (lib.mkOrder 100 ''
-          export CURL_BIN="${pkgs.curl}/bin/curl"
+          export CURL_BIN="${config.multiverse.locked.curl}/bin/curl"
           source ${./deployment-helpers.sh}
           set -euo pipefail
 
@@ -83,7 +83,7 @@
       };
 
       script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
+        export CURL_BIN="${config.multiverse.locked.curl}/bin/curl"
         source ${./orchestration-helpers.sh}
         set -euo pipefail
 
@@ -127,8 +127,8 @@
       };
 
       script = ''
-        export CURL_BIN="${pkgs.curl}/bin/curl"
-        export JQ_BIN="${pkgs.jq}/bin/jq"
+        export CURL_BIN="${config.multiverse.locked.curl}/bin/curl"
+        export JQ_BIN="${config.multiverse.locked.jq}/bin/jq"
         source ${./orchestration-helpers.sh}
         set -euo pipefail
 

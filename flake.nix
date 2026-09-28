@@ -11,44 +11,25 @@
     # ff178232 is master head as of 2026-08-16. Re-bump deliberately.
     nixos-hardware.url = "github:NixOS/nixos-hardware/ff17823245ab9ff7bcae6acf950bd89cba82c38c";
 
-    disko = {
-      url = "github:nix-community/disko";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    impermanence = {
-      url = "github:nix-community/impermanence";
-    };
-
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     nixos-images = {
       url = "github:nix-community/nixos-images";
     };
 
-    declarative-jellyfin = {
-      url = "github:Sveske-Juice/declarative-jellyfin";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
+      # The integrated module deliberately shares the host package set.
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # Caddy with plugins support (cleaner than withPlugins)
-    caddy-nix = {
-      url = "github:vincentbernat/caddy-nix";
     };
 
     sagent = {
       url = "path:./tools/sagent";
+      # Local build tools follow the root; upstream tool inputs keep their own locks.
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    omniflake.url = "github:fzakaria/omniflake";
+
+    # Refresh package history independently of third-party flake updates.
     mvs = {
       url = "github:fzakaria/nixpkgs-multiverse";
     };
@@ -60,22 +41,48 @@
       nixpkgs,
       nixpkgs-unstable,
       nixos-hardware,
-      disko,
-      impermanence,
-      sops-nix,
       nixos-images,
-      declarative-jellyfin,
       home-manager,
-      caddy-nix,
       sagent,
       mvs,
+      omniflake,
       ...
     }@inputs:
     let
+      upstream = import ./omniflake.nix { inherit omniflake; };
+      inherit (upstream)
+        disko
+        impermanence
+        sops-nix
+        declarative-jellyfin
+        ;
+
+      # No x86_64-darwin: nixpkgs dropped the platform after 26.05, and the
+      # unstable input this shell is built from is past that. The key threw
+      # on evaluation rather than producing anything, which took the whole
+      # flake down with it whenever every output was walked.
+      shellSystems = [
+        "x86_64-linux"
+        "aarch64-darwin"
+        "aarch64-linux"
+      ];
+
+      pinnedFor =
+        system:
+        mvs.lib.readLock {
+          inherit system;
+          file = ./multiverse.lock;
+          config.allowUnfree = true;
+        };
+
       sagentFor =
         system:
         let
-          pkgs = nixpkgs-unstable.legacyPackages.${system};
+          pkgs = nixpkgs-unstable.legacyPackages.${system}.extend (
+            _: _: {
+              inherit ((pinnedFor system)) tmux;
+            }
+          );
         in
         sagent.lib.mkSagent {
           inherit system pkgs;
@@ -144,18 +151,19 @@
         ./modules/servers
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
-        {
+        ({ config, ... }: {
+          home-manager.extraSpecialArgs.pinned = config.multiverse.locked;
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.bdhill =
             {
               config,
               lib,
-              pkgs,
+              pinned,
               ...
             }:
-            (import ./users/bdhill.nix { inherit config lib pkgs; }).homeConfig;
-        }
+            (import ./users/bdhill.nix { inherit config lib pinned; }).homeConfig;
+        })
       ];
 
       x86Modules = [
@@ -181,22 +189,9 @@
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
-            # Retained with no in-tree consumers: keeps an unstable package one
-            # argument away from any host module, without rewiring specialArgs
-            # at the point someone first needs it.
-            unstable = import nixpkgs-unstable {
-              inherit system;
-              config.allowUnfree = true;
-            };
+            inherit inputs upstream;
           };
           modules = [
-            # Apply caddy-nix overlay for Caddy with plugins support
-            {
-              nixpkgs.overlays = [
-                caddy-nix.overlays.default
-              ];
-            }
             ./hosts/${hostname}
           ]
           ++ baseModules
@@ -266,168 +261,35 @@
       # kexec installers for nixos-anywhere. The Raspberry Pi sd-image entries were
       # removed with the third-party fork that built them; a minimal upstream
       # bootstrap image has not been built to replace them yet.
+      # Custom output consumed by provisioning scripts. Nix flake check reports
+      # an unknown-output warning; installer derivations are checked explicitly.
       installerConfigurations = {
         aarch64-kexec = nixos-images.packages.aarch64-linux.kexec-installer-nixos-unstable;
         x86_64-kexec = nixos-images.packages.x86_64-linux.kexec-installer-nixos-unstable;
       };
 
-      # Development shells - platform agnostic
-      devShells =
-        let
-          makeDevShell =
-            system:
-            let
-              pkgs = nixpkgs-unstable.legacyPackages.${system};
-            in
-            pkgs.mkShell {
-              buildInputs =
-                with pkgs;
-                [
-                  nixfmt
-                  nixos-rebuild
-                  git
-                  jq
-                  yq-go
-                  sops
-                  age
-                  ssh-to-age
-                  openssl
-                  sshpass
-                  mkpasswd
-                  inetutils
-                  shellcheck
-                  shfmt
-                  nixos-anywhere
-                  mkcert
-                  addlicense
-                  dhcping
-                  caddy
-                  python3
-                  statix
-                  nurl
-                  wireguard-tools
-                  # ast-bro and treehouse (with the ast-bro source override)
-                  # are owned and exported by the sagent subflake.
-                  sagent.packages.${system}.ast-bro
-                  sagent.packages.${system}.treehouse
-                  # nixpkgs version-history queries and pinning (nixmultiverse.com)
-                  mvs.packages.${system}.mvs
-                ]
-                ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-                  (sagentFor system)
-                ];
-            };
-        in
-        {
-          x86_64-linux.default = makeDevShell "x86_64-linux";
-          aarch64-darwin.default = makeDevShell "aarch64-darwin";
-          aarch64-linux.default = makeDevShell "aarch64-linux";
-          # No x86_64-darwin: nixpkgs dropped the platform after 26.05, and the
-          # unstable input this shell is built from is past that. The key threw
-          # on evaluation rather than producing anything, which took the whole
-          # flake down with it whenever every output was walked.
+      devShells = nixpkgs.lib.genAttrs shellSystems (system: {
+        default = import ./dev.nix {
+          pkgs = nixpkgs-unstable.legacyPackages.${system};
+          pinned = pinnedFor system;
+          inherit
+            system
+            sagent
+            sagentFor
+            mvs
+            ;
         };
+      });
 
-      # Virtual-machine tests. These boot a real NixOS guest with real ZFS pools,
-      # so they answer questions activation never does.
-      #
-      # backup-behavior builds the pools by hand and exercises what the engine
-      # does with them: whether a recursive snapshot really lands the whole tree
-      # in one transaction group, whether a replicated dataset can mount over
-      # live service state, and whether state copied out of a snapshot actually
-      # comes back.
-      #   nix build .#checks.x86_64-linux.backup-behavior
-      #
-      # backup-layout asks the prior question, and the one activation is worst
-      # at: whether the storage declarations would build the tree at all. It
-      # installs from a reduced copy of ser8's disk configuration, boots the
-      # result, and checks every dataset, mountpoint and tuned property against
-      # what was declared. Activation never runs the create logic, so a dataset
-      # can be declared for months while nothing exists and the service quietly
-      # writes to a root filesystem that gets rolled back at boot. That has
-      # happened here twice.
-      #   nix build .#checks.x86_64-linux.backup-layout
-      #
-      # service-monitoring-vm boots the collection layer on its own -- just
-      # modules/common/service-monitoring.nix and
-      # modules/servers/service-monitoring.nix, not a whole host -- against
-      # real exporters and synthetic units (a steady daemon, a frigate-shaped
-      # crash loop, an undeclared oneshot job, an excluded unit), and reads
-      # the results back from the scraped metrics rather than from Nix
-      # evaluation alone.
-      #   nix build .#checks.x86_64-linux.service-monitoring-vm
-      #
-      # Both run under `nix flake check`, and therefore under `make check`,
-      # which is materially slower for it. That is the trade.
-      #
-      # x86_64-linux only -- the tests need a Linux guest, and a darwin key that
-      # can never evaluate is worse than no key at all.
-      #
-      # service-alert-rules and service-monitoring-eval below need neither a
-      # guest nor Linux: one runs promtool over a plain YAML file, the other
-      # is pure module evaluation. Both run on aarch64-darwin too, so a
-      # rules regression fails `nix flake check` on this machine, not only
-      # in whatever runs the VM checks.
-      checks =
-        let
-          vmChecks =
-            system:
-            let
-              pkgs = nixpkgs.legacyPackages.${system};
-            in
-            {
-              backup-behavior = import ./tests/backup-behavior.nix { inherit pkgs; };
-              backup-layout = import ./tests/backup-layout.nix {
-                inherit pkgs;
-                diskoLib = disko.lib;
-              };
-              service-monitoring-vm = import ./tests/service-monitoring-vm.nix { inherit pkgs; };
-            };
-
-          portableChecks =
-            system:
-            let
-              pkgs = nixpkgs.legacyPackages.${system};
-              monitoredHosts = import ./modules/gateway/monitored-hosts.nix;
-              serviceAlertRules = import ./modules/gateway/service-alert-rules.nix {
-                inherit pkgs;
-                hosts = map (h: h.host) monitoredHosts;
-              };
-            in
-            {
-              # Checks the exact rules derivation modules/gateway/prometheus.nix
-              # ships, not a copy, so this can never pass while the deployed
-              # rules are broken.
-              service-alert-rules =
-                pkgs.runCommand "check-service-alert-rules"
-                  {
-                    # This nixpkgs splits promtool into prometheus's "cli"
-                    # output; the default "out" output only carries the
-                    # prometheus and migrate binaries.
-                    nativeBuildInputs = [ pkgs.prometheus.cli ];
-                  }
-                  ''
-                    # duplicate-rules is a known false positive here: several
-                    # SystemdMonitoringDataMissing variants intentionally share
-                    # an alertname (see modules/gateway/service-alert-rules.nix),
-                    # and promtool's lint flags that pattern even though
-                    # Prometheus itself accepts it.
-                    promtool check rules --lint=none ${serviceAlertRules}
-
-                    cp ${serviceAlertRules} rules.yml
-                    cp ${./tests/service-alert-tests.yml} service-alert-tests.yml
-                    promtool test rules service-alert-tests.yml
-
-                    touch $out
-                  '';
-
-              service-monitoring-eval = import ./tests/service-monitoring-eval.nix { inherit pkgs; };
-            };
-        in
-        {
-          x86_64-linux = vmChecks "x86_64-linux" // portableChecks "x86_64-linux";
-          aarch64-darwin = portableChecks "aarch64-darwin";
-        };
+      checks = import ./checks.nix {
+        inherit
+          self
+          nixpkgs
+          disko
+          pinnedFor
+          mvs
+          ;
+      };
 
       # Service discovery - maps enabled services to their packages per host
       # Query with: nix eval '.#enabledServices.ser8' --json
@@ -435,6 +297,8 @@
       #
       # Note: We use options.*.isDefined to filter out renamed/deprecated options
       # before accessing config, avoiding uncatchable abort errors
+      # These custom metadata outputs support operational queries documented
+      # above. Nix flake check reports unknown-output warnings for both names.
       enabledServices = builtins.mapAttrs (
         hostname: cfg:
         let

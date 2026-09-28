@@ -127,19 +127,19 @@ in
   systemd = {
     services.jellyfin = {
       preStart = lib.mkBefore ''
-        ${pkgs.coreutils}/bin/chmod 0600 ${jellyfinInitLog}
+        ${config.multiverse.locked.coreutils}/bin/chmod 0600 ${jellyfinInitLog}
       '';
 
       postStart = ''
         set -euo pipefail
 
         while [ -e ${jellyfinInitMarker} ]; do
-          ${pkgs.coreutils}/bin/sleep 0.1
+          ${config.multiverse.locked.coreutils}/bin/sleep 0.1
         done
 
         attempts=0
         while [ ! -e ${jellyfinInitMarker} ] && [ "$attempts" -lt 180 ]; do
-          ${pkgs.coreutils}/bin/sleep 1
+          ${config.multiverse.locked.coreutils}/bin/sleep 1
           attempts=$((attempts + 1))
         done
 
@@ -147,4 +147,6 @@ in
       '';
     };
   };
+
+  services.jellyfin.package = config.multiverse.locked.jellyfin;
 }

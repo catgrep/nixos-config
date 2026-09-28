@@ -16,6 +16,7 @@
 
   multiverse = {
     enable = true;
+    config.allowUnfree = true;
     lock = ../../multiverse.lock;
   };
 }

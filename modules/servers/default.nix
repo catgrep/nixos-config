@@ -33,7 +33,7 @@
   };
 
   # Server packages
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     # System monitoring
     htop
     iotop

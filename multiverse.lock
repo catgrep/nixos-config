@@ -1,11 +1,424 @@
 {
   "version": 1,
   "pins": {
+    "acl": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.4.0",
+      "date": "2026-09-17",
+      "constraint": "2.4.0"
+    },
+    "actual-server": {
+      "rev": "643809054d65fdd466a63e3155b8c498cb483c04",
+      "label": "2026-08-02-643809054d65",
+      "version": "26.7.0",
+      "date": "2026-08-02",
+      "constraint": "26.7.0"
+    },
+    "addlicense": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.2.0",
+      "date": "2026-09-17",
+      "constraint": "1.2.0"
+    },
+    "adguardhome": {
+      "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
+      "label": "2026-09-13-ef34387ddd75",
+      "version": "0.107.78",
+      "date": "2026-09-13",
+      "constraint": "0.107.78"
+    },
+    "age": {
+      "rev": "34ab99075ac4f7e40cf037eef32cb1c360bb85e9",
+      "label": "2026-08-31-34ab99075ac4",
+      "version": "1.3.1",
+      "date": "2026-08-31",
+      "constraint": "1.3.1"
+    },
+    "aide": {
+      "rev": "d2f67949798825fe853f7c5d0492b8bf016d3f88",
+      "label": "2026-08-29-d2f679497988",
+      "version": "0.19.3",
+      "date": "2026-08-29",
+      "constraint": "0.19.3"
+    },
+    "audit": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.2.1",
+      "date": "2026-09-17",
+      "constraint": "4.2.1"
+    },
+    "bandwhich": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.23.1",
+      "date": "2026-09-17",
+      "constraint": "0.23.1"
+    },
+    "bat": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.26.1",
+      "date": "2026-09-17",
+      "constraint": "0.26.1"
+    },
+    "bazarr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.6.0",
+      "date": "2026-09-17",
+      "constraint": "1.6.0"
+    },
+    "bc": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.08.2",
+      "date": "2026-09-17",
+      "constraint": "1.08.2"
+    },
+    "blktrace": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.3.0",
+      "date": "2026-09-17",
+      "constraint": "1.3.0"
+    },
+    "bpftrace": {
+      "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+      "label": "2026-05-31-331800de5053",
+      "version": "0.25.1",
+      "date": "2026-05-31",
+      "constraint": "0.25.1"
+    },
+    "btop": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.4.7",
+      "date": "2026-09-17",
+      "constraint": "1.4.7"
+    },
+    "caddy": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.11.4",
+      "date": "2026-09-17",
+      "constraint": "2.11.4"
+    },
+    "charasay": {
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "label": "2026-06-16-567a49d1913c",
+      "version": "3.3.0",
+      "date": "2026-06-16",
+      "constraint": "3.3.0"
+    },
+    "colima": {
+      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
+      "label": "2026-07-05-d407951447dc",
+      "version": "0.10.1",
+      "date": "2026-07-05",
+      "constraint": "0.10.1"
+    },
+    "colmena": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.4.0",
+      "date": "2026-09-17",
+      "constraint": "0.4.0"
+    },
+    "coreutils": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "9.11",
+      "date": "2026-09-17",
+      "constraint": "9.11"
+    },
+    "cowsay": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.8.4",
+      "date": "2026-09-17",
+      "constraint": "3.8.4"
+    },
+    "curl": {
+      "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+      "label": "2026-09-10-8ce4ef6cb6f8",
+      "version": "8.21.0",
+      "date": "2026-09-10",
+      "constraint": "8.21.0"
+    },
+    "dhcping": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.2",
+      "date": "2026-09-17",
+      "constraint": "1.2"
+    },
+    "diffutils": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.12",
+      "date": "2026-09-17",
+      "constraint": "3.12"
+    },
+    "dig": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "9.20.26",
+      "date": "2026-09-17",
+      "constraint": "9.20.26"
+    },
+    "dust": {
+      "rev": "ffb3c9b700e759be2ef13237c9d8f953b32a1e46",
+      "label": "2026-08-19-ffb3c9b700e7",
+      "version": "1.2.4",
+      "date": "2026-08-19",
+      "constraint": "1.2.4"
+    },
+    "exiftool": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "13.59",
+      "date": "2026-09-17",
+      "constraint": "13.59"
+    },
+    "exportarr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.3.0",
+      "date": "2026-09-17",
+      "constraint": "2.3.0"
+    },
+    "eza": {
+      "rev": "e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3",
+      "label": "2026-07-11-e7a3ca8092b6",
+      "version": "0.23.4",
+      "date": "2026-07-11",
+      "constraint": "0.23.4"
+    },
+    "fastfetch": {
+      "rev": "a799d3e3886da994fa307f817a6bc705ae538eeb",
+      "label": "2026-06-06-a799d3e3886d",
+      "version": "2.63.1",
+      "date": "2026-06-06",
+      "constraint": "2.63.1"
+    },
+    "fd": {
+      "rev": "9fbb54b33e91ee4ca368e35a78e0613c720600b3",
+      "label": "2026-08-26-9fbb54b33e91",
+      "version": "10.4.2",
+      "date": "2026-08-26",
+      "constraint": "10.4.2"
+    },
+    "ffmpeg": {
+      "rev": "2fcb964de67fcf60b43471c55d5d99e61a9ccb5a",
+      "label": "2026-08-10-2fcb964de67f",
+      "version": "8.1.2",
+      "date": "2026-08-10",
+      "constraint": "8.1.2"
+    },
+    "ffmpeg-headless": {
+      "rev": "2fcb964de67fcf60b43471c55d5d99e61a9ccb5a",
+      "label": "2026-08-10-2fcb964de67f",
+      "version": "8.1.2",
+      "date": "2026-08-10",
+      "constraint": "8.1.2"
+    },
+    "findutils": {
+      "rev": "1559d3daa3ecc813a650b79375ea61b6741b8746",
+      "label": "2026-07-30-1559d3daa3ec",
+      "version": "4.10.0",
+      "date": "2026-07-30",
+      "constraint": "4.10.0"
+    },
+    "flaresolverr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.5.0",
+      "date": "2026-09-17",
+      "constraint": "3.5.0"
+    },
+    "frigate": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.17.2",
+      "date": "2026-09-17",
+      "constraint": "0.17.2"
+    },
+    "ghostty": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.3.1",
+      "date": "2026-09-17",
+      "constraint": "1.3.1"
+    },
+    "git": {
+      "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
+      "label": "2026-07-19-241313f4e8e5",
+      "version": "2.54.0",
+      "date": "2026-07-19",
+      "constraint": "2.54.0"
+    },
+    "gitingest": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.3.1",
+      "date": "2026-09-17",
+      "constraint": "0.3.1"
+    },
+    "gnupg": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.4.9",
+      "date": "2026-09-17",
+      "constraint": "2.4.9"
+    },
+    "go2rtc": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.9.14",
+      "date": "2026-09-17",
+      "constraint": "1.9.14"
+    },
+    "grafana": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "13.1.4",
+      "date": "2026-09-17",
+      "constraint": "13.1.4"
+    },
+    "hdparm": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "9.65",
+      "date": "2026-09-17",
+      "constraint": "9.65"
+    },
+    "home-assistant": {
+      "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+      "label": "2026-05-31-331800de5053",
+      "version": "2026.5.4",
+      "date": "2026-05-31",
+      "constraint": "2026.5.4"
+    },
     "homebox": {
       "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
       "label": "2026-09-13-ef34387ddd75",
       "version": "0.26.2",
       "date": "2026-09-13"
+    },
+    "host": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "9.20.26",
+      "date": "2026-09-17",
+      "constraint": "9.20.26"
+    },
+    "htop": {
+      "rev": "61b7c44c4073f0b827768aff0049561b5110ea5a",
+      "label": "2026-07-18-61b7c44c4073",
+      "version": "3.5.1",
+      "date": "2026-07-18",
+      "constraint": "3.5.1"
+    },
+    "iftop": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.0pre4",
+      "date": "2026-09-17",
+      "constraint": "1.0pre4"
+    },
+    "inetutils": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.7",
+      "date": "2026-09-17",
+      "constraint": "2.7"
+    },
+    "inotify-tools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.25.9.0",
+      "date": "2026-09-17",
+      "constraint": "4.25.9.0"
+    },
+    "iotop": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.6",
+      "date": "2026-09-17",
+      "constraint": "0.6"
+    },
+    "iperf3": {
+      "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+      "label": "2026-05-31-331800de5053",
+      "version": "3.20",
+      "date": "2026-05-31",
+      "constraint": "3.20"
+    },
+    "iptables": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.8.13",
+      "date": "2026-09-17",
+      "constraint": "1.8.13"
+    },
+    "jellyfin": {
+      "rev": "d6524aaca2ff07876657ae2b323f24be4874944b",
+      "label": "2026-09-08-d6524aaca2ff",
+      "version": "10.11.11",
+      "date": "2026-09-08",
+      "constraint": "10.11.11"
+    },
+    "jq": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.8.2",
+      "date": "2026-09-17",
+      "constraint": "1.8.2"
+    },
+    "jujutsu": {
+      "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+      "label": "2026-05-31-331800de5053",
+      "version": "0.41.0",
+      "date": "2026-05-31",
+      "constraint": "0.41.0"
+    },
+    "just": {
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "label": "2026-06-16-567a49d1913c",
+      "version": "1.51.0",
+      "date": "2026-06-16",
+      "constraint": "1.51.0"
+    },
+    "libva-utils": {
+      "rev": "0bb7ec54c8483066ec9d7720e780a5caa71f8612",
+      "label": "2026-07-08-0bb7ec54c848",
+      "version": "2.23.0",
+      "date": "2026-07-08",
+      "constraint": "2.23.0"
+    },
+    "lolcat": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "100.0.1",
+      "date": "2026-09-17",
+      "constraint": "100.0.1"
+    },
+    "lsof": {
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "label": "2026-06-16-567a49d1913c",
+      "version": "4.99.6",
+      "date": "2026-06-16",
+      "constraint": "4.99.6"
+    },
+    "lsscsi": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.32",
+      "date": "2026-09-17",
+      "constraint": "0.32"
     },
     "mealie": {
       "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
@@ -14,12 +427,487 @@
       "date": "2026-09-13",
       "constraint": "3.22.0"
     },
+    "mediainfo": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "26.05",
+      "date": "2026-09-17",
+      "constraint": "26.05"
+    },
+    "mkcert": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.4.4",
+      "date": "2026-09-17",
+      "constraint": "1.4.4"
+    },
+    "mkpasswd": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "5.6.6",
+      "date": "2026-09-17",
+      "constraint": "5.6.6"
+    },
+    "mosh": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.4.0",
+      "date": "2026-09-17",
+      "constraint": "1.4.0"
+    },
+    "mosquitto": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.1.2",
+      "date": "2026-09-17",
+      "constraint": "2.1.2"
+    },
+    "mtr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.96",
+      "date": "2026-09-17",
+      "constraint": "0.96"
+    },
+    "nano": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "9.2",
+      "date": "2026-09-17",
+      "constraint": "9.2"
+    },
+    "neovim-unwrapped": {
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "label": "2026-08-23-56c02bc00adc",
+      "version": "0.12.4",
+      "date": "2026-08-23",
+      "constraint": "0.12.4"
+    },
+    "nethogs": {
+      "rev": "18b9261cb3294b6d2a06d03f96872827b8fe2698",
+      "label": "2026-07-14-18b9261cb329",
+      "version": "0.8.8",
+      "date": "2026-07-14",
+      "constraint": "0.8.8"
+    },
+    "nftables": {
+      "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+      "label": "2026-09-10-8ce4ef6cb6f8",
+      "version": "1.1.6",
+      "date": "2026-09-10",
+      "constraint": "1.1.6"
+    },
+    "nginx": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.30.4",
+      "date": "2026-09-17",
+      "constraint": "1.30.4"
+    },
+    "nil": {
+      "rev": "e2587caef70cea85dd97d7daab492899902dbf5d",
+      "label": "2026-07-23-e2587caef70c",
+      "version": "2025-06-13",
+      "date": "2026-07-23",
+      "constraint": "2025-06-13"
+    },
+    "nixd": {
+      "rev": "e2587caef70cea85dd97d7daab492899902dbf5d",
+      "label": "2026-07-23-e2587caef70c",
+      "version": "2.9.1",
+      "date": "2026-07-23",
+      "constraint": "2.9.1"
+    },
+    "nixfmt": {
+      "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+      "label": "2026-09-10-8ce4ef6cb6f8",
+      "version": "1.4.0",
+      "date": "2026-09-10",
+      "constraint": "1.4.0"
+    },
+    "nixos-anywhere": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.13.0",
+      "date": "2026-09-17",
+      "constraint": "1.13.0"
+    },
+    "nixos-rebuild": {
+      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "label": "2026-05-23-64c08a7ca051",
+      "version": "26.05",
+      "date": "2026-05-23",
+      "constraint": "26.05"
+    },
+    "nmap": {
+      "rev": "ffb3c9b700e759be2ef13237c9d8f953b32a1e46",
+      "label": "2026-08-19-ffb3c9b700e7",
+      "version": "7.99",
+      "date": "2026-08-19",
+      "constraint": "7.99"
+    },
+    "nurl": {
+      "rev": "d2f67949798825fe853f7c5d0492b8bf016d3f88",
+      "label": "2026-08-29-d2f679497988",
+      "version": "0.4.0",
+      "date": "2026-08-29",
+      "constraint": "0.4.0"
+    },
+    "nzbget": {
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "label": "2026-06-10-9ae611a455b9",
+      "version": "26.0",
+      "date": "2026-06-10",
+      "constraint": "26.0"
+    },
+    "openssh": {
+      "rev": "e5bdc4a41d4c072fe1e3787eaa0320a384741d44",
+      "label": "2026-08-16-e5bdc4a41d4c",
+      "version": "10.4p1",
+      "date": "2026-08-16",
+      "constraint": "10.4p1"
+    },
+    "openssl": {
+      "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+      "label": "2026-09-10-8ce4ef6cb6f8",
+      "version": "3.6.3",
+      "date": "2026-09-10",
+      "constraint": "3.6.3"
+    },
+    "p7zip": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "17.06",
+      "date": "2026-09-17",
+      "constraint": "17.06"
+    },
+    "pciutils": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.15.0",
+      "date": "2026-09-17",
+      "constraint": "3.15.0"
+    },
+    "perf-tools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "unstable-2017-12-19",
+      "date": "2026-09-17",
+      "constraint": "unstable-2017-12-19"
+    },
+    "postgresql_17": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "17.11",
+      "date": "2026-09-17",
+      "constraint": "17.11"
+    },
+    "prek": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.5.3",
+      "date": "2026-09-17",
+      "constraint": "0.5.3"
+    },
+    "prometheus": {
+      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
+      "label": "2026-07-05-d407951447dc",
+      "version": "3.12.0",
+      "date": "2026-07-05",
+      "constraint": "3.12.0"
+    },
+    "prometheus-alertmanager": {
+      "rev": "65179426c83bb3f6bc14898b42ea1c6f01d374b0",
+      "label": "2026-07-02-65179426c83b",
+      "version": "0.31.1",
+      "date": "2026-07-02",
+      "constraint": "0.31.1"
+    },
+    "prometheus-blackbox-exporter": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.28.0",
+      "date": "2026-09-17",
+      "constraint": "0.28.0"
+    },
+    "prometheus-node-exporter": {
+      "rev": "e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3",
+      "label": "2026-07-11-e7a3ca8092b6",
+      "version": "1.11.1",
+      "date": "2026-07-11",
+      "constraint": "1.11.1"
+    },
+    "prometheus-process-exporter": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.8.7",
+      "date": "2026-09-17",
+      "constraint": "0.8.7"
+    },
+    "prometheus-systemd-exporter": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.7.0",
+      "date": "2026-09-17",
+      "constraint": "0.7.0"
+    },
+    "prowlarr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.5.2.5491",
+      "date": "2026-09-17",
+      "constraint": "2.5.2.5491"
+    },
+    "python3": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.14.7",
+      "date": "2026-09-17",
+      "constraint": "3.14.7"
+    },
+    "radarr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "6.3.0.10514",
+      "date": "2026-09-17",
+      "constraint": "6.3.0.10514"
+    },
+    "ripgrep": {
+      "rev": "753cc8a3a87467296ddd1fa93f0cc3e81120ee46",
+      "label": "2026-07-15-753cc8a3a874",
+      "version": "15.1.0",
+      "date": "2026-07-15",
+      "constraint": "15.1.0"
+    },
+    "rsync": {
+      "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
+      "label": "2026-08-23-56c02bc00adc",
+      "version": "3.4.4",
+      "date": "2026-08-23",
+      "constraint": "3.4.4"
+    },
+    "sabnzbd": {
+      "rev": "83199d0d373dd3ac2b9a1996b1d0263f76ab7a4c",
+      "label": "2026-08-28-83199d0d373d",
+      "version": "5.0.4",
+      "date": "2026-08-28",
+      "constraint": "5.0.4"
+    },
+    "samba": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.23.10",
+      "date": "2026-09-17",
+      "constraint": "4.23.10"
+    },
+    "sanoid": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.3.0",
+      "date": "2026-09-17",
+      "constraint": "2.3.0"
+    },
+    "screen": {
+      "rev": "e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3",
+      "label": "2026-07-11-e7a3ca8092b6",
+      "version": "5.0.1",
+      "date": "2026-07-11",
+      "constraint": "5.0.1"
+    },
+    "shellcheck": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.11.0",
+      "date": "2026-09-17",
+      "constraint": "0.11.0"
+    },
+    "shfmt": {
+      "rev": "83199d0d373dd3ac2b9a1996b1d0263f76ab7a4c",
+      "label": "2026-08-28-83199d0d373d",
+      "version": "3.13.1",
+      "date": "2026-08-28",
+      "constraint": "3.13.1"
+    },
+    "smartmontools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "7.5",
+      "date": "2026-09-17",
+      "constraint": "7.5"
+    },
+    "sonarr": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.0.19.2979",
+      "date": "2026-09-17",
+      "constraint": "4.0.19.2979"
+    },
+    "sops": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.13.3",
+      "date": "2026-09-17",
+      "constraint": "3.13.3"
+    },
+    "sqlite": {
+      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
+      "label": "2026-07-05-d407951447dc",
+      "version": "3.51.2",
+      "date": "2026-07-05",
+      "constraint": "3.51.2"
+    },
+    "ssh-to-age": {
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "label": "2026-06-10-9ae611a455b9",
+      "version": "1.2.0",
+      "date": "2026-06-10",
+      "constraint": "1.2.0"
+    },
+    "sshpass": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.10",
+      "date": "2026-09-17",
+      "constraint": "1.10"
+    },
+    "statix": {
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "label": "2026-06-10-9ae611a455b9",
+      "version": "0-unstable-2026-05-14",
+      "date": "2026-06-10",
+      "constraint": "0-unstable-2026-05-14"
+    },
+    "sysstat": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "12.7.7",
+      "date": "2026-09-17",
+      "constraint": "12.7.7"
+    },
     "tailscale": {
       "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
       "label": "2026-09-13-ef34387ddd75",
       "version": "1.102.3",
       "date": "2026-09-13",
       "constraint": "1.102.3"
+    },
+    "tcpdump": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.99.6",
+      "date": "2026-09-17",
+      "constraint": "4.99.6"
+    },
+    "tmux": {
+      "rev": "b5aa0fbd538984f6e3d201be0005b4463d8b09f8",
+      "label": "2026-06-29-b5aa0fbd5389",
+      "version": "3.6a",
+      "date": "2026-06-29",
+      "constraint": "3.6a"
+    },
+    "tree": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "2.3.2",
+      "date": "2026-09-17",
+      "constraint": "2.3.2"
+    },
+    "unrar": {
+      "rev": "65179426c83bb3f6bc14898b42ea1c6f01d374b0",
+      "label": "2026-07-02-65179426c83b",
+      "version": "7.2.6",
+      "date": "2026-07-02",
+      "constraint": "7.2.6"
+    },
+    "unzip": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "6.0",
+      "date": "2026-09-17",
+      "constraint": "6.0"
+    },
+    "usbutils": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "019",
+      "date": "2026-09-17",
+      "constraint": "019"
+    },
+    "util-linux": {
+      "rev": "8ce4ef6cb6f871616146b9fe26d2a5ae594e94fe",
+      "label": "2026-09-10-8ce4ef6cb6f8",
+      "version": "2.42.2",
+      "date": "2026-09-10",
+      "constraint": "2.42.2"
+    },
+    "vim": {
+      "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
+      "label": "2026-07-19-241313f4e8e5",
+      "version": "9.2.0541",
+      "date": "2026-07-19",
+      "constraint": "9.2.0541"
+    },
+    "wget": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.25.0",
+      "date": "2026-09-17",
+      "constraint": "1.25.0"
+    },
+    "whois": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "5.6.6",
+      "date": "2026-09-17",
+      "constraint": "5.6.6"
+    },
+    "wireguard-tools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "1.0.20260223",
+      "date": "2026-09-17",
+      "constraint": "1.0.20260223"
+    },
+    "wireshark": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "4.6.8",
+      "date": "2026-09-17",
+      "constraint": "4.6.8"
+    },
+    "wsdd": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.9",
+      "date": "2026-09-17"
+    },
+    "yq-go": {
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "label": "2026-06-10-9ae611a455b9",
+      "version": "4.53.2",
+      "date": "2026-06-10",
+      "constraint": "4.53.2"
+    },
+    "zfstools": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "0.3.6",
+      "date": "2026-09-17",
+      "constraint": "0.3.6"
+    },
+    "zip": {
+      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
+      "label": "2026-09-17-e554fab72f81",
+      "version": "3.0",
+      "date": "2026-09-17",
+      "constraint": "3.0"
+    },
+    "zsh": {
+      "rev": "753cc8a3a87467296ddd1fa93f0cc3e81120ee46",
+      "label": "2026-07-15-753cc8a3a874",
+      "version": "5.9.1",
+      "date": "2026-07-15",
+      "constraint": "5.9.1"
     }
   }
 }

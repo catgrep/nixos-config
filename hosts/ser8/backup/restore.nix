@@ -23,11 +23,11 @@ let
     name = "backup-restore";
     runtimeInputs = [
       pkgs.zfs
-      pkgs.coreutils
-      pkgs.findutils
+      config.multiverse.locked.coreutils
+      config.multiverse.locked.findutils
       # runuser, for dropping to the database superuser so the archive is
       # restored over the same peer-authenticated socket the dump job used.
-      pkgs.util-linux
+      config.multiverse.locked.util-linux
       pkgs.systemd
     ];
     text = ''

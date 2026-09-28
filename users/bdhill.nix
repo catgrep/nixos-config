@@ -3,7 +3,7 @@
 {
   config,
   lib,
-  pkgs,
+  pinned,
   ...
 }:
 
@@ -19,7 +19,7 @@
       "render"
     ];
     uid = 1000;
-    shell = pkgs.zsh;
+    shell = pinned.zsh;
 
     # SSH keys
     openssh.authorizedKeys.keys = [
@@ -34,7 +34,7 @@
     home.stateVersion = "25.05";
 
     # User-specific packages (most system tools are in environment.systemPackages)
-    home.packages = with pkgs; [
+    home.packages = with pinned; [
       # Personal utilities not needed system-wide
       tree
       rsync
@@ -47,6 +47,7 @@
 
     # Git configuration
     programs.git = {
+      package = pinned.git;
       enable = true;
       settings = {
         user.name = "catgrep";
@@ -58,6 +59,7 @@
 
     # Zsh configuration (moved from system config)
     programs.zsh = {
+      package = pinned.zsh;
       enable = true;
 
       # History configuration
@@ -123,6 +125,7 @@
 
     # Tmux configuration
     programs.tmux = {
+      package = pinned.tmux;
       enable = true;
       baseIndex = 1;
       clock24 = true;

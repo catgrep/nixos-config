@@ -11,8 +11,8 @@ let
   permissionNormalizer = pkgs.writeShellApplication {
     name = "nzbget-normalize-permissions";
     runtimeInputs = [
-      pkgs.coreutils
-      pkgs.findutils
+      config.multiverse.locked.coreutils
+      config.multiverse.locked.findutils
     ];
     text = builtins.readFile ./nzbget-normalize-permissions.sh;
   };
@@ -21,10 +21,10 @@ let
   nestedExtractor = pkgs.writeShellApplication {
     name = "nzbget-extract-nested";
     runtimeInputs = [
-      pkgs.coreutils
-      pkgs.findutils
-      pkgs.unrar
-      pkgs.p7zip
+      config.multiverse.locked.coreutils
+      config.multiverse.locked.findutils
+      config.multiverse.locked.unrar
+      config.multiverse.locked.p7zip
     ];
     text = builtins.readFile ./nzbget-extract-nested.sh;
   };
@@ -150,4 +150,6 @@ in
       ''
     );
   };
+
+  services.nzbget.package = config.multiverse.locked.nzbget;
 }

@@ -41,4 +41,6 @@
 
   # Open SSH port
   networking.firewall.allowedTCPPorts = [ 22 ];
+
+  services.openssh.package = config.multiverse.locked.openssh;
 }

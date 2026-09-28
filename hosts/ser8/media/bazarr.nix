@@ -8,4 +8,6 @@
   homelab.monitoring.systemd.units = lib.mkIf config.services.bazarr.enable {
     "bazarr.service".expectedRunning = true;
   };
+
+  services.bazarr.package = config.multiverse.locked.bazarr;
 }

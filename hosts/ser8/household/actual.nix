@@ -19,4 +19,6 @@
   homelab.monitoring.systemd.units = lib.mkIf config.services.actual.enable {
     "actual.service".expectedRunning = true;
   };
+
+  services.actual.package = config.multiverse.locked.actual-server;
 }

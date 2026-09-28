@@ -72,4 +72,9 @@
   homelab.monitoring.systemd.units = lib.mkIf config.services.prometheus.exporters.blackbox.enable {
     "prometheus-blackbox-exporter.service".expectedRunning = true;
   };
+
+  # The exporter module selects this attribute directly.
+  nixpkgs.overlays = [
+    (_: _: { inherit (config.multiverse.locked) prometheus-blackbox-exporter; })
+  ];
 }

@@ -235,9 +235,9 @@
   };
 
   # Media-specific packages
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     # ZFS tools
-    zfs
+    pkgs.zfs # Keep userspace tools compatible with the host kernel module.
     zfstools
     sanoid
 
@@ -267,4 +267,7 @@
 
   # System state version
   system.stateVersion = "24.11";
+
+  services.flaresolverr.package = config.multiverse.locked.flaresolverr;
+  services.mosquitto.package = config.multiverse.locked.mosquitto;
 }

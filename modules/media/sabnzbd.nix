@@ -3,7 +3,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
@@ -35,7 +34,10 @@ in
 
     systemd.services.sabnzbd = lib.mkIf cfg.enable {
       serviceConfig = {
-        ExecStart = lib.mkForce "${pkgs.sabnzbd}/bin/sabnzbd --log-all --disable-file-log -f ${cfg.configFile}";
+        ExecStart = lib.mkForce (
+          "${lib.getExe cfg.package} --log-all --disable-file-log "
+          + "-f /var/lib/${cfg.stateDir}/sabnzbd.ini"
+        );
         StandardOutput = "journal";
         StandardError = "journal";
         Type = lib.mkForce "simple";

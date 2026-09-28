@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ pkgs, lib, ... }:
+{ pinned, ... }:
 
 {
   home.username = "bobby";
@@ -8,7 +8,7 @@
   home.stateVersion = "24.11"; # Update with appropriate version
 
   # Packages to install
-  home.packages = with pkgs; [
+  home.packages = with pinned; [
     ripgrep
     fd
     bat

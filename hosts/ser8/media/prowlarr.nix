@@ -90,4 +90,6 @@
       ''
     );
   };
+
+  services.prowlarr.package = config.multiverse.locked.prowlarr;
 }

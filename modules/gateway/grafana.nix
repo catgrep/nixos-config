@@ -3,11 +3,15 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
 let
+  # Keep plugins on the same nixpkgs revision as the pinned Grafana server.
+  grafanaPkgs = config.multiverse.instance.at (builtins.fromJSON (
+    builtins.readFile ../../multiverse.lock
+  )).pins.grafana.rev;
+
   # Use local dashboard files from dashboards/ directory
   # Dashboards are pre-downloaded and have ${DS_*} variables already replaced with "Prometheus"
   # This allows easy inspection, version control, and customization
@@ -70,7 +74,7 @@ in
 
     # This list is the whole plugin directory: any plugin Grafana should
     # load beyond its built-ins has to appear here.
-    declarativePlugins = [ pkgs.grafanaPlugins.yesoreyeram-infinity-datasource ];
+    declarativePlugins = [ grafanaPkgs.grafanaPlugins.yesoreyeram-infinity-datasource ];
 
     settings = {
       server = {
@@ -236,4 +240,6 @@ in
   homelab.monitoring.systemd.units = lib.mkIf config.services.grafana.enable {
     "grafana.service".expectedRunning = true;
   };
+
+  services.grafana.package = config.multiverse.locked.grafana;
 }

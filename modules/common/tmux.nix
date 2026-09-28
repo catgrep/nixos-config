@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # TODO - host variable for status-bg color
+{ config, ... }:
+
 {
   ### Tmux
   programs.tmux = {
     enable = true;
+    package = config.multiverse.locked.tmux;
     baseIndex = 1;
     clock24 = true;
     escapeTime = 10;

@@ -61,7 +61,7 @@
   };
 
   # Additional security packages
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     aide # Advanced Intrusion Detection Environment
     # rkhunter  # Rootkit Hunter
   ];

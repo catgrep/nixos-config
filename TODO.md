@@ -73,6 +73,8 @@ Better to test pre-deployment with VMs and virtual network (it would be nice to 
 - [ ] improve secrets management - currently media services share secrets
 
 # long-term
+- [ ] Explore a pull-through Cachix cache with an omniflake-style interface for third-party flakes.
+  Include ast-bro, treehouse, and claude-code-sandbox while preserving upstream locked inputs.
 - [ ] split out tooling / scripts into a separate flake or pure nix so it can be more easily reused by others
 - [ ] add detailed git book documentation so others don't have to scourge the internet and convoluted nix docs, articles, and discourse threads
 - [ ] consider migrating from individual systemd services to Kubernetes for media stack

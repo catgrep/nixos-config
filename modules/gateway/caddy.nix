@@ -4,18 +4,24 @@
   config,
   lib,
   pkgs,
+  upstream,
   ...
 }:
 
 let
-  caddyWithTailscale = pkgs.caddy.withPlugins {
+  # Apply caddy-nix overlay for Caddy with plugins support.
+  # Its build tools come from the same revision as the locked Caddy package.
+  inherit ((builtins.fromJSON (builtins.readFile ../../multiverse.lock))) pins;
+  caddyOverlay = upstream.caddy-nix.overlays.default;
+  caddyPkgs = (config.multiverse.instance.at pins.caddy.rev).extend caddyOverlay;
+  caddyWithTailscale = caddyPkgs.caddy.withPlugins {
     plugins = [
       # Tailscale plugin for automatic HTTPS certificate provisioning
       # Tailscale v1.102.2
       "github.com/tailscale/caddy-tailscale@v0.0.0-20260826180304-de41b249af4f"
     ];
     # Caddy v2.11.4
-    hash = "sha256-tP/ZQjZvfb+e3322dzd3I89Y9QwujcyqV1fbNWyw08g=";
+    hash = "sha256-IzLM8Qgxurrgs6NBygGEGyzXQUxQMPP3Y6iIWVN5ZvQ=";
   };
 in
 {

@@ -31,9 +31,9 @@
   };
 
   # Pi5-specific packages
-  environment.systemPackages = with pkgs; [
-    libraspberrypi
-    raspberrypi-eeprom
+  environment.systemPackages = with config.multiverse.locked; [
+    pkgs.libraspberrypi # Follow the pinned board and boot configuration.
+    pkgs.raspberrypi-eeprom # Follow the pinned board and boot configuration.
 
     # DNS tools
     dig

@@ -66,16 +66,16 @@ in
     # On a path without an extended ACL setfacl is a plain group-bit change.
     script = ''
       for media_root in ${lib.escapeShellArgs mediaRoots}; do
-        ${pkgs.findutils}/bin/find "$media_root" -xdev ! -group media \
-          -exec ${pkgs.coreutils}/bin/chgrp --no-dereference media {} +
-        ${pkgs.findutils}/bin/find "$media_root" -xdev -type d \
-          -exec ${pkgs.acl}/bin/setfacl --modify g::rwx {} +
-        ${pkgs.findutils}/bin/find "$media_root" -xdev -type f \
-          -exec ${pkgs.acl}/bin/setfacl --modify g::rw- {} +
-        ${pkgs.findutils}/bin/find "$media_root" -xdev -type d ! -perm 2775 \
-          -exec ${pkgs.coreutils}/bin/chmod 2775 {} +
-        ${pkgs.findutils}/bin/find "$media_root" -xdev -type f ! -perm 0664 \
-          -exec ${pkgs.coreutils}/bin/chmod 0664 {} +
+        ${config.multiverse.locked.findutils}/bin/find "$media_root" -xdev ! -group media \
+          -exec ${config.multiverse.locked.coreutils}/bin/chgrp --no-dereference media {} +
+        ${config.multiverse.locked.findutils}/bin/find "$media_root" -xdev -type d \
+          -exec ${config.multiverse.locked.acl}/bin/setfacl --modify g::rwx {} +
+        ${config.multiverse.locked.findutils}/bin/find "$media_root" -xdev -type f \
+          -exec ${config.multiverse.locked.acl}/bin/setfacl --modify g::rw- {} +
+        ${config.multiverse.locked.findutils}/bin/find "$media_root" -xdev -type d ! -perm 2775 \
+          -exec ${config.multiverse.locked.coreutils}/bin/chmod 2775 {} +
+        ${config.multiverse.locked.findutils}/bin/find "$media_root" -xdev -type f ! -perm 0664 \
+          -exec ${config.multiverse.locked.coreutils}/bin/chmod 0664 {} +
       done
     '';
   };

@@ -54,6 +54,33 @@ See help with:
 make
 ```
 
+### Dependency policy
+
+[omniflake.nix](omniflake.nix) selects third-party flakes with their recorded upstream inputs and documents the exceptions and caveats.
+Home Manager and nixos-hardware retain their release/commit selections, and mvs remains a direct input so its index can be refreshed independently.
+
+[dev.nix](dev.nix) defines the development shell, and [checks.nix](checks.nix) defines portable and Linux VM checks.
+[multiverse.lock](multiverse.lock) selects explicit nixpkgs applications and tools for the shell, hosts, and standalone Home Manager configuration.
+Only edit that file through `mvs lock` commands.
+
+Refresh the index, inspect available versions, and change a pin from a newly entered shell:
+
+``` sh
+nix flake update mvs
+nix develop -c mvs query versions prek
+nix develop -c mvs lock status
+```
+
+Use `mvs lock add NAME@VERSION` to select a version and `mvs lock update NAME` to refresh its recipe within the recorded constraint.
+An exact version constraint does not automatically opt into newer versions.
+The standalone Home Manager flake shares the lock file; refresh its reader with `nix flake update mvs --flake ./home-manager` when new pins require newer index data.
+
+Pins include their dependency closures, so matching application versions can still have different builds.
+Do not automatically run `mvs lock minimize`: it can move packages to older recipes and dependencies without changing their version numbers.
+Kernel/ZFS, systemd, Pi boot tools, and graphics drivers remain coupled to the host baseline.
+Frigate, Home Assistant, Nginx, and Caddy retain compatible build tools, interpreters, or modules from the application's locked revision.
+Local derivations and their build dependencies remain governed by the flake inputs.
+
 ## License
 
 GPL-3.0-or-later

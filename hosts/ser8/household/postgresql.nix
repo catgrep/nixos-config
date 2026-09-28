@@ -20,7 +20,7 @@
   # Changing this major after data exists requires a manual pg_upgrade against
   # the data directory under /var/lib/postgresql, which is its own dataset;
   # the server refuses to start on a data directory written by another major.
-  services.postgresql.package = pkgs.postgresql_17;
+  services.postgresql.package = config.multiverse.locked.postgresql_17;
 
   # enable arrives implicitly (see above), so this guard still holds: the
   # expectation disappears if mealie's local database is ever turned off.

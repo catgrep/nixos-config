@@ -5,7 +5,10 @@
 {
   services.sabnzbd = {
     enable = true;
-    configFile = "/var/lib/sabnzbd/sabnzbd.ini";
+    # Let the NixOS module merge the rendered INI at startup.
+    configFile = null;
+    allowConfigWrite = true;
+    secretFiles = [ config.sops.templates."sabnzbd.ini".path ];
   };
 
   homelab.monitoring.systemd.units = lib.mkIf config.services.sabnzbd.enable {
@@ -217,22 +220,10 @@
       owner = "sabnzbd";
       group = config.services.sabnzbd.group;
       mode = "0600";
-      # Without this, a content-only change to the rendered template (e.g. a
-      # download-path edit) never reaches the live sabnzbd.ini: media-config's
-      # cp only runs when systemd decides to (re)start it, and sabnzbd.service
-      # itself never re-reads the file on its own. Restarting media-config
-      # first redeploys the copy, then restarting sabnzbd picks it up.
-      restartUnits = [
-        "media-config.service"
-        "sabnzbd.service"
-      ];
+      # Re-merge the rendered settings when the template changes.
+      restartUnits = [ "sabnzbd.service" ];
     };
   };
 
-  systemd.services.media-config = {
-    before = lib.mkOrder 550 [ "sabnzbd.service" ];
-    script = lib.mkOrder 600 ''
-      configure_arr sabnzbd ${config.sops.templates."sabnzbd.ini".path}
-    '';
-  };
+  services.sabnzbd.package = config.multiverse.locked.sabnzbd;
 }

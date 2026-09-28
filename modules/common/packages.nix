@@ -8,7 +8,7 @@
 }:
 
 {
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     # Essential tools
     curl
     wget
@@ -67,10 +67,13 @@
   # Enable some useful programs
   programs = {
     mtr.enable = true;
+    mtr.package = config.multiverse.locked.mtr;
     gnupg.agent = {
       enable = true;
       enableSSHSupport = true;
     };
     mosh.enable = true;
+    mosh.package = config.multiverse.locked.mosh;
+    gnupg.package = config.multiverse.locked.gnupg;
   };
 }

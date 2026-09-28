@@ -567,4 +567,6 @@ in
   homelab.monitoring.systemd.units = lib.mkIf config.services.prometheus.enable {
     "prometheus.service".expectedRunning = true;
   };
+
+  services.prometheus.package = config.multiverse.locked.prometheus;
 }

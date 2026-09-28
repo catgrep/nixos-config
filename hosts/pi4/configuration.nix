@@ -74,9 +74,9 @@
   };
 
   # Raspberry Pi packages
-  environment.systemPackages = with pkgs; [
-    libraspberrypi
-    raspberrypi-eeprom
+  environment.systemPackages = with config.multiverse.locked; [
+    pkgs.libraspberrypi # Follow the pinned board and boot configuration.
+    pkgs.raspberrypi-eeprom # Follow the pinned board and boot configuration.
 
     # DNS tools
     dig
@@ -121,7 +121,8 @@
       else
         echo "Injecting AdGuard admin password hash..."
         HASH=$(cat "$sops_pass_file")
-        ${pkgs.yq-go}/bin/yq eval -i ".users[0].password = \"$HASH\"" "$adguard_yaml"
+        ${config.multiverse.locked.yq-go}/bin/yq eval -i \
+          ".users[0].password = \"$HASH\"" "$adguard_yaml"
         echo "Password hash injected successfully"
       fi
     '';

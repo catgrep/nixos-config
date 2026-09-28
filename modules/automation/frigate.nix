@@ -13,6 +13,10 @@
 }:
 
 let
+  # Keep Frigate, its interpreter, and ROCm overrides on the same locked revision.
+  frigatePkgs = config.multiverse.instance.at (builtins.fromJSON (
+    builtins.readFile ../../multiverse.lock
+  )).pins.frigate.rev;
   # Detection model location. This must stay under /var/lib/frigate (the
   # persisted, nightly-backed-up ZFS dataset): /var/cache is rolled back by
   # impermanence on reboot, which deletes anything placed there by hand.
@@ -47,11 +51,11 @@ let
   # back in as `frigate` keeps that entry inside this closure.
   frigateWithRocm =
     let
-      staticProtobuf = pkgs.protobuf.override { enableShared = false; };
+      staticProtobuf = frigatePkgs.protobuf.override { enableShared = false; };
       # The build environment also carries the shared protobuf, propagated by
       # the Python onnx package, and CMake's config search finds that one
       # first. protobuf_DIR pins the lookup to the static build.
-      rocmPackages = pkgs.rocmPackages.overrideScope (
+      rocmPackages = frigatePkgs.rocmPackages.overrideScope (
         _final: prev: {
           migraphx =
             (prev.migraphx.override {
@@ -84,7 +88,7 @@ let
             '';
         });
       };
-      rocmPkgs = pkgs.extend (
+      rocmPkgs = frigatePkgs.extend (
         _final: prev: {
           onnxruntime = prev.onnxruntime.override {
             rocmSupport = true;
@@ -96,7 +100,7 @@ let
     in
     lib.fix (
       self:
-      pkgs.frigate.override {
+      frigatePkgs.frigate.override {
         inherit (rocmPkgs) python313Packages;
         frigate = self;
       }
@@ -105,7 +109,7 @@ let
   # YOLOv8 uses 80 contiguous class IDs; the packaged default uses COCO-91
   # class ordering and would interpret cats as birds and dogs as cats.
   detectionLabelmap = pkgs.runCommand "frigate-coco-80-labelmap.txt" { } ''
-    cp ${pkgs.frigate.src}/docker/main/rootfs/labelmap/coco-80.txt "$out"
+    cp ${frigatePkgs.frigate.src}/docker/main/rootfs/labelmap/coco-80.txt "$out"
   '';
 
   # Every camera in the inventory yields these go2rtc streams:
@@ -357,7 +361,7 @@ in
 
       # AMD GPU hardware acceleration
       ffmpeg = {
-        path = "${pkgs.ffmpeg-headless}";
+        path = "${config.multiverse.locked.ffmpeg-headless}";
         hwaccel_args = "preset-vaapi";
         output_args = {
           record = "preset-record-generic-audio-aac";
@@ -532,8 +536,8 @@ in
     wants = [ "sops-nix.service" ];
     requires = [ "zfs-mount.service" ];
     path = [
-      pkgs.coreutils
-      pkgs.yq-go
+      config.multiverse.locked.coreutils
+      config.multiverse.locked.yq-go
     ];
     serviceConfig = {
       DynamicUser = lib.mkForce false;

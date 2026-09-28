@@ -11,6 +11,10 @@
 }:
 
 let
+  # Integrations must use the interpreter and dependencies of the pinned server.
+  homeAssistantPkgs = config.multiverse.instance.at (builtins.fromJSON (
+    builtins.readFile ../../multiverse.lock
+  )).pins.home-assistant.rev;
   # Every card, subview, and control below is generated from the camera
   # inventory in cameras.nix. The Frigate integration creates the
   # camera.<name> and switch.<name>_* entities these reference for each
@@ -189,6 +193,7 @@ in
   };
 
   services.home-assistant = {
+    package = config.multiverse.locked.home-assistant;
     enable = lib.mkDefault false;
 
     # Essential components - others can be added via UI
@@ -226,13 +231,13 @@ in
       ];
 
     # Frigate custom component for HA integration
-    customComponents = with pkgs.home-assistant-custom-components; [
+    customComponents = with homeAssistantPkgs.home-assistant-custom-components; [
       frigate
     ];
 
     # Frigate Lovelace card (frigate-hass-card) for camera dashboard
     # Package renamed from frigate-hass-card to advanced-camera-card in v7.0.0
-    customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
+    customLovelaceModules = with homeAssistantPkgs.home-assistant-custom-lovelace-modules; [
       advanced-camera-card
     ];
 
@@ -432,7 +437,7 @@ in
 
       AUTH_FILE="/var/lib/hass/.storage/auth"
       if [ -f "$AUTH_FILE" ] && \
-         ${pkgs.jq}/bin/jq -e \
+         ${config.multiverse.locked.jq}/bin/jq -e \
            --arg user "$HASS_USERNAME" \
            '.data.users[] | select(.name == $user)' \
            "$AUTH_FILE" > /dev/null 2>&1; then
@@ -449,7 +454,7 @@ in
   };
 
   # Required system packages
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     ffmpeg # For camera streaming
   ];
 }

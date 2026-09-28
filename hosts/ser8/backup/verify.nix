@@ -151,11 +151,11 @@ in
 
     script = ''
       export ZFS_BIN="${pkgs.zfs}/bin/zfs"
-      export SQLITE_BIN="${pkgs.sqlite}/bin/sqlite3"
+      export SQLITE_BIN="${config.multiverse.locked.sqlite}/bin/sqlite3"
       export PG_RESTORE_BIN="${postgresqlPackage}/bin/pg_restore"
-      export FINDMNT_BIN="${pkgs.util-linux}/bin/findmnt"
-      export MKTEMP_BIN="${pkgs.coreutils}/bin/mktemp"
-      export CMP_BIN="${pkgs.diffutils}/bin/cmp"
+      export FINDMNT_BIN="${config.multiverse.locked.util-linux}/bin/findmnt"
+      export MKTEMP_BIN="${config.multiverse.locked.coreutils}/bin/mktemp"
+      export CMP_BIN="${config.multiverse.locked.diffutils}/bin/cmp"
       export SENDMAIL_BIN="/run/wrappers/bin/sendmail"
       export BACKUP_MAIL_TO=${lib.escapeShellArg recipientLine}
       source ${./verify.sh}

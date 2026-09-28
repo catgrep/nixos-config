@@ -19,7 +19,7 @@ let
   };
 
   # Python environment with prometheus_client
-  pythonEnv = pkgs.python3.withPackages (ps: with ps; [ prometheus-client ]);
+  pythonEnv = config.multiverse.locked.python3.withPackages (ps: with ps; [ prometheus-client ]);
 in
 {
   homelab.monitoring.systemd.units = lib.mkIf config.services.frigate.enable {

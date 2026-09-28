@@ -88,4 +88,6 @@
       ''
     );
   };
+
+  services.sonarr.package = config.multiverse.locked.sonarr;
 }

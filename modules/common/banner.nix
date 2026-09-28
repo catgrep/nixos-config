@@ -31,7 +31,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    environment.systemPackages = with pkgs; [
+    environment.systemPackages = with config.multiverse.locked; [
       bc # Required for some calculations in the script
     ];
 

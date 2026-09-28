@@ -9,16 +9,15 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    colmena = {
-      url = "github:zhaofengli/colmena";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # Share application pins with the hosts and development shell.
+    mvs.url = "github:fzakaria/nixpkgs-multiverse";
   };
 
   outputs =
     {
       nixpkgs,
       home-manager,
+      mvs,
       ...
     }:
     let
@@ -28,6 +27,10 @@
     {
       homeConfigurations."bobby" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
+        extraSpecialArgs.pinned = mvs.lib.readLock {
+          inherit system;
+          file = ../multiverse.lock;
+        };
         modules = [
           (builtins.path {
             path = ./default.nix;

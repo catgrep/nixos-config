@@ -133,4 +133,6 @@ in
   homelab.monitoring.systemd.units = lib.mkIf config.services.prometheus.alertmanager.enable {
     "alertmanager.service".expectedRunning = true;
   };
+
+  services.prometheus.alertmanager.package = config.multiverse.locked.prometheus-alertmanager;
 }

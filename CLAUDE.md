@@ -5,9 +5,11 @@ This file provides agent-agnostic guidance for working in this repository.
 
 ## Repository Overview
 
-This repository is a NixOS homelab flake built around NixOS 25.11.
+This repository is a NixOS homelab flake built around NixOS 26.05.
 It manages two x86_64 systems and two Raspberry Pi systems through shared modules and host-specific configuration.
 The root flake also exports development shells, kexec installers, service metadata, package inspection data, and the local `sagent` tool.
+Third-party flake selections and their dependency policies live in `omniflake.nix`.
+Development shells and checks live in `dev.nix` and `checks.nix`.
 
 ## Host Architecture
 
@@ -117,6 +119,10 @@ Use `mvs` (in the dev shell) to query nixpkgs version history, for example `mvs 
 The repo-root `multiverse.lock` is the source of truth for application versions pinned from nixpkgs history; edit it only through `mvs lock` commands, never by hand.
 Hosts consume pins through `config.multiverse.locked.<attr>` (wired in `modules/common/multiverse.nix`).
 Moving a pin forward is two steps: `nix flake update mvs`, then `mvs lock update <attr>`.
+Run the lock command from a newly entered development shell so it uses the refreshed index.
+An existing version constraint remains in force; use `mvs lock add <attr>@<version>` to change it.
+The standalone Home Manager flake reads the same lock file and may need its reader refreshed with `nix flake update mvs --flake ./home-manager`.
+Do not automatically minimize pins: the same application version can carry older recipes and dependencies after `mvs lock minimize`.
 
 Build the Arm64 kexec installer with `make aarch64-kexec`.
 Raspberry Pi bootstrap-image and device-write targets do not currently exist and must not be presented as available.

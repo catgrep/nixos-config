@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ lib, ... }:
+{ config, lib, ... }:
 
 {
   services.sanoid = {
@@ -180,10 +180,16 @@
   systemd.services."syncoid-rpool-safe-persist" = {
     after = [ "sanoid.service" ];
     serviceConfig.Type = lib.mkForce "oneshot";
+    # pv 1.11 uses setitimer for transfer progress; allow it after syncoid's
+    # upstream ~@timer exclusion without opening the rest of that syscall group.
+    serviceConfig.SystemCallFilter = lib.mkAfter [ "setitimer" ];
 
     # An empty startAt is how "no timer of its own" is spelled: the syncoid
     # module derives a timer unit from this option, and the chain above is
     # the only trigger this unit is meant to have.
     startAt = lib.mkForce [ ];
   };
+
+  services.sanoid.package = config.multiverse.locked.sanoid;
+  services.syncoid.package = config.multiverse.locked.sanoid;
 }

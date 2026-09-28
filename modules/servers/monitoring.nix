@@ -144,7 +144,7 @@
   '';
 
   # Common monitoring packages
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with config.multiverse.locked; [
     htop
     iotop
     nethogs
@@ -153,4 +153,15 @@
 
   # Open firewall for node exporter
   networking.firewall.allowedTCPPorts = [ 9100 ];
+  # Exporter modules select these attributes directly and expose no package option.
+  nixpkgs.overlays = [
+    (_: _: {
+      inherit (config.multiverse.locked)
+        prometheus-node-exporter
+        prometheus-systemd-exporter
+        prometheus-process-exporter
+        ;
+    })
+  ];
+
 }

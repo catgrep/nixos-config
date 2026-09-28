@@ -87,4 +87,6 @@
       ''
     );
   };
+
+  services.radarr.package = config.multiverse.locked.radarr;
 }

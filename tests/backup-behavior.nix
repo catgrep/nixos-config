@@ -1,9 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-{ pkgs }:
+{ pkgs, mvs }:
 
 let
   inherit (pkgs) lib;
+  pinned = mvs.lib.readLock {
+    system = pkgs.stdenv.hostPlatform.system;
+    file = ../multiverse.lock;
+  };
 
   # The covered set, imported from the same file the engine reads. The guest
   # stands up one unit per entry under the entry's real unit name -- the two
@@ -29,15 +33,15 @@ let
     db=$1
     rows=$2
 
-    ${pkgs.sqlite}/bin/sqlite3 "$db" \
+    ${pinned.sqlite}/bin/sqlite3 "$db" \
     	"PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS t(id INTEGER PRIMARY KEY, v BLOB);"
-    ${pkgs.sqlite}/bin/sqlite3 "$db" \
+    ${pinned.sqlite}/bin/sqlite3 "$db" \
     	"WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<$rows)
     	 INSERT INTO t(v) SELECT randomblob(4096) FROM c;"
 
     fifo=$(mktemp -u)
     mkfifo "$fifo"
-    ${pkgs.sqlite}/bin/sqlite3 "$db" <"$fifo" >/dev/null &
+    ${pinned.sqlite}/bin/sqlite3 "$db" <"$fifo" >/dev/null &
     writer=$!
     exec 3>"$fifo"
     printf 'INSERT INTO t(v) VALUES (randomblob(4096));\n' >&3
@@ -61,6 +65,7 @@ let
 in
 
 pkgs.testers.runNixOSTest {
+  node.specialArgs.inputs = { inherit mvs; };
   name = "backup-behavior";
 
   nodes.machine =
@@ -74,6 +79,7 @@ pkgs.testers.runNixOSTest {
       # this machine has two scratch disks and no disko config, so including it
       # would fail the build for a reason unrelated to anything tested here.
       imports = [
+        ../modules/common/multiverse.nix
         ../hosts/ser8/backup/dump.nix
         ../hosts/ser8/backup/mail.nix
         ../hosts/ser8/backup/policy.nix
@@ -99,7 +105,7 @@ pkgs.testers.runNixOSTest {
       networking.hostId = "2d833f3e";
       environment.systemPackages = [
         pkgs.parted
-        pkgs.sqlite
+        pinned.sqlite
         seedWalDatabase
       ];
 
@@ -127,7 +133,7 @@ pkgs.testers.runNixOSTest {
       # beyond the superuser's own.
       services.postgresql = {
         enable = true;
-        package = pkgs.postgresql_17;
+        package = pinned.postgresql_17;
         ensureDatabases = [ "mealie" ];
       };
 

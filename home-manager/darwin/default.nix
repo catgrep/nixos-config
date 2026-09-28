@@ -6,6 +6,10 @@
 { lib, pkgs, ... }:
 
 {
+  imports = [
+    ./ghostty.nix
+  ];
+
   config = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     home.sessionPath = [
       "/opt/homebrew/bin"

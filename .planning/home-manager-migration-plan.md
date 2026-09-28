@@ -122,8 +122,8 @@ home-manager/
     git.nix                # programs.git: aliases, signing, lfs, osxkeychain on darwin
     gpg.nix                # programs.gpg + services.gpg-agent, pinentry per platform
     tmux.nix               # shared config, copy-command per platform
-    vim.nix                # programs.vim with the 4-line vimrc
-    ssh.nix                # programs.ssh matchBlocks
+    vim.nix                # programs.vim, packageConfigurable = pinned.vim, vimrc compiled into the wrapper
+    ssh.nix                # programs.ssh.settings, enableDefaultConfig = false
     fzf.nix
     direnv.nix             # programs.direnv + nix-direnv
     nh.nix                 # programs.nh + the hm helper package
@@ -199,13 +199,15 @@ let
   darwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 {
-  imports = [ ../modules ] ++ (if darwin then [ ../darwin ] else [ ]);
+  imports = [ ../modules ../darwin ];
   home.username = "bobby";
   home.homeDirectory = if darwin then "/Users/bobby" else "/home/bobby";
   home.stateVersion = "26.05";
   programs.home-manager.enable = true;
 }
 ```
+
+`imports` cannot depend on `pkgs`, which is a module argument, so `darwin/` is imported on every platform and each file under it gates its `config` on `pkgs.stdenv.hostPlatform.isDarwin`.
 
 The git identity is the same person everywhere (`Bobby Dhillon`, the gmail address, signing on), so the `catgrep` identity the hosts use today goes away with the rename.
 Signing on the hosts needs the private key material there, and that goes through sops: export only the signing subkey (`gpg --export-secret-subkeys --armor <subkey-id>!`), store it as `gpg_signing_subkey` in `secrets/shared.yaml` with `make sops-edit-shared`, declare it in `modules/common` with `owner = "bobby"` and `mode = "0400"`, and let a Home Manager user service import it once:
@@ -261,20 +263,30 @@ If you want commits from the servers to stay unsigned, that is a one-line `lib.m
 
 ```nix
 # home-manager/modules/gpg.nix
-{ pkgs, pinned, ... }:
+{ lib, pkgs, pinned, ... }:
 let
   darwin = pkgs.stdenv.hostPlatform.isDarwin;
+  cacheTtl = 34560000;
 in
 {
   programs.gpg = { enable = true; package = pinned.gnupg; };
-  services.gpg-agent = {
+  services.gpg-agent = lib.mkIf (!darwin) {
     enable = true;
-    defaultCacheTtl = 34560000;
-    maxCacheTtl = 34560000;
-    pinentry.package = if darwin then pinned.pinentry_mac else pkgs.pinentry-curses;
+    defaultCacheTtl = cacheTtl;
+    maxCacheTtl = cacheTtl;
+    pinentry.package = pkgs.pinentry-curses;
+  };
+  home.file.".gnupg/gpg-agent.conf" = lib.mkIf darwin {
+    text = ''
+      default-cache-ttl ${toString cacheTtl}
+      max-cache-ttl ${toString cacheTtl}
+      pinentry-program ${lib.getExe' pinned.pinentry_mac "pinentry-mac"}
+    '';
   };
 }
 ```
+
+The `services.gpg-agent` launchd unit Home Manager generates puts its sockets under `/private/var/run/org.nix-community.home.gpg-agent/`, which nothing creates and which the Nix gnupg does not use, so on the Mac the module writes `~/.gnupg/gpg-agent.conf` with the TTLs and `pinentry-program` pointing at `pinned.pinentry_mac`, gpg starts the agent on demand, and the service stays Linux-only.
 
 ```nix
 # home-manager/modules/toolchains.nix
@@ -694,8 +706,8 @@ ripgrep, fd, bat, nixfmt, nixd, nil, charasay, gitingest, colmena, colima, opens
 | `~/.gitconfig` | `programs.git.settings`, `signing`, `lfs`, `includes` |
 | `~/.gitignore_global`, `~/.config/git/ignore` | `programs.git.ignores` (one copy) |
 | `~/.gnupg/gpg-agent.conf` | `services.gpg-agent` |
-| `~/.vimrc` | `programs.vim.extraConfig` |
-| `~/.ssh/config` (3 hosts) | `programs.ssh.matchBlocks`, `enableDefaultConfig = false` |
+| `~/.vimrc` | `programs.vim.extraConfig`, compiled into the wrapper through `packageConfigurable = pinned.vim` because `programs.vim.package` is read-only; no `~/.vimrc` is written |
+| `~/.ssh/config` (3 hosts) | `programs.ssh.settings` with OpenSSH directive names, `enableDefaultConfig = false` |
 | Ghostty config | `programs.ghostty.settings` (package left null, cask stays) |
 | `~/.config/yabai/yabairc`, `~/.config/skhd/skhdrc` | `services.yabai.extraConfig`, `services.skhd.skhdConfig` in nix-darwin |
 | `~/.config/zed/settings.json`, `keymap.json` | `xdg.configFile` |
@@ -751,12 +763,14 @@ Verify: the new generation (21 on this machine) resolves to the activation packa
 
 ### Phase 2: shell and dotfiles
 
-1. Remove the `~/.zshrc` and `~/.zshenv` symlinks (they point into the dotfiles repo; the repo stays until Phase 5).
+1. Remove the `~/.zshrc` and `~/.zshenv` symlinks (they point into the dotfiles repo; the repo stays until Phase 5) and move `~/.gitconfig` aside, because git reads it in addition to `~/.config/git/config` and it would shadow the managed config.
+   After the switch, copy `~/.zsh_history` to `~/.config/zsh/.zsh_history`, since history lives under `dotDir`, and run `gpgconf --kill gpg-agent` so the new pinentry takes effect.
 2. Write `shell/zsh.nix` and `omz-custom/` from the 40 real lines of the current config.
    Drop: the nfpm completion, `source ~/.zshenv`, the travis hook, the `bdhill` PATH entries, the anaconda comment, `/usr/local/sbin`.
    Keep: `gsk`, `gtchk`, `tmosh`, `capture`, `jpr`, `gtop`, `fman`, `GPG_TTY`, `EDITOR`, `BUILDX_BAKE_ENTITLEMENTS_FS`, `BINDGEN_EXTRA_CLANG_ARGS`, ghostty and iterm integration guarded by their env vars.
 3. Generate completions once into `completions/` (`nfpm completion zsh`, `hugo completion zsh`, `minikube completion zsh`, `docker completion zsh`, `kubectl completion zsh`) instead of sourcing them per shell.
 4. `git.nix`, `gpg.nix`, `vim.nix`, `tmux.nix`, `ssh.nix`, `fzf.nix` from the files listed in section 6.
+   `ssh.nix` uses `programs.ssh.settings` with OpenSSH directive names and `enableDefaultConfig = false`, because `programs.ssh.matchBlocks` is deprecated in the locked Home Manager (`modules/programs/ssh.nix:855`).
 5. `darwin/ghostty.nix` and `darwin/files.nix` for zed.
 6. Switch, open a new terminal, run `gsk --help`, `git lg`, sign a test commit, confirm `pinentry-mac` prompts.
 
@@ -769,8 +783,10 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
 2. `nh.nix` with `programs.nh`, `mvs` on PATH, and the first version of `hm` (add, rm, up, switch, list, status, doctor, try, clean) with `go test ./...` passing and wired into `checks`.
 3. For each plain CLI row in section 5 marked "move": `hm add --commit <attr>`.
    Four kinds of row do not go through `hm add` and are handled by hand in this step: attributes a `programs.*` module installs (git, gh, fzf, vim, gpg, uv, yt-dlp, go), Darwin-only attributes that need an `isDarwin` guard (`pinentry_mac`), nested attributes the lock cannot hold (`darwin.trash`, from the nixpkgs input), and ast-bro, which the sagent subflake exports and which `darwin/default.nix` adds to `home.packages` from `sagent.packages`.
+   Once the Nix hugo, minikube and nfpm are installed, regenerate their completions in `modules/shell/completions/` from those binaries.
 4. `hm add --go` for each `go install` tool in section 5, then `hm sync go`; `hm add --uv claude-monitor==<version>` and `par-cc-usage`, then `hm sync uv`, then `brew uninstall pipx` and `trash ~/.local/pipx`; `hm add --cargo` for `wt`, `rustlings` and `cargo-deps`, then `hm sync cargo`, which rebuilds them against the Nix toolchain.
-5. Reorder PATH in `darwin/default.nix`: Nix profile first, `/opt/homebrew/bin` appended last.
+5. Verify the PATH order, which `darwin/default.nix` does not need to change: `home.sessionPath` prepends its entries from `.zshenv`, `path_helper` then places the system directories first, and the `/etc/zshrc` Nix hook prepends the Nix profiles, so from the Phase 2 switch on the order is Nix profiles, system directories, session path entries with `/opt/homebrew/bin` last.
+   Because Homebrew now sits after `/usr/bin`, every Homebrew tool that overrides an Apple system tool today (python3, rsync, curl, make, openssl, coreutils) must have moved to a pin before Phase 3 ends.
 
 Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store` or `~/.nix-profile`; `hm list` shows every row with the right source tag; `hm doctor` reports nothing undeclared in `~/go/bin`.
 

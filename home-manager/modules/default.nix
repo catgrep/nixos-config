@@ -7,5 +7,6 @@
     ./gpg.nix
     ./packages.nix
     ./shell/zsh.nix
+    ./vim.nix
   ];
 }

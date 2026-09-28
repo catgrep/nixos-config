@@ -153,7 +153,10 @@
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         ({ config, ... }: {
-          home-manager.extraSpecialArgs.pinned = config.multiverse.locked;
+          home-manager.extraSpecialArgs = {
+            pinned = config.multiverse.locked;
+            inherit mvs;
+          };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.bdhill =
@@ -251,6 +254,18 @@
         "provisioning-firebat" = self.nixosConfigurations.firebat;
         "provisioning-pi4" = self.nixosConfigurations.pi4;
         "provisioning-pi5" = self.nixosConfigurations.pi5;
+      };
+
+      # Standalone Home Manager for the Mac. It receives the same special
+      # arguments as the NixOS home-manager module above, so the shared
+      # modules evaluate identically on every machine.
+      homeConfigurations."bobby@bob-mac" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+        extraSpecialArgs = {
+          pinned = pinnedFor "aarch64-darwin";
+          inherit mvs;
+        };
+        modules = [ ./home-manager/users/bobby.nix ];
       };
 
       inherit (sagent) lib;

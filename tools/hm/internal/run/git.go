@@ -53,12 +53,22 @@ func (g Git) Add(paths ...string) error {
 	return g.r.Do(g.cmd(append([]string{"add", "--"}, paths...)...))
 }
 
-// Commit commits only paths with the given subject.
-func (g Git) Commit(subject string, paths ...string) error {
-	return g.r.Do(g.cmd(append([]string{"commit", "-m", subject, "--"}, paths...)...))
+// Commit commits only paths with the given subject and, when body is not
+// empty, that body as a second paragraph.
+func (g Git) Commit(subject, body string, paths ...string) error {
+	return g.r.Do(g.commit(subject, body, paths))
 }
 
 // CommitCommand renders the commit command for the user to run by hand.
-func (g Git) CommitCommand(subject string, paths ...string) string {
-	return g.cmd(append([]string{"commit", "-m", subject, "--"}, paths...)...).String()
+func (g Git) CommitCommand(subject, body string, paths ...string) string {
+	return g.commit(subject, body, paths).String()
+}
+
+func (g Git) commit(subject, body string, paths []string) Cmd {
+	args := []string{"commit", "-m", subject}
+	if body != "" {
+		args = append(args, "-m", body)
+	}
+	args = append(args, "--")
+	return g.cmd(append(args, paths...)...)
 }

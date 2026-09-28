@@ -19,6 +19,14 @@ func jsonUnmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }
 
+// commitMessage is the generated commit for a run: a subject of at most 72
+// characters and an optional body carrying what the subject abbreviates,
+// such as the full module path of a tool entry.
+type commitMessage struct {
+	subject string
+	body    string
+}
+
 // flow is one run that edits owned files and ends in a switch or a sync.
 // In a dry run tx is nil and every write is printed as a diff instead.
 type flow struct {
@@ -208,7 +216,7 @@ func (f *flow) changed() []string {
 
 // report prints the change set and the commit command, and runs the commit
 // when asked. A commit refusal after a successful switch is exit status 4.
-func (f *flow) report(subj string, commit bool) error {
+func (f *flow) report(msg commitMessage, commit bool) error {
 	changed := f.changed()
 	if len(changed) == 0 {
 		f.a.say("nothing to commit")
@@ -216,7 +224,7 @@ func (f *flow) report(subj string, commit bool) error {
 		return nil
 	}
 	sort.Strings(changed)
-	cmd := f.a.git.CommitCommand(subj, changed...)
+	cmd := f.a.git.CommitCommand(msg.subject, msg.body, changed...)
 	if !commit {
 		f.a.say("uncommitted: %s", strings.Join(changed, " "))
 		f.a.say("%s", cmd)
@@ -229,12 +237,12 @@ func (f *flow) report(subj string, commit bool) error {
 			return fail(ExitCommitFailed, "%s changed after the switch; not committing. Review and run:\nhm: %s", strings.Join(edited, ", "), cmd)
 		}
 	}
-	if err := f.a.git.Commit(subj, changed...); err != nil {
+	if err := f.a.git.Commit(msg.subject, msg.body, changed...); err != nil {
 		f.finish(txn.OutcomeCommitFailed, err.Error())
 		return fail(ExitCommitFailed, "commit failed: %v\nhm: %s", err, cmd)
 	}
-	f.a.say("committed %q", subj)
-	f.finish(txn.OutcomeOK, "committed "+subj)
+	f.a.say("committed %q", msg.subject)
+	f.finish(txn.OutcomeOK, "committed "+msg.subject)
 	return nil
 }
 

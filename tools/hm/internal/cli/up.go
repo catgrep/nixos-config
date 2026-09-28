@@ -63,14 +63,14 @@ func (a *App) cmdUp(opts options, args []string) error {
 			f.finishNoop()
 			return nil
 		}
-		return f.report("flake: update the mvs input", co.commit)
+		return f.report(commitMessage{subject: "flake: update the mvs input"}, co.commit)
 	}
 	f.step("switch")
 	if _, err := a.activate(co.buildOnly); err != nil {
 		return f.fail("switch", err)
 	}
 	f.step("report")
-	return f.report(upSubject(layer, moved), co.commit)
+	return f.report(commitMessage{subject: upSubject(layer, moved)}, co.commit)
 }
 
 // upTargets decides which pins to move: the named attribute, which must be

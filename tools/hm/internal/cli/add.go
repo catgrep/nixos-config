@@ -108,7 +108,7 @@ func (a *App) addAttr(spec string, co changeOpts) error {
 	}
 	f.step("report")
 	a.say("added %s %s (%s)", attr, pinVersion, detail)
-	return f.report(subject("home", "add", attr, pinVersion), co.commit)
+	return f.report(commitMessage{subject: subject("home", "add", attr, pinVersion)}, co.commit)
 }
 
 // pinAttr runs mvs lock add. In a dry run it runs against a copy of the
@@ -199,6 +199,17 @@ func (k toolKind) entryName(entry string) string {
 	return name
 }
 
+// executable returns the program an entry installs, which names its
+// commits: for go the last element of the package path, for uv and cargo
+// the package or crate name.
+func (k toolKind) executable(entry string) string {
+	name := k.entryName(entry)
+	if k.name == "go" {
+		return sources.GoExecutable(name)
+	}
+	return name
+}
+
 // addTool appends an entry to a tool list and syncs that installer.
 func (a *App) addTool(k toolKind, entry string, co changeOpts) error {
 	_, version, err := k.parse(entry)
@@ -216,15 +227,16 @@ func (a *App) addTool(k toolKind, entry string, co changeOpts) error {
 	if err != nil {
 		return err
 	}
-	verb, from := "add", ""
+	msg := commitMessage{subject: subject("home", "add "+k.name, k.executable(entry), version), body: entry}
 	for _, existing := range list.Entries() {
 		if existing == entry {
 			a.say("%s is already declared in %s", entry, k.file)
 		} else if k.entryName(existing) == k.entryName(entry) {
-			_, from, _ = strings.Cut(existing, k.sep)
+			_, from, _ := strings.Cut(existing, k.sep)
 			a.say("replacing %s with %s", existing, entry)
 			list.Remove(existing)
-			verb = "update"
+			msg.subject = subject("home", "update "+k.name, k.executable(entry), from+" to "+version)
+			msg.body = entry + "\nreplaces " + existing
 		}
 	}
 	if list.Add(entry) {
@@ -243,11 +255,7 @@ func (a *App) addTool(k toolKind, entry string, co changeOpts) error {
 		return f.fail("hm sync "+k.name, err)
 	}
 	f.step("report")
-	subj := subject("home", verb+" "+k.name, k.entryName(entry), version)
-	if verb == "update" {
-		subj = subject("home", "update "+k.name, k.entryName(entry), from+" to "+version)
-	}
-	return f.report(subj, co.commit)
+	return f.report(msg, co.commit)
 }
 
 // finishNoop closes a flow that changed nothing.

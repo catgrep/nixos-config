@@ -168,8 +168,11 @@ func TestGitDirty(t *testing.T) {
 	if err := git.Add("a.nix"); err != nil {
 		t.Fatal(err)
 	}
-	if err := git.Commit("home: add a", "a.nix"); err != nil {
+	if err := git.Commit("home: add a", "the body", "a.nix"); err != nil {
 		t.Fatal(err)
+	}
+	if out, err := r.Output(Cmd{Prog: "git", Args: []string{"-C", root, "log", "-1", "--format=%s%n%n%b"}}); err != nil || !strings.HasPrefix(string(out), "home: add a\n\nthe body\n") {
+		t.Errorf("commit message = %q, %v", out, err)
 	}
 	dirty, err := git.Dirty("a.nix", "b.nix")
 	if err != nil || len(dirty) != 0 {
@@ -189,7 +192,10 @@ func TestGitDirty(t *testing.T) {
 	if err != nil || filepath.Base(dir) != ".git" {
 		t.Errorf("Dir = %q, %v", dir, err)
 	}
-	if got := git.CommitCommand("home: add x", "a.nix"); got != "git -C "+root+" commit -m 'home: add x' -- a.nix" {
+	if got := git.CommitCommand("home: add x", "", "a.nix"); got != "git -C "+root+" commit -m 'home: add x' -- a.nix" {
 		t.Errorf("CommitCommand = %q", got)
+	}
+	if got := git.CommitCommand("home: add go x", "example.com/x@v1.0.0", "a.nix"); got != "git -C "+root+" commit -m 'home: add go x' -m example.com/x@v1.0.0 -- a.nix" {
+		t.Errorf("CommitCommand with a body = %q", got)
 	}
 }

@@ -98,7 +98,7 @@ func (a *App) rmAttr(attr string, prune bool, co changeOpts) error {
 	}
 	f.step("report")
 	a.say("removed %s (%s)", attr, detail)
-	return f.report(subject("home", "remove", attr, ""), co.commit)
+	return f.report(commitMessage{subject: subject("home", "remove", attr, "")}, co.commit)
 }
 
 // rmTool drops an entry from a tool list and uninstalls what it declared.
@@ -126,9 +126,8 @@ func (a *App) rmTool(k toolKind, entry string, co changeOpts) error {
 		return f.fail("uninstall", err)
 	}
 	f.step("report")
-	name := k.entryName(entry)
-	a.say("removed %s %s", k.name, name)
-	return f.report(subject("home", "remove "+k.name, name, ""), co.commit)
+	a.say("removed %s %s", k.name, k.entryName(entry))
+	return f.report(commitMessage{subject: subject("home", "remove "+k.name, k.executable(entry), ""), body: entry}, co.commit)
 }
 
 func (a *App) uninstallCommand(k toolKind, entry string) string {

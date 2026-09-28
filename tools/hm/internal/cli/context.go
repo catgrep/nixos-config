@@ -120,12 +120,18 @@ func (a *App) gobin() string {
 }
 
 // subject renders a commit subject from the template layer: verb name
-// version, at most 72 characters with the version kept.
+// version, at most 72 characters with the version kept. A Go pseudo-version
+// is written with its date and without its commit hash, since the commit
+// body carries the full entry; only a name that still does not fit is cut.
 func subject(layer, verb, name, version string) string {
 	const limit = 72
+	words := strings.Fields(version)
+	for i, w := range words {
+		words[i] = shortPseudoVersion(w)
+	}
 	tail := ""
-	if version != "" {
-		tail = " " + version
+	if len(words) > 0 {
+		tail = " " + strings.Join(words, " ")
 	}
 	head := layer + ": " + verb + " "
 	if len(head)+len(name)+len(tail) <= limit {
@@ -136,6 +142,34 @@ func subject(layer, verb, name, version string) string {
 		room = 1
 	}
 	return head + name[:room] + tail
+}
+
+// shortPseudoVersion drops the commit hash from a Go pseudo-version such as
+// v0.0.0-20240905095256-f6e8664cd2b1, keeping the timestamp, and returns
+// any other version unchanged.
+func shortPseudoVersion(v string) string {
+	i := strings.LastIndex(v, "-")
+	if i < 0 || !allOf(v[i+1:], 12, "0123456789abcdef") {
+		return v
+	}
+	j := strings.LastIndex(v[:i], "-")
+	if j < 0 || !allOf(v[j+1:i], 14, "0123456789") {
+		return v
+	}
+	return v[:i]
+}
+
+// allOf reports whether s has exactly n characters, all from alphabet.
+func allOf(s string, n int, alphabet string) bool {
+	if len(s) != n {
+		return false
+	}
+	for _, c := range s {
+		if !strings.ContainsRune(alphabet, c) {
+			return false
+		}
+	}
+	return true
 }
 
 // validateList runs nix eval on a written list and checks that it is a

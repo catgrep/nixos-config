@@ -403,3 +403,22 @@ func TestExecutables(t *testing.T) {
 		t.Errorf("Executables = %+v", xs)
 	}
 }
+
+func TestGoExecutable(t *testing.T) {
+	tests := map[string]string{
+		"sigs.k8s.io/kubetest2/kubetest2-gce":                               "kubetest2-gce",
+		"sigs.k8s.io/kubetest2":                                             "kubetest2",
+		"sigs.k8s.io/kubetest2/...":                                         "kubetest2",
+		"github.com/arch-go/arch-go/v2":                                     "arch-go",
+		"golang.org/x/perf/cmd/benchstat":                                   "benchstat",
+		"github.com/JohannesKaufmann/html-to-markdown/v2/cli/html2markdown": "html2markdown",
+		"github.com/fatih/gomodifytags":                                     "gomodifytags",
+		"example.com/vendor/v2x":                                            "v2x",
+		"v2":                                                                "v2",
+	}
+	for pattern, want := range tests {
+		if got := GoExecutable(pattern); got != want {
+			t.Errorf("GoExecutable(%q) = %q, want %q", pattern, got, want)
+		}
+	}
+}

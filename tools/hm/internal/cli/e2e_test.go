@@ -558,7 +558,7 @@ func TestAddGoToolBuildOnly(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
-	for _, want := range []string{"hm: not installed; run: hm sync go", "commit -m 'home: add go github.com/fatih/gomodifytags v1.17.0' -- home-manager/go-tools.nix"} {
+	for _, want := range []string{"hm: not installed; run: hm sync go", "commit -m 'home: add go gomodifytags v1.17.0' -m github.com/fatih/gomodifytags@v1.17.0 -- home-manager/go-tools.nix"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -571,7 +571,7 @@ func TestAddGoToolBuildOnly(t *testing.T) {
 	}
 	h.git("commit", "-q", "-m", "home: add go gomodifytags", "--", "home-manager/go-tools.nix")
 	code, out = h.run("add", "--go", "--build-only", "github.com/fatih/gomodifytags@v1.18.0")
-	if code != ExitOK || !strings.Contains(out, "replacing github.com/fatih/gomodifytags@v1.17.0 with github.com/fatih/gomodifytags@v1.18.0") || !strings.Contains(out, "'home: update go github.com/fatih/gomodifytags v1.17.0 to v1.18.0'") {
+	if code != ExitOK || !strings.Contains(out, "replacing github.com/fatih/gomodifytags@v1.17.0 with github.com/fatih/gomodifytags@v1.18.0") || !strings.Contains(out, "'home: update go gomodifytags v1.17.0 to v1.18.0' -m 'github.com/fatih/gomodifytags@v1.18.0\nreplaces github.com/fatih/gomodifytags@v1.17.0' --") {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 	code, out = h.run("sync", "go", "--build-only")
@@ -580,7 +580,7 @@ func TestAddGoToolBuildOnly(t *testing.T) {
 	}
 	h.git("checkout", "--", ".")
 	code, out = h.run("rm", "--build-only", "github.com/fatih/gomodifytags")
-	if code != ExitOK || !strings.Contains(out, "remove go github.com/fatih/gomodifytags") {
+	if code != ExitOK || !strings.Contains(out, "hm: removed go github.com/fatih/gomodifytags") || !strings.Contains(out, "commit -m 'home: remove go gomodifytags' -m github.com/fatih/gomodifytags@v1.17.0 --") {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 }
@@ -882,5 +882,62 @@ func TestCompleteOwned(t *testing.T) {
 	code, out = h.run("__complete", "add", "zi")
 	if code != ExitOK || out != "zizmor\n" {
 		t.Fatalf("exit %d\n%q", code, out)
+	}
+}
+
+// A tool commit is named after the executable the entry installs, so the
+// sibling packages of one module get distinct subjects; a Go pseudo-version
+// keeps its date and drops its hash in the subject, and the full entry is
+// the commit body.
+func TestToolCommitsNameTheExecutable(t *testing.T) {
+	h := newHarness(t)
+	const kubetest2 = "sigs.k8s.io/kubetest2/kubetest2-"
+	const pseudo = "@v0.0.0-20240905095256-f6e8664cd2b1"
+	want := map[string]string{
+		kubetest2 + "gce" + pseudo:                                                 "home: add go kubetest2-gce v0.0.0-20240905095256",
+		kubetest2 + "gke" + pseudo:                                                 "home: add go kubetest2-gke v0.0.0-20240905095256",
+		kubetest2 + "kind" + pseudo:                                                "home: add go kubetest2-kind v0.0.0-20240905095256",
+		kubetest2 + "noop" + pseudo:                                                "home: add go kubetest2-noop v0.0.0-20240905095256",
+		kubetest2 + "tester-clusterloader2" + pseudo:                               "home: add go kubetest2-tester-clusterloader2 v0.0.0-20240905095256",
+		kubetest2 + "tester-exec" + pseudo:                                         "home: add go kubetest2-tester-exec v0.0.0-20240905095256",
+		kubetest2 + "tester-ginkgo" + pseudo:                                       "home: add go kubetest2-tester-ginkgo v0.0.0-20240905095256",
+		kubetest2 + "tester-node" + pseudo:                                         "home: add go kubetest2-tester-node v0.0.0-20240905095256",
+		"sigs.k8s.io/kubetest2" + pseudo:                                           "home: add go kubetest2 v0.0.0-20240905095256",
+		"github.com/arch-go/arch-go/v2@v2.1.2":                                     "home: add go arch-go v2.1.2",
+		"golang.org/x/perf/cmd/benchstat@v0.0.0-20250505210442-a54a20dddd97":       "home: add go benchstat v0.0.0-20250505210442",
+		"github.com/JohannesKaufmann/html-to-markdown/v2/cli/html2markdown@v2.5.0": "home: add go html2markdown v2.5.0",
+	}
+	seen := map[string]string{}
+	for entry, wantSubject := range want {
+		code, out := h.run("add", "--go", "--build-only", "--commit", entry)
+		if code != ExitOK {
+			t.Fatalf("%s: exit %d\n%s", entry, code, out)
+		}
+		subj := strings.TrimSpace(h.git("log", "-1", "--format=%s"))
+		body := strings.TrimSpace(h.git("log", "-1", "--format=%b"))
+		if subj != wantSubject {
+			t.Errorf("%s: subject %q, want %q", entry, subj, wantSubject)
+		}
+		if len(subj) > 72 {
+			t.Errorf("%s: subject longer than 72: %q", entry, subj)
+		}
+		if body != entry {
+			t.Errorf("%s: body %q, want the full entry", entry, body)
+		}
+		if other, dup := seen[subj]; dup {
+			t.Errorf("%s and %s share the subject %q", entry, other, subj)
+		}
+		seen[subj] = entry
+	}
+	h.script("uv", `case "$1 $2" in "tool list") echo "" ;; esac`)
+	code, out := h.run("add", "--uv", "--build-only", "--commit", "claude-monitor==3.1.0")
+	if code != ExitOK {
+		t.Fatalf("uv: exit %d\n%s", code, out)
+	}
+	if subj := strings.TrimSpace(h.git("log", "-1", "--format=%s")); subj != "home: add uv claude-monitor 3.1.0" {
+		t.Errorf("uv subject = %q", subj)
+	}
+	if body := strings.TrimSpace(h.git("log", "-1", "--format=%b")); body != "claude-monitor==3.1.0" {
+		t.Errorf("uv body = %q", body)
 	}
 }

@@ -265,3 +265,29 @@ func (x Executable) VersionHint() string {
 	}
 	return ""
 }
+
+// GoExecutable returns the program go install builds from a package
+// pattern: the last path element, or the one before a major-version suffix
+// such as /v2. A /... pattern names its root.
+func GoExecutable(pattern string) string {
+	parts := strings.Split(strings.TrimSuffix(pattern, "/..."), "/")
+	last := parts[len(parts)-1]
+	if len(parts) > 1 && isMajorVersion(last) {
+		return parts[len(parts)-2]
+	}
+	return last
+}
+
+// isMajorVersion reports whether s is a module major-version element: v
+// followed by digits only.
+func isMajorVersion(s string) bool {
+	if len(s) < 2 || s[0] != 'v' {
+		return false
+	}
+	for _, c := range s[1:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}

@@ -57,7 +57,11 @@ func TestSubject(t *testing.T) {
 		{"home", "add", "zizmor", "1.30.1", "home: add zizmor 1.30.1"},
 		{"home", "remove", "charasay", "", "home: remove charasay"},
 		{"home", "update", "ripgrep", "15.1.0 to 15.2.0", "home: update ripgrep 15.1.0 to 15.2.0"},
-		{"home", "add go", "sigs.k8s.io/kubetest2", "v0.0.0-20240905095256-f6e8664cd2b1", "home: add go sigs.k8s.io/kubetest2 v0.0.0-20240905095256-f6e8664cd2b1"},
+		{"home", "add go", "kubetest2", "v0.0.0-20240905095256-f6e8664cd2b1", "home: add go kubetest2 v0.0.0-20240905095256"},
+		{"home", "update go", "benchstat", "v0.0.0-20250505210442-a54a20dddd97 to v0.0.0-20260101120000-0123456789ab", "home: update go benchstat v0.0.0-20250505210442 to v0.0.0-20260101120000"},
+		{"home", "add go", "tool", "v1.2.3-20240905095256-f6e8664cd2b1", "home: add go tool v1.2.3-20240905095256"},
+		{"home", "add go", "tool", "v1.2.3-pre-f6e8664cd2b1", "home: add go tool v1.2.3-pre-f6e8664cd2b1"},
+		{"home", "add go", "tool", "v0.0.0-2024090509525-f6e8664cd2b1", "home: add go tool v0.0.0-2024090509525-f6e8664cd2b1"},
 		{"home", "add go", strings.Repeat("x", 80), "v1.2.3", "home: add go " + strings.Repeat("x", 52) + " v1.2.3"},
 	}
 	for _, tc := range tests {

@@ -45,6 +45,7 @@
   "openssh"
   "openssl"
   "pandoc"
+  "pdfgrep"
   "ripgrep"
   "shellcheck"
   "shfmt"

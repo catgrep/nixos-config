@@ -49,6 +49,7 @@
   "prek"
   "pv"
   "ripgrep"
+  "ripgrep-all"
   "shellcheck"
   "shfmt"
   "yq-go"

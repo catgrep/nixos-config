@@ -255,6 +255,7 @@ func brewCommand() Command {
 		Description: []string{
 			"hm brew cleanup runs brew bundle cleanup against the Brewfile the flake generates for this Mac. The Brewfile is evaluated from darwinConfigurations rather than read from the activated system, so the preview matches what the next nh darwin switch would apply and works before the first one. Without --force it prints, through the pager, every formula, cask and tap Homebrew has that darwin/homebrew/ does not declare, and removes nothing. With --force it uninstalls them; --zap also deletes the data and preferences of the removed casks.",
 			"Activation never removes anything: homebrew.onActivation.cleanup stays none, so a wrong list costs an unwanted install, never a lost one. The --force run takes the run lock like a switch.",
+			"Homebrew applies the Brewfile's trusted flags only when a switch installs it, so before the first switch brew refuses a formula from a declared third-party tap. The preview then prints the one-time brew trust command for every trusted tap the Brewfile declares and exits 1 without removing anything; trusting a tap is a local Homebrew setting, not a change to the lists.",
 		},
 		Flags: []Flag{
 			{Name: "force", Help: "remove what the preview lists instead of printing it"},

@@ -113,6 +113,7 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("FAKE_NH_FAIL_AFTER", "")
 	t.Setenv("FAKE_NH_EDIT", "")
 	t.Setenv("FAKE_BREW_FAIL", "")
+	t.Setenv("FAKE_BREW_UNTRUSTED", "")
 	return h
 }
 
@@ -229,11 +230,17 @@ esac
 	h.script("nvd", "")
 	// bundle cleanup copies the Brewfile it was given into the log, so a
 	// test can check what hm handed to brew; the preview exits 1 the way
-	// brew does when something would be removed.
+	// brew does when something would be removed. FAKE_BREW_UNTRUSTED makes
+	// it refuse a formula from a tap Homebrew has not been told to trust,
+	// with brew's own wording.
 	h.script("brew", `if [ -n "$FAKE_BREW_FAIL" ]; then echo "Error: Operation not permitted @ rb_sysopen" >&2; exit 1; fi
 case "$1 $2" in
   "bundle cleanup")
     for arg in "$@"; do case "$arg" in --file=*) cat "${arg#--file=}" >> "$FAKE_LOG" ;; esac; done
+    if [ -n "$FAKE_BREW_UNTRUSTED" ]; then
+      printf 'Error: Refusing to load formula peonping/tap/peon-ping from untrusted tap peonping/tap.\nRun \x60brew trust --formula peonping/tap/peon-ping\x60 or \x60brew trust peonping/tap\x60 to trust it.\n' >&2
+      exit 1
+    fi
     case " $* " in
       *" --force "*) echo "Uninstalled 2 formulae" ;;
       *) printf 'Would uninstall formulae:\ngcc\nnode@18\nRun \x60brew bundle cleanup --force\x60 to make these changes.\n'; exit 1 ;;

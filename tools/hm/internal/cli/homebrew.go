@@ -234,7 +234,7 @@ func (a *App) cmdBrew(opts options, args []string) error {
 		cmd.Args = append(cmd.Args, "--zap")
 	}
 	if !opts.flag("force") {
-		return a.previewCleanup(cmd)
+		return a.previewCleanup(cmd, brewfile)
 	}
 	cmd.Args = append(cmd.Args, "--force")
 	f, err := a.beginFlow(nil, false)
@@ -280,11 +280,15 @@ func (a *App) writeBrewfile() (string, error) {
 
 // previewCleanup prints what brew bundle cleanup would remove. brew exits
 // 1 when something would be removed, which is the answer asked for here,
-// not a failure; an exit 1 that listed nothing is one.
-func (a *App) previewCleanup(cmd run.Cmd) error {
+// not a failure; an exit 1 that listed nothing is one, and a run that asks
+// for brew trust is the prerequisite that command names.
+func (a *App) previewCleanup(cmd run.Cmd, brewfile string) error {
 	out, err := a.runner.Output(cmd)
 	text := strings.TrimSpace(string(out))
 	var exit *run.ExitError
+	if errors.As(err, &exit) && strings.Contains(exit.Stderr, "`brew trust ") {
+		return trustPrerequisite(brewfile, exit.Stderr)
+	}
 	if err != nil && !(errors.As(err, &exit) && exit.Code == 1 && strings.Contains(text, "Would ")) {
 		return err
 	}
@@ -296,6 +300,56 @@ func (a *App) previewCleanup(cmd run.Cmd) error {
 		_, err := fmt.Fprintf(w, "%s\nhm: hm brew cleanup --force removes them; add --zap to delete cask data too\n", text)
 		return err
 	})
+}
+
+// trustPrerequisite reports a cleanup that brew refused because a tap is
+// not trusted yet, with the one-time command that trusts every tap the
+// Brewfile declares as trusted. Homebrew applies the Brewfile's trusted
+// flags only when a switch installs it, so a preview before the first
+// switch meets the taps untrusted. Trusting a tap is a local Homebrew
+// setting, not a change to the lists, so there is nothing to restore.
+func trustPrerequisite(brewfile, stderr string) error {
+	taps, err := trustedTaps(brewfile)
+	if err != nil {
+		return err
+	}
+	lines := append([]string{"brew bundle cleanup refused: a declared tap is not trusted yet"}, trustLines(stderr)...)
+	if len(taps) == 0 {
+		lines = append(lines, "the Brewfile declares no trusted tap; declare it with trusted = true in darwin/homebrew/default.nix")
+	} else {
+		lines = append(lines,
+			"trust the taps the Brewfile declares once, then rerun the preview:",
+			"  brew trust "+strings.Join(taps, " "),
+			"trusting a tap is a one-time local Homebrew setting, not a change to darwin/homebrew/; nothing was removed")
+	}
+	return fail(ExitFailed, "%s", strings.Join(lines, "\nhm: "))
+}
+
+// trustedTaps lists the taps a Brewfile declares with trusted: true, in
+// declaration order.
+func trustedTaps(brewfile string) ([]string, error) {
+	data, err := os.ReadFile(brewfile)
+	if err != nil {
+		return nil, err
+	}
+	var taps []string
+	for _, m := range regexp.MustCompile(`(?m)^tap "([^"]+)".*\btrusted: true\b`).FindAllStringSubmatch(string(data), -1) {
+		taps = append(taps, m[1])
+	}
+	return taps, nil
+}
+
+// trustLines keeps the lines of brew's stderr that explain the trust
+// refusal, without the Error: and Warning: prefixes brew puts on them.
+func trustLines(stderr string) []string {
+	var lines []string
+	for _, line := range strings.Split(stderr, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, "trust") && !strings.HasPrefix(line, "Run `brew trust") {
+			lines = append(lines, strings.TrimPrefix(strings.TrimPrefix(line, "Error: "), "Warning: "))
+		}
+	}
+	return lines
 }
 
 // homebrewPrefix is where Homebrew lives: HOMEBREW_PREFIX, else the

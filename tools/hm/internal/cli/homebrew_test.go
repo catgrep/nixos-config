@@ -196,6 +196,38 @@ func TestBrewCleanup(t *testing.T) {
 	}
 }
 
+// Homebrew applies the Brewfile's trusted flags only when a switch
+// installs it, so before the first switch brew bundle cleanup refuses a
+// formula from a declared tap. The preview then names the one-time brew
+// trust command for every trusted tap the Brewfile declares and stops
+// without running anything else.
+func TestBrewCleanupNamesTrustPrerequisite(t *testing.T) {
+	h := newHarness(t)
+	h.write("fake", "Brewfile", "tap \"peonping/tap\", trusted: true\ntap \"stacktower-io/tap\", trusted: true\nbrew \"peon-ping\", trusted: true\n")
+	t.Setenv("FAKE_BREW_UNTRUSTED", "1")
+	code, out := h.run("brew", "cleanup")
+	if code != ExitFailed {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{
+		"Refusing to load formula peonping/tap/peon-ping from untrusted tap peonping/tap",
+		"hm:   brew trust peonping/tap stacktower-io/tap\n",
+		"trusting a tap is a one-time local Homebrew setting, not a change to darwin/homebrew/",
+		"nothing was removed",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "nothing to remove") || strings.Contains(out, "--force removes them") {
+		t.Errorf("the refusal was reported as a preview:\n%s", out)
+	}
+	calls := h.calls()
+	if strings.Count(calls, "brew bundle cleanup") != 1 || strings.Contains(calls, "--force") || strings.Contains(calls, "brew trust") {
+		t.Errorf("the preview ran more than the cleanup preview:\n%s", calls)
+	}
+}
+
 func TestListShowsCasksAndBrews(t *testing.T) {
 	h := newHarness(t)
 	h.write("fake", "refs.txt", "/nix/store/h5fzp9vb16p8z3ha51hhx37rqjh4l81z-ripgrep-15.1.0\n")

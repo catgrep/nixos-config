@@ -23,19 +23,20 @@ This was my first experience with NixOS. This repo will eventually be migrated t
 
 ## Services
 
-Access services through the gateway reverse proxy:
-- **Media Services**:
-  - `jellyfin` - Media streaming
-  - `sonarr` - TV show management
-  - `radarr` - Movie management
-  - `prowlarr` - Indexer management
-  - `frigate` - NVR management and object detection with YOLOv8s
-  - `home-assistant` - IoT / smart devices management
-- **Monitoring**:
-  - `grafana` - Metrics dashboards
-  - `prometheus` - Prometheus metrics
-- **Internal**:
-  - `adguard` - AdGuard Home DNS
+Caddy on firebat serves the routes defined in [modules/gateway/Caddyfile](modules/gateway/Caddyfile).
+LAN names use Caddy's local CA, and each Tailscale node is reached as `https://NODE.shad-bangus.ts.net` with a Tailscale certificate.
+
+| Service | LAN name | Tailscale node |
+|---------|----------|----------------|
+| Jellyfin | `jellyfin.vofi`, `jellyfin.vofi.app` | `jellyfin` |
+| Sonarr, Radarr, Bazarr, Prowlarr, SABnzbd, NZBGet, torrent | `NAME.vofi` | `NAME` |
+| Frigate, Home Assistant | `frigate.vofi`, `hass.vofi` | `frigate`, `hass` |
+| Grafana | `grafana.vofi.app` | `grafana` |
+| Prometheus | `prometheus.vofi.app` | `prom` |
+| Alertmanager | none | `alertmanager` |
+| Mealie, Homebox, Actual, Donetick | none | `NAME` |
+
+AdGuard Home on pi4 has no gateway route; its web interface is reached directly at `http://192.168.68.56:3000`.
 
 ## Development
 
@@ -60,8 +61,8 @@ make
 Home Manager and nixos-hardware retain their release/commit selections, and mvs remains a direct input so its index can be refreshed independently.
 
 [dev.nix](dev.nix) defines the development shell, and [checks.nix](checks.nix) defines portable and Linux VM checks.
-[multiverse.lock](multiverse.lock) selects explicit nixpkgs applications and tools for the shell, hosts, and standalone Home Manager configuration.
-Only edit that file through `mvs lock` commands.
+[multiverse.lock](multiverse.lock) selects explicit nixpkgs applications and tools for the shell, the hosts, and the Mac's Home Manager and nix-darwin configurations.
+Edit that file only through `mvs lock` commands or `hm`, never by hand.
 
 Refresh the index, inspect available versions, and change a pin from a newly entered shell:
 

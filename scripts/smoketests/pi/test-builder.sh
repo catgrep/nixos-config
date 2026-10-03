@@ -49,9 +49,16 @@ remote() {
 }
 
 # Test 1: the store answers the daemon protocol over ssh
+#
+# `nix store info` opens its own ssh connection rather than going through
+# `remote`, so NIX_SSHOPTS gives it the same batch mode and connect
+# timeout, and `timeout` bounds the whole probe so a remote that accepts
+# the connection but never answers the protocol fails instead of hanging
+# the suite.
 test_store_reachable() {
 	info "checking that the Nix store on $host answers over ssh"
-	if nix store info --store "ssh://$user@$ipaddr" >/dev/null 2>&1; then
+	if NIX_SSHOPTS="-oBatchMode=yes -oConnectTimeout=10 ${NIX_SSHOPTS:-}" \
+		timeout 60 nix store info --store "ssh://$user@$ipaddr" >/dev/null 2>&1; then
 		pass "ssh://$user@$ipaddr serves its Nix store"
 		return 0
 	fi

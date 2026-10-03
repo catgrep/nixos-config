@@ -26,7 +26,8 @@ Development shells and checks live in `dev.nix` and `checks.nix`.
 `deploy.yaml` is the source of truth for deployment addresses, users, tags, and smoketest commands.
 The `ser8` and `firebat` hosts use disko and impermanence.
 The Pi hosts build from upstream `nixpkgs` with the pinned `nixos-hardware` board modules, and `pi5` also uses disko.
-The interactive account on every host is `bobby` (uid 1000), defined in `modules/common/users.nix`.
+The configuration declares one interactive account on every host, `bobby` (uid 1000), in `modules/common/users.nix`.
+The SSH user that deployments connect as follows `deploy.yaml`, and the remote-builder identities follow `etc/nix/machines`, so neither is implied by the declared account.
 `home-manager.users.bobby` in `flake.nix` imports the same user file the Mac uses and passes the locked package set as the `pinned` special argument.
 
 ### ser8
@@ -105,8 +106,11 @@ On the Mac, `nix flake check` also builds `hm` and the `bob-mac` nix-darwin syst
 
 `make home-switch` runs `nh home switch .`, which builds and activates the Mac's Home Manager configuration.
 `nh darwin switch` builds and activates the Mac's nix-darwin system layer.
-`programs.nh.flake` in `home-manager/modules/nh.nix` sets `NH_FLAKE` to this repository, so `nh` and `hm` work from any directory.
+`programs.nh.flake` in `home-manager/modules/nh.nix` sets `NH_FLAKE` to the main checkout, so `nh` and `hm` work from any directory but act on that checkout.
+In another worktree, pass `hm --flake "$PWD"` or `nh home switch "$PWD"` so the run reads and edits that tree.
+The global `hm --dry-run` prints the commands a run would execute and the diff it would write, and changes nothing.
 A Home Manager switch is user-level and one generation away from rollback.
+Automatic cleaning is off in `home-manager/modules/nh.nix`, so old generations stay until `hm clean` removes them.
 `nh darwin switch` changes system files, Homebrew installs, and launchd agents, and `hm brew cleanup --force` uninstalls software, so both require explicit intent.
 
 `hm` (`tools/hm`) wraps `mvs lock`, `nh`, and the Homebrew lists so that adding, removing, or updating a tool is one command.
@@ -116,30 +120,34 @@ Home Manager installs it, and `nix run .#hm -- --help` runs the same binary from
 - `hm add NAME[@VERSION]` pins a nixpkgs attribute in `multiverse.lock`, inserts it in `home-manager/packages.nix`, and runs `nh home switch`.
 - `hm add --cask NAME` and `hm add --brew NAME` append to `darwin/homebrew/casks.nix` or `brews.nix` and run `nh darwin switch`.
 - `hm add --go MODULE@VERSION`, `hm add --uv PACKAGE==VERSION`, and `hm add --cargo CRATE@VERSION` append to the matching tool list and run `hm sync` for it.
-- `hm rm NAME` removes the name from whichever list holds it and switches; `--prune` also drops a pin that nothing else in the repository names.
-- `hm up [ATTR]` runs `nix flake update mvs`, moves the named pin or every `packages.nix` pin, and switches; `--repo` allows a host or dev-shell pin.
+- `hm rm NAME` removes the name from whichever list holds it: a nixpkgs attribute leaves `packages.nix` and Home Manager switches, a go, uv, or cargo tool is uninstalled directly, and a cask or brew leaves its list and nix-darwin switches, which keeps the software installed until `hm brew cleanup --force`.
+- `hm rm --prune NAME` also drops the pin from `multiverse.lock`, and refuses the whole removal when another Nix file in the repository names the attribute.
+- `hm up [ATTR]` runs `nix flake update mvs`, moves the named pin or every pin that `home-manager/packages.nix` lists, and runs `nh home switch` only when a pin moved.
+- `hm up --repo ATTR` is required for a pin that `packages.nix` does not list, such as a host service or a pin a `programs.*` module installs (`git`, `nh`, `go_1_27`).
 - `hm sync [go|uv|cargo]` installs the tools the lists declare that are missing or at another version; `--force` reinstalls every declared entry.
 - `hm switch [home|darwin|all]` runs `nh home switch`, `nh darwin switch`, or both.
-- `hm list` shows every installed package with its source tag: `pinned`, `nixpkgs`, `custom`, `cask`, `brew`, `go`, `cargo`, `uv`, or `native`.
+- `hm list` shows the installed packages with their source tag (`pinned`, `nixpkgs`, `custom`, `cask`, `brew`, `go`, `cargo`, `uv`, or `native`), and `--generation PATH` reads a built, unactivated home generation instead of the active one.
+- Its `cask` and `brew` rows come from the declared lists, so a Homebrew install that no list declares shows only in `hm brew cleanup`.
 - `hm status` reports pins behind the index, the `mvs lock minimize --check` result, uncommitted flake files, and the last run.
 - `hm doctor` reports PATH entries that shadow Nix binaries and tools that no list declares.
 - `hm try ATTR [-- COMMAND...]` runs a nixpkgs package once without installing it.
-- `hm clean [--keep N]` removes old Home Manager generations with `nh clean user`.
+- `hm clean [--keep N]` runs `nh clean user --keep 5` unless `N` is given, which also removes gcroots and direnv roots and runs a store GC; it refuses while `~/.local/state/home-manager/keep-gen19` exists.
 - `hm brew cleanup [--force] [--zap]` previews what Homebrew has beyond the lists; `--force` removes it and `--zap` also deletes cask data.
 - `hm completion zsh|bash|fish` prints the shell completion script, and `hm help [COMMAND]` prints the manual or one command's help.
 
-`--build-only` on `add`, `rm`, `up`, and `sync` does every step except the one that changes the machine, printing the built store path or the `hm sync` command instead.
+`--build-only` on `add`, `rm`, `up`, and `sync` does every step except the one that changes the machine, so the lists and the lock are still edited; it prints the built store path instead of activating, or the `hm sync` or uninstall command instead of running it.
 `hm` commits only with `--commit`, scoped to the files it changed, with a generated subject such as `home: add zizmor 1.30.1` or `darwin: add cask ghostty`.
 It refuses to start when a file it would edit has uncommitted changes.
-Exit codes are stable: 0 success, 1 failed and restored, 2 usage error, 3 refused (a dirty owned file, a held lock, an unresolved run, or a version for a shared pin), and 4 switch succeeded but the commit did not.
+Exit codes are stable: 0 success, 1 the run failed, 2 usage error, 3 refused (a dirty owned file, a held lock, an unresolved run, or a different version for a shared pin), and 4 the build or switch succeeded but the commit did not, which `--build-only` can also produce.
+After exit 1 the edited files are restored only when no generation was activated, nothing else edited them, and `--keep-on-failure` was not given; otherwise they are kept and the run journal under `.git/hm/` records an unresolved run, which every later run refuses until that journal file is removed.
 
-The lists `hm` owns are `home-manager/packages.nix`, `go-tools.nix`, `uv-tools.nix`, `cargo-tools.nix`, `darwin/homebrew/casks.nix`, and `brews.nix`.
+The lists `hm` owns are `home-manager/packages.nix`, `home-manager/go-tools.nix`, `home-manager/uv-tools.nix`, `home-manager/cargo-tools.nix`, `darwin/homebrew/casks.nix`, and `darwin/homebrew/brews.nix`.
 Each is a bracketed Nix list of double-quoted strings, one per line, with `#` comments allowed between entries.
 Edit them through `hm`, not by hand.
 
 Homebrew activation never removes anything, so a wrong list costs an unwanted install, never a lost one.
-Third-party taps are declared with `trusted = true` in `darwin/homebrew/default.nix`.
-Homebrew applies that flag only when a switch installs the Brewfile, so before the first `nh darwin switch` each such tap needs a one-time `brew trust TAP`, and `hm brew cleanup` prints the command when it is missing.
+Third-party taps are declared with `trusted = true` in `darwin/homebrew/default.nix`, and nix-darwin writes that flag into the Brewfile, so a switch trusts them as it installs it.
+Only a `hm brew cleanup` preview run before the first switch meets the taps untrusted; it then prints the one-time `brew trust TAP` command to run first.
 
 ## Host and Deployment Commands
 
@@ -156,9 +164,10 @@ make test-ser8
 make smoketests-ser8
 ```
 
-`make test-HOST` activates a configuration temporarily and is safer than switching it into the boot default.
-`make switch-HOST`, `make reboot-HOST`, and `make apply-HOST` affect live systems and require explicit intent.
-Interactive deployment commands prompt by default, and `NO_CONFIRM=true` must only be used for intentional non-interactive operations.
+`make test-HOST` builds and activates a configuration without making it the boot default, so a reboot returns to the previous one.
+It activates without a prompt: only the `switch` and `reboot` actions in `scripts/nixos-rebuild.sh` prompt, so `make test-HOST` needs the same explicit intent on a live host as `make switch-HOST` and `make reboot-HOST`.
+`make apply-HOST` runs test, switch, reboot, and the smoketests in that order, so it activates its test configuration before its first prompt.
+`NO_CONFIRM=true` disables the remaining prompts and must only be used for intentional non-interactive operations.
 The `rollback-HOST` target is currently a placeholder and must not be presented as functional.
 
 Package and service metadata can be inspected without deploying:
@@ -180,9 +189,10 @@ Run the lock command from a newly entered development shell so it uses the refre
 `hm up` performs both steps for the pins that `home-manager/packages.nix` lists.
 An existing version constraint remains in force; use `mvs lock add <attr>@<version>` to change it.
 `multiverse.lock` is shared by the hosts, the development shell, and the Mac, so `hm` never treats it as its own package list.
-`hm add` reuses an existing pin and refuses a version for an attribute that is already pinned, because changing a shared pin is `hm up`.
+`hm add` reuses an existing pin and refuses a different version for an attribute that is already pinned, because changing a shared pin is `hm up`.
 `hm rm` leaves the pin in place unless `--prune` is given and no other Nix file in the repository names the attribute.
-`hm up` moves only the pins that `packages.nix` lists unless `--repo` is given, and never passes `--all`.
+`hm up` moves only the pins that `home-manager/packages.nix` lists unless an attribute is named with `--repo`, switches only Home Manager, and never passes `--all`.
+The nix-darwin system and the hosts pick up a moved pin through `nh darwin switch` and `make test-HOST` or `make switch-HOST`.
 Do not automatically minimize pins: the same application version can carry older recipes and dependencies after `mvs lock minimize`.
 `hm status` reports what `mvs lock minimize --check` would change, so minimizing stays a deliberate step.
 
@@ -199,7 +209,7 @@ Run `shellcheck` and `shfmt -d` for changed shell scripts.
 Go code in `tools/hm` uses the standard library only, so `vendorHash` stays `null`.
 Keep it `gofmt`, `go vet`, and `staticcheck` clean, with functions under 100 lines and no package-level mutable state.
 The package's check phase runs `go test ./...` and then `staticcheck` from the pinned `go-tools`, so `nix build .#hm` is the test command and `make check` covers it.
-Every file format `hm` owns has golden tests, such as the Nix list cases under `tools/hm/internal/nixlist/testdata/`.
+The Nix list format `hm` owns has golden tests under `tools/hm/internal/nixlist/testdata/`, and the run journal has behavioural tests in `tools/hm/internal/txn/`.
 Use `sb` for structure-aware repository exploration before reading large files in full.
 Use `rg` and `fd` for text and filename searches.
 Use `treehouse get --lease` when isolated worktree execution is needed, and return the lease with `treehouse return <path>`.
@@ -227,8 +237,8 @@ make sops-gen-hash
 
 Host-specific encrypted data lives in `secrets/<host>.yaml`, and shared encrypted data lives in `secrets/shared.yaml`.
 SOPS age identities come from SSH host keys, with persistent hosts reading keys from `/persist/etc/ssh/`.
-The git identity in `home-manager/modules/git.nix` signs commits on every machine.
-On the hosts the signing subkey, when present, is delivered by sops as `gpg_signing_subkey` and imported by a Home Manager user service in `home-manager/modules/gpg.nix`; the primary key never leaves the Mac.
+The git identity in `home-manager/modules/git.nix` is configured to sign commits on every machine.
+On the hosts signing works only once the `gpg_signing_subkey` secret is declared in a Nix module and provisioned through sops; the Home Manager user service in `home-manager/modules/gpg.nix` then imports it, and the primary key never leaves the Mac.
 Do not expose secret values in logs, test output, documentation, or diffs.
 
 ## Change and Review Guidance

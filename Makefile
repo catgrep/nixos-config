@@ -324,7 +324,7 @@ sops-add-host-secrets-%:
 	@./scripts/sops/add-host-secrets.sh $*
 
 sops-update-keys:
-	@sops updatekeys secrets/secrets.yaml
+	@sops updatekeys secrets/shared.yaml
 
 sops-add-shared-secrets:
 	@./scripts/sops/add-shared-secrets.sh

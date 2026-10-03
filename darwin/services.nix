@@ -5,11 +5,11 @@
 # options. Every binding and signal in them runs a command that exists on
 # this machine: the borders invocation is services.jankyborders below, and
 # the skhd binding that restarts yabai names the org.nixos.yabai agent.
-{ pkgs, ... }:
+{ pinned, ... }:
 {
   # The agents run with the system path, not the user's Home Manager
   # profile, and the skhd bindings pipe every yabai query through jq.
-  environment.systemPackages = [ pkgs.jq ];
+  environment.systemPackages = [ pinned.jq ];
 
   services.yabai = {
     enable = true;

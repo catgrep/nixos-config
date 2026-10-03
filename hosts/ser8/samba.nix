@@ -77,7 +77,7 @@
         writable = "yes";
         "read only" = "no";
         "guest ok" = "no";
-        "valid users" = "bdhill"; # Explicitly allowed
+        "valid users" = "bobby"; # Explicitly allowed
         "create mask" = "0644";
         "directory mask" = "0755";
         comment = "Backup Storage (RAID-Z2)";
@@ -173,13 +173,13 @@
         echo "✓ Set password for media user"
       fi
 
-      # bdhill
-      if ${config.multiverse.locked.samba}/bin/smbpasswd -a -s bdhill < <(
+      # bobby
+      if ${config.multiverse.locked.samba}/bin/smbpasswd -a -s bobby < <(
         cat ${config.sops.secrets.samba_bdhill_password.path}
         echo
         cat ${config.sops.secrets.samba_bdhill_password.path}
       ); then
-        echo "✓ Set password for bdhill user"
+        echo "✓ Set password for bobby user"
       fi
     '';
   };

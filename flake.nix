@@ -183,14 +183,7 @@
           };
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.bdhill =
-            {
-              config,
-              lib,
-              pinned,
-              ...
-            }:
-            (import ./users/bdhill.nix { inherit config lib pinned; }).homeConfig;
+          home-manager.users.bobby = import ./home-manager/users/bobby.nix;
         })
       ];
 

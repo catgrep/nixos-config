@@ -140,7 +140,7 @@ validate_stderr() {
     NR == FNR { allowed[$0]++; next }
     {
       relevant = hm_warning || tolower($0) ~ /(warning|error:|fatal:|trace:)/
-      if ($0 ~ /^evaluation warning: bdhill profile:/) hm_warning = 1
+      if ($0 ~ /^evaluation warning: bobby profile:/) hm_warning = 1
       if ((relevant || hm_warning) && !($0 in allowed)) {
         print "Unclassified stderr: " $0 > "/dev/stderr"
         failed = 1

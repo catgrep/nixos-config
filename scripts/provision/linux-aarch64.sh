@@ -19,7 +19,7 @@ install_success_msg_hook() {
     info "Next steps:"
     echo "1. System will reboot automatically"
     echo "2. Remove old SSH key: ssh-keygen -R ${target_ip}"
-    echo "3. Connect as user: ssh bdhill@${target_ip}"
+    echo "3. Connect as user: ssh bobby@${target_ip}"
     echo "4. Deploy full config: make apply-${hostname}"
     echo ""
     info "Pi4 specific notes:"

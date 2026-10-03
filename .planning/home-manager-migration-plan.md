@@ -105,6 +105,8 @@ Yes.
 `bobby.nix` imports the same module list on every machine, and `pinned` resolves from the same `multiverse.lock`, so versions match too.
 The only differences are the ones written into the modules: `homeDirectory` (`/Users/bobby` or `/home/bobby`), the clipboard command in tmux, pinentry, the Homebrew PATH entry, and the `darwin/` files that only exist on the Mac.
 Host-only overrides, if any are ever needed, go in `hosts/<host>/home.nix` as a second module, not in a second user file.
+Sharing the config means every host's home grows from 5 to 121 packages, including the Rust toolchain, openjdk, zig, ffmpeg and minikube, and the Pis build on target, so their first activation downloads several gigabytes and compiles `tools/hm` locally.
+A host that should stay lean gets a `hosts/<host>/home.nix` that excludes the toolchains.
 
 ### Proposed tree
 
@@ -858,7 +860,8 @@ Preparation, once, in the repo:
 
 1. `modules/common/users.nix`: rename the account to `bobby`, same `uid = 1000`, groups and SSH key; `home-manager.users.bobby` imports `home-manager/users/bobby.nix`; `users/bdhill.nix` is deleted.
 2. `hosts/ser8/samba.nix`: `valid users`, the smbpasswd block, and the secret renamed to `samba_bobby_password` in `secrets/ser8.yaml` with `make sops-edit-ser8`; the two provisioning scripts and the validation script.
-3. Do not touch `deploy.yaml` or `etc/nix/machines` yet; every deploy in this phase still connects as `bdhill`.
+   The Samba secret keeps the key name `samba_bdhill_password` until `make sops-edit-ser8` renames it and the one-line follow-up lands in `hosts/ser8/samba.nix`, and `modules/common/signing-key.nix`, which declares `gpg_signing_subkey`, is committed only after `make sops-edit-shared` has added the key, because sops-nix validates key presence at build time.
+3. Do not touch `deploy.yaml` or `etc/nix/machines` yet; a host's `targetUser` changes in its step 10, and the machines file changes after all four hosts.
 4. `make build-HOST` for all four hosts.
 
 Then, for ser8, firebat, pi4 and pi5 in that order, each in one SSH session that stays open throughout:
@@ -866,22 +869,33 @@ Then, for ser8, firebat, pi4 and pi5 in that order, each in one SSH session that
 5. `ssh bdhill@HOST`, then `sudo -i`.
    The session survives the account's removal because the process already exists; a second terminal with a root shell is the fallback.
 6. Snapshot or back up the home storage: on ser8 `zfs snapshot rpool/safe/home@pre-rename`; on firebat (ext4 home) `tar` it into `/persist`; on the Pis a tarball is enough.
-7. Stop the user's processes (`loginctl terminate-user bdhill` from the root shell) and `mv /home/bdhill /home/bobby`.
+7. Stop the old account's other sessions from the root shell, then `mv /home/bdhill /home/bobby`.
+   `loginctl terminate-user bdhill` is not an option here, because it ends every session scope of that user, including the one the `sudo -i` shell from step 5 runs in.
+   Run `loginctl list-sessions`, then `loginctl terminate-session <id>` for every `bdhill` session except the one whose id is `$XDG_SESSION_ID`.
+   If `sudo -i` has dropped that variable, `loginctl session-status` with no argument prints the caller's session from the root shell.
    uid 1000 does not change, so ownership needs no fixing.
-8. From the Mac, with `NIXBUILD_USER=bdhill` still in effect, `make test-HOST`.
+8. From the Mac, `make test-HOST`.
+   It connects as the user `deploy.yaml` names, which is still `bdhill` on ser8, firebat and pi4, so `NIXBUILD_USER` is not needed.
+   pi5 deploys as `nixos`, an account no configuration declares, so it has no `/home/bdhill` to move and only `bobby` exists after its first activation.
    Activation finds `/home/bobby` present, drops `bdhill`, and Home Manager activates for `bobby`.
 9. From a new terminal on the Mac: `ssh bobby@HOST sudo true`.
    If that fails, activate the previous generation from the still-open root shell (`/nix/var/nix/profiles/system-<n>-link/bin/switch-to-configuration test`), move the directory back, and stop.
-10. Only after the new login works: `make switch-HOST`, then on ser8 `smbpasswd -a bobby` from the sops-provided password, then close the old session.
+10. Only after the new login works: `make switch-HOST`, then close the old session.
+    On ser8 the `samba-password-sync` oneshot sets the Samba password for `bobby` during activation, because its script changed, so what remains manual is `sudo smbpasswd -x bdhill` to drop the old Samba account.
+    Then set the host's `targetUser` in `deploy.yaml` to `bobby` (pi5 from `nixos`), because the ser8 and gateway smoketests connect as that user.
 
 After all four hosts:
 
-11. Update `deploy.yaml` (`targetUser`) and `etc/nix/machines`, run `make update-nix-conf`, and confirm a remote build from the Mac with `nix build --builders @/etc/nix/machines` on an x86_64-linux derivation.
+11. Update `etc/nix/machines`, run `make update-nix-conf`, and confirm a remote build from the Mac with `nix build --builders @/etc/nix/machines` on an x86_64-linux derivation.
 12. Deploy the sops-delivered signing subkey (section 2) and confirm `git commit --allow-empty -m test` signs on each host.
+    pi5 is not a recipient of `secrets/shared.yaml`, since `.sops.yaml` lists pi4, firebat and ser8, so before the subkey can reach it run `make sops-add-host-keys` for pi5 and `make sops-update-keys` to re-encrypt the shared file.
+    On each host the import unit runs at the next session start, or `systemctl --user start gpg-import-signing-subkey` runs it at once.
+    A subkey with a passphrase prompts once through pinentry-curses over the ssh tty, and the 400-day cache then holds.
 13. Restore the snapshot on any host that needs a second attempt; otherwise delete it after a week.
 
 Verify per host: `ssh bobby@HOST`, `make smoketests-HOST`, `nix eval '.#nixosConfigurations.HOST.config.home-manager.users.bobby.programs.zsh.dotDir'` prints the XDG path, Samba login as `bobby` on ser8, and a reboot brings the host back with `/home/bobby` mounted.
-The Pi smoketests in `deploy.yaml` are placeholders today (`test`); add a login, sudo and builder check before this phase so the verification means something.
+The smoketests connect as the `deploy.yaml` user, so the `targetUser` change in step 10 comes before them.
+The Pi suite in `scripts/smoketests/pi/` checks login, sudo and the remote builder, and also honours `NIXBUILD_USER=bobby`, so it can run before `deploy.yaml` changes.
 
 ### Phase 5: cleanup
 

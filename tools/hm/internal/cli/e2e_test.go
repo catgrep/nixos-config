@@ -207,8 +207,8 @@ esac
 	// another program or an editor might while the switch runs.
 	// FAKE_NH_FAIL fails before a generation exists; FAKE_NH_FAIL_AFTER
 	// activates the new generation and then fails. FAKE_NH_DANGLE reports
-	// success but leaves the darwin system profile pointing at a system
-	// that is not there, so the active system cannot be read.
+	// success but leaves the profile it switched pointing at a generation
+	// or system that is not there, so the active state cannot be read.
 	h.script("nh", `if [ -n "$FAKE_NH_EDIT" ]; then echo '# edited elsewhere' >> "$FAKE_NH_EDIT"; fi
 if [ -n "$FAKE_NH_FAIL" ]; then echo "error: builder failed" >&2; exit 1; fi
 case "$1 $2" in
@@ -217,7 +217,8 @@ case "$1 $2" in
     mkdir -p "$FAKE_STORE/gen-$n/home-path/bin"
     ln -sfn "$FAKE_STORE/gen-$n" "$FAKE_STATE/home-manager/gcroots/current-home"
     ln -sfn "$FAKE_STORE/gen-$n" "$FAKE_STATE/nix/profiles/home-manager-$n-link"
-    ln -sfn "home-manager-$n-link" "$FAKE_STATE/nix/profiles/home-manager" ;;
+    ln -sfn "home-manager-$n-link" "$FAKE_STATE/nix/profiles/home-manager"
+    if [ -n "$FAKE_NH_DANGLE" ]; then rm -r "$FAKE_STORE/gen-$n"; fi ;;
   "darwin switch")
     n=$(cat "$FAKE_DIR/system-counter"); n=$((n + 1)); echo "$n" > "$FAKE_DIR/system-counter"
     mkdir -p "$FAKE_STORE/system-$n"
@@ -473,6 +474,25 @@ func TestAddKeepsFilesWhenGenerationUnreadable(t *testing.T) {
 		t.Error("the edit was not kept")
 	}
 	if j := h.lastJournal(); j.Outcome != txn.OutcomeActivated || j.Resolved() {
+		t.Errorf("journal = %+v", j)
+	}
+}
+
+// nh home switch can report success and still leave the generation links
+// unreadable. hm then cannot tell what is active, so the files are kept as
+// the source of the switched generation and the run stays unresolved, as
+// after a failed switch that moved the profile.
+func TestAddKeepsFilesWhenStateAfterSwitchUnreadable(t *testing.T) {
+	h := newHarness(t)
+	t.Setenv("FAKE_NH_DANGLE", "1")
+	code, out := h.run("add", "zizmor")
+	if code != ExitFailed || strings.Contains(out, "restored") || !strings.Contains(out, "cannot be read") || !strings.Contains(out, "were kept: home-manager/packages.nix, multiverse.lock") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if !strings.Contains(h.read("home-manager/packages.nix"), "zizmor") || !strings.Contains(h.read("multiverse.lock"), `"zizmor"`) {
+		t.Error("the edits were not kept")
+	}
+	if j := h.lastJournal(); j.Outcome != txn.OutcomeActivated || j.Resolved() || !strings.Contains(j.Detail, "cannot be read") {
 		t.Errorf("journal = %+v", j)
 	}
 }

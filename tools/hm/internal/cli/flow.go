@@ -265,7 +265,9 @@ func (e *activatedError) Unwrap() error {
 
 // activate switches to the new configuration, or with buildOnly builds
 // the activation package and reports its path. It returns a line
-// describing what happened.
+// describing what happened. A switch that changed the active generation,
+// or left it unreadable, is reported as activated whether nh reported
+// success or failure, so the edited files are kept as its source.
 func (a *App) activate(buildOnly bool) (string, error) {
 	if buildOnly {
 		return a.buildOnly()
@@ -279,7 +281,7 @@ func (a *App) activate(buildOnly bool) (string, error) {
 	}
 	after, err := a.generationState()
 	if err != nil {
-		return "", err
+		return "", &activatedError{cause: err, generation: "nh home switch succeeded; the generation it activated cannot be determined"}
 	}
 	if after == before {
 		a.say("switched %s: generation unchanged", a.configName())

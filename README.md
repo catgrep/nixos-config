@@ -73,7 +73,7 @@ nix develop -c mvs lock status
 
 Use `mvs lock add NAME@VERSION` to select a version and `mvs lock update NAME` to refresh its recipe within the recorded constraint.
 An exact version constraint does not automatically opt into newer versions.
-The standalone Home Manager flake shares the lock file; refresh its reader with `nix flake update mvs --flake ./home-manager` when new pins require newer index data.
+The root flake's Home Manager and nix-darwin outputs for the Mac read the same lock file through the `pinned` special argument, and `hm add` pins a tool there and installs it in one step.
 
 Pins include their dependency closures, so matching application versions can still have different builds.
 Do not automatically run `mvs lock minimize`: it can move packages to older recipes and dependencies without changing their version numbers.

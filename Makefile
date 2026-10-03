@@ -289,9 +289,10 @@ diff-%:
 
 # Build aarch64 artifacts using Docker
 #
-# The Raspberry Pi SD-image and device-write targets were removed with the
-# third-party fork that built them. A minimal upstream bootstrap image is
-# deferred; see the Phase 9 planning notes before reintroducing one.
+# There is no Raspberry Pi SD-image or device-write target: they went with
+# the third-party fork that built them, and a minimal upstream bootstrap
+# image does not exist yet. The variables below serve the kexec installer
+# build.
 NIX_DOCKER_VOLUME ?= nix-store-cache
 NIX_DOCKER_IMAGE ?= nixos/nix:2.30.1-arm64
 

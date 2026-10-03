@@ -686,17 +686,24 @@ gopls 0.23.0, delve 1.27.2, buf 1.72.0, protoc-gen-go 1.36.12, protoc-gen-go-grp
 
 | Entry | List | Why not Nix |
 |---|---|---|
-| anaconda, blackhole-16ch, codex, ghostty, siliconscope, stacktower, syncthing, syncthing-app, vscodium, wezterm, whatsapp, zed | `homebrew.casks` | GUI apps; Nix on macOS does not manage `.app` bundles well |
+| anaconda, blackhole-16ch, codex, ghostty, siliconscope, stacktower, syncthing-app, vscodium, wezterm, whatsapp, zed | `homebrew.casks` | GUI apps; Nix on macOS does not manage `.app` bundles well |
 | docker | `homebrew.brews` | Docker Desktop owns the CLI and socket |
-| openvino, asitop, fprobe, peon-ping, pkgx, omlx, gocloc | `homebrew.brews` | tap-only, Darwin-only, or stale in nixpkgs |
+| openvino, asitop, fprobe, peon-ping, pkgx, gocloc | `homebrew.brews` | tap-only, Darwin-only, or stale in nixpkgs |
 | llvm, lld | `homebrew.brews` | `/opt/homebrew/opt/llvm/bin` is on PATH and Homebrew cleanup would otherwise remove them; retained until a Nix C toolchain is decided |
 | gomodifytags, impl, kubetest2 and testers, git-codereview, goplay, arch-go, benchstat, html2markdown | `home-manager/go-tools.nix` via `hm sync go` (not Homebrew) | not in nixpkgs or years stale there; `isocule` is the local build exception described in section 3 |
 | borders | `services.jankyborders` (nix-darwin, Phase 3b) | the nixpkgs `jankyborders` binary under the nix-darwin service, which owns the launchd agent |
-| felixkratz/formulae, homeport/tap, jundot/omlx, peonping/tap, stacktower-io/tap | `homebrew.taps` | needed by the rows above |
+| peonping/tap, stacktower-io/tap | `homebrew.taps` with `trusted = true` | needed by peon-ping and stacktower; Homebrew refuses a formula or cask from a third-party tap it has not been told to trust |
 
 yabai, skhd and borders move to nixpkgs binaries under nix-darwin's `services.yabai`, `services.skhd` and `services.jankyborders`, which own the launchd agents and read your existing rc files.
 The `tailscale` launch agent goes with the Tailscale app.
-`homebrew.onActivation.cleanup = "zap"` removes anything not in the lists, which is how the 150 dependency leftovers (gcc, six Node majors, five OpenSSL versions, four kubectl versions) disappear.
+`hm brew cleanup --force` removes anything not in the lists, which is how the 150 dependency leftovers (gcc, six Node majors, five OpenSSL versions, four kubectl versions) disappear; activation itself removes nothing.
+
+Ten library formulae are left for Homebrew cleanup: `aom`, `flac`, `glib`, `harfbuzz`, `jpeg-xl`, `libass`, `libffi`, `libsoxr`, `opus` and `pango`.
+Homebrew marks them installed on request because they were installed as build dependencies of formulae that now come from Nix, and nothing declared consumes them, so the first `hm brew cleanup --force` removes them.
+`numpy`, `poppler`, `tesseract` and `python-requests` are the user's decision before the first `hm brew cleanup --force`, because cleanup removes them otherwise; keeping one means declaring it, as a pin or with `hm add --brew`.
+`omlx` is not installed on this machine, only its tap `jundot/omlx` is, so it is not declared; `hm add --brew omlx` adds it later if wanted, and cleanup untaps `jundot/omlx`.
+Cleanup also untaps `felixkratz/formulae` and `homeport/tap`, whose borders and html2markdown now come from Nix.
+The `syncthing` entry that `brew list --cask` shows is a symlink to `syncthing-app`, which is the declared cask.
 
 ### Native installers (unchanged)
 
@@ -817,10 +824,13 @@ Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store`
 ### Phase 3b: nix-darwin
 
 1. Add `nix-darwin` to `omniflake.nix`, `darwinConfigurations."bob-mac"` to `flake.nix`, and the `darwin/` directory with `homebrew.nix` written from the "declared through nix-darwin" table and `services.nix` for yabai, skhd and borders (`services.jankyborders`).
+   The skhd and yabai rc files in `darwin/` are the live files minus the bindings that pointed at scripts under another user's home directory, which never existed here.
    Leave `nix.*` settings to Determinate (`nix.enable = false`) so nix-darwin does not fight the installer over `/etc/nix/nix.conf`.
 2. `brew services stop yabai skhd borders`, then `nh darwin switch`; nix-darwin's launchd agents take over.
 3. `homebrew.onActivation.cleanup` stays `"none"` permanently, and `homebrew.global.brewfile = true` so plain `brew bundle` commands read the generated Brewfile.
-   Removal is a manual, previewed step you run whenever you decide to:
+   Removal is a manual, previewed step you run whenever you decide to.
+   Before the first preview, run `brew trust peonping/tap stacktower-io/tap` once: `brew bundle cleanup` loads the declared formulae before anything has applied the Brewfile's trust flags, which only the install step of a switch does, so an untrusted tap stops the preview.
+   `hm brew cleanup` names that prerequisite when it is missing, and trusting a tap is a one-time local Homebrew setting, not a change to the lists.
 
 ```bash
 hm brew cleanup            # preview: every formula, cask and tap not in darwin/homebrew/ that Homebrew would remove
@@ -831,6 +841,7 @@ hm brew cleanup --force --zap   # remove them and delete cask data too
    Under the hood that is `brew bundle cleanup` against the generated Brewfile, without and with `--force`, and `--zap` adds `--zap`.
    `brew bundle check` is not a substitute: it only confirms declared entries are installed and says nothing about what cleanup would remove.
    Compare the preview with `brew list --installed-on-request` and `brew list --cask` before the first `--force`; the roughly 150 dependency leftovers (gcc, six Node majors, five OpenSSL versions, four kubectl versions) are expected there, while llvm and lld stay because `homebrew.brews` lists them.
+   The preview also lists `jundot/omlx`, the tap of an `omlx` that was never installed here; `hm add --brew omlx` adds the formula later if wanted, and cleanup untaps it otherwise.
 4. Extend `hm` with `--cask`, `--brew`, `brew cleanup` and `switch darwin`.
 
 Verify: `hm brew cleanup` prints only entries you expect to lose; `launchctl list | grep -E 'yabai|skhd'` shows the nix-darwin agents; `hm add --cask --commit <name>` round-trips.

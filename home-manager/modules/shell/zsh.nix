@@ -6,11 +6,13 @@
 {
   config,
   lib,
+  pkgs,
   pinned,
   ...
 }:
 let
   home = config.home.homeDirectory;
+  darwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 {
   programs.zsh = {
@@ -29,11 +31,29 @@ in
       enable = true;
       package = pinned.oh-my-zsh;
       theme = "fino-time";
-      plugins = [ "git" ];
+      # The hosts are administered over ssh and run systemd and docker;
+      # their helpers would only add noise to the Mac's shell.
+      plugins = [
+        "git"
+      ]
+      ++ lib.optionals (!darwin) [
+        "sudo"
+        "docker"
+        "systemd"
+      ];
       custom = "${config.xdg.configHome}/oh-my-zsh";
       # The completions directory holds store symlinks, which compfix would
       # otherwise flag as insecure on every start.
       extraConfig = "ZSH_DISABLE_COMPFIX=true";
+    };
+
+    shellAliases = {
+      ll = "ls -alF";
+      la = "ls -A";
+      l = "ls -CF";
+      grep = "grep --color=auto";
+      fgrep = "fgrep --color=auto";
+      egrep = "egrep --color=auto";
     };
 
     initContent = lib.mkMerge [
@@ -42,6 +62,10 @@ in
       (lib.mkOrder 550 ''
         fpath+=("${config.xdg.configHome}/zsh/completions")
       '')
+      # A login on a host opens with its system summary. fastfetch comes from
+      # the hosts' system packages (modules/common/packages.nix), so a host
+      # that overrides the build, as pi4 does, shows its own.
+      (lib.mkIf (!darwin) "fastfetch")
       ''
         # iTerm2 installs its integration script itself; load it only inside
         # iTerm2 so other terminals do not get its prompt hooks.

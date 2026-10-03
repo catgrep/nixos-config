@@ -7,9 +7,11 @@
     ./gh.nix
     ./git.nix
     ./gpg.nix
+    ./linux-tools.nix
     ./nh.nix
     ./packages.nix
     ./rust.nix
+    ./shell/bash.nix
     ./shell/zsh.nix
     ./tmux.nix
     ./toolchains.nix

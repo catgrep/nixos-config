@@ -128,6 +128,25 @@ func TestAddCaskFailedSwitch(t *testing.T) {
 	}
 }
 
+// nh darwin switch can report success and still leave the system profile
+// unreadable. hm then cannot tell what is active, so the list is kept as
+// the source of the switched system and the run stays unresolved, as
+// after a failed switch that moved the profile.
+func TestAddCaskKeepsListWhenStateAfterSwitchUnreadable(t *testing.T) {
+	h := newHarness(t)
+	t.Setenv("FAKE_NH_DANGLE", "1")
+	code, out := h.run("add", "--cask", "ghostty")
+	if code != ExitFailed || strings.Contains(out, "restored") || !strings.Contains(out, "cannot be read") || !strings.Contains(out, "were kept: darwin/homebrew/casks.nix") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	if got := h.read("darwin/homebrew/casks.nix"); got != casksWithGhostty {
+		t.Errorf("casks.nix was restored: %q", got)
+	}
+	if j := h.lastJournal(); j.Outcome != txn.OutcomeActivated || j.Resolved() || !strings.Contains(j.Detail, "cannot be read") {
+		t.Errorf("journal = %+v", j)
+	}
+}
+
 func TestRmCask(t *testing.T) {
 	h := newHarness(t)
 	h.write("repo", "darwin/homebrew/casks.nix", casksWithGhostty)

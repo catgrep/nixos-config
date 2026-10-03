@@ -111,6 +111,7 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("FAKE_HOME", h.home)
 	t.Setenv("FAKE_NH_FAIL", "")
 	t.Setenv("FAKE_NH_FAIL_AFTER", "")
+	t.Setenv("FAKE_NH_DANGLE", "")
 	t.Setenv("FAKE_NH_EDIT", "")
 	t.Setenv("FAKE_BREW_FAIL", "")
 	t.Setenv("FAKE_BREW_UNTRUSTED", "")
@@ -205,7 +206,9 @@ esac
 	// FAKE_NH_EDIT names a file the fake edits before anything else, as
 	// another program or an editor might while the switch runs.
 	// FAKE_NH_FAIL fails before a generation exists; FAKE_NH_FAIL_AFTER
-	// activates the new generation and then fails.
+	// activates the new generation and then fails. FAKE_NH_DANGLE reports
+	// success but leaves the darwin system profile pointing at a system
+	// that is not there, so the active system cannot be read.
 	h.script("nh", `if [ -n "$FAKE_NH_EDIT" ]; then echo '# edited elsewhere' >> "$FAKE_NH_EDIT"; fi
 if [ -n "$FAKE_NH_FAIL" ]; then echo "error: builder failed" >&2; exit 1; fi
 case "$1 $2" in
@@ -219,7 +222,8 @@ case "$1 $2" in
     n=$(cat "$FAKE_DIR/system-counter"); n=$((n + 1)); echo "$n" > "$FAKE_DIR/system-counter"
     mkdir -p "$FAKE_STORE/system-$n"
     ln -sfn "$FAKE_STORE/system-$n" "$FAKE_STATE/nixvar/profiles/system-$n-link"
-    ln -sfn "system-$n-link" "$FAKE_STATE/nixvar/profiles/system" ;;
+    ln -sfn "system-$n-link" "$FAKE_STATE/nixvar/profiles/system"
+    if [ -n "$FAKE_NH_DANGLE" ]; then rmdir "$FAKE_STORE/system-$n"; fi ;;
 esac
 if [ -n "$FAKE_NH_FAIL_AFTER" ]; then echo "error: activation failed after linking" >&2; exit 1; fi
 `)

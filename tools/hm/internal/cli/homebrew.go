@@ -143,9 +143,9 @@ func (a *App) darwinInstallable(attr string) string {
 }
 
 // activateDarwin switches the nix-darwin system, or with buildOnly builds
-// it and reports its path. As with the home layer, a failed switch that
-// changed the active system, or left it unreadable, is reported as
-// activated so the edited lists are kept as its source.
+// it and reports its path. A switch that changed the active system, or
+// left it unreadable, is reported as activated whether nh reported
+// success or failure, so the edited lists are kept as its source.
 func (a *App) activateDarwin(buildOnly bool) (string, error) {
 	if buildOnly {
 		return a.buildDarwin()
@@ -159,7 +159,7 @@ func (a *App) activateDarwin(buildOnly bool) (string, error) {
 	}
 	after, err := a.darwinState()
 	if err != nil {
-		return "", err
+		return "", &activatedError{cause: err, generation: "nh darwin switch succeeded; the system it activated cannot be determined"}
 	}
 	if after == before {
 		a.say("switched darwin %s: generation unchanged", a.hostName())

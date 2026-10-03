@@ -41,4 +41,21 @@ in
   # The agent needs the terminal for curses-style prompts; the service module
   # exports this on Linux.
   programs.zsh.initContent = lib.mkIf darwin "export GPG_TTY=$TTY";
+
+  # The hosts sign with a subkey that sops delivers from secrets/shared.yaml
+  # as gpg_signing_subkey, readable by bobby only; the primary key never
+  # leaves the Mac, so a compromised host can sign but not certify or
+  # revoke. The import is idempotent and runs at every session start. The
+  # condition lets a host activate before the secret has been entered.
+  systemd.user.services.gpg-import-signing-subkey = lib.mkIf (!darwin) {
+    Unit = {
+      Description = "Import the git signing subkey delivered by sops";
+      ConditionPathExists = "/run/secrets/gpg_signing_subkey";
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe' pinned.gnupg "gpg"} --batch --import /run/secrets/gpg_signing_subkey";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 }

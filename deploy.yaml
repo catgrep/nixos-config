@@ -27,11 +27,11 @@ hosts:
     targetUser: "bdhill"
     buildOnTarget: true
     tags: ["arm", "raspberrypi"]
-    smoketests: "test"
+    smoketests: "./scripts/smoketests/pi/all.sh"
 
   pi5:
     targetHost: "192.168.0.110"
     targetUser: "nixos"
     buildOnTarget: true
     tags: ["arm", "raspberrypi"]
-    smoketests: "test"
+    smoketests: "./scripts/smoketests/pi/all.sh"

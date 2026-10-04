@@ -103,7 +103,7 @@ flowchart TB
 
 Yes.
 `bobby.nix` imports the same module list on every machine, and `pinned` resolves from the same `multiverse.lock`, so versions match too.
-The only differences are the ones written into the modules: `homeDirectory` (`/Users/bobby` or `/home/bobby`), the clipboard command in tmux, pinentry, the Homebrew PATH entry, and the `darwin/` files that only exist on the Mac.
+The only differences are the ones written into the modules: `homeDirectory` (`/Users/bobby` or `/home/bobby`), the clipboard command in tmux, pinentry, the Homebrew PATH entries and the PATH order that `.zshrc` sets on the Mac, and the `darwin/` files that only exist on the Mac.
 Host-only overrides, if any are ever needed, go in `hosts/<host>/home.nix` as a second module, not in a second user file.
 Sharing the config means every host's home grows from 5 to 121 packages, including the Rust toolchain, openjdk, zig, ffmpeg and minikube, and the Pis build on target, so their first activation downloads several gigabytes and compiles `tools/hm` locally.
 A host that should stay lean gets a `hosts/<host>/home.nix` that excludes the toolchains.
@@ -153,7 +153,7 @@ tools/
     hm_test.go
   sagent/                  # existing
   darwin/
-    default.nix            # sessionPath, brew PATH after nix, darwin-only packages
+    default.nix            # brew sessionPath, PATH order set in .zshrc, darwin-only packages
     ghostty.nix            # programs.ghostty.settings
     files.nix              # xdg.configFile for zed
   users/
@@ -818,8 +818,13 @@ Verify: `zsh -ilc 'echo $ZDOTDIR'` prints `~/.config/zsh`; startup under 0.25s; 
    Then `cargo uninstall cargo-audit cargo-careful cargo-deny cargo-watch prek`, because their `~/.cargo/bin` copies became pins, and `trash ~/go/bin/{gopls,dlv,buf,protoc-gen-go,protoc-gen-go-grpc,gotestsum,gotests,hclfmt,go-licenses,goda,nfpm,mani,diffoci,go-arch-lint,staticcheck}` for the fifteen Go binaries that became pins.
    `programs.gh` owns `~/.config/gh/config.yml`, so the file is moved aside before the switch and its settings are ported into `programs.gh.settings`.
    The conditional rows (numpy, poppler-utils, tesseract, python-requests) are the user's decision.
-5. Verify the PATH order, which `darwin/default.nix` does not need to change: `home.sessionPath` prepends its entries from `.zshenv`, `path_helper` then places the system directories first, and the `/etc/zshrc` Nix hook prepends the Nix profiles, so from the Phase 2 switch on the order is Nix profiles, system directories, session path entries with `/opt/homebrew/bin` last.
-   Because Homebrew now sits after `/usr/bin`, every Homebrew tool that overrides an Apple system tool today (python3, rsync, curl, make, openssl, coreutils) must have moved to a pin before Phase 3 ends.
+5. Verify the PATH order, which `darwin/default.nix` sets from `.zshrc` with a `programs.zsh.initContent` entry ordered just after Home Manager's `typeset -U path` line.
+   A prepend from `.zshenv` is not enough on the Mac for two reasons.
+   `path_helper` runs from `/etc/zprofile` in every login shell and moves the system directories in front of whatever `.zshenv` prepended.
+   A shell that inherits `__ETC_PROFILE_NIX_SOURCED` from its parent, such as a tmux pane or a nested shell, never gets the Nix profiles prepended by the `/etc/zshrc` hook.
+   The `.zshrc` entry rebuilds `path` from what the shell inherited, so from the Phase 2 switch on the order is the Nix profiles, the `home.sessionPath` entries without the Homebrew ones, the inherited directories including the system ones, and `/opt/homebrew/bin` and `/opt/homebrew/opt/llvm/bin` last.
+   `home.sessionPath` stays in place for non-interactive shells and for the Linux hosts, where `/etc/profile` sets the Nix profiles and there is no `path_helper`.
+   Because Homebrew sits after `/usr/bin`, every Homebrew tool that overrides an Apple system tool today (python3, rsync, curl, make, openssl, coreutils) must have moved to a pin before Phase 3 ends.
 
 Verify: `command -v rg fd git jq vim gpg go node` all resolve under `/nix/store` or `~/.nix-profile`; `hm list` shows every row with the right source tag; `hm doctor` reports nothing undeclared in `~/go/bin`.
 

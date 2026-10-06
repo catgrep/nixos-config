@@ -200,7 +200,7 @@ These defects were not in the plan.
 Live state as of 2026-10-05: Home Manager generation 21 is active on the Mac, switched on 2026-10-03 from `15a54f6`; the PATH-order fix `47acd25` is committed but not activated; nix-darwin has never been activated; no host has been touched; the gated list has not started.
 Generation 21 is `/nix/store/sgniymiphqdpnrbb0ikgj3rc3qfya1j8-home-manager-generation` and the switch added 8.18 GiB to the store; that path is the reference point for the rollback exercise in gated item 5, where `nvd diff` compares it with `keep-gen19`.
 Pre-gate steps A to E from `gated-list.md` are done; `hm doctor` reports 15 duplicate Go binaries, isocule and 5 cargo binaries as undeclared, which step F clears.
-The run record logs the switch of step D but not its `cp ~/.zsh_history ~/.config/zsh/.zsh_history` and `gpgconf --kill gpg-agent` commands, so those two are unconfirmed.
+The user ran the step D follow-ups, copying the history file to its new location and restarting gpg-agent, before the step E checks.
 The first `nh home switch . -b bak` left five `.bak` files; step E compared `~/.gnupg/gpg-agent.conf.bak` and `~/.npmrc.bak` with the managed files, and the backups can be trashed once the checks are accepted.
 The post-switch checks measured `time zsh -ilc exit` at 0.29s, above the plan's Phase 2 Verify target of under 0.25s, so that target is missed; `hm status` reported ok with 203 pins, `gpg-agent.conf` differed from its backup only in the pinentry path with matching TTLs, and `.npmrc` was identical.
 

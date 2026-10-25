@@ -23,6 +23,11 @@ in
     package = pinned.uv;
   };
 
+  # uv otherwise trusts the Mozilla roots compiled into its binary, which only
+  # change with a uv release. With this it uses the platform verifier, so a
+  # distrusted root is dropped as soon as the system trust store drops it.
+  home.sessionVariables.UV_SYSTEM_CERTS = "1";
+
   home.sessionPath = [ "${home}/go/bin" ];
 
   home.packages = [

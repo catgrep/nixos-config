@@ -1158,11 +1158,11 @@
       "constraint": "12.7.7"
     },
     "tailscale": {
-      "rev": "ef34387ddd751e1ab8857adf4676492d32eb24ec",
-      "label": "2026-09-13-ef34387ddd75",
-      "version": "1.102.3",
-      "date": "2026-09-13",
-      "constraint": "1.102.3"
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "label": "2026-10-23-3ec636362e18",
+      "version": "1.104.2",
+      "date": "2026-10-23",
+      "constraint": "1.104.2"
     },
     "tcpdump": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",

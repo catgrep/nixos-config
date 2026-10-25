@@ -70,8 +70,8 @@ Home Manager stays a separate layer, so `nh home switch` and `nh darwin switch` 
 - `experimental/` contains work that is not part of the active host flake.
 - `home-manager/` contains the shared Home Manager modules, the single user file, and the tool lists `hm` owns.
 - `hosts/` contains host-specific NixOS configuration.
+- `lib/` contains plain Nix data shared by the NixOS, nix-darwin, and Home Manager layers, such as the distrusted CA roots.
 - `modules/` contains reusable NixOS modules grouped by role.
-- `overlays/` contains package overrides.
 - `scripts/` contains operational and validation scripts.
 - `secrets/` contains SOPS-encrypted secrets and public key material.
 - `tools/` contains repository-local tooling: the `hm` Go module and the `sagent` subflake.

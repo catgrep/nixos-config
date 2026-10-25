@@ -11,6 +11,7 @@
   imports = [
     ./banner.nix
     ./boot.nix
+    ./cacert.nix
     ./multiverse.nix
     ./networking.nix
     ./nix.nix

@@ -18,6 +18,8 @@ let
   isHomebrew = lib.hasPrefix "/opt/homebrew";
   sessionPaths = lib.filter (p: !isHomebrew p) config.home.sessionPath;
   shellWords = paths: lib.concatMapStringsSep " " lib.escapeShellArg paths;
+  cacert = pkgs.cacert.override { blacklist = import ../../lib/distrusted-cas.nix; };
+  caBundle = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 in
 {
   imports = [
@@ -35,6 +37,16 @@ in
     ];
 
     home.sessionPath = homebrewPaths;
+
+    # Nix-built curl, git, and certifi verify against NIX_SSL_CERT_FILE,
+    # which Determinate Nix otherwise points at its own default profile's
+    # cacert, and requests outside nixpkgs reads REQUESTS_CA_BUNDLE. The
+    # bundle is built here rather than taken from nix-darwin's /etc/ssl so
+    # it does not depend on the system layer having been switched.
+    home.sessionVariables = {
+      NIX_SSL_CERT_FILE = caBundle;
+      REQUESTS_CA_BUNDLE = caBundle;
+    };
 
     programs.zsh.initContent = lib.mkMerge [
       # The session entries are prepended from .zshenv, but path_helper then

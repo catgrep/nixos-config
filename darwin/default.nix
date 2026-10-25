@@ -16,6 +16,10 @@
   # Leaving Nix unmanaged keeps nix-darwin from rewriting either.
   nix.enable = false;
 
+  # The same distrusted roots the NixOS hosts drop, removed from the
+  # /etc/ssl/certs bundle that nix-darwin points NIX_SSL_CERT_FILE at.
+  security.pki.caCertificateBlacklist = import ../lib/distrusted-cas.nix;
+
   # Homebrew and the launchd user agents belong to this account.
   system.primaryUser = "bobby";
 

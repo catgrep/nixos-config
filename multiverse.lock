@@ -136,11 +136,11 @@
       "date": "2026-09-17"
     },
     "caddy": {
-      "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
-      "label": "2026-09-17-e554fab72f81",
-      "version": "2.11.4",
-      "date": "2026-09-17",
-      "constraint": "2.11.4"
+      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+      "label": "2026-10-23-3ec636362e18",
+      "version": "2.11.7",
+      "date": "2026-10-23",
+      "constraint": "2.11.7"
     },
     "cargo-audit": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",

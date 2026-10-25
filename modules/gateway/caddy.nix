@@ -14,14 +14,20 @@ let
   inherit ((builtins.fromJSON (builtins.readFile ../../multiverse.lock))) pins;
   caddyOverlay = upstream.caddy-nix.overlays.default;
   caddyPkgs = (config.multiverse.instance.at pins.caddy.rev).extend caddyOverlay;
-  caddyWithTailscale = caddyPkgs.caddy.withPlugins {
+  caddyWithPlugins = caddyPkgs.caddy.withPlugins {
     plugins = [
       # Tailscale plugin for automatic HTTPS certificate provisioning
       # Tailscale v1.102.2
       "github.com/tailscale/caddy-tailscale@v0.0.0-20260826180304-de41b249af4f"
     ];
-    # Caddy v2.11.4
-    hash = "sha256-IzLM8Qgxurrgs6NBygGEGyzXQUxQMPP3Y6iIWVN5ZvQ=";
+    # Caddy v2.11.7
+    hash = "sha256-I9A+/rwj97qu2yAP3rm+4+QBJjOKzngMM14nWZ3r6Q4=";
+  };
+  # nixpkgs builds Caddy against the system CA store only, by deleting the
+  # embedded fallback root bundle, which never receives cacert updates. The
+  # plugin build vendors Caddy, so that file sits under vendor/ instead.
+  caddyWithTailscale = caddyWithPlugins.overrideAttrs {
+    postConfigure = "rm vendor/github.com/caddyserver/caddy/v2/cmd/x509rootsfallback.go";
   };
 in
 {

@@ -13,6 +13,7 @@
     ./rust.nix
     ./shell/bash.nix
     ./shell/zsh.nix
+    ./ssh.nix
     ./tmux.nix
     ./toolchains.nix
     ./vim.nix

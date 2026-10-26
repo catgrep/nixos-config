@@ -6,7 +6,7 @@
     ./fzf.nix
     ./gh.nix
     ./git.nix
-    ./gpg.nix
+    ./gpg
     ./linux-tools.nix
     ./nh.nix
     ./packages.nix

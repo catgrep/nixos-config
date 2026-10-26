@@ -12,6 +12,7 @@
     ./banner.nix
     ./boot.nix
     ./cacert.nix
+    ./gpg.nix
     ./multiverse.nix
     ./networking.nix
     ./nix.nix

@@ -56,7 +56,7 @@ Reverse proxy routes are defined in `modules/gateway/Caddyfile`.
 The Mac is the workstation and not a deployment target, so it has no `deploy.yaml` entry and no `make` host targets.
 `homeConfigurations."bobby@bob-mac"` is its standalone Home Manager configuration, built from the same user file and modules as the hosts.
 Platform differences live inside the modules they affect, gated on `pkgs.stdenv.hostPlatform.isDarwin`, and `home-manager/darwin/` holds the Mac-only additions.
-`darwinConfigurations."bob-mac"` is the nix-darwin system layer in `darwin/`: Homebrew casks and formulae from `darwin/homebrew/`, and yabai, skhd, and borders as launchd agents from `darwin/services.nix`.
+`darwinConfigurations."bob-mac"` is the nix-darwin system layer in `darwin/`: Homebrew casks and formulae from `darwin/homebrew/`, and yabai, skhd, and borders as launchd agents from `darwin/services.nix`, currently disabled.
 It leaves Nix itself unmanaged (`nix.enable = false`) because Determinate Nix owns `/etc/nix/nix.conf` and the daemon.
 Home Manager stays a separate layer, so `nh home switch` and `nh darwin switch` are independent steps.
 

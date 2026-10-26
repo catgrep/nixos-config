@@ -238,7 +238,8 @@ make sops-gen-hash
 Host-specific encrypted data lives in `secrets/<host>.yaml`, and shared encrypted data lives in `secrets/shared.yaml`.
 SOPS age identities come from SSH host keys, with persistent hosts reading keys from `/persist/etc/ssh/`.
 The git identity in `home-manager/modules/git.nix` is configured to sign commits on every machine.
-On the hosts signing works only once the `gpg_signing_subkey` secret is declared in a Nix module and provisioned through sops; the Home Manager user service in `home-manager/modules/gpg.nix` then imports it, and the primary key never leaves the Mac.
+The private key exists only on the Mac: the ssh module in `home-manager/modules/ssh.nix` forwards the Mac's gpg-agent extra socket into each interactive session on a host, `modules/common/gpg.nix` lets sshd bind it, and `home-manager/modules/gpg/` keeps the hosts free of a local agent and imports the public key everywhere.
+A host can therefore sign only while a session from the Mac is open, and never from an unattended job.
 Do not expose secret values in logs, test output, documentation, or diffs.
 
 ## Change and Review Guidance

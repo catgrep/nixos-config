@@ -72,6 +72,12 @@ in
       UnpackCleanupDisk=yes
       ExtCleanupDisk=.par2, .sfv
 
+      # Sonarr and Radarr own duplicate decisions, as with SABnzbd's
+      # no_dupes = 0. NZBGet's own check silently discards any NZB whose
+      # content matches a history entry, even when the earlier file was
+      # deleted from the library, and the arrs then blocklist the release.
+      DupeCheck=no
+
       # Extraction must run before permission normalization so the files it
       # creates are covered by the chmod/chgrp pass.
       ScriptOrder=nzbget-extract-nested, nzbget-normalize-permissions

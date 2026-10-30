@@ -2,7 +2,10 @@
 
 .ONESHELL:
 SHELL := /bin/zsh
-.SHELLFLAGS := -e -c
+# -f skips the zsh rc files. nix-darwin's /etc/zshenv re-runs its
+# set-environment script in every zsh, which puts the system profiles ahead of
+# the `nix develop` PATH and hides the dev shell's tools from the recipes.
+.SHELLFLAGS := -f -e -c
 MAKEFLAGS += --no-print-directory
 .PHONY: help build clean switch deploy-% update check format clean test-build-% provision
 

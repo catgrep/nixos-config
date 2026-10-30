@@ -124,4 +124,11 @@ else
 	exit 1
 fi
 
+if ./scripts/smoketests/media/test-jellyfin-metadata.sh "$host"; then
+	pass "Jellyfin metadata smoketest passed"
+else
+	fail "Jellyfin metadata smoketest failed"
+	exit 1
+fi
+
 pass "All media services smoketests passed"

@@ -1158,11 +1158,11 @@
       "constraint": "12.7.7"
     },
     "tailscale": {
-      "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
-      "label": "2026-10-23-3ec636362e18",
-      "version": "1.104.2",
-      "date": "2026-10-23",
-      "constraint": "1.104.2"
+      "rev": "0bb2eedc20e4739f29e8045034f2828ad7054f8f",
+      "label": "2026-11-01-0bb2eedc20e4",
+      "version": "1.104.4",
+      "date": "2026-11-01",
+      "constraint": "1.104.4"
     },
     "tcpdump": {
       "rev": "e554fab72f81915600f3f449b786fd9af40439a5",
